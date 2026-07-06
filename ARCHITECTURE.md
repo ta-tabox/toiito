@@ -6,20 +6,25 @@ VISION の設計原理が上位。ここに書くのは「どう作るか」で�
 ## 技術スタック（確定事項）
 
 - **Next.js (App Router) + TypeScript** — UI と API を一体で持つ。`web/` 配下
-- **Supabase (Postgres)** — 問い・対話・メモの永続化。認証も Supabase Auth に委任
-- **Claude API** — 二体 AI の対話生成。API Route（サーバー側）からのみ叩く
+- **SQLite（`node:sqlite`、Node 22+）** — ローカル完結の永続化。
+  `web/data/toiito.db`（gitignore 済）。ネイティブ依存ゼロ
+- **Claude API** — 二体 AI の対話生成。Server Actions（サーバー側）からのみ叩く
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
+
+Supabase (Postgres) への移行は**別タスク**（リモート環境構築とセット）。
+`web/src/lib/db.ts` の repo 関数群のシグネチャを保ったまま実装を差し替える契約。
+Postgres 版スキーマは `web/supabase/migrations/0001_init.sql` に温存してある。
 
 ## システム全体像
 
 ```
 ブラウザ (Next.js UI)
-   │  Server Actions / Route Handlers
+   │  Server Actions
    ▼
 Next.js サーバー層 ──── Claude API（二体のシステムプロンプトを切替えて逐次呼出）
    │
    ▼
-Supabase Postgres（questions / sessions / messages / memos / memo_links）
+SQLite: web/data/toiito.db（questions / sessions / messages / memos）
 ```
 
 単一 Web アプリ。マイクロサービス的分割はしない（個人用コンポスターに
@@ -47,8 +52,7 @@ memo_links     （将来）メモ間・問い間のリンキング辺
 ```
 
 - **逆引き**は `memos → messages → sessions → questions` の join 一本。
-  これが「SQLite でも Postgres でも素直」と判断した根拠であり、
-  Supabase でも同じクエリがそのまま成立する
+  SQLite でも Postgres でも同じクエリがそのまま成立する（移行容易性の根拠）
 - アンカーはメッセージ本文内の文字オフセット（`anchor_start/end`）。
   メッセージは immutable（追記のみ・編集しない）なのでオフセットが腐らない
 - `memo_links` は MVP ではテーブルだけ切っておき、実装は発酵後
@@ -78,9 +82,10 @@ toiito/
     ├── src/
     │   ├── app/           ルーティング（問い一覧 / 対話 / メモ逆引き）
     │   ├── components/    UI 部品（メモのアンダーライン表示など）
-    │   ├── lib/           Supabase クライアント・Claude 呼び出し
+    │   ├── lib/           db.ts（SQLite repo 層）・claude.ts・personas.ts
     │   └── personas/      二体のシステムプロンプト（.md で管理）
-    └── supabase/          マイグレーション SQL
+    ├── data/              SQLite 実体（gitignore）
+    └── supabase/          Postgres 版マイグレーション（将来の移行用に温存）
 ```
 
 ## 意図的にやらないこと
@@ -94,3 +99,5 @@ toiito/
 - 「発酵した」状態の判定（status 列は用意したが遷移条件は未定義）
 - リンキングの実装粒度（memo_links の kind をキーワード一致か埋め込みか）
 - fermentary questions.md との膜接続（当面は重複を許容し、混ぜない）
+- リモート環境構築 + Supabase 移行（別タスク。ローカル完結が先）
+- AI 応答のストリーミング化（現状は Server Action で二体分を待つ同期型）
