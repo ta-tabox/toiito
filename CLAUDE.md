@@ -13,6 +13,9 @@
 人間側の残り（Cowork プロジェクトを閉じる・`_closed/` への mv）を明示して引き渡す。
 
 ## セッション開始時にやること
+0. fermentary（第二マウント）が見えることを確認する（`fermentary/RULES.md` が
+   読めるか）。**見えなければ作業を始めず**、人間に「fermentary が並置されていない」
+   と指摘して連携を求める（並置なしのセッションは膜からも台帳からも切断されている）
 1. `NEXT.md` を見て続きを拾う
 2. fermentary（第二マウント）の `NEXT.md` に自分宛の搬送メモがあれば拾う
 3. fermentary の `ATLAS.md`（terrarium 節）の自行を一瞥し、status が実態と
