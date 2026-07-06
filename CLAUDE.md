@@ -15,6 +15,9 @@
 ## セッション開始時にやること
 1. `NEXT.md` を見て続きを拾う
 2. fermentary（第二マウント）の `NEXT.md` に自分宛の搬送メモがあれば拾う
+3. fermentary の `ATLAS.md`（terrarium 節）の自行を一瞥し、status が実態と
+   乖離していたら直す（初回セッション実施・MVP 到達・方針転換などの節目を反映。
+   台帳はこのプロジェクトの状態を fermentary へ伝える唯一の口）
 
 ## 開発ハーネス（正典: `HARNESS.md`）
 変更 → `web/` で `npm run check`（型→lint→テスト→ビルド）→ 緑ならコミット。
