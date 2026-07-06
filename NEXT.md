@@ -19,6 +19,10 @@
 
 ## 済んだもの
 
+- 2026-07-06 ハーネス P0。`HARNESS.md` 起草（検証の層構造 L0〜L5・フェイクモード・
+  環境差異・フェーズ）。Vitest + `TOIITO_FAKE_AI` + lib 層テスト 11 本 +
+  `npm run check` 入口。CLAUDE.md にコミットゲート規約を追記。
+  P1（Playwright E2E + シード）はメモ機能実装と同時に
 - 2026-07-06 立ち上げ。VISION.md を土台に `ARCHITECTURE.md` を起草。
   `web/` に Next.js 骨格を生成
 - 2026-07-06 ローカル完結化。永続化を SQLite（node:sqlite）に差し替え、

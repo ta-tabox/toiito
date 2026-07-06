@@ -14,11 +14,28 @@ const SPEAKER_TAG: Record<Speaker, string> = {
   ai_b: "ai_b（抽象派）",
 };
 
+// ハーネス用フェイクモード（HARNESS.md 参照）。
+// TOIITO_FAKE_AI=1 でネットワークに出ず決定的応答を返す。
+// ペルソナ ID と直近の人間発話を含めることで、E2E 側から
+// 「どの体が・何を受けて」応答したかをアサート可能にする。
+function fakeResponse(
+  systemPrompt: string,
+  transcript: { speaker: Speaker; body: string }[]
+): string {
+  const personaLine = systemPrompt.split("\n")[0].replace(/^#\s*/, "");
+  const lastHuman = [...transcript].reverse().find((m) => m.speaker === "human");
+  return `[fake:${personaLine}] 「${lastHuman?.body ?? "(発話なし)"}」への応答`;
+}
+
 export async function callPersona(
   systemPrompt: string,
   questionBody: string,
   transcript: { speaker: Speaker; body: string }[]
 ): Promise<string> {
+  if (process.env.TOIITO_FAKE_AI === "1") {
+    return fakeResponse(systemPrompt, transcript);
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY が未設定（web/.env.local を確認）");

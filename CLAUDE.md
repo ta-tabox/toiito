@@ -16,6 +16,13 @@
 1. `NEXT.md` を見て続きを拾う
 2. fermentary（第二マウント）の `NEXT.md` に自分宛の搬送メモがあれば拾う
 
+## 開発ハーネス（正典: `HARNESS.md`）
+変更 → `web/` で `npm run check`（型→lint→テスト→ビルド）→ 緑ならコミット。
+**check が赤のままコミットしない**。AI 呼び出しを伴う動作確認は
+`TOIITO_FAKE_AI=1` で（実 API を自動テストで叩かない）。
+ロジックは lib 層へ寄せ、「lib 関数 + テスト → UI 配線」の順で作る。
+Cowork サンドボックスではビルドのみ `/tmp` コピーで実行（FUSE が unlink 拒否）。
+
 ## git
 署名は fermentary/RULES.md #5 の二層規約に従う。
 メッセージ prefix は `toiito:`、Claude は機械 author

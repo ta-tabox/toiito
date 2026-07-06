@@ -7,8 +7,13 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import fs from "node:fs";
 
-const DB_PATH =
-  process.env.TOIITO_DB_PATH ?? path.join(process.cwd(), "data", "toiito.db");
+// パス解決は遅延（初回アクセス時）。テストが env を差し替えてから
+// 初回呼び出しできるようにするため（HARNESS.md 設計制約 2）
+function dbPath(): string {
+  return (
+    process.env.TOIITO_DB_PATH ?? path.join(process.cwd(), "data", "toiito.db")
+  );
+}
 
 const SCHEMA = `
 create table if not exists questions (
@@ -54,8 +59,9 @@ let _db: DatabaseSync | null = null;
 
 function db(): DatabaseSync {
   if (!_db) {
-    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    _db = new DatabaseSync(DB_PATH);
+    const p = dbPath();
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    _db = new DatabaseSync(p);
     _db.exec("pragma journal_mode = wal; pragma foreign_keys = on;");
     _db.exec(SCHEMA);
   }
