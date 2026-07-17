@@ -17,7 +17,7 @@ AI（Claude Code / Cowork セッション）が自律的に実装を進めるた
 | L4 E2E | 縦一本（投入→対話→メモ→逆引き）のブラウザ実挙動 | Playwright（P1） | 分 |
 | L5 官能 | 対話の質・「答えを与えない」制約の遵守 | 人間（将来 LLM-judge 補助） | — |
 
-入口は一つ: **`npm run check`**（L0→L1→L2→L3 を直列実行）。
+入口は一つ: **`pnpm check`**（L0→L1→L2→L3 を直列実行）。
 AI は「変更 → check 緑 → コミット」を心拍として回す。check が赤のまま
 コミットしない（コミットゲート）。
 
@@ -51,13 +51,13 @@ AI は「変更 → check 緑 → コミット」を心拍として回す。chec
 | ビルド | リポジトリ内で可 | FUSE が unlink 拒否 → `/tmp` にコピーして実行 |
 | node_modules | macOS ネイティブ | Linux ネイティブ（**相互流用不可**） |
 
-サンドボックスで作業した後は macOS 側で `rm -rf node_modules && npm install`。
-この非対称は消せないので、ハーネスは「どちらでも `npm run check` が
+サンドボックスで作業した後は macOS 側で `rm -rf node_modules && pnpm install`。
+この非対称は消せないので、ハーネスは「どちらでも `pnpm check` が
 同じ意味を持つ」ことだけを保証する。
 
 ## フェーズ
 
-- **P0（今回）**: Vitest + フェイクモード + lib 層テスト + `npm run check`
+- **P0（今回）**: Vitest + フェイクモード + lib 層テスト + `pnpm check`
 - **P1**: Playwright E2E（フェイクモードで縦一本）、シードスクリプト
   （開発用の問い・対話・メモ一式を投入）。メモ機能実装と同時が効率的
 - **P2**: ペルソナ逸脱検査 — 「答えを与えない」制約を LLM-as-judge で

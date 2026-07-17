@@ -23,7 +23,9 @@
    台帳はこのプロジェクトの状態を fermentary へ伝える唯一の口）
 
 ## 開発ハーネス（正典: `HARNESS.md`）
-変更 → `web/` で `npm run check`（型→lint→テスト→ビルド）→ 緑ならコミット。
+変更 → `web/` で `pnpm check`（型→lint→テスト→ビルド）→ 緑ならコミット。
+パッケージマネージャは pnpm（`package.json` の packageManager でピン留め、
+corepack 有効化前提。npm/yarn は使わない）。
 **check が赤のままコミットしない**。AI 呼び出しを伴う動作確認は
 `TOIITO_FAKE_AI=1` で（実 API を自動テストで叩かない）。
 ロジックは lib 層へ寄せ、「lib 関数 + テスト → UI 配線」の順で作る。
