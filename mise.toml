@@ -1,0 +1,7 @@
+# ランタイム版管理の正（vivarium 共通規約: fermentary/playbooks/toolchain.md）
+# corepack は使わない——pnpm も mise で版管理する。
+# package.json の packageManager 欄はメタデータとして残すが、実効はこちら。
+
+[tools]
+node = "22"
+pnpm = "11.11.0"
