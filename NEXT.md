@@ -6,14 +6,9 @@
 
 - **実装プランの正: `PLAN.md`**（2026-07-13 起草。S0〜S6 のセッション分割。
   下記の個別項目は PLAN の S0/S2/S3/S5 に対応——着手時は PLAN の該当ステップを読む）
-- [人間側] pnpm 移行の仕上げ（macOS 側でのみ可能。サンドボックスは FUSE が
-  unlink 拒否で lock 削除・install 不可）: `web/` で `corepack enable` →
-  `rm package-lock.json` → `rm -rf node_modules && pnpm install`（pnpm-lock.yaml 生成）
-  → 生成された `pnpm-lock.yaml` をコミット、`package-lock.json` の削除もコミット。
-  pnpm 11 は postinstall スクリプトを既定でブロックするので、`pnpm check` が
-  ビルドで転けたら `pnpm approve-builds` で必要な依存だけ許可する
-- [人間側] 動作確認: 上記 install 後 → `.env.local` に ANTHROPIC_API_KEY →
-  `pnpm dev`。Node 22+ 必須（node:sqlite）
+- [人間側] S0 残り: `.env.local` に ANTHROPIC_API_KEY → `pnpm dev` で実対話を
+  一往復（Node 22+ 必須）。**二体応答の体感が重いかを判定して書き残す**
+  （重ければ PLAN.md S5 ストリーミング化が確定）。あわせて `pnpm check` の緑を確認
 - キーワードメモ機能（文字選択 → メモ、アンダーライン表示）— MVP 残り半分
 - メモ一覧からのセッション逆引きページ
 - AI 応答のストリーミング化（現状は二体分を同期で待つ。体感が重ければ優先度上げ）
@@ -27,6 +22,9 @@
   スキーマは `web/supabase/migrations/0001_init.sql` に温存済）
 
 ## 済んだもの
+
+- 2026-07-17 pnpm 移行仕上げ（S0 前半）。corepack enable → lock 差し替え →
+  approve-builds（sharp / unrs-resolver）。コミット 4452c10
 
 - 2026-07-06 ハーネス P0。`HARNESS.md` 起草（検証の層構造 L0〜L5・フェイクモード・
   環境差異・フェーズ）。Vitest + `TOIITO_FAKE_AI` + lib 層テスト 11 本 +
