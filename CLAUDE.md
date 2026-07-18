@@ -31,6 +31,8 @@ corepack は使わない。toolchain 正典: fermentary/playbooks/toolchain.md�
 ロジックは lib 層へ寄せ、「lib 関数 + テスト → UI 配線」の順で作る。
 Cowork サンドボックスではビルドのみ `/tmp` コピーで実行（FUSE が unlink 拒否）。
 
+コーディング規約: @CODING.md（詳細判断は skill `coding-standards`）
+
 ## git
 署名は fermentary/RULES.md #5 の二層規約に従う。
 メッセージ prefix は `toiito:`、Claude は機械 author
