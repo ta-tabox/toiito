@@ -73,9 +73,10 @@ toiito の前提のうち**後から変えると高いもの**に穴が見つか
 **残した設計判断**: 培地（cultures）・問いの分割（question_links）・昇格は
 `extensions/fermentation-and-outlets.md` に構想として凍結。MVP 常用後に解凍する。
 
-**完了条件**: `pnpm check` 相当が緑（tsc / eslint / vitest 27本 / next build）。
-サンドボックス実行のため `/tmp` コピー + linux 版 node_modules で検証済み。
-**macOS 側で `pnpm check` の再実行を人間に引き渡す**（node_modules 相互流用不可）。
+**完了条件**: `pnpm check` 緑（tsc / eslint / vitest 27本 / next build）。
+サンドボックスの `/tmp` コピー + linux 版 node_modules で検証 → **macOS でも緑を確認済み**
+（2026-07-20、人間実行。27本パス）。ペルソナ改定の体感確認は L5 の領分として
+NEXT.md へ任意項目で残す。
 
 ---
 
