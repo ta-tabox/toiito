@@ -4,6 +4,13 @@
 
 ## いま開いているもの
 
+- **[人間] macOS で `pnpm check` を一度回す**（S0b の引き渡し）。
+  2026-07-19 の基盤改定はサンドボックスの `/tmp` コピー + linux 版 node_modules で
+  検証済み（tsc / eslint / vitest 27本 / next build すべて緑）だが、
+  node_modules は相互流用不可なので macOS 側での確認が残っている。
+  併せて `pnpm dev` で一度触ると、ペルソナ改定（手筋・材料の供給規律）の
+  効きが体感できる——手応えが無ければ `src/personas/*.md` を直接編集してよい
+  （プロンプトは文書として管理する方針。コード変更は不要）
 - **実装プランの正: `PLAN.md`**（2026-07-13 起草。S0〜S6 のセッション分割。
   下記の個別項目は PLAN の S0/S2/S3/S5 に対応——着手時は PLAN の該当ステップを読む）
 - **次: PLAN.md S1（メモ lib 層）**。以降 S2（メモ UI）→ S3（逆引き）→ S4（E2E）
@@ -15,7 +22,14 @@
 ## 別タスク（今はやらない）
 
 - グラフビュー拡張（時系列×グラフの二視点 → メタグラフ）。
-  構想と段階プランは `extensions/graph-view.md`。着手はメモ機能完成 + MVP 常用後
+  構想と段階プランは `extensions/graph-view.md`。着手はメモ機能完成 + MVP 常用後。
+  **開いた問い「メッセージをノードにすると意味を失う」には答えが出ている**
+  → `extensions/fermentation-and-outlets.md` 末尾（ノードにするのは
+  問い・培地・出口。メッセージは辺の文脈へ潜らせる）
+- 発酵（培地）と出口（分割・昇格）の実装。構想は
+  `extensions/fermentation-and-outlets.md`（2026-07-19、fermentary の実地の
+  蒸留一回分の観測から起草）。**toiito の中心的価値は対話そのものより
+  その前後にある**という見立てを含む。着手は MVP 常用後
 - リモート環境構築 + Supabase (Postgres) 移行
   （`web/src/lib/db.ts` の repo 関数シグネチャを保って差し替え。
   スキーマは `web/supabase/migrations/0001_init.sql` に温存済）

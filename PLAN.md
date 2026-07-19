@@ -23,6 +23,7 @@
 | # | 内容 | 担当 | 前提 |
 |---|------|------|------|
 | S0 | pnpm 移行仕上げ + 実機動作確認 | 人間 | — |
+| S0b | 問いの基盤改定（原型/現在の形・状態6値・ペルソナ手筋） | Claude | — |
 | S1 | メモ lib 層（repo 関数 + アンカー分割ロジック + テスト） | Claude | なし（S0 と並行可） |
 | S2 | メモ UI（文字選択 → メモ、アンダーライン表示） | Claude | S1 |
 | S3 | メモ一覧と逆引きページ | Claude | S1（S2 と順不同だが S2 先を推奨） |
@@ -45,6 +46,36 @@ S5 は同日中に「実施する」へ改定（理由は S5 節）。
 **完了条件**: `pnpm check` が macOS で緑。実 API で三者対話が一往復動く。
 **判定を持ち帰る**: 二体応答の体感速度。重いと感じたら S5 の実施が確定する
 （NEXT.md にその旨を書き残す）。
+
+---
+
+## S0b 問いの基盤改定 ✅ 2026-07-19
+
+**なぜ割り込ませたか**: fermentary で実際に問いを深める蒸留を一回通したところ、
+toiito の前提のうち**後から変えると高いもの**に穴が見つかった。スキーマと
+システムプロンプトはデータと運用が乗る前に直すのが最も安い。S1 以降の順序は崩さない。
+
+**やったこと**:
+
+1. `questions.body` を**原型（不変）**と定め、`current_form`（対話で言い直された
+   焦点）を追加。表示は `questionText()` が現在の形→原型の順で解決。
+   二体 AI には両方渡す（`callPersona` の第2引数を `QuestionRef` に変更）
+2. `status` を3値→**6値**（composting / fermented / promoted / open /
+   **perennial** / discarded）。`closed` は「結晶した」と「棄却」を潰していた。
+   値域の正は `db.ts` の `QUESTION_STATUSES`
+3. `migrate()` を新設。`create table if not exists` では既存 DB に列も check も
+   届かないため、questions のみ作り直して移送（`closed` → `promoted`）。
+   人間の手元の S0 実機データを落とさない
+4. ペルソナ両体に **手筋のカタログ**と**材料の供給規律**を追加。
+   「答えを与えない」を「一方向に閉じた材料を出さない」として実装可能な形に落とした
+5. ARCHITECTURE.md に上記の設計判断を反映（スキーマとオーケストレーションの正）
+
+**残した設計判断**: 培地（cultures）・問いの分割（question_links）・昇格は
+`extensions/fermentation-and-outlets.md` に構想として凍結。MVP 常用後に解凍する。
+
+**完了条件**: `pnpm check` 相当が緑（tsc / eslint / vitest 27本 / next build）。
+サンドボックス実行のため `/tmp` コピー + linux 版 node_modules で検証済み。
+**macOS 側で `pnpm check` の再実行を人間に引き渡す**（node_modules 相互流用不可）。
 
 ---
 
