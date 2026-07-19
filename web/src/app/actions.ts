@@ -41,14 +41,14 @@ export async function speakAction(
 
   const aiA = await callPersona(
     loadPersona("ai_a"),
-    question.body,
+    question,
     listMessages(sessionId)
   );
   addMessage(sessionId, "ai_a", aiA);
 
   const aiB = await callPersona(
     loadPersona("ai_b"),
-    question.body,
+    question,
     listMessages(sessionId)
   );
   addMessage(sessionId, "ai_b", aiB);

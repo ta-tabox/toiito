@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getQuestion, latestSession, listMessages, type Speaker } from "@/lib/db";
+import {
+  getQuestion,
+  latestSession,
+  listMessages,
+  questionText,
+  type Speaker,
+} from "@/lib/db";
 import { newSessionAction, speakAction } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +46,14 @@ export default async function QuestionPage({
         </form>
       </div>
 
-      <h1 className="mt-4 text-xl font-bold leading-relaxed">{question.body}</h1>
+      <h1 className="mt-4 text-xl font-bold leading-relaxed">
+        {questionText(question)}
+      </h1>
+      {question.current_form && (
+        <p className="mt-2 border-l-2 border-neutral-300 pl-3 text-sm text-neutral-500">
+          原型（不変）: {question.body}
+        </p>
+      )}
       <p className="mt-1 text-xs text-neutral-500">
         セッション開始: {session.started_at}
       </p>

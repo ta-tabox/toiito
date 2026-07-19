@@ -1,11 +1,16 @@
 -- toiito 初期スキーマ（ARCHITECTURE.md のデータモデルが正）
 
+-- body は原型（不変・投入された生の問い）。current_form は対話で言い直された焦点。
+-- 状態は 6 値（2026-07-19 改定。closed が「結晶した」と「棄却」を潰していた + 
+-- 「閉じないことが正しい問い」= perennial の居場所が無かった）
 create table questions (
-  id          uuid primary key default gen_random_uuid(),
-  body        text not null,
-  status      text not null default 'composting'
-              check (status in ('composting', 'fermented', 'closed')),
-  created_at  timestamptz not null default now()
+  id           uuid primary key default gen_random_uuid(),
+  body         text not null,
+  current_form text,
+  status       text not null default 'composting'
+               check (status in ('composting', 'fermented', 'promoted',
+                                 'open', 'perennial', 'discarded')),
+  created_at   timestamptz not null default now()
 );
 
 create table sessions (

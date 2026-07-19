@@ -27,9 +27,15 @@ function fakeResponse(
   return `[fake:${personaLine}] 「${lastHuman?.body ?? "(発話なし)"}」への応答`;
 }
 
+// 原型と現在の形を両方渡す。片方だけでは二種類の失敗が起きる:
+// 原型だけ → 対話で問いが移った先を見失う / 現在の形だけ → 元は何を訊きたかったのか
+// が検証不能になり、ずれた前提のまま材料が積み上がる。
+// 両方見えていれば、二体は「その言い直しは原型からずれていないか」を突けるようになる。
+export type QuestionRef = { body: string; current_form?: string | null };
+
 export async function callPersona(
   systemPrompt: string,
-  questionBody: string,
+  question: QuestionRef,
   transcript: { speaker: Speaker; body: string }[]
 ): Promise<string> {
   if (process.env.TOIITO_FAKE_AI === "1") {
@@ -46,7 +52,13 @@ export async function callPersona(
     .join("\n\n");
 
   const userContent = [
-    `# 投入された問い\n${questionBody}`,
+    `# 投入された問い（原型・不変）\n${question.body}`,
+    ...(question.current_form
+      ? [
+          `# 現在の形（対話の中で言い直された焦点）\n${question.current_form}\n\n` +
+            `※ 原型からずれていると見えたら、それ自体を突いてよい。`,
+        ]
+      : []),
     `# ここまでの対話\n${dialogue || "（まだ発話なし。問いへの最初の応答をする）"}`,
     `あなたの役割定義に従い、次の一手を発話せよ。発話本文のみを出力すること。`,
   ].join("\n\n");

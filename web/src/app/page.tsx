@@ -1,13 +1,17 @@
 import Link from "next/link";
-import { listQuestions } from "@/lib/db";
+import { listQuestions, questionText } from "@/lib/db";
 import { createQuestionAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
+// 意味の正は ARCHITECTURE.md「問いの状態機械」
 const STATUS_LABEL: Record<string, string> = {
   composting: "堆肥化中",
   fermented: "発酵",
-  closed: "閉じた",
+  promoted: "結晶した",
+  open: "持ち続ける",
+  perennial: "閉じない問い",
+  discarded: "棄却",
 };
 
 export default function Home() {
@@ -41,7 +45,10 @@ export default function Home() {
               href={`/q/${q.id}`}
               className="block rounded border border-neutral-200 p-4 hover:border-neutral-400"
             >
-              <div className="text-base">{q.body}</div>
+              <div className="text-base">{questionText(q)}</div>
+              {q.current_form && (
+                <div className="mt-1 text-xs text-neutral-400">原型: {q.body}</div>
+              )}
               <div className="mt-1 text-xs text-neutral-500">
                 {STATUS_LABEL[q.status] ?? q.status} · {q.created_at}
               </div>

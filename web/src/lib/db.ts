@@ -15,13 +15,31 @@ function dbPath(): string {
   );
 }
 
+// 問いの状態。3値（composting/fermented/closed）では足りないことが
+// 2026-07-19 の実地の蒸留で判明した——closed が「答えが結晶した」と「棄却」を
+// 潰しており、かつ「閉じないことが正しい問い」の居場所が無かった。
+// 意味の正は ARCHITECTURE.md「問いの状態機械」。
+export const QUESTION_STATUSES = [
+  "composting", // 投入済み。まだ材料が付いていない
+  "fermented", // 材料（培地）が付き、蒸留に入れる
+  "promoted", // 答えが結晶した（別の器へ書き出した）
+  "open", // 持ち続ける問い。答えが出ないことは欠陥ではない
+  "perennial", // 閉じないことが正しい問い。閉じ候補として催促しない
+  "discarded", // 棄却
+] as const;
+
+export type QuestionStatus = (typeof QUESTION_STATUSES)[number];
+
+const STATUS_CHECK = QUESTION_STATUSES.map((s) => `'${s}'`).join(", ");
+
 const SCHEMA = `
 create table if not exists questions (
-  id         text primary key,
-  body       text not null,
-  status     text not null default 'composting'
-             check (status in ('composting', 'fermented', 'closed')),
-  created_at text not null default (datetime('now'))
+  id           text primary key,
+  body         text not null,
+  current_form text,
+  status       text not null default 'composting'
+               check (status in (${STATUS_CHECK})),
+  created_at   text not null default (datetime('now'))
 );
 
 create table if not exists sessions (
@@ -55,6 +73,37 @@ create index if not exists idx_memos_message     on memos(message_id);
 create index if not exists idx_memos_keyword     on memos(keyword);
 `;
 
+// `create table if not exists` は既存テーブルを一切触らないため、列や check の
+// 追加は既存 DB へ届かない（スキーマ乖離）。SQLite は check を alter できないので
+// 該当テーブルだけ作り直す。dev DB は gitignore 済みだが、人間の手元には
+// S0 実機確認のデータが入っているので落とさずに移送する。
+function migrate(d: DatabaseSync): void {
+  const cols = d.prepare("pragma table_info(questions)").all() as {
+    name: string;
+  }[];
+  if (cols.length === 0 || cols.some((c) => c.name === "current_form")) return;
+
+  d.exec("pragma foreign_keys = off;");
+  d.exec(`
+    create table questions_new (
+      id           text primary key,
+      body         text not null,
+      current_form text,
+      status       text not null default 'composting'
+                   check (status in (${STATUS_CHECK})),
+      created_at   text not null default (datetime('now'))
+    );
+    insert into questions_new (id, body, current_form, status, created_at)
+      select id, body, null,
+             case when status = 'closed' then 'promoted' else status end,
+             created_at
+        from questions;
+    drop table questions;
+    alter table questions_new rename to questions;
+  `);
+  d.exec("pragma foreign_keys = on;");
+}
+
 let _db: DatabaseSync | null = null;
 
 function db(): DatabaseSync {
@@ -63,17 +112,29 @@ function db(): DatabaseSync {
     fs.mkdirSync(path.dirname(p), { recursive: true });
     _db = new DatabaseSync(p);
     _db.exec("pragma journal_mode = wal; pragma foreign_keys = on;");
+    migrate(_db);
     _db.exec(SCHEMA);
   }
   return _db;
 }
 
+// body は**原型**。投入された生の問いであり、以後書き換えない
+// （転記誤りの訂正だけが例外＝復元であって改稿ではない）。
+// 問いは対話の中で形を変えるので、言い直し・分割後の焦点は current_form に持つ。
+// 原型を失うと「元は何を訊きたかったのか」が検証不能になり、
+// 誤った前提のまま材料が積み上がる（fermentary 2026-07-19 の実損）。
 export type Question = {
   id: string;
   body: string;
-  status: "composting" | "fermented" | "closed";
+  current_form: string | null;
+  status: QuestionStatus;
   created_at: string;
 };
+
+/** 表示に使う問い文。現在の形があればそれ、無ければ原型。 */
+export function questionText(q: Question): string {
+  return q.current_form ?? q.body;
+}
 
 export type Session = { id: string; question_id: string; started_at: string };
 
@@ -105,6 +166,35 @@ export function getQuestion(id: string): Question | undefined {
   return db().prepare("select * from questions where id = ?").get(id) as
     | Question
     | undefined;
+}
+
+/**
+ * 現在の形を更新する（原型 body は触らない）。
+ * 空文字・空白のみは「現在の形なし」＝原型に戻す扱い。
+ */
+export function setCurrentForm(
+  questionId: string,
+  form: string | null
+): Question | undefined {
+  const v = form?.trim() ? form.trim() : null;
+  db()
+    .prepare("update questions set current_form = ? where id = ?")
+    .run(v, questionId);
+  return getQuestion(questionId);
+}
+
+/** 問いの状態を進める。値域は QUESTION_STATUSES（lib 側でも検査する）。 */
+export function setQuestionStatus(
+  questionId: string,
+  status: QuestionStatus
+): Question | undefined {
+  if (!QUESTION_STATUSES.includes(status)) {
+    throw new Error(`unknown question status: ${status}`);
+  }
+  db()
+    .prepare("update questions set status = ? where id = ?")
+    .run(status, questionId);
+  return getQuestion(questionId);
 }
 
 export function getSession(id: string): Session | undefined {
