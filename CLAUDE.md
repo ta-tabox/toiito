@@ -34,9 +34,11 @@ Cowork サンドボックスではビルドのみ `/tmp` コピーで実行（FU
 コーディング規約: @CODING.md（詳細判断は skill `coding-standards`）
 
 ## git
-署名は fermentary/RULES.md #5 の二層規約に従う。
-メッセージ prefix は `toiito:`、Claude は機械 author
+署名は fermentary/RULES.md #5 に従う。Claude は機械 author
 （`git -c user.name=claude -c user.email=claude@local commit`）。
+**メッセージ prefix は変更の型**——`feat:` `fix:` `docs:` `refactor:` `chore:`
+`test:`、部位を添えるなら `feat(web):`。**プロジェクト名は名乗らない**
+（このリポジトリが既に答えている。外の器から書き込むときも同じ型を使う）。
 push・リモート操作は人間のみ。
 
 ## 知識区分の膜（正典: ~/vivarium/fermentary/playbooks/membrane.md）
