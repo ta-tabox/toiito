@@ -16,7 +16,8 @@
 0. fermentary（第二マウント）が見えることを確認する（`fermentary/RULES.md` が
    読めるか）。**見えなければ作業を始めず**、人間に「fermentary が並置されていない」
    と指摘して連携を求める（並置なしのセッションは膜からも台帳からも切断されている）
-1. `NEXT.md` を見て続きを拾う
+1. `NEXT.md` を見て続きを拾う（**作業単位と状態の正は GitHub Issues**、
+   順序と横断規約の正は `ROADMAP.md`。NEXT.md は申し送りと受け渡しのみ）
 2. fermentary（第二マウント）の `NEXT.md` に自分宛の搬送メモがあれば拾う
 3. fermentary の `ATLAS.md`（terrarium 節）の自行を一瞥し、status が実態と
    乖離していたら直す（初回セッション実施・MVP 到達・方針転換などの節目を反映。
