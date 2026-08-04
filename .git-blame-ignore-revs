@@ -1,0 +1,6 @@
+# 書式のみの一括変更を git blame から除外する。
+# 使い方: git config blame.ignoreRevsFile .git-blame-ignore-revs
+# （GitHub の blame は自動でこのファイルを読む）
+
+# chore(web): lint/format を ESLint から Biome へ移行（全ファイル整形を同梱）
+38a9e1fe7fecc0ec62d44ffdc109a65ba90ca2fc
