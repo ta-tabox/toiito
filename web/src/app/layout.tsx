@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "toiito — 問いのコンポスター",
-  description: "問いを投げ入れて発酵させる。答えではなく問いを深めるための場所。",
+  description:
+    "問いを投げ入れて発酵させる。答えではなく問いを深めるための場所。",
 };
 
 export default function RootLayout({

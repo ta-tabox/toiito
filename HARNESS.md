@@ -11,7 +11,7 @@ AI（Claude Code / Cowork セッション）が自律的に実装を進めるた
 | 層 | 何を保証するか | 道具 | 速度 |
 |----|--------------|------|------|
 | L0 型 | 契約の整合（repo 関数シグネチャ等） | `tsc --noEmit` | 秒 |
-| L1 静的 | 明白な誤り・作法 | `eslint .` | 秒 |
+| L1 静的 | 明白な誤り・作法・書式 | `biome check` | 秒 |
 | L2 ユニット | lib 層のロジック（db / claude / personas） | Vitest | 秒 |
 | L3 ビルド | ルーティング・Server Actions の結線 | `next build` | 十秒台 |
 | L4 E2E | 縦一本（投入→対話→メモ→逆引き）のブラウザ実挙動 | Playwright（P1） | 分 |
@@ -20,6 +20,10 @@ AI（Claude Code / Cowork セッション）が自律的に実装を進めるた
 入口は一つ: **`pnpm check`**（L0→L1→L2→L3 を直列実行）。
 AI は「変更 → check 緑 → コミット」を心拍として回す。check が赤のまま
 コミットしない（コミットゲート）。
+
+L1 は lint と書式を Biome 一本で見る（正典: fermentary/playbooks/toolchain.md）。
+書式ずれは `pnpm format` で機械的に直す——**手で整形しない**。
+warning はゲートを止めない（exit 0）。止めたい違反は biome.json で error へ上げる。
 
 ## AI フェイクモード（ハーネスの要）
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { newSessionAction, speakAction } from "@/app/actions";
 import {
   getQuestion,
   latestSession,
@@ -7,7 +8,6 @@ import {
   questionText,
   type Speaker,
 } from "@/lib/db";
-import { newSessionAction, speakAction } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,10 @@ export default async function QuestionPage({
           ← コンポスター
         </Link>
         <form action={newSession}>
-          <button className="text-sm text-neutral-500 hover:underline">
+          <button
+            type="submit"
+            className="text-sm text-neutral-500 hover:underline"
+          >
             新しいセッションで再訪
           </button>
         </form>
@@ -60,7 +63,10 @@ export default async function QuestionPage({
 
       <div className="mt-8 space-y-4">
         {messages.map((m) => (
-          <div key={m.id} className={`rounded border p-4 ${SPEAKER_STYLE[m.speaker].cls}`}>
+          <div
+            key={m.id}
+            className={`rounded border p-4 ${SPEAKER_STYLE[m.speaker].cls}`}
+          >
             <div className="mb-1 text-xs font-bold text-neutral-500">
               {SPEAKER_STYLE[m.speaker].label}
             </div>

@@ -27,6 +27,8 @@
 変更 → `web/` で `pnpm check`（型→lint→テスト→ビルド）→ 緑ならコミット。
 パッケージマネージャは pnpm。版管理はランタイム共々 **mise**（ルートの `mise.toml` が正。
 corepack は使わない。toolchain 正典: fermentary/playbooks/toolchain.md）。npm/yarn は使わない。
+lint/format は **Biome 一本**（`biome.json` が正。ESLint/Prettier は使わない。
+書式は `pnpm format` で機械的に直し、手で整形しない）。
 **check が赤のままコミットしない**。AI 呼び出しを伴う動作確認は
 `TOIITO_FAKE_AI=1` で（実 API を自動テストで叩かない）。
 ロジックは lib 層へ寄せ、「lib 関数 + テスト → UI 配線」の順で作る。

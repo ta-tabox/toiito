@@ -20,7 +20,10 @@ export default function Home() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
       <h1 className="text-2xl font-bold tracking-wide">
-        toiito <span className="text-sm font-normal text-neutral-500">問いのコンポスター</span>
+        toiito{" "}
+        <span className="text-sm font-normal text-neutral-500">
+          問いのコンポスター
+        </span>
       </h1>
 
       <form action={createQuestionAction} className="mt-8 flex gap-2">
@@ -47,7 +50,9 @@ export default function Home() {
             >
               <div className="text-base">{questionText(q)}</div>
               {q.current_form && (
-                <div className="mt-1 text-xs text-neutral-400">原型: {q.body}</div>
+                <div className="mt-1 text-xs text-neutral-400">
+                  原型: {q.body}
+                </div>
               )}
               <div className="mt-1 text-xs text-neutral-500">
                 {STATUS_LABEL[q.status] ?? q.status} · {q.created_at}

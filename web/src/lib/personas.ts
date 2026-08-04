@@ -1,6 +1,7 @@
 // 二体のペルソナ定義（src/personas/*.md が正。コードに埋め込まない）
-import path from "node:path";
+
 import fs from "node:fs";
+import path from "node:path";
 
 export type PersonaId = "ai_a" | "ai_b";
 

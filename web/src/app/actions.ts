@@ -1,7 +1,8 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { callPersona } from "@/lib/claude";
 import {
   addMessage,
   createQuestion,
@@ -9,7 +10,6 @@ import {
   getQuestion,
   listMessages,
 } from "@/lib/db";
-import { callPersona } from "@/lib/claude";
 import { loadPersona } from "@/lib/personas";
 
 export async function createQuestionAction(formData: FormData) {
@@ -29,7 +29,7 @@ export async function newSessionAction(questionId: string) {
 export async function speakAction(
   questionId: string,
   sessionId: string,
-  formData: FormData
+  formData: FormData,
 ) {
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return;
@@ -42,14 +42,14 @@ export async function speakAction(
   const aiA = await callPersona(
     loadPersona("ai_a"),
     question,
-    listMessages(sessionId)
+    listMessages(sessionId),
   );
   addMessage(sessionId, "ai_a", aiA);
 
   const aiB = await callPersona(
     loadPersona("ai_b"),
     question,
-    listMessages(sessionId)
+    listMessages(sessionId),
   );
   addMessage(sessionId, "ai_b", aiB);
 

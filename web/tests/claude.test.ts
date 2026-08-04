@@ -21,7 +21,7 @@ describe("フェイクモード (TOIITO_FAKE_AI=1)", () => {
     process.env.TOIITO_FAKE_AI = "1";
     const t = [{ speaker: "human" as const, body: "同じ入力" }];
     expect(await callPersona("# ai_b — 抽象派", { body: "q" }, t)).toBe(
-      await callPersona("# ai_b — 抽象派", { body: "q" }, t)
+      await callPersona("# ai_b — 抽象派", { body: "q" }, t),
     );
   });
 });
@@ -31,7 +31,7 @@ describe("実モード", () => {
     delete process.env.TOIITO_FAKE_AI;
     delete process.env.ANTHROPIC_API_KEY;
     await expect(callPersona("# ai_a", { body: "q" }, [])).rejects.toThrow(
-      /ANTHROPIC_API_KEY/
+      /ANTHROPIC_API_KEY/,
     );
   });
 });

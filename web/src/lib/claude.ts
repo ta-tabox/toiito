@@ -20,10 +20,12 @@ const SPEAKER_TAG: Record<Speaker, string> = {
 // 「どの体が・何を受けて」応答したかをアサート可能にする。
 function fakeResponse(
   systemPrompt: string,
-  transcript: { speaker: Speaker; body: string }[]
+  transcript: { speaker: Speaker; body: string }[],
 ): string {
   const personaLine = systemPrompt.split("\n")[0].replace(/^#\s*/, "");
-  const lastHuman = [...transcript].reverse().find((m) => m.speaker === "human");
+  const lastHuman = [...transcript]
+    .reverse()
+    .find((m) => m.speaker === "human");
   return `[fake:${personaLine}] 「${lastHuman?.body ?? "(発話なし)"}」への応答`;
 }
 
@@ -36,7 +38,7 @@ export type QuestionRef = { body: string; current_form?: string | null };
 export async function callPersona(
   systemPrompt: string,
   question: QuestionRef,
-  transcript: { speaker: Speaker; body: string }[]
+  transcript: { speaker: Speaker; body: string }[],
 ): Promise<string> {
   if (process.env.TOIITO_FAKE_AI === "1") {
     return fakeResponse(systemPrompt, transcript);

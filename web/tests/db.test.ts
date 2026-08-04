@@ -1,7 +1,7 @@
-import { beforeAll, describe, expect, it } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { beforeAll, describe, expect, it } from "vitest";
 import type * as DbModule from "@/lib/db";
 
 let db: typeof DbModule;
@@ -10,7 +10,7 @@ beforeAll(async () => {
   // env を差し替えてから初回アクセス（db.ts はパス解決が遅延）
   process.env.TOIITO_DB_PATH = path.join(
     mkdtempSync(path.join(tmpdir(), "toiito-test-")),
-    "test.db"
+    "test.db",
   );
   db = await import("@/lib/db");
 });
@@ -63,7 +63,7 @@ describe("原型と現在の形", () => {
   it("現在の形は前後の空白を落として保存する", () => {
     const { question } = db.createQuestion("空白の問い");
     expect(db.setCurrentForm(question.id, "  詰めた形  ")!.current_form).toBe(
-      "詰めた形"
+      "詰めた形",
     );
   });
 });
@@ -86,7 +86,7 @@ describe("問いの状態機械", () => {
     const { question } = db.createQuestion("旧状態の問い");
     expect(() =>
       // @ts-expect-error 値域は型でもスキーマでも表明している
-      db.setQuestionStatus(question.id, "closed")
+      db.setQuestionStatus(question.id, "closed"),
     ).toThrow();
   });
 
@@ -94,7 +94,7 @@ describe("問いの状態機械", () => {
     const { question } = db.createQuestion("不正状態の問い");
     expect(() =>
       // @ts-expect-error 値域は型でもスキーマでも表明している
-      db.setQuestionStatus(question.id, "fermenting")
+      db.setQuestionStatus(question.id, "fermenting"),
     ).toThrow(/unknown question status/);
     expect(db.getQuestion(question.id)?.status).toBe("composting");
   });
@@ -114,7 +114,7 @@ describe("messages", () => {
     const { session } = db.createQuestion("問い4");
     expect(() =>
       // @ts-expect-error 不変条件をスキーマ側でも表明していることの検証
-      db.addMessage(session.id, "ai_c", "三体目はいない")
+      db.addMessage(session.id, "ai_c", "三体目はいない"),
     ).toThrow();
   });
 });

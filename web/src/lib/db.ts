@@ -2,10 +2,10 @@
 // スキーマの正は ARCHITECTURE.md。Postgres 移行（別タスク）の際は
 // この repo 関数群のシグネチャを保ったまま実装を差し替える。
 
-import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
-import path from "node:path";
 import fs from "node:fs";
+import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 // パス解決は遅延（初回アクセス時）。テストが env を差し替えてから
 // 初回呼び出しできるようにするため（HARNESS.md 設計制約 2）
@@ -148,11 +148,16 @@ export type Message = {
   created_at: string;
 };
 
-export function createQuestion(body: string): { question: Question; session: Session } {
+export function createQuestion(body: string): {
+  question: Question;
+  session: Session;
+} {
   const qid = randomUUID();
   const sid = randomUUID();
   db().prepare("insert into questions (id, body) values (?, ?)").run(qid, body);
-  db().prepare("insert into sessions (id, question_id) values (?, ?)").run(sid, qid);
+  db()
+    .prepare("insert into sessions (id, question_id) values (?, ?)")
+    .run(sid, qid);
   return { question: getQuestion(qid)!, session: getSession(sid)! };
 }
 
@@ -174,7 +179,7 @@ export function getQuestion(id: string): Question | undefined {
  */
 export function setCurrentForm(
   questionId: string,
-  form: string | null
+  form: string | null,
 ): Question | undefined {
   const v = form?.trim() ? form.trim() : null;
   db()
@@ -186,7 +191,7 @@ export function setCurrentForm(
 /** 問いの状態を進める。値域は QUESTION_STATUSES（lib 側でも検査する）。 */
 export function setQuestionStatus(
   questionId: string,
-  status: QuestionStatus
+  status: QuestionStatus,
 ): Question | undefined {
   if (!QUESTION_STATUSES.includes(status)) {
     throw new Error(`unknown question status: ${status}`);
@@ -206,27 +211,37 @@ export function getSession(id: string): Session | undefined {
 export function latestSession(questionId: string): Session | undefined {
   return db()
     .prepare(
-      "select * from sessions where question_id = ? order by started_at desc, rowid desc limit 1"
+      "select * from sessions where question_id = ? order by started_at desc, rowid desc limit 1",
     )
     .get(questionId) as Session | undefined;
 }
 
 export function createSession(questionId: string): Session {
   const sid = randomUUID();
-  db().prepare("insert into sessions (id, question_id) values (?, ?)").run(sid, questionId);
+  db()
+    .prepare("insert into sessions (id, question_id) values (?, ?)")
+    .run(sid, questionId);
   return getSession(sid)!;
 }
 
 export function listMessages(sessionId: string): Message[] {
   return db()
-    .prepare("select * from messages where session_id = ? order by created_at, rowid")
+    .prepare(
+      "select * from messages where session_id = ? order by created_at, rowid",
+    )
     .all(sessionId) as Message[];
 }
 
-export function addMessage(sessionId: string, speaker: Speaker, body: string): Message {
+export function addMessage(
+  sessionId: string,
+  speaker: Speaker,
+  body: string,
+): Message {
   const id = randomUUID();
   db()
-    .prepare("insert into messages (id, session_id, speaker, body) values (?, ?, ?, ?)")
+    .prepare(
+      "insert into messages (id, session_id, speaker, body) values (?, ?, ?, ?)",
+    )
     .run(id, sessionId, speaker, body);
   return db().prepare("select * from messages where id = ?").get(id) as Message;
 }
