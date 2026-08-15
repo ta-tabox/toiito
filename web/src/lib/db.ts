@@ -245,3 +245,98 @@ export function addMessage(
     .run(id, sessionId, speaker, body);
   return db().prepare("select * from messages where id = ?").get(id) as Message;
 }
+
+export type Memo = {
+  id: string;
+  message_id: string;
+  anchor_start: number;
+  anchor_end: number;
+  keyword: string;
+  note: string | null;
+  created_at: string;
+};
+
+/**
+ * DB の check 制約は `anchor_start >= 0 and anchor_end > anchor_start` しか
+ * 守らない（対象メッセージの本文長を知らないため）。`anchor_end` が本文長を
+ * 超えないことは lib 側の責務——超過は「メッセージが変わった後の古いメモ」等の
+ * 不整合を示すので、挿入前に検査して文脈付きで拒否する。
+ */
+export function addMemo(
+  messageId: string,
+  anchorStart: number,
+  anchorEnd: number,
+  keyword: string,
+  note?: string,
+): Memo {
+  const message = db()
+    .prepare("select * from messages where id = ?")
+    .get(messageId) as Message | undefined;
+  if (!message) {
+    throw new Error(`addMemo: message not found: ${messageId}`);
+  }
+  if (anchorEnd > message.body.length) {
+    throw new Error(
+      `addMemo: anchor_end (${anchorEnd}) exceeds body length (${message.body.length}) of message ${messageId}`,
+    );
+  }
+
+  const id = randomUUID();
+  db()
+    .prepare(
+      "insert into memos (id, message_id, anchor_start, anchor_end, keyword, note) values (?, ?, ?, ?, ?, ?)",
+    )
+    .run(id, messageId, anchorStart, anchorEnd, keyword, note ?? null);
+  return db().prepare("select * from memos where id = ?").get(id) as Memo;
+}
+
+/** 対話画面のアンダーライン描画用。セッション内の全メモを投稿順で返す。 */
+export function listMemosForSession(sessionId: string): Memo[] {
+  return db()
+    .prepare(
+      `select memos.*
+         from memos
+         join messages on messages.id = memos.message_id
+        where messages.session_id = ?
+        order by memos.created_at, memos.id`,
+    )
+    .all(sessionId) as Memo[];
+}
+
+export type MemoWithContext = Memo & {
+  session_id: string;
+  question_id: string;
+  question_body: string;
+  speaker: Speaker;
+  message_body: string;
+};
+
+/**
+ * メモからのセッション逆引き用。`memos → messages → sessions → questions` の
+ * join 一本。Postgres 移行後もそのまま成立するよう、SQLite 方言（rowid 等）を
+ * 使わない素の SQL に限定する。
+ */
+export function listMemosWithContext(): MemoWithContext[] {
+  return db()
+    .prepare(
+      `select
+         memos.id           as id,
+         memos.message_id   as message_id,
+         memos.anchor_start as anchor_start,
+         memos.anchor_end   as anchor_end,
+         memos.keyword      as keyword,
+         memos.note         as note,
+         memos.created_at   as created_at,
+         messages.session_id as session_id,
+         sessions.question_id as question_id,
+         questions.body      as question_body,
+         messages.speaker     as speaker,
+         messages.body        as message_body
+         from memos
+         join messages  on messages.id = memos.message_id
+         join sessions  on sessions.id = messages.session_id
+         join questions on questions.id = sessions.question_id
+        order by memos.created_at, memos.id`,
+    )
+    .all() as MemoWithContext[];
+}

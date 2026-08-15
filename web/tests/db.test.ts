@@ -118,3 +118,62 @@ describe("messages", () => {
     ).toThrow();
   });
 });
+
+describe("memos", () => {
+  it("正常系: 選択区間から作れて note は保存される", () => {
+    const { session } = db.createQuestion("問い5");
+    const message = db.addMessage(session.id, "ai_a", "これは本文である");
+    const memo = db.addMemo(message.id, 2, 4, "本文", "気になる語");
+    expect(memo.message_id).toBe(message.id);
+    expect(memo.anchor_start).toBe(2);
+    expect(memo.anchor_end).toBe(4);
+    expect(memo.keyword).toBe("本文");
+    expect(memo.note).toBe("気になる語");
+  });
+
+  it("note は省略可で、省略時は null になる", () => {
+    const { session } = db.createQuestion("問い6");
+    const message = db.addMessage(session.id, "ai_b", "省略のテスト文");
+    const memo = db.addMemo(message.id, 0, 2, "省略");
+    expect(memo.note).toBeNull();
+  });
+
+  it("anchor_end が本文長を超える場合は lib 側で拒否する", () => {
+    const { session } = db.createQuestion("問い7");
+    const message = db.addMessage(session.id, "human", "五文字の文");
+    expect(message.body.length).toBe(5);
+    expect(() => db.addMemo(message.id, 0, 100, "はみ出し")).toThrow(
+      /anchor_end/,
+    );
+  });
+
+  it("存在しない message_id（外部キー不整合）は失敗する", () => {
+    expect(() => db.addMemo("no-such-message", 0, 1, "不整合")).toThrow();
+  });
+
+  it("listMemosForSession はそのセッションのメモだけを返す", () => {
+    const { session: sessionA } = db.createQuestion("問い8-A");
+    const { session: sessionB } = db.createQuestion("問い8-B");
+    const msgA = db.addMessage(sessionA.id, "ai_a", "セッションAの本文");
+    const msgB = db.addMessage(sessionB.id, "ai_a", "セッションBの本文");
+    const memoA = db.addMemo(msgA.id, 0, 3, "A");
+    db.addMemo(msgB.id, 0, 3, "B");
+
+    const listed = db.listMemosForSession(sessionA.id);
+    expect(listed.map((m) => m.id)).toEqual([memoA.id]);
+  });
+
+  it("listMemosWithContext は memos→messages→sessions→questions の join が正しく効く", () => {
+    const { question, session } = db.createQuestion("問い9: 逆引き元の問い");
+    const message = db.addMessage(session.id, "ai_b", "逆引き対象の本文");
+    const memo = db.addMemo(message.id, 0, 4, "逆引き");
+
+    const found = db.listMemosWithContext().find((m) => m.id === memo.id);
+    expect(found).toBeDefined();
+    expect(found?.session_id).toBe(session.id);
+    expect(found?.question_id).toBe(question.id);
+    expect(found?.question_body).toBe("問い9: 逆引き元の問い");
+    expect(found?.speaker).toBe("ai_b");
+    expect(found?.message_body).toBe("逆引き対象の本文");
+  });
+});
