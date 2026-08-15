@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "toiito-web",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd web && PATH=\"$HOME/.local/share/mise/shims:$PATH\" exec pnpm dev --port 3000"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "toiito-web-fake",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd web && PATH=\"$HOME/.local/share/mise/shims:$PATH\" TOIITO_FAKE_AI=1 exec pnpm dev --port 3100"
+      ],
+      "port": 3100
+    }
+  ]
+}
