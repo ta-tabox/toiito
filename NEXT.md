@@ -6,12 +6,8 @@ issue に載らない申し送りと、fermentary との受け渡しだけ。
 
 ## いま開いているもの
 
-- **issue 台帳への移行が未完**（2026-08-02）。`issues/` に草稿 10 件を用意した。
-  macOS / 別 PC で `cd issues && ./create.sh` を実行して GitHub へ登録し、
-  登録後に `issues/` ディレクトリごと撤去する（README に手順あり）。
-  Cowork サンドボックスからは GitHub へ到達できないため、ここでは実行できない
 - **次に着手する issue**: #1（メモ lib 層）。#2（ローディング表示）は独立なので
-  いつでも並行可
+  いつでも並行可（`web/src/lib` に memo/anchors 相当が未着手なのを確認済み）
 
 ## 申し送り
 
