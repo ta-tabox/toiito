@@ -1,9 +1,3 @@
-# ランタイム版管理の正（vivarium 共通規約: fermentary/playbooks/toolchain.md）
-# corepack は使わない——pnpm も mise で版管理する。
-# package.json の packageManager 欄はメタデータとして残すが、実効はこちら。
-
 [tools]
-node = "22"
-# 既定の aqua バックエンドは 11.11.0 の資産名変更（pnpm-darwin-*.tar.gz）に
-# 未追従で取得に失敗するため、npm バックエンド経由で取得する（2026-07-17 時点）
-"npm:pnpm" = "11.11.0"
+node = "24"
+"npm:pnpm" = "11.21.0"
