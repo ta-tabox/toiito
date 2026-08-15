@@ -1,6 +1,13 @@
-// ローカル永続化層（node:sqlite / Node 22+）
-// スキーマの正は ARCHITECTURE.md。Postgres 移行（別タスク）の際は
-// この repo 関数群のシグネチャを保ったまま実装を差し替える。
+// 永続化層。現状の実装は node:sqlite（Node 22+）の生 SQL。
+//
+// データモデルとスキーマの正は ARCHITECTURE.md。問いの状態の値域だけはこのファイルの
+// QUESTION_STATUSES が正で、型・DB の check・UI ラベルがそこから派生する。
+//
+// この層は Prisma + Postgres へ丸ごと入れ替わる（2026-08-15 方針変更・issue #11）。
+// 旧方針の「repo 関数のシグネチャを保ったまま実装を差し替える」契約は破棄した
+// ——Prisma は非同期なので、移行後は repo 関数がすべて async になる。
+// よってここへ同期前提のロジックを積み増さない。純粋な計算は anchors.ts のような
+// DB 非依存の層へ置けば、移行の影響を受けずに済む。
 
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
