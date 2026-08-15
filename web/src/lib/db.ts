@@ -257,10 +257,9 @@ export type Memo = {
 };
 
 /**
- * DB の check 制約は `anchor_start >= 0 and anchor_end > anchor_start` しか
- * 守らない（対象メッセージの本文長を知らないため）。`anchor_end` が本文長を
- * 超えないことは lib 側の責務——超過は「メッセージが変わった後の古いメモ」等の
- * 不整合を示すので、挿入前に検査して文脈付きで拒否する。
+ * DB の check 制約は `anchor_start >= 0 and anchor_end > anchor_start` しか守らない
+ * （対象メッセージの本文長を知らないため）。`anchor_end` が本文長を超えないことは lib 側の責務
+ * ——超過は「メッセージが変わった後の古いメモ」等の不整合を示すので、挿入前に検査して文脈付きで拒否する。
  */
 export function addMemo(
   messageId: string,
@@ -312,9 +311,8 @@ export type MemoWithContext = Memo & {
 };
 
 /**
- * メモからのセッション逆引き用。`memos → messages → sessions → questions` の
- * join 一本。Postgres 移行後もそのまま成立するよう、SQLite 方言（rowid 等）を
- * 使わない素の SQL に限定する。
+ * メモからのセッション逆引き用。`memos → messages → sessions → questions` の join 一本。
+ * Postgres 移行後もそのまま成立するよう、SQLite 方言（rowid 等）を使わない素の SQL に限定する。
  */
 export function listMemosWithContext(): MemoWithContext[] {
   return db()
