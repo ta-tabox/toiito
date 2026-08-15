@@ -32,7 +32,6 @@ lint/format は **Biome 一本**（`biome.json` が正。ESLint/Prettier は使�
 **check が赤のままコミットしない**。AI 呼び出しを伴う動作確認は
 `TOIITO_FAKE_AI=1` で（実 API を自動テストで叩かない）。
 ロジックは lib 層へ寄せ、「lib 関数 + テスト → UI 配線」の順で作る。
-Cowork サンドボックスではビルドのみ `/tmp` コピーで実行（FUSE が unlink 拒否）。
 
 コーディング規約: @CODING.md（詳細判断は skill `coding-standards`）
 

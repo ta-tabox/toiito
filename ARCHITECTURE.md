@@ -6,14 +6,21 @@ VISION の設計原理が上位。ここに書くのは「どう作るか」で�
 ## 技術スタック（確定事項）
 
 - **Next.js (App Router) + TypeScript** — UI と API を一体で持つ。`web/` 配下
-- **SQLite（`node:sqlite`、Node 22+）** — ローカル完結の永続化。
-  `web/data/toiito.db`（gitignore 済）。ネイティブ依存ゼロ
+- **Postgres + Prisma** — 永続化。開発も本番も同じ方言に揃える
+  （2026-08-15 方針変更。実装は issue #11。移行が済むまでの現状は
+  SQLite（`node:sqlite`）+ 生 SQL）
 - **Claude API** — 二体 AI の対話生成。Server Actions（サーバー側）からのみ叩く
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
 
-Supabase (Postgres) への移行は**別タスク**（リモート環境構築とセット）。
-`web/src/lib/db.ts` の repo 関数群のシグネチャを保ったまま実装を差し替える契約。
-Postgres 版スキーマは `web/supabase/migrations/0001_init.sql` に温存してある。
+永続化の方針は 2026-08-15 に変えた。旧方針は「`node:sqlite` でネイティブ依存ゼロ・
+ローカル完結」＋「`db.ts` の repo 関数のシグネチャを保ったまま Postgres へ差し替える契約」。
+これは方言の二重管理（`db.ts` の `SCHEMA` と `supabase/migrations/0001_init.sql`）と
+型の手書きキャスト（`.all() as Memo[]`）をメンテナンスコストとして残し、契約の漏れも実際に出た
+（`latestSession` / `listMessages` が Postgres に無い `rowid` を使っている）。
+
+新方針は **Prisma を入れて開発も本番も Postgres 一本**。repo 関数は同期から `async` へ変わるため、
+上記のシグネチャ契約はここで**意図的に破る**。「起動に外部プロセス不要」というローカル完結性も捨て、
+ローカルにも Postgres を立てる。手順・完了条件・データ移送は issue #11 が持つ。
 
 ## システム全体像
 
