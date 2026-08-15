@@ -29,10 +29,8 @@ function fakeResponse(
   return `[fake:${personaLine}] 「${lastHuman?.body ?? "(発話なし)"}」への応答`;
 }
 
-// 原型と現在の形を両方渡す。片方だけでは二種類の失敗が起きる:
-// 原型だけ → 対話で問いが移った先を見失う / 現在の形だけ → 元は何を訊きたかったのか
-// が検証不能になり、ずれた前提のまま材料が積み上がる。
-// 両方見えていれば、二体は「その言い直しは原型からずれていないか」を突けるようになる。
+// 原型と現在の形を両方渡す。片方だけでは、問いが移った先を見失うか、
+// 原型からのずれを検出できないかのどちらかになる（ARCHITECTURE.md「原型と現在の形」）。
 export type QuestionRef = { body: string; current_form?: string | null };
 
 export async function callPersona(

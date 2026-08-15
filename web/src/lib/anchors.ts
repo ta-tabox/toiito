@@ -1,31 +1,20 @@
 // メモのアンカー（メッセージ本文中の文字オフセット）を扱う純関数群。
-// 本文の分割・オフセット換算・引用生成を行い、対話画面と逆引き画面の両方が使う。
+// 本文の分割・オフセット換算・引用生成を行う。
 //
-// DB / next / DOM のいずれにも依存しない。オフセット演算（サロゲートペア・区間の重複・境界）は
-// MVP 最大のリスク箇所で、DOM に埋めると検証できない。だからここへ寄せてテストで固める。
-// UI 側は DOM から読んだ数値をこの層に渡すだけにする。
-// 永続化が Prisma + Postgres へ移っても（issue #11）この層は影響を受けない。
-// DB 非依存はそのための性質であって、偶然ではない。
-//
-// オフセットの正は JS の string index（UTF-16 code unit）。
-// コードポイント（サロゲートペアで 2 code unit を使う絵文字等）ではない。
-//
-// アンカーが腐らない根拠は messages が immutable（追記のみ・編集しない）であること。
-// この不変条件が壊れると、保存済みのオフセットが別の位置を指し始める
-// ——ここの全関数の前提が同時に崩れる（ARCHITECTURE.md データモデル節）。
+// オフセットの単位は JS の string index（UTF-16 code unit）。コードポイントではない。
+// DB / next / DOM に依存しない。UI は DOM から読んだ数値をこの層へ渡すだけにする。
+// アンカーは messages が immutable（追記のみ）であることを前提にしている。
 
 export type Segment = { text: string; memoIds: string[] };
 
 type AnchorRange = { id: string; anchor_start: number; anchor_end: number };
 
 /**
- * 本文をメモのアンダーライン区間で分割する。
- * 重複区間（overlap）は一つのセグメントに複数の memoIds を持たせて表現する
- * ——テキストを複製すると往復変換（segment → 絶対オフセット）が壊れるため。
+ * 本文をメモのアンダーライン区間で分割する。重複区間は一つのセグメントに複数の memoIds を持たせる
+ * （テキストを複製すると segment → 絶対オフセットの逆変換が壊れるため）。
  *
- * アルゴリズム: 全メモの start/end を切断点として座標圧縮し、隣接する切断点の間を 1 セグメントとする。
- * 切断点はメモの境界そのものなので、各セグメントは「そのメモを完全に内包する」か
- * 「まったく含まない」かのどちらかに定まる——メモ区間がセグメントの途中で切れることはない。
+ * 実装は座標圧縮。全メモの start/end を切断点とし、隣接する切断点の間を 1 セグメントとする。
+ * 切断点がメモの境界そのものなので、メモ区間がセグメントの途中で切れることはない。
  */
 export function segmentBody(body: string, memos: AnchorRange[]): Segment[] {
   const cuts = new Set<number>([0, body.length]);
@@ -63,8 +52,7 @@ export function resolveOffset(
 
 /**
  * サロゲートペアの途中を指すインデックスをコードポイント境界へ丸める。
- * 丸め方向は常に手前（index - 1）。start / end どちらの用途で呼ばれても
- * 「元の index を超えない」ことさえ保証すれば、本文範囲をはみ出す事故もペア片割れの分断も起きない。
+ * 丸め方向は常に手前（index - 1）。start / end どちらに使っても元の index を超えない。
  */
 export function clampToCodePoint(body: string, index: number): number {
   if (index <= 0 || index >= body.length) return index;

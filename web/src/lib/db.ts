@@ -1,13 +1,8 @@
 // 永続化層。現状の実装は node:sqlite（Node 22+）の生 SQL。
+// データモデルとスキーマの正は ARCHITECTURE.md。
 //
-// データモデルとスキーマの正は ARCHITECTURE.md。問いの状態の値域だけはこのファイルの
-// QUESTION_STATUSES が正で、型・DB の check・UI ラベルがそこから派生する。
-//
-// この層は Prisma + Postgres へ丸ごと入れ替わる（2026-08-15 方針変更・issue #11）。
-// 旧方針の「repo 関数のシグネチャを保ったまま実装を差し替える」契約は破棄した
-// ——Prisma は非同期なので、移行後は repo 関数がすべて async になる。
-// よってここへ同期前提のロジックを積み増さない。純粋な計算は anchors.ts のような
-// DB 非依存の層へ置けば、移行の影響を受けずに済む。
+// この層は Prisma + Postgres へ入れ替わり、repo 関数はすべて async になる（issue #11）。
+// 同期前提のロジックをここへ積み増さない。DB 非依存の計算は anchors.ts のような層へ置く。
 
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
@@ -22,10 +17,8 @@ function dbPath(): string {
   );
 }
 
-// 問いの状態。3値（composting/fermented/closed）では足りないことが
-// 2026-07-19 の実地の蒸留で判明した——closed が「答えが結晶した」と「棄却」を
-// 潰しており、かつ「閉じないことが正しい問い」の居場所が無かった。
-// 意味の正は ARCHITECTURE.md「問いの状態機械」。
+// 問いの状態。型・DB の check・UI ラベルはここから派生する。
+// 各値の意味と 6 値である理由は ARCHITECTURE.md「問いの状態機械」。
 export const QUESTION_STATUSES = [
   "composting", // 投入済み。まだ材料が付いていない
   "fermented", // 材料（培地）が付き、蒸留に入れる
@@ -80,10 +73,9 @@ create index if not exists idx_memos_message     on memos(message_id);
 create index if not exists idx_memos_keyword     on memos(keyword);
 `;
 
-// `create table if not exists` は既存テーブルを一切触らないため、列や check の
-// 追加は既存 DB へ届かない（スキーマ乖離）。SQLite は check を alter できないので
-// 該当テーブルだけ作り直す。dev DB は gitignore 済みだが、人間の手元には
-// S0 実機確認のデータが入っているので落とさずに移送する。
+// `create table if not exists` は既存テーブルを触らないので、列や check の追加が
+// 既存 DB へ届かない。SQLite は check を alter できないため、該当テーブルだけ
+// 作り直してデータを移送する（手元の DB には実データが入っているので落とさない）。
 function migrate(d: DatabaseSync): void {
   const cols = d.prepare("pragma table_info(questions)").all() as {
     name: string;
@@ -126,11 +118,9 @@ function db(): DatabaseSync {
   return _db;
 }
 
-// body は**原型**。投入された生の問いであり、以後書き換えない
-// （転記誤りの訂正だけが例外＝復元であって改稿ではない）。
-// 問いは対話の中で形を変えるので、言い直し・分割後の焦点は current_form に持つ。
-// 原型を失うと「元は何を訊きたかったのか」が検証不能になり、
-// 誤った前提のまま材料が積み上がる（fermentary 2026-07-19 の実損）。
+// body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、
+// current_form は対話の中で言い直された焦点。
+// 二つに分けている理由は ARCHITECTURE.md「原型と現在の形」。
 export type Question = {
   id: string;
   body: string;
@@ -267,9 +257,8 @@ export type Memo = {
 };
 
 /**
- * DB の check 制約は `anchor_start >= 0 and anchor_end > anchor_start` しか守らない
- * （対象メッセージの本文長を知らないため）。`anchor_end` が本文長を超えないことは lib 側の責務
- * ——超過は「メッセージが変わった後の古いメモ」等の不整合を示すので、挿入前に検査して文脈付きで拒否する。
+ * DB の check は本文長を知らないため `start >= 0 && end > start` しか守れない。
+ * `anchor_end <= 本文長` は lib の責務なので、挿入前に検査して文脈付きで拒否する。
  */
 export function addMemo(
   messageId: string,
@@ -323,10 +312,7 @@ export type MemoWithContext = Memo & {
   message_body: string;
 };
 
-/**
- * メモからのセッション逆引き用。`memos → messages → sessions → questions` の join 一本。
- * Postgres 移行後もそのまま成立するよう、SQLite 方言（rowid 等）を使わない素の SQL に限定する。
- */
+/** メモからのセッション逆引き用。`memos → messages → sessions → questions` の join 一本。 */
 export function listMemosWithContext(): MemoWithContext[] {
   return db()
     .prepare(
