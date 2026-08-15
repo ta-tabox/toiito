@@ -42,6 +42,7 @@ export function segmentBody(body: string, memos: AnchorRange[]): Segment[] {
     const memoIds = memos
       .filter((m) => m.anchor_start <= start && end <= m.anchor_end)
       .map((m) => m.id);
+
     segments.push({ text: body.slice(start, end), memoIds });
   }
   return segments;
@@ -67,6 +68,7 @@ export function resolveOffset(
  */
 export function clampToCodePoint(body: string, index: number): number {
   if (index <= 0 || index >= body.length) return index;
+
   const before = body.charCodeAt(index - 1);
   const after = body.charCodeAt(index);
   const isHighSurrogate = before >= 0xd800 && before <= 0xdbff;

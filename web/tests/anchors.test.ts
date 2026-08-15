@@ -19,6 +19,7 @@ describe("segmentBody", () => {
     const segments = segmentBody("hello world", [
       { id: "m1", anchor_start: 6, anchor_end: 11 },
     ]);
+
     expect(segments).toEqual([
       { text: "hello ", memoIds: [] },
       { text: "world", memoIds: ["m1"] },
@@ -30,6 +31,7 @@ describe("segmentBody", () => {
       { id: "m1", anchor_start: 0, anchor_end: 3 },
       { id: "m2", anchor_start: 3, anchor_end: 6 },
     ]);
+
     expect(segments).toEqual([
       { text: "abc", memoIds: ["m1"] },
       { text: "def", memoIds: ["m2"] },
@@ -41,6 +43,7 @@ describe("segmentBody", () => {
       { id: "m1", anchor_start: 0, anchor_end: 4 },
       { id: "m2", anchor_start: 2, anchor_end: 6 },
     ]);
+
     expect(segments).toEqual([
       { text: "ab", memoIds: ["m1"] },
       { text: "cd", memoIds: ["m1", "m2"] },
@@ -53,6 +56,7 @@ describe("segmentBody", () => {
       { id: "m1", anchor_start: 0, anchor_end: 2 },
       { id: "m2", anchor_start: 4, anchor_end: 6 },
     ]);
+
     expect(segments).toEqual([
       { text: "ab", memoIds: ["m1"] },
       { text: "cd", memoIds: [] },
@@ -65,6 +69,7 @@ describe("segmentBody", () => {
     const segments = segmentBody("a😀b", [
       { id: "m1", anchor_start: 1, anchor_end: 3 },
     ]);
+
     expect(segments).toEqual([
       { text: "a", memoIds: [] },
       { text: "😀", memoIds: ["m1"] },

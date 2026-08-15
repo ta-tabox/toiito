@@ -14,6 +14,7 @@ describe("ペルソナ定義", () => {
 
     it(`${id}: 手筋と材料の供給規律を持つ`, () => {
       const text = loadPersona(id);
+
       expect(text).toContain("## 手筋");
       expect(text).toContain("## 材料の供給規律");
       // 「答えを与えない」の実装可能な形＝一方向に閉じた材料を出さない。
@@ -26,6 +27,7 @@ describe("ペルソナ定義", () => {
   it("二体の手筋が重複していない（同じ角度から掘らないための分業）", () => {
     const a = loadPersona("ai_a");
     const b = loadPersona("ai_b");
+
     expect(a).toContain("出自の具体を聞く");
     expect(a).toContain("判定基準を要求する");
     expect(b).toContain("語の同一性を疑う");

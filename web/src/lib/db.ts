@@ -117,6 +117,7 @@ function db(): DatabaseSync {
   if (!_db) {
     const p = dbPath();
     fs.mkdirSync(path.dirname(p), { recursive: true });
+
     _db = new DatabaseSync(p);
     _db.exec("pragma journal_mode = wal; pragma foreign_keys = on;");
     migrate(_db);
@@ -161,6 +162,7 @@ export function createQuestion(body: string): {
 } {
   const qid = randomUUID();
   const sid = randomUUID();
+
   db().prepare("insert into questions (id, body) values (?, ?)").run(qid, body);
   db()
     .prepare("insert into sessions (id, question_id) values (?, ?)")
@@ -203,6 +205,7 @@ export function setQuestionStatus(
   if (!QUESTION_STATUSES.includes(status)) {
     throw new Error(`unknown question status: ${status}`);
   }
+
   db()
     .prepare("update questions set status = ? where id = ?")
     .run(status, questionId);
@@ -278,9 +281,11 @@ export function addMemo(
   const message = db()
     .prepare("select * from messages where id = ?")
     .get(messageId) as Message | undefined;
+
   if (!message) {
     throw new Error(`addMemo: message not found: ${messageId}`);
   }
+
   if (anchorEnd > message.body.length) {
     throw new Error(
       `addMemo: anchor_end (${anchorEnd}) exceeds body length (${message.body.length}) of message ${messageId}`,
@@ -293,6 +298,7 @@ export function addMemo(
       "insert into memos (id, message_id, anchor_start, anchor_end, keyword, note) values (?, ?, ?, ?, ?, ?)",
     )
     .run(id, messageId, anchorStart, anchorEnd, keyword, note ?? null);
+
   return db().prepare("select * from memos where id = ?").get(id) as Memo;
 }
 
