@@ -42,11 +42,12 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 - **author は人間名義**。Claude も `-c` を付けず素の `git commit` を使う（名義は local config に焼いてある。
   リモートはクローンのたびに config が空なので、セッション起動フックが同じ名義を焼き直す）。
   author が答えるのは責任を誰が担ったかの一点で、それはどこで書いても動かない。
-- **Co-authored-by はリモート（Claude Code on the web）でのみ付ける**。
-  末尾に一行、`Co-authored-by: Claude <noreply@anthropic.com>`。
-  手元では付けない——隣で書かせている限り AI 支援は自明で、log に残せば痕跡が増えるだけ。
-  リモートは Claude へ委ねる幅が手元より広く、その差は log からしか読めない。
-  author（責任）は動かさず、委譲の幅だけを co-author で示す。
+- **Co-authored-by は常に付ける**。
+  文言の正は `.claude/settings.json` の `attribution.commit`（既定のモデル名と `Claude-Session:` URL は落としてある）。
+  author と co-author は別の問いに答える——前者は責任を誰が担ったか、後者は誰が手を動かしたか。
+  だから co-author を足しても author は人間名義のまま動かない。
+  **git が既定メッセージを作る経路では自分で足す**（`git merge --no-edit`、`git commit --amend`）。
+  設定が差し替えるのは Claude への指示文であって、git の動作ではない。
 - **メッセージ prefix は変更の型**——`feat:` `fix:` `docs:` `refactor:` `chore:` `test:`。
   **スコープは添えない**（`feat(web):` としない。コードが `web/` 配下にあることはこのプロジェクトでは自明）。
   **プロジェクト名も名乗らない**（このリポジトリが既に答えている。外の器から書き込むときも同じ型を使う）。
