@@ -1,0 +1,2 @@
+# Prisma Migrate が provider を記録する。手で編集しない。
+provider = "postgresql"

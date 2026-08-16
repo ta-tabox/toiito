@@ -62,7 +62,7 @@ Obsidian のグラフビューのイメージで、堆積した地層を俯瞰�
 1. **lib 層**: `web/src/lib/graph.ts`
    - `buildSessionGraph(sessionId) → { nodes, edges }`（Phase 1）
    - `buildMetaGraph() → { nodes, edges }`（Phase 3）
-   - どちらも db.ts の repo 関数の join 一本で組める（SQLite/Postgres 両立の契約を崩さない）。
+   - どちらも db.ts の repo 関数の join 一本で組める（Prisma を repo 層の内側に閉じる契約を崩さない）。
      純関数部分（rows → graph 構造）を切り出してテスト
 2. **UI 層**: `web/src/app/q/[id]` にビュー切替、メタグラフは `/graph` を新設
 3. **描画**: 初期は d3-force + SVG の自前描画で十分（個人用・ノード数百程度。

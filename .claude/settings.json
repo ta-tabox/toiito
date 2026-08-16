@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(pnpm check)",
+      "Bash(pnpm run check)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm run lint)",
+      "Bash(pnpm format)",
+      "Bash(pnpm run format)",
+      "Bash(pnpm run build)",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(pnpm exec biome check:*)",
+      "Bash(pnpm exec biome format:*)",
+      "Bash(pnpm exec vitest run:*)",
+      "Bash(pnpm exec next build:*)",
+      "Bash(pnpm install)",
+      "Bash(mise ls:*)",
+      "Bash(mise current:*)",
+      "Bash(mise where:*)"
+    ]
+  }
+}

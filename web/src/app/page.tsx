@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { createQuestionAction } from "@/app/actions";
 import { listQuestions, questionText } from "@/lib/db";
+import { formatTimestamp } from "@/lib/format";
 import type { QuestionStatus } from "@/lib/question";
 
 export const dynamic = "force-dynamic";
 
-// 意味の正は ARCHITECTURE.md「問いの状態機械」
+/** 意味の正は ARCHITECTURE.md「問いの状態機械」 */
 const STATUS_LABEL: Record<QuestionStatus, string> = {
   composting: "堆肥化中",
   fermented: "発酵",
@@ -15,8 +16,9 @@ const STATUS_LABEL: Record<QuestionStatus, string> = {
   discarded: "棄却",
 };
 
-export default function Home() {
-  const questions = listQuestions();
+/** コンポスターの入口。投入フォームと問いの一覧。 */
+export default async function Home() {
+  const questions = await listQuestions();
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
@@ -56,7 +58,7 @@ export default function Home() {
                 </div>
               )}
               <div className="mt-1 text-xs text-neutral-500">
-                {STATUS_LABEL[q.status]} · {q.created_at}
+                {STATUS_LABEL[q.status]} · {formatTimestamp(q.created_at)}
               </div>
             </Link>
           </li>

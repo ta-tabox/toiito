@@ -1,0 +1,28 @@
+# ローカル開発用の Postgres。
+# 本番は Neon（Postgres 17）なので、方言差が出ないようメジャーバージョンを合わせている。
+#
+# 起動: docker compose up -d ／ 停止: docker compose down
+# テスト用 DB（toiito_test）は初回起動時に initdb スクリプトが作る。
+# 手順の正典は HARNESS.md「ローカル Postgres」。
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: toiito-postgres
+    environment:
+      POSTGRES_USER: toiito
+      POSTGRES_PASSWORD: toiito
+      POSTGRES_DB: toiito
+    ports:
+      - "5433:5432"
+    volumes:
+      - toiito-pgdata:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U toiito -d toiito"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  toiito-pgdata:

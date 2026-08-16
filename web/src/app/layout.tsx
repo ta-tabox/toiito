@@ -7,6 +7,7 @@ export const metadata: Metadata = {
     "問いを投げ入れて発酵させる。答えではなく問いを深めるための場所。",
 };
 
+/** 全ページ共通の外枠。 */
 export default function RootLayout({
   children,
 }: Readonly<{

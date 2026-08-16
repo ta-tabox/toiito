@@ -1,33 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# web — トイット（Toiito）のアプリ本体
 
-## Getting Started
+Next.js（App Router）+ TypeScript。
+**何を・なぜ作るかはここに書かない**——正典はリポジトリルートの `VISION.md` / `ARCHITECTURE.md` / `HARNESS.md` / `ROADMAP.md`。
+ここに置くのは、このディレクトリで手を動かすときに要る手順と設定だけ。
 
-First, run the development server:
+## 起動
+
+パッケージマネージャは pnpm。
+node / pnpm の版はリポジトリルートの `mise.toml` で mise が管理する（corepack は使わない）。
 
 ```bash
+docker compose up -d
+```
+
+先にリポジトリルートで Postgres を立てる。
+アプリもテストも実 Postgres へ繋ぐので、これが無いと `pnpm dev` も `pnpm check` も動かない（詳細は `HARNESS.md`「ローカル Postgres」）。
+
+```bash
+pnpm install
 pnpm dev
 ```
 
-> このリポジトリのパッケージマネージャは pnpm。
-> node / pnpm の版はリポジトリルートの `mise.toml` で mise が管理する（corepack は使わない）。
+[http://localhost:3000](http://localhost:3000) が入口。
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+変更したら `pnpm check`（型 → lint → テスト → ビルド）。
+**赤のままコミットしない**。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 環境変数
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`.env.local` に置く（git 管理外。雛形は `.env.example`）。
 
-## Learn More
+| 変数 | 要否 | 既定 | 何に効くか |
+|---|---|---|---|
+| `DATABASE_URL` | 必須 | — | アプリからの接続先。本番 Neon ではプーラー経由 |
+| `DIRECT_URL` | 必須 | — | Prisma Migrate 用の直結。プーラー越しには Migrate が動かないので分ける |
+| `ANTHROPIC_API_KEY` | 実 AI を使うなら必須 | — | Claude API のキー。**サーバー側のみ**で使い、クライアントへ露出させない |
+| `TOIITO_MODEL` | 任意 | `claude-sonnet-5` | 二体 AI が使うモデルの上書き |
+| `TOIITO_FAKE_AI` | 任意 | 未設定 | `1` でネットワークに出ず決定的な応答を返す。API キー無しで縦一本を通すためのハーネス |
+| `TOIITO_TEST_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_test` | テストの接続先。CI で差し替える口 |
 
-To learn more about Next.js, take a look at the following resources:
+ローカルの二本はどちらも同じ Postgres を指す。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+DATABASE_URL=postgresql://toiito:toiito@localhost:5433/toiito
+DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`TOIITO_TEST_DATABASE_URL` は既定のままでよい（`compose.yaml` が `toiito_test` を作る）。
+テストは走るたびにこのデータベースを空にするので、**開発用の接続先を渡さないこと**——名前が `_test` で終わらなければ止まるようにしてある。
 
-## Deploy on Vercel
+`TOIITO_FAKE_AI=1` は AI 呼び出しを伴う動作確認で使う。
+実 API を自動テストで叩かない（遅い・非決定的・金がかかる）。
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## スキーマを変えるとき
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+スキーマの正は `prisma/schema.prisma`。
+
+```bash
+pnpm exec prisma migrate dev --name <変更の名前>
+```
+
+check 制約は Prisma スキーマで表現できないので、生成された migration の SQL へ直接書き足す。
+生成クライアント（`src/generated/`）は git 管理外で、`pnpm install` の postinstall が作る。

@@ -16,6 +16,7 @@ AI をスピードアップではなくスローダウン（自分の問いを�
 3. fermentary の `ATLAS.md`（terrarium 節）の自行を一瞥し、status が実態と乖離していたら直す（初回セッション実施・MVP 到達・方針転換などの節目を反映。台帳はこのプロジェクトの状態を fermentary へ伝える唯一の口）
 
 ## 開発ハーネス（正典: `HARNESS.md`）
+ローカル Postgres を立ててから作業する（ルートで `docker compose up -d`。接続は `web/.env.local` に `DATABASE_URL` と `DIRECT_URL` の二本）。
 変更 → `web/` で `pnpm check`（型→lint→テスト→ビルド）→ 緑ならコミット。
 パッケージマネージャは pnpm。
 版管理はランタイム共々 **mise**（ルートの `mise.toml` が正。corepack は使わない。toolchain 正典: fermentary/playbooks/toolchain.md）。
@@ -25,12 +26,19 @@ lint/format は **Biome 一本**（`biome.json` が正。ESLint/Prettier は使�
 AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自動テストで叩かない）。
 ロジックは lib 層へ寄せ、「lib 関数 + テスト → UI 配線」の順で作る。
 
-コーディング規約: @CODING.md（詳細判断は skill `coding-standards`）
+コーディング規約: @CODING.md。
+**コードを書く前に**、次の二つを開く（レビューやリファクタに限らない。実装・テスト追加・バグ修正でも同じ）。
+
+- skill `coding-standards` — 言語固有の作法（JSDoc・import・空行）はそこの `languages/` にしかなく、CODING.md には載っていない
+- skill `karpathy-guidelines` — 過剰実装と巻き込み変更を防ぐ振る舞いの規律。「変更した各行が依頼に辿れるか」で手を止める
 
 **文書（`.md`）の改行も句点で**。桁数を理由に折り返さない——ビューア側が折り返すので、桁合わせは読みにくさを増やすだけ。
 
 ## git
 署名は fermentary/RULES.md #5 に従う。この器は**公開する**前提。
+**ただし粒度は #5 の「パス1回ごとに1コミット」を採らない**——あれは知識リポジトリの掃引の話で、
+コードの読み手は差分から意図を復元するレビュアーなので、区切るのは時間でなく関心。
+正典は @CODING.md「コミットの粒度」。
 - **author は人間名義**。Claude も `-c` を付けず素の `git commit` を使う（名義は local config に焼いてある）。
   機械の痕跡は残さない——AI 支援は自明で、log に残すべきは責任を誰が担ったかの一点。Co-authored-by も付けない。
 - **メッセージ prefix は変更の型**——`feat:` `fix:` `docs:` `refactor:` `chore:` `test:`。

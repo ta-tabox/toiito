@@ -1,7 +1,9 @@
-// Claude API 呼び出し層（サーバー側のみ）
-// 三者対話の transcript を一本のユーザーメッセージに畳んで渡す。
-// ai_b の呼び出し時には直前の ai_a の発話も transcript に含まれている前提
-// （二体は並列でなく逐次——ai_b は ai_a への応答であることに意味がある）。
+/**
+ * Claude API 呼び出し層（サーバー側のみ）
+ * 三者対話の transcript を一本のユーザーメッセージに畳んで渡す。
+ * ai_b の呼び出し時には直前の ai_a の発話も transcript に含まれている前提
+ * （二体は並列でなく逐次——ai_b は ai_a への応答であることに意味がある）。
+ */
 
 import type { Speaker } from "@/lib/types";
 
@@ -14,10 +16,11 @@ const SPEAKER_TAG: Record<Speaker, string> = {
   ai_b: "ai_b（抽象派）",
 };
 
-// ハーネス用フェイクモード（HARNESS.md 参照）。
-// TOIITO_FAKE_AI=1 でネットワークに出ず決定的応答を返す。
-// ペルソナ ID と直近の人間発話を含めることで、E2E 側から
-// 「どの体が・何を受けて」応答したかをアサート可能にする。
+/**
+ * ハーネス用フェイクモード（HARNESS.md 参照）。
+ * TOIITO_FAKE_AI=1 でネットワークに出ず決定的応答を返す。
+ * ペルソナ ID と直近の人間発話を含めることで、E2E 側から「どの体が・何を受けて」応答したかをアサート可能にする。
+ */
 function fakeResponse(
   systemPrompt: string,
   transcript: { speaker: Speaker; body: string }[],
@@ -29,10 +32,17 @@ function fakeResponse(
   return `[fake:${personaLine}] 「${lastHuman?.body ?? "(発話なし)"}」への応答`;
 }
 
-// 原型と現在の形を両方渡す。片方だけでは、問いが移った先を見失うか、
-// 原型からのずれを検出できないかのどちらかになる（ARCHITECTURE.md「原型と現在の形」）。
+/**
+ * 原型と現在の形を両方渡す。
+ * 片方だけでは、問いが移った先を見失うか、原型からのずれを検出できないかのどちらかになる（ARCHITECTURE.md「原型と現在の形」）。
+ */
 export type QuestionRef = { body: string; current_form?: string | null };
 
+/**
+ * ペルソナ一体を呼んで発話本文を返す。
+ * TOIITO_FAKE_AI=1 のときはネットワークに出ない。
+ * transcript はここまでの全発話で、呼ぶ側が順序を保証する。
+ */
 export async function callPersona(
   systemPrompt: string,
   question: QuestionRef,

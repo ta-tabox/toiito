@@ -8,20 +8,17 @@ VISION の設計原理が上位。
 
 - **Next.js (App Router) + TypeScript** — UI と API を一体で持つ。`web/` 配下
 - **Postgres + Prisma** — 永続化。
-  開発も本番も同じ方言に揃える（2026-08-15 方針変更。
-  実装は issue #11。
-  移行が済むまでの現状は SQLite（`node:sqlite`）+ 生 SQL）
+  開発も本番も同じ方言に揃える。
+  ローカルは `compose.yaml` の Postgres、本番は Neon（手順は `HARNESS.md`）
 - **Claude API** — 二体 AI の対話生成。Server Actions（サーバー側）からのみ叩く
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
 
-永続化の方針は 2026-08-15 に変えた。
-旧方針は「`node:sqlite` でネイティブ依存ゼロ・ローカル完結」＋「`db.ts` の repo 関数のシグネチャを保ったまま Postgres へ差し替える契約」。
-これは方言の二重管理（`db.ts` の `SCHEMA` と `supabase/migrations/0001_init.sql`）と型の手書きキャスト（`.all() as Memo[]`）をメンテナンスコストとして残し、契約の漏れも実際に出た（`latestSession` / `listMessages` が Postgres に無い `rowid` を使っている）。
+永続化について今も効く禁止則（経緯は `PLAN-rationale.md`）。
 
-新方針は **Prisma を入れて開発も本番も Postgres 一本**。
-repo 関数は同期から `async` へ変わるため、上記のシグネチャ契約はここで**意図的に破る**。
-「起動に外部プロセス不要」というローカル完結性も捨て、ローカルにも Postgres を立てる。
-手順・完了条件・データ移送は issue #11 が持つ。
+- **方言を二重に持たない**。スキーマの正は `prisma/schema.prisma` 一箇所で、DDL を別ファイルに書き写さない
+- **repo 関数はすべて `async`**。同期前提の呼び出しを足さない
+- **Prisma を repo 層の外へ出さない**。`@prisma/client` と生成型に触れてよいのは `db.ts` だけで、UI と Server Actions が受け取るのは `types.ts` のドメイン型に限る
+- **起動に外部プロセスが要る**ことは引き受けた前提。ローカル完結性は捨てている
 
 ## システム全体像
 
@@ -32,7 +29,7 @@ repo 関数は同期から `async` へ変わるため、上記のシグネチャ
 Next.js サーバー層 ──── Claude API（二体のシステムプロンプトを切替えて逐次呼出）
    │
    ▼
-SQLite: web/data/toiito.db（questions / sessions / messages / memos）
+Postgres（questions / sessions / messages / memos / memo_links）
 ```
 
 単一 Web アプリ。
@@ -87,14 +84,15 @@ fermentary 側で 2026-07-01 に捕捉された問いが、同音近接（「癒
 
 `perennial` は VISION の開いた問い「発酵した状態の判定・表現」への部分回答。
 発酵の終点は一つではなく、**結晶（promoted）と持続（open / perennial）が並立する**——収束だけを終点に置く設計は、収束させて畳むこと自体が損失になる種類の問いを潰す。
-値域の正は `web/src/lib/db.ts` の `QUESTION_STATUSES` （型・DB の check・UI ラベルがここから派生する）。
+値域は二箇所で表明する。
+DB 側の正は `prisma/schema.prisma` の enum `QuestionStatus`、アプリ側の正は `web/src/lib/question.ts` の `QUESTION_STATUSES`（型と UI ラベルがここから派生する）。
+二重管理に見えるが、両者がずれると repo 関数の戻り値がドメイン型へ代入できなくなり `tsc` が落ちる——**ずれは L0 で捕まる**ので、片方を消して他方へ依存させる必要はない。
 
-なお `create table if not exists` は既存テーブルを触らないため、列・check の追加は既存 DB に届かない。
-`db.ts` の `migrate()` が該当テーブルのみ作り直して移送する（SQLite は check を alter できない）。
-検証は `tests/migrate.test.ts`。
+スキーマの変更は Prisma Migrate が運ぶ（`prisma/migrations/`）。
+check 制約は Prisma スキーマで表現できないため、migration の SQL に直接書く。
 
-- **逆引き**は `memos → messages → sessions → questions` の join 一本。
-  SQLite でも Postgres でも同じクエリがそのまま成立する（移行容易性の根拠）
+- **逆引き**は `memos → messages → sessions → questions` の join 一本（`listMemosWithContext`）。
+  N+1 に割らない——メモ一覧はメモの数だけ問いを引きに戻る形になりやすい
 - アンカーはメッセージ本文内の文字オフセット（`anchor_start/end`）。
   メッセージは immutable（追記のみ・編集しない）なのでオフセットが腐らない
 - `memo_links` は MVP ではテーブルだけ切っておき、実装は発酵後（リンキング粒度の開いた問いはここに着地する）
@@ -132,10 +130,10 @@ toiito/
     ├── src/
     │   ├── app/           ルーティング（問い一覧 / 対話 / メモ逆引き）
     │   ├── components/    UI 部品（メモのアンダーライン表示など）
-    │   ├── lib/           db.ts（SQLite repo 層）・claude.ts・personas.ts
-    │   └── personas/      二体のシステムプロンプト（.md で管理）
-    ├── data/              SQLite 実体（gitignore）
-    └── supabase/          Postgres 版マイグレーション（将来の移行用に温存）
+    │   ├── lib/           db.ts（Prisma repo 層）・claude.ts・personas.ts・anchors.ts
+    │   ├── personas/      二体のシステムプロンプト（.md で管理）
+    │   └── generated/     Prisma クライアント（生成物・gitignore）
+    └── prisma/            schema.prisma（スキーマの正）と migrations/
 ```
 
 ## 意図的にやらないこと
@@ -160,5 +158,5 @@ toiito/
 - 「発酵した」状態の判定（status 列は用意したが遷移条件は未定義）
 - リンキングの実装粒度（memo_links の kind をキーワード一致か埋め込みか）
 - fermentary questions.md との膜接続（当面は重複を許容し、混ぜない）
-- リモート環境構築 + Supabase 移行（別タスク。ローカル完結が先）
+- リモート環境構築（Neon への接続と本番デプロイ。別タスク）
 - AI 応答のストリーミング化（現状は Server Action で二体分を待つ同期型）

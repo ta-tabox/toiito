@@ -7,6 +7,7 @@ import {
   listMessages,
   questionText,
 } from "@/lib/db";
+import { formatTimestamp } from "@/lib/format";
 import { PERSONA_LABEL } from "@/lib/personas";
 import type { Speaker } from "@/lib/types";
 
@@ -18,19 +19,20 @@ const SPEAKER_STYLE: Record<Speaker, { label: string; cls: string }> = {
   ai_b: { label: PERSONA_LABEL.ai_b, cls: "border-sky-200 bg-sky-50" },
 };
 
+/** 一つの問いの対話画面。表示するのは最新セッションのみ。 */
 export default async function QuestionPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const question = getQuestion(id);
+  const question = await getQuestion(id);
   if (!question) notFound();
 
-  const session = latestSession(id);
+  const session = await latestSession(id);
   if (!session) notFound();
 
-  const messages = listMessages(session.id);
+  const messages = await listMessages(session.id);
 
   const speak = speakAction.bind(null, question.id, session.id);
   const newSession = newSessionAction.bind(null, question.id);
@@ -60,7 +62,7 @@ export default async function QuestionPage({
         </p>
       )}
       <p className="mt-1 text-xs text-neutral-500">
-        セッション開始: {session.started_at}
+        セッション開始: {formatTimestamp(session.started_at)}
       </p>
 
       <div className="mt-8 space-y-4">
