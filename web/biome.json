@@ -32,6 +32,41 @@
       "next": "recommended",
       "react": "recommended",
       "test": "recommended"
+    },
+    "rules": {
+      "style": {
+        "noNestedTernary": "error",
+        "noMultiAssign": "error",
+        "useSingleVarDeclarator": "error",
+        "useBlockStatements": "error",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["./**", "../**", "!./**/*.css", "!../**/*.css"],
+                "message": "import は @ 起点の絶対パスで書く（CODING.md / skill coding-standards）"
+              }
+            ]
+          }
+        }
+      },
+      "complexity": {
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": { "maxAllowedComplexity": 15 }
+        },
+        "useMaxParams": {
+          "level": "warn",
+          "options": { "max": 3 }
+        }
+      },
+      "suspicious": {
+        "useErrorMessage": "error"
+      },
+      "nursery": {
+        "noFloatingPromises": "error"
+      }
     }
   },
   "assist": {
@@ -47,5 +82,17 @@
       "cssModules": false,
       "tailwindDirectives": true
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["vitest.config.ts", "tests/setup/**", "scripts/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    }
+  ]
 }
