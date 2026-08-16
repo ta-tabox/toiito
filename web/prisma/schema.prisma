@@ -6,6 +6,9 @@
 // 問いの状態と発話者は enum で値域を表明する。
 // アプリ側の値域（question.ts の QUESTION_STATUSES、types.ts の Speaker）とのずれは、db.ts の型表明が L0 で落とす。
 //
+// check 制約は Prisma スキーマで表現できないため migration の SQL が唯一の置き場になる。
+// どのモデルに何が効いているかは各モデルのコメントに書く。
+//
 // seq は挿入順の通し番号。
 // created_at は同一マイクロ秒で並びうるし、id は乱数の UUIDv4 で順序を持たない。
 // 発話の並び（ai_b は ai_a への応答）を実装依存にしないための列。
@@ -92,7 +95,14 @@ model Message {
 }
 
 /// キーワードメモ。メッセージ本文の一部（anchor_start〜anchor_end）に付く。
-/// anchor_end <= 本文長 は本文長を知る db.ts の責務（DB の check では表明できない）。
+///
+/// **DB 側に check 制約が効いている**（`memos_anchor_range_check`）:
+/// `anchor_start >= 0 and anchor_end > anchor_start`。
+/// Prisma スキーマでは表現できないので実体は migration の SQL にある。
+/// このモデルの列を動かすときは、そちらも一緒に見ること。
+///
+/// `anchor_end <= 本文長` はここでは表明できない（DB は本文長を知らない）。
+/// 本文を読める db.ts の addMemo が守る。
 model Memo {
   id           String   @id @default(uuid(4)) @db.Uuid
   message_id   String   @db.Uuid
