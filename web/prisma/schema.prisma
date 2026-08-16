@@ -1,0 +1,119 @@
+// 永続化スキーマの正。意味（なぜこの形か）の正は ARCHITECTURE.md「データモデル」。
+//
+// フィールド名を snake_case で切っているのは、列名・ドメイン型（src/lib/types.ts）と
+// 三者を同じ綴りに揃えるため。repo 層の詰め替えが消え、綴り違いの取り違えも起きない。
+//
+// 問いの状態と発話者は enum で値域を表明する。アプリ側の値域（src/lib/question.ts の
+// QUESTION_STATUSES、types.ts の Speaker）とのずれは db.ts の型表明が L0 で落とす。
+
+// 生成物の相対 import に拡張子を綴らせる。バンドラ（Next / vitest）は無くても解けるが、
+// scripts/ は node が直接読む（型剥がし実行）ので、素の ESM 解決で辿れる必要がある。
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  importFileExtension = "ts"
+}
+
+// 接続先は prisma.config.ts が持つ（Prisma 7 でスキーマから移った）。
+datasource db {
+  provider = "postgresql"
+}
+
+/// 問いの状態。6 値である理由と各値の意味は ARCHITECTURE.md「問いの状態機械」。
+enum QuestionStatus {
+  composting
+  fermented
+  promoted
+  open
+  perennial
+  discarded
+
+  @@map("question_status")
+}
+
+enum Speaker {
+  human
+  ai_a
+  ai_b
+
+  @@map("speaker")
+}
+
+/// 問い。コンポスターへの投入単位。
+/// body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、
+/// current_form は対話の中で言い直された焦点。
+model Question {
+  id           String         @id @default(uuid(4)) @db.Uuid
+  body         String
+  current_form String?
+  status       QuestionStatus @default(composting)
+  created_at   DateTime       @default(now()) @db.Timestamptz(6)
+
+  sessions Session[]
+
+  @@map("questions")
+}
+
+/// 一つの問いに対する対話セッション。再訪すると増える。
+model Session {
+  id          String   @id @default(uuid(4)) @db.Uuid
+  question_id String   @db.Uuid
+  started_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  question Question  @relation(fields: [question_id], references: [id])
+  messages Message[]
+
+  @@index([question_id])
+  @@map("sessions")
+}
+
+/// 発話。人間 + AI 二体の三者。
+/// 追記のみで編集しない（immutable）。メモのアンカーが腐らないための不変条件。
+model Message {
+  id         String   @id @default(uuid(4)) @db.Uuid
+  session_id String   @db.Uuid
+  speaker    Speaker
+  body       String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  session Session @relation(fields: [session_id], references: [id])
+  memos   Memo[]
+
+  @@index([session_id])
+  @@map("messages")
+}
+
+/// キーワードメモ。メッセージ本文の一部（anchor_start〜anchor_end）に付く。
+/// anchor_end <= 本文長 は本文長を知る db.ts の責務（DB の check では表明できない）。
+model Memo {
+  id           String   @id @default(uuid(4)) @db.Uuid
+  message_id   String   @db.Uuid
+  anchor_start Int
+  anchor_end   Int
+  keyword      String
+  note         String?
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  message   Message    @relation(fields: [message_id], references: [id])
+  links_from MemoLink[] @relation("MemoLinkFrom")
+  links_to   MemoLink[] @relation("MemoLinkTo")
+
+  @@index([message_id])
+  @@index([keyword])
+  @@map("memos")
+}
+
+/// メモ間のリンキング辺。MVP では書き込まない（テーブルだけ切っておく）。
+/// 実装粒度（kind をキーワード一致にするか埋め込みにするか）は ARCHITECTURE.md の開いた問い。
+model MemoLink {
+  id           String   @id @default(uuid(4)) @db.Uuid
+  from_memo_id String   @db.Uuid
+  to_memo_id   String   @db.Uuid
+  kind         String
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  from_memo Memo @relation("MemoLinkFrom", fields: [from_memo_id], references: [id])
+  to_memo   Memo @relation("MemoLinkTo", fields: [to_memo_id], references: [id])
+
+  @@map("memo_links")
+}

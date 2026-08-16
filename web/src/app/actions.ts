@@ -15,12 +15,12 @@ import { loadPersona } from "@/lib/personas";
 export async function createQuestionAction(formData: FormData) {
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return;
-  const { question } = createQuestion(body);
+  const { question } = await createQuestion(body);
   redirect(`/q/${question.id}`);
 }
 
 export async function newSessionAction(questionId: string) {
-  createSession(questionId);
+  await createSession(questionId);
   revalidatePath(`/q/${questionId}`);
 }
 
@@ -34,24 +34,24 @@ export async function speakAction(
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return;
 
-  const question = getQuestion(questionId);
+  const question = await getQuestion(questionId);
   if (!question) throw new Error("問いが見つからない");
 
-  addMessage(sessionId, "human", body);
+  await addMessage(sessionId, "human", body);
 
   const aiA = await callPersona(
     loadPersona("ai_a"),
     question,
-    listMessages(sessionId),
+    await listMessages(sessionId),
   );
-  addMessage(sessionId, "ai_a", aiA);
+  await addMessage(sessionId, "ai_a", aiA);
 
   const aiB = await callPersona(
     loadPersona("ai_b"),
     question,
-    listMessages(sessionId),
+    await listMessages(sessionId),
   );
-  addMessage(sessionId, "ai_b", aiB);
+  await addMessage(sessionId, "ai_b", aiB);
 
   revalidatePath(`/q/${questionId}`);
 }
