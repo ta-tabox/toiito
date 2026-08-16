@@ -61,18 +61,27 @@ function db(): PrismaClient {
   return globalForPrisma.prisma;
 }
 
-/** 接続を閉じる。テストと一度きりのスクリプトの後始末用（アプリの経路からは呼ばない）。 */
+/**
+ * 接続を閉じる。
+ *
+ * テストとスクリプトの後始末用。アプリの経路からは呼ばない（接続は使い回す）。
+ */
 export async function disconnect(): Promise<void> {
   await globalForPrisma.prisma?.$disconnect();
   globalForPrisma.prisma = undefined;
 }
 
-/** 表示に使う問い文。現在の形があればそれ、無ければ原型。 */
+/** 表示に使う問い文を返す。現在の形があればそれ、無ければ原型。 */
 export function questionText(q: Question): string {
   return q.current_form ?? q.body;
 }
 
-/** 問いの投入。初回セッションまで揃って初めて「投入済み」なので、一トランザクションで作る。 */
+/**
+ * 問いを作成する。最初のセッションも同時に作る。
+ *
+ * 一トランザクションにするのは、セッションを持たない問いを残さないため。
+ * 対話画面は最新セッションが在ることを前提にしており、片方だけ在る状態は表示できない。
+ */
 export async function createQuestion(
   body: string,
 ): Promise<{ question: Question; session: Session }> {
@@ -98,15 +107,16 @@ export async function listQuestions(): Promise<Question[]> {
   });
 }
 
-/** 問いを一件引く。無ければ undefined（見つからないことは正常系）。 */
+/** 問いを一件引く。無ければ undefined を返す（見つからないことは正常系）。 */
 export async function getQuestion(id: string): Promise<Question | undefined> {
   return (await db().question.findUnique({ where: { id } })) ?? undefined;
 }
 
 /**
- * 現在の形を更新する（原型 body は触らない）。
- * 空文字・空白のみは「現在の形なし」＝原型に戻す扱い。
- * 問いが無ければ例外（存在しない問いへの言い直しは呼び出し側の誤りで、黙って握らない）。
+ * 問いの現在の形を更新する。原型（body）は触らない。
+ *
+ * 空文字・空白のみは「現在の形なし」として扱い、表示を原型へ戻す。
+ * 問いが無ければ例外を投げる——存在しない問いへの言い直しは呼び出し側の誤りなので、黙って握らない。
  */
 export async function setCurrentForm(
   questionId: string,
@@ -120,7 +130,11 @@ export async function setCurrentForm(
   });
 }
 
-/** 問いの状態を進める。値域は QUESTION_STATUSES（lib 側でも検査する）。 */
+/**
+ * 問いの状態を更新する。
+ *
+ * 値域は QUESTION_STATUSES。DB の enum が弾く前にここでも検査する。
+ */
 export async function setQuestionStatus(
   questionId: string,
   status: QuestionStatus,
@@ -132,12 +146,16 @@ export async function setQuestionStatus(
   return db().question.update({ where: { id: questionId }, data: { status } });
 }
 
-/** セッションを一件引く。無ければ undefined（見つからないことは正常系）。 */
+/** セッションを一件引く。無ければ undefined を返す（見つからないことは正常系）。 */
 export async function getSession(id: string): Promise<Session | undefined> {
   return (await db().session.findUnique({ where: { id } })) ?? undefined;
 }
 
-/** 最新の再訪。同時刻に並んだ場合は挿入順（seq）で決める。 */
+/**
+ * 問いの最新セッションを引く。
+ *
+ * 対話画面が表示するのはこれ一つ。同時刻に並んだ場合は挿入順（seq）で決める。
+ */
 export async function latestSession(
   questionId: string,
 ): Promise<Session | undefined> {
@@ -149,13 +167,18 @@ export async function latestSession(
   );
 }
 
-/** 再訪。同じ問いに新しいセッションを足す（既存のセッションは畳まない）。 */
+/**
+ * 同じ問いに新しいセッションを足す（再訪）。
+ *
+ * 既存のセッションは畳まない。何度戻ったかが読み返せることが目的。
+ */
 export async function createSession(questionId: string): Promise<Session> {
   return db().session.create({ data: { question_id: questionId } });
 }
 
 /**
  * セッション内の発話を投稿順で返す。
+ *
  * この順序が三者対話の中身そのものなので、時刻が並んだときは seq で決める。
  */
 export async function listMessages(sessionId: string): Promise<Message[]> {
@@ -166,8 +189,10 @@ export async function listMessages(sessionId: string): Promise<Message[]> {
 }
 
 /**
- * 発話を追記する。messages は immutable で、更新も削除もしない。
- * メモのアンカーが本文のオフセットを指しているため（ARCHITECTURE.md「データモデル」）。
+ * 発話を追記する。
+ *
+ * messages は immutable で、更新も削除もしない。
+ * メモのアンカーが本文のオフセットを指しており、本文が動くと別の位置を指し始めるため（ARCHITECTURE.md「データモデル」）。
  */
 export async function addMessage(
   sessionId: string,
@@ -180,8 +205,10 @@ export async function addMessage(
 }
 
 /**
+ * メッセージ本文の一部にメモを付ける。
+ *
  * DB の check は本文長を知らないため `start >= 0 && end > start` しか守れない。
- * `anchor_end <= 本文長` は lib の責務なので、挿入前に検査して文脈付きで拒否する。
+ * `anchor_end <= 本文長` はここの責務なので、挿入前に検査して文脈付きで拒否する。
  */
 export async function addMemo(
   messageId: string,
@@ -213,7 +240,11 @@ export async function addMemo(
   });
 }
 
-/** 対話画面のアンダーライン描画用。セッション内の全メモを投稿順で返す。 */
+/**
+ * セッション内の全メモを投稿順で返す。
+ *
+ * 対話画面のアンダーライン描画用。
+ */
 export async function listMemosForSession(sessionId: string): Promise<Memo[]> {
   return db().memo.findMany({
     where: { message: { session_id: sessionId } },
@@ -221,7 +252,11 @@ export async function listMemosForSession(sessionId: string): Promise<Memo[]> {
   });
 }
 
-/** メモからのセッション逆引き用。`memos → messages → sessions → questions` を一度に引く。 */
+/**
+ * 全メモを、出所の発話・セッション・問いごと返す。
+ *
+ * メモからの逆引き用。`memos → messages → sessions → questions` を一度に引き、N+1 に割らない。
+ */
 export async function listMemosWithContext(): Promise<MemoWithContext[]> {
   const rows = await db().memo.findMany({
     include: {
