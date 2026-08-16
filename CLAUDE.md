@@ -36,6 +36,9 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 
 ## git
 署名は fermentary/RULES.md #5 に従う。この器は**公開する**前提。
+**ただし粒度は #5 の「パス1回ごとに1コミット」を採らない**——あれは知識リポジトリの掃引の話で、
+コードの読み手は差分から意図を復元するレビュアーなので、区切るのは時間でなく関心。
+正典は @CODING.md「コミットの粒度」。
 - **author は人間名義**。Claude も `-c` を付けず素の `git commit` を使う（名義は local config に焼いてある）。
   機械の痕跡は残さない——AI 支援は自明で、log に残すべきは責任を誰が担ったかの一点。Co-authored-by も付けない。
 - **メッセージ prefix は変更の型**——`feat:` `fix:` `docs:` `refactor:` `chore:` `test:`。
