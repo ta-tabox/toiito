@@ -8,8 +8,8 @@ First, run the development server:
 pnpm dev
 ```
 
-> このリポジトリのパッケージマネージャは pnpm。node / pnpm の版はリポジトリ
-> ルートの `mise.toml` で mise が管理する（corepack は使わない）。
+> このリポジトリのパッケージマネージャは pnpm。
+> node / pnpm の版はリポジトリルートの `mise.toml` で mise が管理する（corepack は使わない）。
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
