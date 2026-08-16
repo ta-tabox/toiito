@@ -7,14 +7,15 @@ import {
   listMessages,
   questionText,
 } from "@/lib/db";
+import { PERSONA_LABEL } from "@/lib/personas";
 import type { Speaker } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 const SPEAKER_STYLE: Record<Speaker, { label: string; cls: string }> = {
   human: { label: "あなた", cls: "border-neutral-300 bg-white" },
-  ai_a: { label: "具体", cls: "border-amber-200 bg-amber-50" },
-  ai_b: { label: "抽象", cls: "border-sky-200 bg-sky-50" },
+  ai_a: { label: PERSONA_LABEL.ai_a, cls: "border-amber-200 bg-amber-50" },
+  ai_b: { label: PERSONA_LABEL.ai_b, cls: "border-sky-200 bg-sky-50" },
 };
 
 export default async function QuestionPage({
