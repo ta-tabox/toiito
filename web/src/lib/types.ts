@@ -47,24 +47,3 @@ export type MemoWithContext = Memo & {
   speaker: Speaker;
   message_body: string;
 };
-
-/**
- * 本文を切り分けた一区間。「掛かっているメモの組み合わせが変わらない最大の連続範囲」で、
- * UI はこれを 1 単位として下線を描く。
- *
- * 本文先頭からの位置 start は生成時に確定するので、自分で持つ。
- * これが無いと、セグメント内オフセットを絶対オフセットへ戻すたびに
- * 手前のセグメントを全部足し直すことになる。
- */
-export class Segment {
-  constructor(
-    readonly text: string,
-    readonly start: number,
-    readonly memoIds: string[],
-  ) {}
-
-  /** UI が返すセグメント内オフセットを、本文先頭基準の絶対オフセットへ換算する。 */
-  absoluteOffset(offsetInSegment: number): number {
-    return this.start + offsetInSegment;
-  }
-}

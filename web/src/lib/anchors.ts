@@ -5,9 +5,28 @@
 // DB / next / DOM に依存しない。UI は DOM から読んだ数値をこの層へ渡すだけにする。
 // アンカーは messages が immutable（追記のみ）であることを前提にしている。
 
-import { Segment } from "@/lib/types";
-
 type AnchorRange = { id: string; anchor_start: number; anchor_end: number };
+
+/**
+ * 本文を切り分けた一区間。「掛かっているメモの組み合わせが変わらない最大の連続範囲」で、
+ * UI はこれを 1 単位として下線を描く。
+ *
+ * 本文先頭からの位置 start は生成時に確定するので、自分で持つ。
+ * これが無いと、セグメント内オフセットを絶対オフセットへ戻すたびに
+ * 手前のセグメントを全部足し直すことになる。
+ */
+export class Segment {
+  constructor(
+    readonly text: string,
+    readonly start: number,
+    readonly memoIds: string[],
+  ) {}
+
+  /** UI が返すセグメント内オフセットを、本文先頭基準の絶対オフセットへ換算する。 */
+  absoluteOffset(offsetInSegment: number): number {
+    return this.start + offsetInSegment;
+  }
+}
 
 /**
  * 本文をセグメント（下線の掛かり方が変わらない最大の連続範囲）へ切り分ける。
