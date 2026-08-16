@@ -2,7 +2,7 @@
 // 三つを各関数で必ず踏む。
 
 import { describe, expect, it } from "vitest";
-import { clampToCodePoint, excerpt, segmentBody } from "@/lib/anchors";
+import { clampToGraphemeBoundary, excerpt, segmentBody } from "@/lib/anchors";
 
 describe("segmentBody", () => {
   it("メモなしは本文全体が1セグメント", () => {
@@ -98,18 +98,34 @@ describe("Segment.absoluteOffset", () => {
   });
 });
 
-describe("clampToCodePoint", () => {
+describe("clampToGraphemeBoundary", () => {
   const body = "a😀b"; // a=0, high=1, low=2, b=3, length=4
 
-  it("ペアの前後（有効な境界）はそのまま", () => {
-    expect(clampToCodePoint(body, 0)).toBe(0);
-    expect(clampToCodePoint(body, 1)).toBe(1);
-    expect(clampToCodePoint(body, 3)).toBe(3);
-    expect(clampToCodePoint(body, 4)).toBe(4);
+  it("書記素の境界はそのまま", () => {
+    expect(clampToGraphemeBoundary(body, 0)).toBe(0);
+    expect(clampToGraphemeBoundary(body, 1)).toBe(1);
+    expect(clampToGraphemeBoundary(body, 3)).toBe(3);
+    expect(clampToGraphemeBoundary(body, 4)).toBe(4);
   });
 
-  it("ペアの途中を指す場合はペア手前へ丸める", () => {
-    expect(clampToCodePoint(body, 2)).toBe(1);
+  it("サロゲートペアの途中はペア手前へ丸める", () => {
+    expect(clampToGraphemeBoundary(body, 2)).toBe(1);
+  });
+
+  it("異体字セレクタは分断しない（サロゲートペアを含まないので code point 判定では漏れる）", () => {
+    // "a神︀b" — a=0, 神=1, U+FE00=2, b=3
+    expect(clampToGraphemeBoundary("a神︀b", 2)).toBe(1);
+  });
+
+  it("ZWJ で連結した絵文字は内部で割らない", () => {
+    // "a👨‍👩‍👧b" — 家族は 8 code unit ぶんを 1 書記素として占める
+    expect(clampToGraphemeBoundary("a👨‍👩‍👧b", 3)).toBe(1);
+    expect(clampToGraphemeBoundary("a👨‍👩‍👧b", 9)).toBe(9);
+  });
+
+  it("肌色修飾も分断しない", () => {
+    // "a👍🏽b" — 👍(2) + 肌色修飾(2)
+    expect(clampToGraphemeBoundary("a👍🏽b", 3)).toBe(1);
   });
 });
 
@@ -118,9 +134,14 @@ describe("excerpt", () => {
     expect(excerpt("hello", 1, 3, 10)).toBe("hello");
   });
 
-  it("マルチバイト境界にかかる margin はコードポイント単位に丸められる", () => {
+  it("マルチバイト境界にかかる margin は書記素単位に丸められる", () => {
     // "ab😀cd" — a=0,b=1,high=2,low=3,c=4,d=5,length=6
     // start(4) - margin(1) = 3 はペアの途中 → 2 まで丸めて絵文字ごと含める
     expect(excerpt("ab😀cd", 4, 5, 1)).toBe("😀cd");
+  });
+
+  it("異体字セレクタ付きの文字も欠けない", () => {
+    // "神︀" は U+795E + U+FE00 の 2 code unit で 1 文字
+    expect(excerpt("x神︀y", 3, 4, 1)).toBe("神︀y");
   });
 });

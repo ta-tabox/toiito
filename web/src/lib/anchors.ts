@@ -44,28 +44,45 @@ export function segmentBody(body: string, memos: AnchorRange[]): Segment[] {
   });
 }
 
+const graphemeSegmenter = new Intl.Segmenter("ja", { granularity: "grapheme" });
+
 /**
- * サロゲートペアの途中を指すインデックスをコードポイント境界へ丸める。
- * 丸め方向は常に手前（index - 1）。start / end どちらに使っても元の index を超えない。
+ * 人が「一文字」と見る単位＝書記素クラスタの途中を指すインデックスを、その手前の境界へ丸める。
+ *
+ * コードポイント境界では足りない。異体字セレクタ（神︀ = U+795E + U+FE00）や結合文字は
+ * サロゲートペアを含まないので素通ししてしまい、肌色修飾や ZWJ 連結の絵文字
+ * （👨‍👩‍👧 = 8 code unit）は内部の境界で割れる。いずれも分断すると字体や絵柄が変わる。
+ *
+ * 丸め方向は常に手前なので、start / end どちらに使っても元の index を超えない。
  */
-export function clampToCodePoint(body: string, index: number): number {
+export function clampToGraphemeBoundary(body: string, index: number): number {
   if (index <= 0 || index >= body.length) return index;
 
-  const before = body.charCodeAt(index - 1);
-  const after = body.charCodeAt(index);
-  const isHighSurrogate = before >= 0xd800 && before <= 0xdbff;
-  const isLowSurrogate = after >= 0xdc00 && after <= 0xdfff;
-  return isHighSurrogate && isLowSurrogate ? index - 1 : index;
+  for (const { index: start, segment } of graphemeSegmenter.segment(body)) {
+    if (index < start + segment.length) {
+      return index === start ? index : start;
+    }
+  }
+
+  return index;
 }
 
-/** 逆引き一覧用の引用生成。margin が本文外へはみ出す場合は本文端で止める。 */
+/**
+ * メモの引用を作る。アンカー区間（メモの anchor_start / anchor_end）の前後へ margin 文字ずつ
+ * 広げた範囲を返し、本文の端と書記素境界で止める。逆引き一覧（#5）が使う。
+ * #11 で Memo をクラス化したら、この関数はそのメソッドへ移す。
+ */
 export function excerpt(
   body: string,
-  start: number,
-  end: number,
+  anchorStart: number,
+  anchorEnd: number,
   margin: number,
 ): string {
-  const from = clampToCodePoint(body, Math.max(0, start - margin));
-  const to = clampToCodePoint(body, Math.min(body.length, end + margin));
+  const from = clampToGraphemeBoundary(body, Math.max(0, anchorStart - margin));
+  const to = clampToGraphemeBoundary(
+    body,
+    Math.min(body.length, anchorEnd + margin),
+  );
+
   return body.slice(from, to);
 }
