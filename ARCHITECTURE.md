@@ -133,8 +133,7 @@ toiito/
     │   ├── lib/           db.ts（Prisma repo 層）・claude.ts・personas.ts・anchors.ts
     │   ├── personas/      二体のシステムプロンプト（.md で管理）
     │   └── generated/     Prisma クライアント（生成物・gitignore）
-    ├── prisma/            schema.prisma（スキーマの正）と migrations/
-    └── scripts/           一度きりの移送スクリプト
+    └── prisma/            schema.prisma（スキーマの正）と migrations/
 ```
 
 ## 意図的にやらないこと
