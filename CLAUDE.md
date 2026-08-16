@@ -41,7 +41,12 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 正典は @CODING.md「コミットの粒度」。
 - **author は人間名義**。Claude も `-c` を付けず素の `git commit` を使う（名義は local config に焼いてある。
   リモートはクローンのたびに config が空なので、セッション起動フックが同じ名義を焼き直す）。
-  機械の痕跡は残さない——AI 支援は自明で、log に残すべきは責任を誰が担ったかの一点。Co-authored-by も付けない。
+  author が答えるのは責任を誰が担ったかの一点で、それはどこで書いても動かない。
+- **Co-authored-by はリモート（Claude Code on the web）でのみ付ける**。
+  末尾に一行、`Co-authored-by: Claude <noreply@anthropic.com>`。
+  手元では付けない——隣で書かせている限り AI 支援は自明で、log に残せば痕跡が増えるだけ。
+  リモートは Claude へ委ねる幅が手元より広く、その差は log からしか読めない。
+  author（責任）は動かさず、委譲の幅だけを co-author で示す。
 - **メッセージ prefix は変更の型**——`feat:` `fix:` `docs:` `refactor:` `chore:` `test:`。
   **スコープは添えない**（`feat(web):` としない。コードが `web/` 配下にあることはこのプロジェクトでは自明）。
   **プロジェクト名も名乗らない**（このリポジトリが既に答えている。外の器から書き込むときも同じ型を使う）。
