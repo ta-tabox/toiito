@@ -1,5 +1,13 @@
 "use server";
 
+/**
+ * 画面から呼ばれる Server Action の束。フォーム入力を lib の呼び出しへ配線する。
+ *
+ * ここに判断を置かない（HARNESS.md「テスト可能性の設計制約」）。
+ * Server Action は単体テストから直に呼べないので、条件分岐が入り込んだ時点で検証の外へ出る。
+ * 入力の受け取り・lib の呼び出し・再検証と遷移だけに留める。
+ */
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { callPersona } from "@/lib/claude";
