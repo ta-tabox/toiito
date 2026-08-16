@@ -9,14 +9,17 @@ import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import {
-  type Memo,
-  type MemoWithContext,
-  type Message,
+  isQuestionStatus,
   QUESTION_STATUSES,
-  type Question,
   type QuestionStatus,
-  type Session,
-  type Speaker,
+} from "@/lib/question";
+import type {
+  Memo,
+  MemoWithContext,
+  Message,
+  Question,
+  Session,
+  Speaker,
 } from "@/lib/types";
 
 // パス解決は遅延（初回アクセス時）。テストが env を差し替えてから
@@ -166,7 +169,7 @@ export function setQuestionStatus(
   questionId: string,
   status: QuestionStatus,
 ): Question | undefined {
-  if (!QUESTION_STATUSES.includes(status)) {
+  if (!isQuestionStatus(status)) {
     throw new Error(`unknown question status: ${status}`);
   }
 

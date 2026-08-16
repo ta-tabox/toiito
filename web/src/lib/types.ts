@@ -1,18 +1,9 @@
 // アプリ全体で共有するドメイン型。永続化の実装（現状 node:sqlite、#11 以降 Prisma）にも
 // UI にも依存しない。意味の正は ARCHITECTURE.md「データモデル」。
+//
+// 実行時の値（値域の定数など）は置かない。それぞれのドメインのモジュールが持つ。
 
-// 問いの状態。型・DB の check・UI ラベルはここから派生する。
-// 各値の意味と 6 値である理由は ARCHITECTURE.md「問いの状態機械」。
-export const QUESTION_STATUSES = [
-  "composting", // 投入済み。まだ材料が付いていない
-  "fermented", // 材料（培地）が付き、蒸留に入れる
-  "promoted", // 答えが結晶した（別の器へ書き出した）
-  "open", // 持ち続ける問い。答えが出ないことは欠陥ではない
-  "perennial", // 閉じないことが正しい問い。閉じ候補として催促しない
-  "discarded", // 棄却
-] as const;
-
-export type QuestionStatus = (typeof QUESTION_STATUSES)[number];
+import type { QuestionStatus } from "@/lib/question";
 
 // body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、
 // current_form は対話の中で言い直された焦点。

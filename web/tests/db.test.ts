@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import type * as DbModule from "@/lib/db";
-import { QUESTION_STATUSES } from "@/lib/types";
+import { QUESTION_STATUSES } from "@/lib/question";
 
 let db: typeof DbModule;
 
