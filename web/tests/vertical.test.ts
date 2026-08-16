@@ -1,6 +1,8 @@
-// 縦一本（問い投入 → 二体応答 → メモ → 逆引き）が Prisma 経由で通ることの検査。
-// actions.ts が組み立てている順序をそのまま lib で辿る。
-// Server Actions 自体は next/cache・next/navigation を掴むので、配線の検証は L3（next build）に任せる。
+/**
+ * 縦一本（問い投入 → 二体応答 → メモ → 逆引き）が Prisma 経由で通ることの検査。
+ * actions.ts が組み立てている順序をそのまま lib で辿る。
+ * Server Actions 自体は next/cache・next/navigation を掴むので、配線の検証は L3（next build）に任せる。
+ */
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { callPersona } from "@/lib/claude";

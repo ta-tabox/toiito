@@ -1,17 +1,19 @@
-// SQLite 時代の対話ログを Postgres へ一度だけ移すスクリプト（issue #11）。
-//
-// 冪等ではない。二度流せば主キー衝突で落ちる——それが正しい（黙って重複させない）。
-// 実行前に SQLite ファイルのバックアップを取ること。
-//
-//   node scripts/import-sqlite-data.ts [path/to/toiito.db]
-//
-// 移送が済んだらこのファイルは役目を終える。node:sqlite に依存しているのはここだけで、
-// アプリ側（src/）からは撤去済み。
+/**
+ * SQLite 時代の対話ログを Postgres へ一度だけ移すスクリプト。
+ *
+ *     node scripts/import-sqlite-data.ts [path/to/toiito.db]
+ *
+ * 冪等ではない。二度流せば主キー衝突で落ちる——それが正しい（黙って重複させない）。
+ * 実行前に SQLite ファイルのバックアップを取ること。
+ *
+ * node:sqlite に依存しているのはここだけで、アプリ側（src/）からは撤去済み。
+ * import が `@` 起点でなく相対なのは、このファイルを node が直接読む（型剥がし実行）ため。
+ * `@` はバンドラと vitest のエイリアスで、素の ESM 解決では辿れない。
+ */
 
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { PrismaPg } from "@prisma/adapter-pg";
-// node が直接読む（型剥がし実行）ので、相対 import は拡張子まで綴る。
 import { PrismaClient } from "../src/generated/prisma/client.ts";
 import { isQuestionStatus } from "../src/lib/question.ts";
 

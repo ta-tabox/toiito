@@ -1,6 +1,8 @@
-// Prisma CLI の設定。
-// Prisma 7 は .env を自動で読まないので、ここで明示的に読み込む。
-// Next.js は .env.local を自分で読むが、CLI はこの経路しか通らない。
+/**
+ * Prisma CLI の設定。
+ * Prisma 7 は .env を自動で読まないので、ここで明示的に読み込む。
+ * Next.js は .env.local を自分で読むが、CLI はこの経路しか通らない。
+ */
 
 import { defineConfig, env } from "prisma/config";
 

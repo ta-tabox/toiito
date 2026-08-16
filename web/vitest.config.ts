@@ -1,6 +1,6 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
-import { TEST_DATABASE_URL } from "./tests/setup/database";
+import { TEST_DATABASE_URL } from "./tests/setup/test-database-url";
 
 export default defineConfig({
   resolve: {

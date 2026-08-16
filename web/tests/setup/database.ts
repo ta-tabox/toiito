@@ -1,21 +1,19 @@
-// L2（ユニット）は実 Postgres へ繋ぐ。
-// SQLite 時代の「一時ファイルを掴んで隔離」は使えないので、テスト専用データベースを走るたびに空にする。
-//
-// `prisma migrate reset` は使わない。
-// Prisma 7 はこれを破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求する。
-// check は無人でも回る必要があるので、非破壊の migrate deploy と truncate に分ける。
-// migration ファイルを経由する点は変えていないので、手で書き足した check 制約も効く。
+/**
+ * L2（ユニット）は実 Postgres へ繋ぐ。
+ * SQLite 時代の「一時ファイルを掴んで隔離」は使えないので、テスト専用データベースを走るたびに空にする。
+ *
+ * `prisma migrate reset` は使わない。
+ * Prisma 7 はこれを破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求する。
+ * check は無人でも回る必要があるので、非破壊の migrate deploy と truncate に分ける。
+ * migration ファイルを経由する点は変えていないので、手で書き足した check 制約も効く。
+ */
 
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../src/generated/prisma/client";
-
-/** テスト専用データベース。compose.yaml の initdb が作る。CI では env で差し替える。 */
-export const TEST_DATABASE_URL =
-  process.env.TOIITO_TEST_DATABASE_URL ??
-  "postgresql://toiito:toiito@localhost:5433/toiito_test";
+import { PrismaClient } from "@/generated/prisma/client";
+import { TEST_DATABASE_URL } from "./test-database-url";
 
 const webRoot = path.resolve(import.meta.dirname, "../..");
 

@@ -1,13 +1,15 @@
-// 永続化層。Prisma + Postgres。
-// データモデルの意味の正は ARCHITECTURE.md、スキーマの正は prisma/schema.prisma。
-//
-// この層の外へ Prisma を出さない。
-// `@prisma/client` と生成型（src/generated/prisma）に触れてよいのはこのファイルだけ。
-// UI と Server Actions が受け取るのは types.ts のドメイン型に限る。
-// schema.prisma の値域を動かすと戻り値がドメイン型へ代入できなくなり、L0（tsc）が落ちる。
-//
-// repo 関数はすべて async。
-// DB 非依存の計算をここへ積まない（anchors.ts のような純関数層へ置く）。
+/**
+ * 永続化層。Prisma + Postgres。
+ * データモデルの意味の正は ARCHITECTURE.md、スキーマの正は prisma/schema.prisma。
+ *
+ * この層の外へ Prisma を出さない。
+ * `@prisma/client` と生成型（`@/generated/prisma`）に触れてよいのはこのファイルだけ。
+ * UI と Server Actions が受け取るのは types.ts のドメイン型に限る。
+ * schema.prisma の値域を動かすと戻り値がドメイン型へ代入できなくなり、L0（tsc）が落ちる。
+ *
+ * repo 関数はすべて async。
+ * DB 非依存の計算をここへ積まない（anchors.ts のような純関数層へ置く）。
+ */
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
