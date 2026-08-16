@@ -144,15 +144,17 @@ create_role() {
 }
 
 # 開発用の toiito と、テスト用の toiito_test。
+# 二つを別々に見る。片方を他方の有無で代表させると、途中で落ちた回の欠けが次回以降も埋まらない。
 create_databases() {
-  if [ "$(psql_super -tAc "select 1 from pg_database where datname = 'toiito'")" = "1" ]; then
+  if [ "$(psql_super -tAc "select 1 from pg_database where datname = 'toiito'")" != "1" ]; then
+    psql_super -c "create database toiito owner toiito"
+  fi
+
+  if [ "$(psql_super -tAc "select 1 from pg_database where datname = 'toiito_test'")" = "1" ]; then
     return
   fi
 
-  psql_super -c "create database toiito owner toiito"
-
-  # initdb スクリプトは docker と同じ意味で「空のときだけ」流す。
-  # 向こうは volume の空で判定するが、ここでは開発用 DB の不在を同じ印として使う。
+  # テスト用 DB を作るのは compose と同じ SQL（いま initdb にあるのはこの一本だけ）。
   for sql in "$REPO_ROOT"/docker/initdb/*.sql; do
     psql_super -v ON_ERROR_STOP=1 -f "$sql"
   done
