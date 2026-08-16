@@ -1,11 +1,13 @@
 /**
- * L2（ユニット）は実 Postgres へ繋ぐ。
- * SQLite 時代の「一時ファイルを掴んで隔離」は使えないので、テスト専用データベースを走るたびに空にする。
+ * テストの前準備。テスト専用データベースへ migration を積み、全テーブルを空にする。
+ *
+ * ユニットテストは本物の Postgres へ繋ぐ。
+ * enum・外部キー・check 制約は本物に当てないと表明した意味を持たないので、インメモリで代替しない。
+ * 代わりに隔離はデータベースを毎回空にすることで作る。
  *
  * `prisma migrate reset` は使わない。
  * Prisma 7 はこれを破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求する。
- * check は無人でも回る必要があるので、非破壊の migrate deploy と truncate に分ける。
- * migration ファイルを経由する点は変えていないので、手で書き足した check 制約も効く。
+ * テストは無人でも回る必要があるので、非破壊の migrate deploy と truncate に分ける。
  */
 
 import { execFileSync } from "node:child_process";
@@ -19,7 +21,7 @@ const webRoot = path.resolve(import.meta.dirname, "../..");
 
 /**
  * truncate は接続先を問答無用で空にする。
- * S0 の実対話が入っている開発用 DB を指したまま走らせたら復旧できないので、名前で足を止める。
+ * 開発用 DB を指したまま走らせたら手元の対話が消えるので、名前で足を止める。
  */
 function assertIsTestDatabase(url: string): void {
   const name = path.basename(new URL(url).pathname);
