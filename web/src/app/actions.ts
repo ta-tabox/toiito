@@ -23,7 +23,9 @@ import { loadPersona } from "@/lib/personas";
 /** 問いを投入し、その対話画面へ送る。 */
 export async function createQuestionAction(formData: FormData) {
   const body = String(formData.get("body") ?? "").trim();
-  if (!body) return;
+  if (!body) {
+    return;
+  }
   const { question } = await createQuestion(body);
   redirect(`/q/${question.id}`);
 }
@@ -44,10 +46,14 @@ export async function speakAction(
   formData: FormData,
 ) {
   const body = String(formData.get("body") ?? "").trim();
-  if (!body) return;
+  if (!body) {
+    return;
+  }
 
   const question = await getQuestion(questionId);
-  if (!question) throw new Error("問いが見つからない");
+  if (!question) {
+    throw new Error("問いが見つからない");
+  }
 
   await addMessage(sessionId, "human", body);
 

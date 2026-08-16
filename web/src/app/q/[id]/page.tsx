@@ -34,10 +34,14 @@ export default async function QuestionPage({
 }) {
   const { id } = await params;
   const question = await getQuestion(id);
-  if (!question) notFound();
+  if (!question) {
+    notFound();
+  }
 
   const session = await latestSession(id);
-  if (!session) notFound();
+  if (!session) {
+    notFound();
+  }
 
   const messages = await listMessages(session.id);
 

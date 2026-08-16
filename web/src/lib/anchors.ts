@@ -77,7 +77,9 @@ const graphemeSegmenter = new Intl.Segmenter("ja", { granularity: "grapheme" });
  * 丸め方向は常に手前なので、start / end どちらに使っても元の index を超えない。
  */
 export function clampToGraphemeBoundary(body: string, index: number): number {
-  if (index <= 0 || index >= body.length) return index;
+  if (index <= 0 || index >= body.length) {
+    return index;
+  }
 
   for (const { index: start, segment } of graphemeSegmenter.segment(body)) {
     if (index < start + segment.length) {
