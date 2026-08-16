@@ -29,7 +29,7 @@ generator client {
   importFileExtension = "ts"
 }
 
-// 接続先は prisma.config.ts が持つ（Prisma 7 でスキーマから移った）。
+/// 接続先は prisma.config.ts が持つ（Prisma 7 でスキーマから移った）。
 datasource db {
   provider = "postgresql"
 }
