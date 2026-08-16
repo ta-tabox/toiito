@@ -89,7 +89,7 @@ export async function createQuestion(
  *
  * 並べ替えの第二キーは常に seq（挿入順の通し番号）。
  * created_at だけでは同一マイクロ秒で順序が決まらず、id は乱数なので順序を持たない。
- * 時刻を第一キーに残すのは、移送してきた行の時系列を seq より優先させるため。
+ * 時刻を第一キーに残すのは、表示の意味を担うのが時刻の方だからで、seq は同着を割るためだけに使う。
  */
 export async function listQuestions(): Promise<Question[]> {
   return db().question.findMany({
