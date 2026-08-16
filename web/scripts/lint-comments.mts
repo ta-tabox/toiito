@@ -68,18 +68,32 @@ function checkModuleHeader(
   text: string,
   comments: CommentRange[],
 ): Violation[] {
-  const bodyStart = firstNonDirectiveStart(source);
-  const header = comments.find((comment) => comment.end <= bodyStart);
+  const body = firstNonDirectiveStatement(source);
+  const bodyStart =
+    body?.getStart(source) ?? source.endOfFileToken.getStart(source);
+  const leading = comments.filter((comment) => comment.end <= bodyStart);
+  const header = leading[0];
+  const missing = {
+    line: lineOf(source, bodyStart),
+    rule: "comments/useModuleHeader",
+    message:
+      "モジュール冒頭コメントが無い。責務と、引き受けない境界を書く（ファイル名の言い換えにしない）",
+  };
 
   if (header === undefined) {
-    return [
-      {
-        line: lineOf(source, bodyStart),
-        rule: "comments/useModuleHeader",
-        message:
-          "モジュール冒頭コメントが無い。責務と、引き受けない境界を書く（ファイル名の言い換えにしない）",
-      },
-    ];
+    return [missing];
+  }
+
+  // 空行を挟まず宣言に接したコメントは、その宣言の JSDoc であってモジュールへの
+  // 注釈ではない——TS もエディタもそう読む。ここを冒頭コメントとして数えると、
+  // 「空行を置け」と促した結果、宣言から JSDoc を剥がすことになる。
+  if (
+    header === leading[leading.length - 1] &&
+    !isFollowedByBlankLine(text, header.end) &&
+    body !== undefined &&
+    takesDocComment(body)
+  ) {
+    return [missing];
   }
 
   if (!header.text.startsWith("/**")) {
@@ -161,16 +175,22 @@ function collectLeadingComments(
   return comments.sort((a, b) => a.start - b.start);
 }
 
-function firstNonDirectiveStart(source: ts.SourceFile): number {
-  for (const statement of source.statements) {
-    if (isDirective(statement)) {
-      continue;
-    }
+function firstNonDirectiveStatement(
+  source: ts.SourceFile,
+): ts.Statement | undefined {
+  return source.statements.find((statement) => !isDirective(statement));
+}
 
-    return statement.getStart(source);
-  }
-
-  return source.endOfFileToken.getStart(source);
+/**
+ * その文が doc コメントを持ちうるか。
+ *
+ * import / export 宣言は説明を持たないので、直前のコメントは行き場が無く
+ * モジュールへの注釈にしかなりえない。関数・型・定数はその逆。
+ */
+function takesDocComment(statement: ts.Statement): boolean {
+  return (
+    !ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)
+  );
 }
 
 function isDirective(statement: ts.Statement): boolean {

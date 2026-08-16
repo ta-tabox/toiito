@@ -32,11 +32,36 @@ export const a = 1;
     expect(rulesOf(source)).toEqual(["comments/useJsDocModuleHeader"]);
   });
 
-  it("直後に空行が無ければ useBlankLineAfterModuleHeader", () => {
+  it("import に接した冒頭コメントは、空行が無ければ useBlankLineAfterModuleHeader", () => {
     const source = `/**
  * 問いのドメイン。
  */
-export const a = 1;
+import fs from "node:fs";
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useBlankLineAfterModuleHeader"]);
+  });
+
+  it("宣言に接した JSDoc は冒頭コメントに数えない（useModuleHeader）", () => {
+    const source = `/**
+ * 問いを投入する。
+ */
+export function createQuestion() {}
+`;
+
+    // 空行を置けと促すと、この JSDoc を関数から剥がすことになる。
+    // 冒頭コメントが「無い」のが実態で、直すべきはそちら。
+    expect(rulesOf(source)).toEqual(["comments/useModuleHeader"]);
+  });
+
+  it("冒頭コメントと宣言の JSDoc が続くときは、冒頭コメントの側を見る", () => {
+    const source = `/**
+ * 問いのドメイン。
+ */
+/**
+ * 問いを投入する。
+ */
+export function createQuestion() {}
 `;
 
     expect(rulesOf(source)).toEqual(["comments/useBlankLineAfterModuleHeader"]);
