@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import type * as DbModule from "@/lib/db";
+import { QUESTION_STATUSES } from "@/lib/types";
 
 let db: typeof DbModule;
 
@@ -75,18 +76,18 @@ describe("原型と現在の形", () => {
 describe("問いの状態機械", () => {
   it("6状態すべてに遷移できる", () => {
     const { question } = db.createQuestion("状態の問い");
-    for (const s of db.QUESTION_STATUSES) {
+    for (const s of QUESTION_STATUSES) {
       expect(db.setQuestionStatus(question.id, s)?.status).toBe(s);
     }
   });
 
   it("perennial（閉じないことが正しい問い）が open と別状態として存在する", () => {
-    expect(db.QUESTION_STATUSES).toContain("open");
-    expect(db.QUESTION_STATUSES).toContain("perennial");
+    expect(QUESTION_STATUSES).toContain("open");
+    expect(QUESTION_STATUSES).toContain("perennial");
   });
 
   it("closed は廃止されている（promoted と discarded に割れた）", () => {
-    expect(db.QUESTION_STATUSES).not.toContain("closed");
+    expect(QUESTION_STATUSES).not.toContain("closed");
 
     const { question } = db.createQuestion("旧状態の問い");
     expect(() =>

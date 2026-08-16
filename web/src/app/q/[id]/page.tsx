@@ -6,8 +6,8 @@ import {
   latestSession,
   listMessages,
   questionText,
-  type Speaker,
 } from "@/lib/db";
+import type { Speaker } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 

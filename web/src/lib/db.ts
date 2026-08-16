@@ -8,6 +8,16 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import {
+  type Memo,
+  type MemoWithContext,
+  type Message,
+  QUESTION_STATUSES,
+  type Question,
+  type QuestionStatus,
+  type Session,
+  type Speaker,
+} from "./types";
 
 // パス解決は遅延（初回アクセス時）。テストが env を差し替えてから
 // 初回呼び出しできるようにするため（HARNESS.md 設計制約 2）
@@ -16,19 +26,6 @@ function dbPath(): string {
     process.env.TOIITO_DB_PATH ?? path.join(process.cwd(), "data", "toiito.db")
   );
 }
-
-// 問いの状態。型・DB の check・UI ラベルはここから派生する。
-// 各値の意味と 6 値である理由は ARCHITECTURE.md「問いの状態機械」。
-export const QUESTION_STATUSES = [
-  "composting", // 投入済み。まだ材料が付いていない
-  "fermented", // 材料（培地）が付き、蒸留に入れる
-  "promoted", // 答えが結晶した（別の器へ書き出した）
-  "open", // 持ち続ける問い。答えが出ないことは欠陥ではない
-  "perennial", // 閉じないことが正しい問い。閉じ候補として催促しない
-  "discarded", // 棄却
-] as const;
-
-export type QuestionStatus = (typeof QUESTION_STATUSES)[number];
 
 const STATUS_CHECK = QUESTION_STATUSES.map((s) => `'${s}'`).join(", ");
 
@@ -118,33 +115,10 @@ function db(): DatabaseSync {
   return _db;
 }
 
-// body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、
-// current_form は対話の中で言い直された焦点。
-// 二つに分けている理由は ARCHITECTURE.md「原型と現在の形」。
-export type Question = {
-  id: string;
-  body: string;
-  current_form: string | null;
-  status: QuestionStatus;
-  created_at: string;
-};
-
 /** 表示に使う問い文。現在の形があればそれ、無ければ原型。 */
 export function questionText(q: Question): string {
   return q.current_form ?? q.body;
 }
-
-export type Session = { id: string; question_id: string; started_at: string };
-
-export type Speaker = "human" | "ai_a" | "ai_b";
-
-export type Message = {
-  id: string;
-  session_id: string;
-  speaker: Speaker;
-  body: string;
-  created_at: string;
-};
 
 export function createQuestion(body: string): {
   question: Question;
@@ -246,16 +220,6 @@ export function addMessage(
   return db().prepare("select * from messages where id = ?").get(id) as Message;
 }
 
-export type Memo = {
-  id: string;
-  message_id: string;
-  anchor_start: number;
-  anchor_end: number;
-  keyword: string;
-  note: string | null;
-  created_at: string;
-};
-
 /**
  * DB の check は本文長を知らないため `start >= 0 && end > start` しか守れない。
  * `anchor_end <= 本文長` は lib の責務なので、挿入前に検査して文脈付きで拒否する。
@@ -303,14 +267,6 @@ export function listMemosForSession(sessionId: string): Memo[] {
     )
     .all(sessionId) as Memo[];
 }
-
-export type MemoWithContext = Memo & {
-  session_id: string;
-  question_id: string;
-  question_body: string;
-  speaker: Speaker;
-  message_body: string;
-};
 
 /** メモからのセッション逆引き用。`memos → messages → sessions → questions` の join 一本。 */
 export function listMemosWithContext(): MemoWithContext[] {
