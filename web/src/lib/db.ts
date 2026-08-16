@@ -31,7 +31,8 @@ import type {
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 /**
- * 遅延生成した接続を返す。DATABASE_URL が無ければ、ここで文脈付きに落とす。
+ * 遅延生成した接続を返す。
+ * 接続先が無ければここで落とす——Prisma に渡してから落とすと、原因が env であることが読めない。
  */
 function db(): PrismaClient {
   if (!globalForPrisma.prisma) {
@@ -39,7 +40,7 @@ function db(): PrismaClient {
 
     if (!connectionString) {
       throw new Error(
-        "DATABASE_URL が未設定。ローカルは docker compose up -d のうえ .env.local に二本引く（HARNESS.md「ローカル Postgres」）",
+        "環境変数 DATABASE_URL が設定されていないため、データベースへ接続できません。設定すべき変数の一覧は web/README.md の「環境変数」を参照してください。",
       );
     }
 
