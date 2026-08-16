@@ -25,6 +25,12 @@ NODE_MAJOR="$(sed -n 's/^node *= *"\(.*\)"/\1/p' "$REPO_ROOT/mise.toml")"
 PNPM_VERSION="$(sed -n 's/^"npm:pnpm" *= *"\(.*\)"/\1/p' "$REPO_ROOT/mise.toml")"
 NODE_PREFIX="/opt/node-$NODE_MAJOR"
 
+# 読めなければ止める。空のまま進むと `pnpm@` が latest を掴み、ピンを外したことに誰も気づかない。
+if [ -z "$NODE_MAJOR" ] || [ -z "$PNPM_VERSION" ]; then
+  echo "mise.toml から node / pnpm の版を読めなかった。書式が変わっていないか確認する" >&2
+  exit 1
+fi
+
 log() {
   echo "[toiito] $1"
 }
