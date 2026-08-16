@@ -29,6 +29,13 @@ log() {
   echo "[toiito] $1"
 }
 
+# 手元では local config に焼いてある名義が、リモートではクローンのたびに空になる。
+# 焼き直さないと、コンテナの global config（Claude 名義）でコミットが積まれる。
+configure_git_identity() {
+  git -C "$REPO_ROOT" config --local user.name "ta-tabox"
+  git -C "$REPO_ROOT" config --local user.email "tanktabox@gmail.com"
+}
+
 # nodejs.org のアーカイブ名に使う表記。uname の綴りとは違う。
 node_arch() {
   case "$(uname -m)" in
@@ -179,6 +186,7 @@ main() {
     exit 0
   fi
 
+  configure_git_identity
   install_node
   install_pnpm
   link_toolchain
