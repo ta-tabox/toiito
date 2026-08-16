@@ -69,7 +69,11 @@ model Question {
   @@map("questions")
 }
 
-/// 一つの問いに対する対話セッション。再訪すると増える。
+/// 対話セッション。一つの問いが複数持つ（`question_id` は同じまま増える）。
+///
+/// 最初の一つは問いの投入時に作られる。
+/// 二つ目以降は、同じ問いを対話画面から「新しいセッションで再訪」したときに増える（`createSession`）。
+/// 過去のセッションは畳まれず、堆積したまま残る——問いに何度戻ったかが読み返せることが目的。
 model Session {
   id          String   @id @default(uuid(4)) @db.Uuid
   question_id String   @db.Uuid
