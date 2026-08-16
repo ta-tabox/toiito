@@ -26,7 +26,8 @@ lint/format は **Biome 一本**（`biome.json` が正。ESLint/Prettier は使�
 AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自動テストで叩かない）。
 ロジックは lib 層へ寄せ、「lib 関数 + テスト → UI 配線」の順で作る。
 
-コーディング規約: @CODING.md（詳細判断は skill `coding-standards`）
+コーディング規約: @CODING.md。
+**コードを書く前に** skill `coding-standards` を開く——言語固有の作法（JSDoc・import・空行）はそこの `languages/` にしかなく、CODING.md には載っていない。
 
 **文書（`.md`）の改行も句点で**。桁数を理由に折り返さない——ビューア側が折り返すので、桁合わせは読みにくさを増やすだけ。
 
