@@ -6,7 +6,7 @@
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "cd web && PATH=\"$HOME/.local/share/mise/shims:$PATH\" exec pnpm dev --port 3200"
+        "cd web && PATH=\"$HOME/.local/share/mise/shims:$PATH\" CI=true exec pnpm dev --port 3200"
       ],
       "port": 3200
     },
@@ -15,7 +15,7 @@
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "cd web && PATH=\"$HOME/.local/share/mise/shims:$PATH\" TOIITO_FAKE_AI=1 exec pnpm dev --port 3100"
+        "cd web && PATH=\"$HOME/.local/share/mise/shims:$PATH\" CI=true TOIITO_FAKE_AI=1 exec pnpm dev --port 3100"
       ],
       "port": 3100
     }
