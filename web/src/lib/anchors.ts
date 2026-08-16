@@ -5,7 +5,7 @@
 // DB / next / DOM に依存しない。UI は DOM から読んだ数値をこの層へ渡すだけにする。
 // アンカーは messages が immutable（追記のみ）であることを前提にしている。
 
-import { Segment } from "./types";
+import { Segment } from "@/lib/types";
 
 type AnchorRange = { id: string; anchor_start: number; anchor_end: number };
 

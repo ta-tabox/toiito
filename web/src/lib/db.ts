@@ -17,7 +17,7 @@ import {
   type QuestionStatus,
   type Session,
   type Speaker,
-} from "./types";
+} from "@/lib/types";
 
 // パス解決は遅延（初回アクセス時）。テストが env を差し替えてから
 // 初回呼び出しできるようにするため（HARNESS.md 設計制約 2）

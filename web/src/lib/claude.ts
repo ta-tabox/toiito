@@ -3,7 +3,7 @@
 // ai_b の呼び出し時には直前の ai_a の発話も transcript に含まれている前提
 // （二体は並列でなく逐次——ai_b は ai_a への応答であることに意味がある）。
 
-import type { Speaker } from "./types";
+import type { Speaker } from "@/lib/types";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = process.env.TOIITO_MODEL ?? "claude-sonnet-5";
