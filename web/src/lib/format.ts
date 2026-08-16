@@ -1,7 +1,7 @@
 // 画面表示のための文字列化。DB にもドメイン型にも依存しない純関数。
 
-// タイムゾーンを JST に固定する。サーバー（ローカル / Neon のリージョン / CI）で
-// 表示がずれると、堆積した対話を時系列で読み返すときに嘘の間隔が見える。
+// タイムゾーンを JST に固定する。
+// サーバーの居場所（ローカル / Neon のリージョン / CI）で表示がずれると、堆積した対話の間隔が嘘になる。
 const TIMESTAMP = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Tokyo",
   dateStyle: "short",

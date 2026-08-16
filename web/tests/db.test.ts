@@ -3,8 +3,8 @@ import { afterAll, describe, expect, it } from "vitest";
 import * as db from "@/lib/db";
 import { QUESTION_STATUSES } from "@/lib/question";
 
-// 接続先はテスト専用データベース（vitest.config.ts が env で渡し、
-// globalSetup が走る前に作り直す）。
+// 接続先はテスト専用データベース。
+// vitest.config.ts が env で渡し、globalSetup が走るたびに空にする。
 afterAll(async () => {
   await db.disconnect();
 });

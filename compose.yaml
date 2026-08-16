@@ -1,5 +1,5 @@
-# ローカル開発用の Postgres。本番は Neon（Postgres 17）なので、方言差が出ないよう
-# メジャーバージョンを合わせている。
+# ローカル開発用の Postgres。
+# 本番は Neon（Postgres 17）なので、方言差が出ないようメジャーバージョンを合わせている。
 #
 # 起動: docker compose up -d ／ 停止: docker compose down
 # テスト用 DB（toiito_test）は初回起動時に initdb スクリプトが作る。

@@ -1,13 +1,13 @@
-// 永続化層。Prisma + Postgres。データモデルの意味の正は ARCHITECTURE.md、
-// スキーマの正は prisma/schema.prisma。
+// 永続化層。Prisma + Postgres。
+// データモデルの意味の正は ARCHITECTURE.md、スキーマの正は prisma/schema.prisma。
 //
-// この層の外へ Prisma を出さない。`@prisma/client` と生成型（src/generated/prisma）を
-// 触ってよいのはこのファイルだけで、UI と Server Actions が受け取るのは types.ts の
-// ドメイン型に限る。生成型とドメイン型が構造的に一致しているので詰め替えは要らないが、
-// **一致は偶然でなく検査でもある**——schema.prisma の enum に値を足せば戻り値が
-// ドメイン型へ代入できなくなり、L0（tsc）が落ちる。
+// この層の外へ Prisma を出さない。
+// `@prisma/client` と生成型（src/generated/prisma）に触れてよいのはこのファイルだけ。
+// UI と Server Actions が受け取るのは types.ts のドメイン型に限る。
+// schema.prisma の値域を動かすと戻り値がドメイン型へ代入できなくなり、L0（tsc）が落ちる。
 //
-// repo 関数はすべて async。DB 非依存の計算をここへ積まない（anchors.ts のような純関数層へ置く）。
+// repo 関数はすべて async。
+// DB 非依存の計算をここへ積まない（anchors.ts のような純関数層へ置く）。
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -21,8 +21,9 @@ import type {
   Speaker,
 } from "@/lib/types";
 
-// 接続は遅延（初回アクセス時）。テストが env を差し替えてから初回呼び出しできるようにするため
-// （HARNESS.md 設計制約 2）。dev の hot reload で接続が増殖しないよう globalThis に載せる。
+// 接続は遅延（初回アクセス時）。
+// テストが env を差し替えてから初回呼び出しできるようにするため（HARNESS.md 設計制約 2）。
+// dev の hot reload で接続が増殖しないよう globalThis に載せる。
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function db(): PrismaClient {

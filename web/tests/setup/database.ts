@@ -1,9 +1,9 @@
-// L2（ユニット）は実 Postgres へ繋ぐ。SQLite 時代の「一時ファイルを掴んで隔離」は
-// 使えないので、テスト専用データベースを走るたびに空にすることで隔離する。
+// L2（ユニット）は実 Postgres へ繋ぐ。
+// SQLite 時代の「一時ファイルを掴んで隔離」は使えないので、テスト専用データベースを走るたびに空にする。
 //
-// `prisma migrate reset` は使わない。Prisma 7 はこれを破壊的操作として検知し、
-// AI エージェントからの実行に人間の同意を毎回要求する——check は無人でも回る必要があるので、
-// 非破壊の migrate deploy（migration を積むだけ）と truncate に分ける。
+// `prisma migrate reset` は使わない。
+// Prisma 7 はこれを破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求する。
+// check は無人でも回る必要があるので、非破壊の migrate deploy と truncate に分ける。
 // migration ファイルを経由する点は変えていないので、手で書き足した check 制約も効く。
 
 import { execFileSync } from "node:child_process";
@@ -19,8 +19,8 @@ export const TEST_DATABASE_URL =
 
 const webRoot = path.resolve(import.meta.dirname, "../..");
 
-// truncate は接続先を問答無用で空にする。S0 の実対話が入っている開発用 DB を
-// 指したまま走らせたら復旧できないので、名前で足を止める。
+// truncate は接続先を問答無用で空にする。
+// S0 の実対話が入っている開発用 DB を指したまま走らせたら復旧できないので、名前で足を止める。
 function assertIsTestDatabase(url: string): void {
   const name = path.basename(new URL(url).pathname);
 
@@ -58,8 +58,8 @@ function applyMigrations(): void {
   }
 }
 
-// 対象をテーブル名の直書きでなく実物から引くのは、モデルを足したときに
-// 消し忘れたテーブルだけが前回の行を持ち越す事故を防ぐため。
+// 対象はテーブル名の直書きでなく実物から引く。
+// モデルを足したとき、消し忘れたテーブルだけが前回の行を持ち越す事故を防ぐため。
 async function truncateAllTables(): Promise<void> {
   const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString: TEST_DATABASE_URL }),
