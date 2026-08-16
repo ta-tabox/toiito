@@ -59,6 +59,7 @@ function toDate(sqliteTimestamp: string): Date {
   return at;
 }
 
+/** 旧 DB の speaker 列を検査して絞り込む。未知の値は黙って捨てず落とす。 */
 function toSpeaker(value: string): Speaker {
   if (!(SPEAKERS as readonly string[]).includes(value)) {
     throw new Error(`未知の speaker: ${value}`);
@@ -67,6 +68,7 @@ function toSpeaker(value: string): Speaker {
   return value as Speaker;
 }
 
+/** 旧 DB を読み切ってから閉じる。件数は小さいので全件をメモリに載せる。 */
 function readSqlite(dbPath: string) {
   const sqlite = new DatabaseSync(dbPath, { readOnly: true });
 
@@ -90,6 +92,7 @@ function readSqlite(dbPath: string) {
   }
 }
 
+/** 読み込み → 検査 → 一トランザクションで投入、まで通す。 */
 async function main(): Promise<void> {
   const dbPath = path.resolve(
     process.argv[2] ??

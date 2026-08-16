@@ -31,6 +31,7 @@ function assertIsTestDatabase(url: string): void {
   }
 }
 
+/** migration を積むだけ。既存の行は落とさない（空にするのは truncate の役目）。 */
 function applyMigrations(): void {
   const prismaCli = createRequire(import.meta.url).resolve(
     "prisma/build/index.js",
@@ -82,6 +83,7 @@ async function truncateAllTables(): Promise<void> {
   }
 }
 
+/** vitest の globalSetup。テスト一走ごとに一度だけ走る。 */
 export default async function setup(): Promise<void> {
   assertIsTestDatabase(TEST_DATABASE_URL);
   applyMigrations();

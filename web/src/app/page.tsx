@@ -16,6 +16,7 @@ const STATUS_LABEL: Record<QuestionStatus, string> = {
   discarded: "棄却",
 };
 
+/** コンポスターの入口。投入フォームと問いの一覧。 */
 export default async function Home() {
   const questions = await listQuestions();
 

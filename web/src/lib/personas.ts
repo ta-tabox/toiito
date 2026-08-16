@@ -12,6 +12,10 @@ export const PERSONA_LABEL: Record<PersonaId, string> = {
   ai_b: "抽象",
 };
 
+/**
+ * ペルソナのシステムプロンプトを src/personas/*.md から読む。
+ * プロンプトは文書として管理する方針なので、内容をコードへ持ち込まない。
+ */
 export function loadPersona(id: PersonaId): string {
   const p = path.join(process.cwd(), "src", "personas", `${id}.md`);
   return fs.readFileSync(p, "utf-8");

@@ -19,6 +19,7 @@ const SPEAKER_STYLE: Record<Speaker, { label: string; cls: string }> = {
   ai_b: { label: PERSONA_LABEL.ai_b, cls: "border-sky-200 bg-sky-50" },
 };
 
+/** 一つの問いの対話画面。表示するのは最新セッションのみ。 */
 export default async function QuestionPage({
   params,
 }: {

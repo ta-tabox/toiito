@@ -30,6 +30,9 @@ import type {
  */
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
+/**
+ * 遅延生成した接続を返す。DATABASE_URL が無ければ、ここで文脈付きに落とす。
+ */
 function db(): PrismaClient {
   if (!globalForPrisma.prisma) {
     const connectionString = process.env.DATABASE_URL;
@@ -94,6 +97,7 @@ export async function listQuestions(): Promise<Question[]> {
   });
 }
 
+/** 問いを一件引く。無ければ undefined（見つからないことは正常系）。 */
 export async function getQuestion(id: string): Promise<Question | undefined> {
   return (await db().question.findUnique({ where: { id } })) ?? undefined;
 }
@@ -127,6 +131,7 @@ export async function setQuestionStatus(
   return db().question.update({ where: { id: questionId }, data: { status } });
 }
 
+/** セッションを一件引く。無ければ undefined（見つからないことは正常系）。 */
 export async function getSession(id: string): Promise<Session | undefined> {
   return (await db().session.findUnique({ where: { id } })) ?? undefined;
 }
@@ -143,10 +148,15 @@ export async function latestSession(
   );
 }
 
+/** 再訪。同じ問いに新しいセッションを足す（既存のセッションは畳まない）。 */
 export async function createSession(questionId: string): Promise<Session> {
   return db().session.create({ data: { question_id: questionId } });
 }
 
+/**
+ * セッション内の発話を投稿順で返す。
+ * この順序が三者対話の中身そのものなので、時刻が並んだときは seq で決める。
+ */
 export async function listMessages(sessionId: string): Promise<Message[]> {
   return db().message.findMany({
     where: { session_id: sessionId },
@@ -154,6 +164,10 @@ export async function listMessages(sessionId: string): Promise<Message[]> {
   });
 }
 
+/**
+ * 発話を追記する。messages は immutable で、更新も削除もしない。
+ * メモのアンカーが本文のオフセットを指しているため（ARCHITECTURE.md「データモデル」）。
+ */
 export async function addMessage(
   sessionId: string,
   speaker: Speaker,
