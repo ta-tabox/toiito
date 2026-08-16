@@ -1,9 +1,11 @@
-// メモのアンカー（メッセージ本文中の文字オフセット）を扱う純関数群。
-// 本文の分割・オフセット換算・引用生成を行う。
-//
-// オフセットの単位は JS の string index（UTF-16 code unit）。コードポイントではない。
-// DB / next / DOM に依存しない。UI は DOM から読んだ数値をこの層へ渡すだけにする。
-// アンカーは messages が immutable（追記のみ）であることを前提にしている。
+/**
+ * メモのアンカー（メッセージ本文中の文字オフセット）を扱う純関数群。
+ * 本文の分割・オフセット換算・引用生成を行う。
+ *
+ * オフセットの単位は JS の string index（UTF-16 code unit）。コードポイントではない。
+ * DB / next / DOM に依存しない。UI は DOM から読んだ数値をこの層へ渡すだけにする。
+ * アンカーは messages が immutable（追記のみ）であることを前提にしている。
+ */
 
 type AnchorRange = { id: string; anchor_start: number; anchor_end: number };
 

@@ -6,7 +6,7 @@ import type { QuestionStatus } from "@/lib/question";
 
 export const dynamic = "force-dynamic";
 
-// 意味の正は ARCHITECTURE.md「問いの状態機械」
+/** 意味の正は ARCHITECTURE.md「問いの状態機械」 */
 const STATUS_LABEL: Record<QuestionStatus, string> = {
   composting: "堆肥化中",
   fermented: "発酵",

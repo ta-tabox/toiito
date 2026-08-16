@@ -1,4 +1,6 @@
-// 二体のペルソナ定義（src/personas/*.md が正。コードに埋め込まない）
+/**
+ * 二体のペルソナ定義（src/personas/*.md が正。コードに埋め込まない）
+ */
 
 import fs from "node:fs";
 import path from "node:path";
