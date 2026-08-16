@@ -39,7 +39,8 @@ jobs:
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
+          # 言語指定は prompt でなく system prompt へ置く。prompt の中身はスラッシュコマンドの引数として解釈されうるので、指示が届く保証が無い。
+          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment" --append-system-prompt "レビューの本文・要約・インラインコメントはすべて日本語で書く。文体は だ・である調。識別子・ルール名・パス・引用したコードは原文のまま残す。"'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
