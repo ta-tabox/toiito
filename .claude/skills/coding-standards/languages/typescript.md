@@ -59,6 +59,31 @@ TS と同じ「宣言に付く説明は doc コメント」を守るが、**綴�
 - 宣言に付かない説明（ファイル冒頭・generator ブロックの前）は `/** */` でよい。
   どの宣言にも紐づかないため生成物に影響しない
 
+## 機械が見ている分（toiito）
+
+以下は `pnpm check` が落とす。**記憶で守るのではなく、赤くなってから直してよい**。
+
+| 規約 | 見ている道具 |
+|---|---|
+| モジュール冒頭コメントの有無・`/** */`・直後の空行 | `web/scripts/lint-comments.mts` |
+| `@param {string}` のような型注釈の重複 | 同上 |
+| import は `@` 起点（`.css` と、上の例外の 3 箇所は除外） | biome `style/noRestrictedImports` |
+| 1 行 if を分ける | biome `style/useBlockStatements` |
+| 三項の多重ネスト・複数代入・多重宣言 | biome `noNestedTernary` / `noMultiAssign` / `useSingleVarDeclarator` |
+| floating promise | biome `nursery/noFloatingPromises` |
+| 関数の認知的複雑度（分割の合図） | biome `noExcessiveCognitiveComplexity` |
+| 引数 3 つ超（warn。ゲートは止めない） | biome `complexity/useMaxParams` |
+
+対象から外すものは `.gitignore` が正で、検査器も Biome も同じ正を見る（`src/generated` の Prisma 生成物はここで落ちる）。
+
+`style/useNamingConvention` は入れていない。
+DB 由来の列名が snake_case のまま型と往復するため、誤検出が数十件になる。
+命名は引き続き人間とレビューの領分。
+
+**機械が見ていない規約の方が多い**——「関数には例外なく JSDoc」「1 行目は要約だけ」「要約の語彙は関数名に合わせる」「`//` は本体の中だけ」は、どれも上の表に無い。
+冒頭コメントが責務と境界を語れているか、削除テストに耐えるかも同様。
+**この節に無い作法は、書く前にこのファイルを読むこと以外に守る手段が無い。**
+
 ## プロジェクト固有（育てる欄）
 - （このプロジェクトで決めた逸脱・追加をここに追記する。理由を一行添える）
 - **import は `@` 起点の絶対パスで書く**（相対指定はファイルを動かすたびに書き換えが要り、どの層を参照しているかも読み取れない）。
