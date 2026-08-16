@@ -2,16 +2,13 @@
 // 三つを各関数で必ず踏む。
 
 import { describe, expect, it } from "vitest";
-import {
-  clampToCodePoint,
-  excerpt,
-  resolveOffset,
-  segmentBody,
-} from "@/lib/anchors";
+import { clampToCodePoint, excerpt, segmentBody } from "@/lib/anchors";
 
 describe("segmentBody", () => {
   it("メモなしは本文全体が1セグメント", () => {
-    expect(segmentBody("hello", [])).toEqual([{ text: "hello", memoIds: [] }]);
+    expect(segmentBody("hello", [])).toEqual([
+      { text: "hello", start: 0, memoIds: [] },
+    ]);
   });
 
   it("単一のメモで前後に分割される", () => {
@@ -20,8 +17,8 @@ describe("segmentBody", () => {
     ]);
 
     expect(segments).toEqual([
-      { text: "hello ", memoIds: [] },
-      { text: "world", memoIds: ["m1"] },
+      { text: "hello ", start: 0, memoIds: [] },
+      { text: "world", start: 6, memoIds: ["m1"] },
     ]);
   });
 
@@ -32,8 +29,8 @@ describe("segmentBody", () => {
     ]);
 
     expect(segments).toEqual([
-      { text: "abc", memoIds: ["m1"] },
-      { text: "def", memoIds: ["m2"] },
+      { text: "abc", start: 0, memoIds: ["m1"] },
+      { text: "def", start: 3, memoIds: ["m2"] },
     ]);
   });
 
@@ -44,9 +41,9 @@ describe("segmentBody", () => {
     ]);
 
     expect(segments).toEqual([
-      { text: "ab", memoIds: ["m1"] },
-      { text: "cd", memoIds: ["m1", "m2"] },
-      { text: "ef", memoIds: ["m2"] },
+      { text: "ab", start: 0, memoIds: ["m1"] },
+      { text: "cd", start: 2, memoIds: ["m1", "m2"] },
+      { text: "ef", start: 4, memoIds: ["m2"] },
     ]);
   });
 
@@ -57,9 +54,9 @@ describe("segmentBody", () => {
     ]);
 
     expect(segments).toEqual([
-      { text: "ab", memoIds: ["m1"] },
-      { text: "cd", memoIds: [] },
-      { text: "ef", memoIds: ["m2"] },
+      { text: "ab", start: 0, memoIds: ["m1"] },
+      { text: "cd", start: 2, memoIds: [] },
+      { text: "ef", start: 4, memoIds: ["m2"] },
     ]);
   });
 
@@ -70,34 +67,34 @@ describe("segmentBody", () => {
     ]);
 
     expect(segments).toEqual([
-      { text: "a", memoIds: [] },
-      { text: "😀", memoIds: ["m1"] },
-      { text: "b", memoIds: [] },
+      { text: "a", start: 0, memoIds: [] },
+      { text: "😀", start: 1, memoIds: ["m1"] },
+      { text: "b", start: 3, memoIds: [] },
     ]);
   });
 });
 
-describe("resolveOffset", () => {
+describe("Segment.absoluteOffset", () => {
   const segments = segmentBody("abcdefghi", [
     { id: "m1", anchor_start: 3, anchor_end: 6 },
   ]);
   // segments: "abc" / "def"(m1) / "ghi"
 
   it("先頭セグメントの先頭", () => {
-    expect(resolveOffset(segments, 0, 0)).toBe(0);
+    expect(segments[0].absoluteOffset(0)).toBe(0);
   });
 
   it("中間セグメントの途中", () => {
-    expect(resolveOffset(segments, 1, 1)).toBe(4); // 'e' の位置
+    expect(segments[1].absoluteOffset(1)).toBe(4); // 'e' の位置
   });
 
   it("末尾セグメントの途中", () => {
-    expect(resolveOffset(segments, 2, 2)).toBe(8); // 'i' の位置
+    expect(segments[2].absoluteOffset(2)).toBe(8); // 'i' の位置
   });
 
   it("セグメント境界ちょうど（前セグメント末尾とオフセット一致）", () => {
-    expect(resolveOffset(segments, 0, 3)).toBe(3);
-    expect(resolveOffset(segments, 1, 0)).toBe(3);
+    expect(segments[0].absoluteOffset(3)).toBe(3);
+    expect(segments[1].absoluteOffset(0)).toBe(3);
   });
 });
 

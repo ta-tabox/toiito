@@ -5,7 +5,7 @@
 // DB / next / DOM に依存しない。UI は DOM から読んだ数値をこの層へ渡すだけにする。
 // アンカーは messages が immutable（追記のみ）であることを前提にしている。
 
-import type { Segment } from "./types";
+import { Segment } from "./types";
 
 type AnchorRange = { id: string; anchor_start: number; anchor_end: number };
 
@@ -40,21 +40,8 @@ export function segmentBody(body: string, memos: AnchorRange[]): Segment[] {
       .filter((memo) => memo.anchor_start <= start && end <= memo.anchor_end)
       .map((memo) => memo.id);
 
-    return { text: body.slice(start, end), memoIds: coveringMemoIds };
+    return new Segment(body.slice(start, end), start, coveringMemoIds);
   });
-}
-
-/** セグメント内オフセットを本文先頭基準の絶対オフセットへ換算する。 */
-export function resolveOffset(
-  segments: Segment[],
-  segmentIndex: number,
-  offsetInSegment: number,
-): number {
-  let base = 0;
-  for (let i = 0; i < segmentIndex; i++) {
-    base += segments[i].text.length;
-  }
-  return base + offsetInSegment;
 }
 
 /**
