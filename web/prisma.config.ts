@@ -16,9 +16,11 @@ try {
 export default defineConfig({
   schema: "prisma/schema.prisma",
 
-  // 接続は二本引く。
-  // Prisma Migrate はプーラー越しには動かないので、CLI が使うここは直結の DIRECT_URL。
-  // アプリ経路（本番 Neon ではプーラー経由の DATABASE_URL）は PrismaClient の adapter が持つ（db.ts）。
+  // ここに書くのは CLI（Prisma Migrate）の接続先だけで、直結の DIRECT_URL を渡す。
+  // Migrate はプーラー越しには動かないため。
+  //
+  // アプリの接続先は別で、DATABASE_URL を PrismaClient の adapter が持つ（db.ts）。
+  // 本番の Neon ではそちらがプーラー経由になるので、env は最初から二本に分けてある。
   // schema.prisma 側に directUrl は書けない（Prisma 7 でこの config へ移った）。
   datasource: {
     url: env("DIRECT_URL"),
