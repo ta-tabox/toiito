@@ -16,8 +16,13 @@
  * どのモデルに何が効いているかは各モデルのコメントに書く。
  */
 
-// 生成物の相対 import に拡張子を綴らせる。
-// バンドラ（Next / vitest）は無くても解けるが、scripts/ は node が直接読む（型剥がし実行）ので素の ESM 解決で辿れる必要がある。
+/**
+ * 生成物の相対 import に拡張子を綴らせる。
+ * バンドラ（Next / vitest）は拡張子が無くても解けるが、素の ESM 解決には要る。
+ *
+ * output は絶対パスにできない。
+ * 環境ごとに違う値を書くことになり、他のマシンと CI で壊れる（この位置はスキーマからの相対で解決される）。
+ */
 generator client {
   provider            = "prisma-client"
   output              = "../src/generated/prisma"
