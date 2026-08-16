@@ -10,10 +10,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "biome check",
+    "lint": "biome check && node scripts/lint-comments.mts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "tsc --noEmit && biome check && vitest run && next build",
+    "check": "tsc --noEmit && pnpm lint && vitest run && next build",
     "format": "biome format --write"
   },
   "dependencies": {
