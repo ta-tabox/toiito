@@ -2,11 +2,12 @@ import Link from "next/link";
 import { createQuestionAction } from "@/app/actions";
 import { listQuestions, questionText } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
+import type { QuestionStatus } from "@/lib/question";
 
 export const dynamic = "force-dynamic";
 
 // 意味の正は ARCHITECTURE.md「問いの状態機械」
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL: Record<QuestionStatus, string> = {
   composting: "堆肥化中",
   fermented: "発酵",
   promoted: "結晶した",
@@ -56,8 +57,7 @@ export default async function Home() {
                 </div>
               )}
               <div className="mt-1 text-xs text-neutral-500">
-                {STATUS_LABEL[q.status] ?? q.status} ·{" "}
-                {formatTimestamp(q.created_at)}
+                {STATUS_LABEL[q.status]} · {formatTimestamp(q.created_at)}
               </div>
             </Link>
           </li>
