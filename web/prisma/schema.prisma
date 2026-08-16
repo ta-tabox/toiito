@@ -1,14 +1,10 @@
 /**
  * 永続化スキーマの正。意味（なぜこの形か）の正は ARCHITECTURE.md「データモデル」。
  *
+ * ファイル全体に効く約束は二つだけで、残りは各宣言のコメントが持つ。
+ *
  * フィールド名は snake_case。
  * 列名・ドメイン型（src/lib/types.ts）と三者の綴りが揃い、repo 層の詰め替えが要らなくなる。
- *
- *
- * seq は挿入順の通し番号。
- * created_at は同一マイクロ秒で並びうるし、id は乱数の UUIDv4 で順序を持たない。
- * 発話の並び（ai_b は ai_a への応答）を実装依存にしないための列。
- * ドメイン型には出さない（表示にも意味の判断にも使わない）。
  *
  * check 制約は Prisma スキーマで表現できないため migration の SQL が唯一の置き場になる。
  * どのモデルに何が効いているかは各モデルのコメントに書く。
@@ -65,6 +61,7 @@ model Question {
   current_form String?
   status       QuestionStatus @default(composting)
   created_at   DateTime       @default(now()) @db.Timestamptz(6)
+  /// 挿入順の通し番号。同着を割るための列（意図は Message.seq）。
   seq          BigInt         @default(autoincrement()) @unique
 
   sessions Session[]
@@ -77,6 +74,7 @@ model Session {
   id          String   @id @default(uuid(4)) @db.Uuid
   question_id String   @db.Uuid
   started_at  DateTime @default(now()) @db.Timestamptz(6)
+  /// 挿入順の通し番号。同着を割るための列（意図は Message.seq）。
   seq         BigInt   @default(autoincrement()) @unique
 
   question Question  @relation(fields: [question_id], references: [id])
@@ -94,6 +92,10 @@ model Message {
   speaker    Speaker
   body       String
   created_at DateTime @default(now()) @db.Timestamptz(6)
+  /// 挿入順の通し番号。発話の並びを実装依存にしないための列。
+  /// created_at は同一マイクロ秒で並びうるし、id は乱数の UUIDv4 で順序を持たない。
+  /// 二つだけでは全順序にならず、ai_a と ai_b が入れ替わりうる（ai_b は ai_a への応答なので、並びは意味そのもの）。
+  /// ドメイン型には出さない——並べ替え専用の列で、表示にも意味の判断にも使わない（db.ts が omit する）。
   seq        BigInt   @default(autoincrement()) @unique
 
   session Session @relation(fields: [session_id], references: [id])
@@ -120,6 +122,7 @@ model Memo {
   keyword      String
   note         String?
   created_at   DateTime @default(now()) @db.Timestamptz(6)
+  /// 挿入順の通し番号。同着を割るための列（意図は Message.seq）。
   seq          BigInt   @default(autoincrement()) @unique
 
   message   Message    @relation(fields: [message_id], references: [id])

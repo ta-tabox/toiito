@@ -87,9 +87,8 @@ export async function createQuestion(
 /**
  * 問いの一覧。新しい順。
  *
- * 並べ替えの第二キーは常に seq（挿入順の通し番号）。
- * created_at だけでは同一マイクロ秒で順序が決まらず、id は乱数なので順序を持たない。
- * 時刻を第一キーに残すのは、表示の意味を担うのが時刻の方だからで、seq は同着を割るためだけに使う。
+ * 並べ替えは created_at を第一キー、seq を第二キーにする。
+ * 時刻が表示の意味を担い、seq は同着を割るためだけに使う（seq を置いた理由は schema.prisma の Message.seq）。
  */
 export async function listQuestions(): Promise<Question[]> {
   return db().question.findMany({
