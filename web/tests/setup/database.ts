@@ -17,8 +17,10 @@ import { TEST_DATABASE_URL } from "./test-database-url";
 
 const webRoot = path.resolve(import.meta.dirname, "../..");
 
-// truncate は接続先を問答無用で空にする。
-// S0 の実対話が入っている開発用 DB を指したまま走らせたら復旧できないので、名前で足を止める。
+/**
+ * truncate は接続先を問答無用で空にする。
+ * S0 の実対話が入っている開発用 DB を指したまま走らせたら復旧できないので、名前で足を止める。
+ */
 function assertIsTestDatabase(url: string): void {
   const name = path.basename(new URL(url).pathname);
 
@@ -56,8 +58,10 @@ function applyMigrations(): void {
   }
 }
 
-// 対象はテーブル名の直書きでなく実物から引く。
-// モデルを足したとき、消し忘れたテーブルだけが前回の行を持ち越す事故を防ぐため。
+/**
+ * 対象はテーブル名の直書きでなく実物から引く。
+ * モデルを足したとき、消し忘れたテーブルだけが前回の行を持ち越す事故を防ぐため。
+ */
 async function truncateAllTables(): Promise<void> {
   const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString: TEST_DATABASE_URL }),

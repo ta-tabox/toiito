@@ -3,8 +3,10 @@
  * DB にもドメイン型にも依存しない純関数だけを置く。
  */
 
-// タイムゾーンを JST に固定する。
-// サーバーの居場所（ローカル / Neon のリージョン / CI）で表示がずれると、堆積した対話の間隔が嘘になる。
+/**
+ * タイムゾーンを JST に固定する。
+ * サーバーの居場所（ローカル / Neon のリージョン / CI）で表示がずれると、堆積した対話の間隔が嘘になる。
+ */
 const TIMESTAMP = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Tokyo",
   dateStyle: "short",

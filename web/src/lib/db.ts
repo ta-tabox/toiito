@@ -23,9 +23,11 @@ import type {
   Speaker,
 } from "@/lib/types";
 
-// 接続は遅延（初回アクセス時）。
-// テストが env を差し替えてから初回呼び出しできるようにするため（HARNESS.md 設計制約 2）。
-// dev の hot reload で接続が増殖しないよう globalThis に載せる。
+/**
+ * 接続は遅延（初回アクセス時）。
+ * テストが env を差し替えてから初回呼び出しできるようにするため（HARNESS.md 設計制約 2）。
+ * dev の hot reload で接続が増殖しないよう globalThis に載せる。
+ */
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function db(): PrismaClient {
@@ -79,9 +81,13 @@ export async function createQuestion(
   });
 }
 
-// 並べ替えの第二キーは常に seq（挿入順の通し番号）。
-// created_at だけでは同一マイクロ秒で順序が決まらず、id は乱数なので順序を持たない。
-// 時刻を第一キーに残すのは、移送してきた行の時系列を seq より優先させるため。
+/**
+ * 問いの一覧。新しい順。
+ *
+ * 並べ替えの第二キーは常に seq（挿入順の通し番号）。
+ * created_at だけでは同一マイクロ秒で順序が決まらず、id は乱数なので順序を持たない。
+ * 時刻を第一キーに残すのは、移送してきた行の時系列を seq より優先させるため。
+ */
 export async function listQuestions(): Promise<Question[]> {
   return db().question.findMany({
     orderBy: [{ created_at: "desc" }, { seq: "desc" }],

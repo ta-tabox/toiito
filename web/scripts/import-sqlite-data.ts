@@ -45,8 +45,10 @@ type SqliteMemo = {
 const SPEAKERS = ["human", "ai_a", "ai_b"] as const;
 type Speaker = (typeof SPEAKERS)[number];
 
-// SQLite の datetime('now') は UTC の "YYYY-MM-DD HH:MM:SS"。
-// タイムゾーンの無い綴りをそのまま Date へ渡すとローカル時刻と解釈され、堆積の時系列が 9 時間ずれる。
+/**
+ * SQLite の datetime('now') は UTC の "YYYY-MM-DD HH:MM:SS"。
+ * タイムゾーンの無い綴りをそのまま Date へ渡すとローカル時刻と解釈され、堆積の時系列が 9 時間ずれる。
+ */
 function toDate(sqliteTimestamp: string): Date {
   const at = new Date(`${sqliteTimestamp.replace(" ", "T")}Z`);
 
