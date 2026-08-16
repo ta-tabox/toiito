@@ -6,25 +6,20 @@
 
 ## いま開いているもの
 
-- **#11（Prisma 導入 + Postgres 一本化）は実装済み・未 push**。
-  ブランチ `claude/prisma-postgres-migration-11` に `pnpm check` 緑でコミット済み。
+- **#11（Prisma 導入 + Postgres 一本化）は PR #14 でレビュー待ち**。
+  `pnpm check` 緑、main も取り込み済み。
   S0 の実データ（問い2・発話12）も Postgres へ移送済みで、UI から読めることをフェイクモードで確認した。
-  **人間の担当**: 下の `.env.local` 追記 → push → PR（本文に `closes #11`）→ マージ
+  **人間の担当**: レビュー → マージ
 - **次に着手する issue**: #4 / #5（メモ UI と逆引き）。
   土台の入れ替えが終わったので割り込みは解消した。
   #2（ローディング表示）は独立なのでいつでも並行可
 
 ## 申し送り
 
-- **[人間・必須] `web/.env.local` に接続先を二本追記する**。
-  権限設定で Claude が `.env*` を触れないため、ここだけ手作業で残っている。
-  これが無いと `pnpm dev` も `pnpm check` も落ちる（`DATABASE_URL が未設定` で止まる）。
-  `web/.env.example` にも同じ二行を控えておくとよい。
-
-  ```
-  DATABASE_URL=postgresql://toiito:toiito@localhost:5433/toiito
-  DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
-  ```
+- **[Claude 向け] `.env*` は権限設定で Claude が触れない**。
+  接続先の追記は済んでいる（2026-08-16 に人間が実施）。
+  以後 env に何か足す必要が出たら、自分で書かず人間へ渡すこと。
+  変数の一覧と意味は `web/README.md`
 
 - **[人間・任意] 移送の目視確認**。
   `docker compose up -d` のうえ `pnpm dev` で、S0 の対話二件が時刻付きで読めること。
