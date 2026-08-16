@@ -5,6 +5,11 @@
 //
 // 問いの状態と発話者は enum で値域を表明する。アプリ側の値域（src/lib/question.ts の
 // QUESTION_STATUSES、types.ts の Speaker）とのずれは db.ts の型表明が L0 で落とす。
+//
+// seq は挿入順の通し番号。時刻だけでは順序が決まらない——created_at は同一マイクロ秒で
+// 並びうるし、id は乱数の UUIDv4 で順序を持たない。SQLite の rowid が担っていた役割で、
+// 発話の並び（ai_b は ai_a への応答）が実装依存にならないための最後の砦。
+// ドメイン型には出さない（表示にも意味の判断にも使わない、並べ替えのためだけの列）。
 
 // 生成物の相対 import に拡張子を綴らせる。バンドラ（Next / vitest）は無くても解けるが、
 // scripts/ は node が直接読む（型剥がし実行）ので、素の ESM 解決で辿れる必要がある。
@@ -48,6 +53,7 @@ model Question {
   current_form String?
   status       QuestionStatus @default(composting)
   created_at   DateTime       @default(now()) @db.Timestamptz(6)
+  seq          BigInt         @default(autoincrement()) @unique
 
   sessions Session[]
 
@@ -59,6 +65,7 @@ model Session {
   id          String   @id @default(uuid(4)) @db.Uuid
   question_id String   @db.Uuid
   started_at  DateTime @default(now()) @db.Timestamptz(6)
+  seq         BigInt   @default(autoincrement()) @unique
 
   question Question  @relation(fields: [question_id], references: [id])
   messages Message[]
@@ -75,6 +82,7 @@ model Message {
   speaker    Speaker
   body       String
   created_at DateTime @default(now()) @db.Timestamptz(6)
+  seq        BigInt   @default(autoincrement()) @unique
 
   session Session @relation(fields: [session_id], references: [id])
   memos   Memo[]
@@ -93,6 +101,7 @@ model Memo {
   keyword      String
   note         String?
   created_at   DateTime @default(now()) @db.Timestamptz(6)
+  seq          BigInt   @default(autoincrement()) @unique
 
   message   Message    @relation(fields: [message_id], references: [id])
   links_from MemoLink[] @relation("MemoLinkFrom")

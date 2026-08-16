@@ -36,6 +36,15 @@ function db(): PrismaClient {
 
     globalForPrisma.prisma = new PrismaClient({
       adapter: new PrismaPg({ connectionString }),
+
+      // seq は並べ替えのためだけの列なので、読み出した行から落とす。
+      // これで戻り値がドメイン型とちょうど一致し、BigInt が UI 側へ渡ることも起きない。
+      omit: {
+        question: { seq: true },
+        session: { seq: true },
+        message: { seq: true },
+        memo: { seq: true },
+      },
     });
   }
 
@@ -67,8 +76,13 @@ export async function createQuestion(
   });
 }
 
+// 並べ替えの第二キーは常に seq（挿入順の通し番号）。
+// created_at だけでは同一マイクロ秒で順序が決まらず、id は乱数なので順序を持たない。
+// 時刻を第一キーに残すのは、移送してきた行の時系列を seq より優先させるため。
 export async function listQuestions(): Promise<Question[]> {
-  return db().question.findMany({ orderBy: { created_at: "desc" } });
+  return db().question.findMany({
+    orderBy: [{ created_at: "desc" }, { seq: "desc" }],
+  });
 }
 
 export async function getQuestion(id: string): Promise<Question | undefined> {
@@ -108,14 +122,14 @@ export async function getSession(id: string): Promise<Session | undefined> {
   return (await db().session.findUnique({ where: { id } })) ?? undefined;
 }
 
-/** 最新の再訪。同時刻に並んだ場合は id で決める（順序を実装依存にしない）。 */
+/** 最新の再訪。同時刻に並んだ場合は挿入順（seq）で決める。 */
 export async function latestSession(
   questionId: string,
 ): Promise<Session | undefined> {
   return (
     (await db().session.findFirst({
       where: { question_id: questionId },
-      orderBy: [{ started_at: "desc" }, { id: "desc" }],
+      orderBy: [{ started_at: "desc" }, { seq: "desc" }],
     })) ?? undefined
   );
 }
@@ -127,7 +141,7 @@ export async function createSession(questionId: string): Promise<Session> {
 export async function listMessages(sessionId: string): Promise<Message[]> {
   return db().message.findMany({
     where: { session_id: sessionId },
-    orderBy: [{ created_at: "asc" }, { id: "asc" }],
+    orderBy: [{ created_at: "asc" }, { seq: "asc" }],
   });
 }
 
@@ -179,7 +193,7 @@ export async function addMemo(
 export async function listMemosForSession(sessionId: string): Promise<Memo[]> {
   return db().memo.findMany({
     where: { message: { session_id: sessionId } },
-    orderBy: [{ created_at: "asc" }, { id: "asc" }],
+    orderBy: [{ created_at: "asc" }, { seq: "asc" }],
   });
 }
 
@@ -189,7 +203,7 @@ export async function listMemosWithContext(): Promise<MemoWithContext[]> {
     include: {
       message: { include: { session: { include: { question: true } } } },
     },
-    orderBy: [{ created_at: "asc" }, { id: "asc" }],
+    orderBy: [{ created_at: "asc" }, { seq: "asc" }],
   });
 
   return rows.map(({ message, ...memo }) => ({
