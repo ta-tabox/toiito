@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { createQuestionAction } from "@/app/actions";
 import { listQuestions, questionText } from "@/lib/db";
-import { createQuestionAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 

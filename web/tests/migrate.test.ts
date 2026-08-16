@@ -66,6 +66,7 @@ describe("旧スキーマからの移送", () => {
       }[]
     ).map((c) => c.name);
     reopened.close();
+
     expect(cols).toContain("current_form");
     // 作業テーブルが残っていない = rename まで完了している
     expect(cols).not.toContain("questions_new");

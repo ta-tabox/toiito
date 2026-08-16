@@ -1,7 +1,7 @@
 # TypeScript / JavaScript への写像
 
-核の原則（CODING.md）を TS のイディオムに落とす。toolchain 正典
-（pnpm / Biome / mise）は `fermentary/playbooks/toolchain.md` が持つ——ここは書き方のみ。
+核の原則（CODING.md）を TS のイディオムに落とす。
+toolchain 正典（pnpm / Biome / mise）は `fermentary/playbooks/toolchain.md` が持つ——ここは書き方のみ。
 
 ## 不変を既定に
 - `const` を既定。`let` は再代入が本質的なときだけ。`var` は使わない
@@ -9,16 +9,14 @@
 - 更新はスプレッドで新オブジェクト生成を基本とし、局所的な可変は関数内に閉じる
 
 ## 不正状態の表現不能化
-- 直和型 + 判別子で状態を分ける:
-  `type State = { kind: "loading" } | { kind: "loaded"; data: Item[] } | { kind: "error"; error: Error }`
-  「loading なのに data がある」を型レベルで排除する
+- 直和型 + 判別子で状態を分ける: `type State = { kind: "loading" } | { kind: "loaded"; data: Item[] } | { kind: "error"; error: Error }` 「loading なのに data がある」を型レベルで排除する
 - `null` と `undefined` を混在させない（プロジェクトでどちらかに決める）
 - `any` は型システムの放棄。`unknown` + 絞り込みで受ける
 
 ## 関数・エラー
 - 引数 3 つ以上はオブジェクト引数へ（呼び出し側が自己文書化される）
-- 例外で表すか Result 型（`{ ok: true; value } | { ok: false; error }`）で表すかを
-  プロジェクトで統一する。混在が一番読めない
+- 例外で表すか Result 型（`{ ok: true; value } | { ok: false; error }`）で表すかをプロジェクトで統一する。
+  混在が一番読めない
 - `async` の投げっぱなし（floating promise）を許さない
 
 ## 命名
@@ -39,3 +37,8 @@
 
 ## プロジェクト固有（育てる欄）
 - （このプロジェクトで決めた逸脱・追加をここに追記する。理由を一行添える）
+- **import は `@` 起点の絶対パスで書く**（相対指定はファイルを動かすたびに書き換えが要り、どの層を参照しているかも読み取れない）
+- **型だけの器に実行時の値を置かない**。値域の定数と、そこから派生する判定は、その概念のモジュールが持つ（`question.ts` の `QUESTION_STATUSES` と `isQuestionStatus`）
+- **振る舞いを持つクラスは、それを扱うモジュールへ置く**。型の器に置くのは、モジュール間の受け渡しに使う型だけ。
+  モジュール内に閉じる型はそのモジュールに留める（`anchors.ts` の `AnchorRange`）
+- **文字境界の丸めは書記素クラスタで**（`Intl.Segmenter`）。サロゲートペア判定では、異体字セレクタ（`神︀` = U+795E + U+FE00）・ZWJ 連結・肌色修飾が漏れて字が割れる

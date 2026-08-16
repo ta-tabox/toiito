@@ -13,6 +13,7 @@ describe("フェイクモード (TOIITO_FAKE_AI=1)", () => {
     const res = await callPersona("# ai_a — 具体派", { body: "問い本文" }, [
       { speaker: "human", body: "最初の発話" },
     ]);
+
     expect(res).toContain("ai_a");
     expect(res).toContain("最初の発話");
   });

@@ -3,7 +3,7 @@
 // ai_b の呼び出し時には直前の ai_a の発話も transcript に含まれている前提
 // （二体は並列でなく逐次——ai_b は ai_a への応答であることに意味がある）。
 
-import type { Speaker } from "./db";
+import type { Speaker } from "@/lib/types";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = process.env.TOIITO_MODEL ?? "claude-sonnet-5";
@@ -29,10 +29,8 @@ function fakeResponse(
   return `[fake:${personaLine}] 「${lastHuman?.body ?? "(発話なし)"}」への応答`;
 }
 
-// 原型と現在の形を両方渡す。片方だけでは二種類の失敗が起きる:
-// 原型だけ → 対話で問いが移った先を見失う / 現在の形だけ → 元は何を訊きたかったのか
-// が検証不能になり、ずれた前提のまま材料が積み上がる。
-// 両方見えていれば、二体は「その言い直しは原型からずれていないか」を突けるようになる。
+// 原型と現在の形を両方渡す。片方だけでは、問いが移った先を見失うか、
+// 原型からのずれを検出できないかのどちらかになる（ARCHITECTURE.md「原型と現在の形」）。
 export type QuestionRef = { body: string; current_form?: string | null };
 
 export async function callPersona(

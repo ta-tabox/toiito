@@ -1,11 +1,26 @@
-// ローカル永続化層（node:sqlite / Node 22+）
-// スキーマの正は ARCHITECTURE.md。Postgres 移行（別タスク）の際は
-// この repo 関数群のシグネチャを保ったまま実装を差し替える。
+// 永続化層。現状の実装は node:sqlite（Node 22+）の生 SQL。
+// データモデルとスキーマの正は ARCHITECTURE.md。
+//
+// この層は Prisma + Postgres へ入れ替わり、repo 関数はすべて async になる（issue #11）。
+// 同期前提のロジックをここへ積み増さない。DB 非依存の計算は anchors.ts のような層へ置く。
 
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import {
+  isQuestionStatus,
+  QUESTION_STATUSES,
+  type QuestionStatus,
+} from "@/lib/question";
+import type {
+  Memo,
+  MemoWithContext,
+  Message,
+  Question,
+  Session,
+  Speaker,
+} from "@/lib/types";
 
 // パス解決は遅延（初回アクセス時）。テストが env を差し替えてから
 // 初回呼び出しできるようにするため（HARNESS.md 設計制約 2）
@@ -14,21 +29,6 @@ function dbPath(): string {
     process.env.TOIITO_DB_PATH ?? path.join(process.cwd(), "data", "toiito.db")
   );
 }
-
-// 問いの状態。3値（composting/fermented/closed）では足りないことが
-// 2026-07-19 の実地の蒸留で判明した——closed が「答えが結晶した」と「棄却」を
-// 潰しており、かつ「閉じないことが正しい問い」の居場所が無かった。
-// 意味の正は ARCHITECTURE.md「問いの状態機械」。
-export const QUESTION_STATUSES = [
-  "composting", // 投入済み。まだ材料が付いていない
-  "fermented", // 材料（培地）が付き、蒸留に入れる
-  "promoted", // 答えが結晶した（別の器へ書き出した）
-  "open", // 持ち続ける問い。答えが出ないことは欠陥ではない
-  "perennial", // 閉じないことが正しい問い。閉じ候補として催促しない
-  "discarded", // 棄却
-] as const;
-
-export type QuestionStatus = (typeof QUESTION_STATUSES)[number];
 
 const STATUS_CHECK = QUESTION_STATUSES.map((s) => `'${s}'`).join(", ");
 
@@ -73,10 +73,9 @@ create index if not exists idx_memos_message     on memos(message_id);
 create index if not exists idx_memos_keyword     on memos(keyword);
 `;
 
-// `create table if not exists` は既存テーブルを一切触らないため、列や check の
-// 追加は既存 DB へ届かない（スキーマ乖離）。SQLite は check を alter できないので
-// 該当テーブルだけ作り直す。dev DB は gitignore 済みだが、人間の手元には
-// S0 実機確認のデータが入っているので落とさずに移送する。
+// `create table if not exists` は既存テーブルを触らないので、列や check の追加が
+// 既存 DB へ届かない。SQLite は check を alter できないため、該当テーブルだけ
+// 作り直してデータを移送する（手元の DB には実データが入っているので落とさない）。
 function migrate(d: DatabaseSync): void {
   const cols = d.prepare("pragma table_info(questions)").all() as {
     name: string;
@@ -110,6 +109,7 @@ function db(): DatabaseSync {
   if (!_db) {
     const p = dbPath();
     fs.mkdirSync(path.dirname(p), { recursive: true });
+
     _db = new DatabaseSync(p);
     _db.exec("pragma journal_mode = wal; pragma foreign_keys = on;");
     migrate(_db);
@@ -118,35 +118,10 @@ function db(): DatabaseSync {
   return _db;
 }
 
-// body は**原型**。投入された生の問いであり、以後書き換えない
-// （転記誤りの訂正だけが例外＝復元であって改稿ではない）。
-// 問いは対話の中で形を変えるので、言い直し・分割後の焦点は current_form に持つ。
-// 原型を失うと「元は何を訊きたかったのか」が検証不能になり、
-// 誤った前提のまま材料が積み上がる（fermentary 2026-07-19 の実損）。
-export type Question = {
-  id: string;
-  body: string;
-  current_form: string | null;
-  status: QuestionStatus;
-  created_at: string;
-};
-
 /** 表示に使う問い文。現在の形があればそれ、無ければ原型。 */
 export function questionText(q: Question): string {
   return q.current_form ?? q.body;
 }
-
-export type Session = { id: string; question_id: string; started_at: string };
-
-export type Speaker = "human" | "ai_a" | "ai_b";
-
-export type Message = {
-  id: string;
-  session_id: string;
-  speaker: Speaker;
-  body: string;
-  created_at: string;
-};
 
 export function createQuestion(body: string): {
   question: Question;
@@ -154,6 +129,7 @@ export function createQuestion(body: string): {
 } {
   const qid = randomUUID();
   const sid = randomUUID();
+
   db().prepare("insert into questions (id, body) values (?, ?)").run(qid, body);
   db()
     .prepare("insert into sessions (id, question_id) values (?, ?)")
@@ -193,9 +169,10 @@ export function setQuestionStatus(
   questionId: string,
   status: QuestionStatus,
 ): Question | undefined {
-  if (!QUESTION_STATUSES.includes(status)) {
+  if (!isQuestionStatus(status)) {
     throw new Error(`unknown question status: ${status}`);
   }
+
   db()
     .prepare("update questions set status = ? where id = ?")
     .run(status, questionId);
@@ -244,4 +221,78 @@ export function addMessage(
     )
     .run(id, sessionId, speaker, body);
   return db().prepare("select * from messages where id = ?").get(id) as Message;
+}
+
+/**
+ * DB の check は本文長を知らないため `start >= 0 && end > start` しか守れない。
+ * `anchor_end <= 本文長` は lib の責務なので、挿入前に検査して文脈付きで拒否する。
+ */
+export function addMemo(
+  messageId: string,
+  anchorStart: number,
+  anchorEnd: number,
+  keyword: string,
+  note?: string,
+): Memo {
+  const message = db()
+    .prepare("select * from messages where id = ?")
+    .get(messageId) as Message | undefined;
+
+  if (!message) {
+    throw new Error(`addMemo: message not found: ${messageId}`);
+  }
+
+  if (anchorEnd > message.body.length) {
+    throw new Error(
+      `addMemo: anchor_end (${anchorEnd}) exceeds body length (${message.body.length}) of message ${messageId}`,
+    );
+  }
+
+  const id = randomUUID();
+  db()
+    .prepare(
+      "insert into memos (id, message_id, anchor_start, anchor_end, keyword, note) values (?, ?, ?, ?, ?, ?)",
+    )
+    .run(id, messageId, anchorStart, anchorEnd, keyword, note ?? null);
+
+  return db().prepare("select * from memos where id = ?").get(id) as Memo;
+}
+
+/** 対話画面のアンダーライン描画用。セッション内の全メモを投稿順で返す。 */
+export function listMemosForSession(sessionId: string): Memo[] {
+  return db()
+    .prepare(
+      `select memos.*
+         from memos
+         join messages on messages.id = memos.message_id
+        where messages.session_id = ?
+        order by memos.created_at, memos.id`,
+    )
+    .all(sessionId) as Memo[];
+}
+
+/** メモからのセッション逆引き用。`memos → messages → sessions → questions` の join 一本。 */
+export function listMemosWithContext(): MemoWithContext[] {
+  return db()
+    .prepare(
+      `select
+         memos.id           as id,
+         memos.message_id   as message_id,
+         memos.anchor_start as anchor_start,
+         memos.anchor_end   as anchor_end,
+         memos.keyword      as keyword,
+         memos.note         as note,
+         memos.created_at   as created_at,
+         messages.session_id as session_id,
+         sessions.question_id as question_id,
+         questions.body      as question_body,
+         messages.speaker     as speaker,
+         messages.body        as message_body
+         from memos
+         join messages  on messages.id = memos.message_id
+         join sessions  on sessions.id = messages.session_id
+         join questions on questions.id = sessions.question_id
+        order by memos.created_at, memos.id`,
+    )
+    .all() as MemoWithContext[];
 }

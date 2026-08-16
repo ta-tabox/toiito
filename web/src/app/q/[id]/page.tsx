@@ -6,8 +6,8 @@ import {
   latestSession,
   listMessages,
   questionText,
-  type Speaker,
 } from "@/lib/db";
+import type { Speaker } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +28,7 @@ export default async function QuestionPage({
 
   const session = latestSession(id);
   if (!session) notFound();
+
   const messages = listMessages(session.id);
 
   const speak = speakAction.bind(null, question.id, session.id);
