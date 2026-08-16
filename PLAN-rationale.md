@@ -320,3 +320,19 @@ NEXT.md をセッション申し送り専用へ痩せさせた際、タスク台
 - 2026-07-06 ローカル完結化。
   永続化を SQLite（node:sqlite）に差し替え、コア縦一本（問い投入 → 三者対話、固定ペルソナ二体の逐次呼び出し）を実装。
   ビルド・型チェック・DB 層スモークテスト済（AI 呼び出しは API キー未設定のため実機未検証）
+
+## 永続化を SQLite から Prisma + Postgres へ移した経緯（2026-08-15 決定 / 2026-08-16 実施・issue #11）
+
+旧方針は「`node:sqlite` でネイティブ依存ゼロ・ローカル完結」＋「`db.ts` の repo 関数のシグネチャを保ったまま Postgres へ差し替える契約」。
+これは方言の二重管理（`db.ts` の `SCHEMA` と `supabase/migrations/0001_init.sql`）と型の手書きキャスト（`.all() as Memo[]`）をメンテナンスコストとして残し、契約の漏れも実際に出た（`latestSession` / `listMessages` が Postgres に無い `rowid` を使っていた）。
+
+新方針は Prisma を入れて開発も本番も Postgres 一本。
+repo 関数は同期から `async` へ変わるため、シグネチャ契約はここで意図的に破った。
+維持したのは境界の方だけで、`@prisma/client` と生成型は repo 層の内側に閉じる（`types.ts` がその境界の実体）。
+旧方針の根拠にあった Cowork サンドボックス制約（FUSE・45 秒・GitHub 到達不可）は、実装を Claude Code のローカル環境で行うことになった時点で失効している。
+
+置き場と ORM の選定（Neon + Prisma 7）は hatchery の kb `postgres-hosting-selection-2026.md` が正典。
+toiito 側で決めたのはローカルの立て方だけで、Docker Compose を採った（本番 Neon と同じ本物の Postgres で方言差が出ず、CI でも同じ手が使えるため。`prisma dev` は Docker 不要だが本物の Postgres サーバではなく、CI で結局別手段が要る）。
+
+`tests/migrate.test.ts` は削除した。
+旧スキーマからの移送を `db.ts` の `migrate()` が担っていたのを検証するテストであり、その役割は Prisma Migrate の migration 履歴へ移ったため（テスト用 DB は毎回 `migrate deploy` で migration を積み直すので、履歴の健全性はそこで機械的に確かめられる）。

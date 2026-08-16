@@ -10,7 +10,7 @@ AI（Claude Code / Cowork セッション）が自律的に実装を進めるた
 |----|--------------|------|------|
 | L0 型 | 契約の整合（repo 関数シグネチャ等） | `tsc --noEmit` | 秒 |
 | L1 静的 | 明白な誤り・作法・書式 | `biome check` | 秒 |
-| L2 ユニット | lib 層のロジック（db / claude / personas） | Vitest | 秒 |
+| L2 ユニット | lib 層のロジック（db / claude / personas / anchors） | Vitest（+ ローカル Postgres） | 秒 |
 | L3 ビルド | ルーティング・Server Actions の結線 | `next build` | 十秒台 |
 | L4 E2E | 縦一本（投入→対話→メモ→逆引き）のブラウザ実挙動 | Playwright（P1） | 分 |
 | L5 官能 | 対話の質・「答えを与えない」制約の遵守 | 人間（将来 LLM-judge 補助） | — |
@@ -23,6 +23,34 @@ L1 は lint と書式を Biome 一本で見る（正典: fermentary/playbooks/to
 書式ずれは `pnpm format` で機械的に直す——**手で整形しない**。
 warning はゲートを止めない（exit 0）。
 止めたい違反は biome.json で error へ上げる。
+
+## ローカル Postgres
+
+L2 以上は実 Postgres へ繋ぐ。
+インメモリや SQLite で代替しない——DB の enum・外部キー・check 制約は、本物に当てないと表明した意味を持たない。
+
+```bash
+docker compose up -d
+```
+
+リポジトリルートの `compose.yaml` が Postgres 17（本番 Neon と同じメジャー）を `localhost:5433` に立てる。
+開発用 `toiito` とテスト用 `toiito_test` の二つを初回起動時に作る。
+止めるのは `docker compose down`、中身ごと作り直すのは `docker compose down -v`。
+
+接続は **二本引く**。
+`DATABASE_URL` はアプリ経路（本番 Neon ではプーラー経由）、`DIRECT_URL` は Prisma Migrate 用の直結——Migrate はプーラー越しには動かないので、ローカルの時点から分けておく。
+`web/.env.local` に書く。
+
+```
+DATABASE_URL=postgresql://toiito:toiito@localhost:5433/toiito
+DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
+```
+
+スキーマを変えたら `pnpm exec prisma migrate dev --name <変更の名前>`。
+check 制約は Prisma スキーマで表現できないので、生成された migration の SQL へ直接書き足す。
+
+テストは走るたびにテスト用 DB へ migration を積み直して（`migrate deploy`）全テーブルを空にする。
+`prisma migrate reset` は使わない——Prisma 7 はこれを破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求するので、無人で回る check のゲートには置けない。
 
 ## AI フェイクモード（ハーネスの要）
 
@@ -39,7 +67,7 @@ warning はゲートを止めない（exit 0）。
 1. **ロジックは lib 層へ寄せる**。
    UI コンポーネントや Server Actions にロジックを埋めない。
    actions.ts は「lib を呼ぶ配線」に留める
-2. **環境依存は env 変数一点で切り替える**（DB パス、AI フェイク、モデル名）。
+2. **環境依存は env 変数一点で切り替える**（DB 接続先、AI フェイク、モデル名）。
    テストは env を差し替えるだけで隔離できる
 3. **messages は immutable** 等の不変条件は、スキーマの check 制約とテストの両方で表明する（片方に頼らない）
 4. 新機能は「lib 関数 + テスト」→「UI 配線」の順で作る
@@ -48,6 +76,9 @@ warning はゲートを止めない（exit 0）。
 
 ハーネスが保証するのは一点だけ——**どこで走らせても `pnpm check` が同じ意味を持つ**こと。
 それ以外の非対称は仕様として引き受ける。
+
+check の前提は Postgres が起動していること（`docker compose up -d`）。
+「外部プロセス不要」は 2026-08-15 に捨てた前提で、代わりに開発・テスト・本番の方言が揃った。
 
 ## フェーズ
 

@@ -16,6 +16,7 @@ AI をスピードアップではなくスローダウン（自分の問いを�
 3. fermentary の `ATLAS.md`（terrarium 節）の自行を一瞥し、status が実態と乖離していたら直す（初回セッション実施・MVP 到達・方針転換などの節目を反映。台帳はこのプロジェクトの状態を fermentary へ伝える唯一の口）
 
 ## 開発ハーネス（正典: `HARNESS.md`）
+ローカル Postgres を立ててから作業する（ルートで `docker compose up -d`。接続は `web/.env.local` に `DATABASE_URL` と `DIRECT_URL` の二本）。
 変更 → `web/` で `pnpm check`（型→lint→テスト→ビルド）→ 緑ならコミット。
 パッケージマネージャは pnpm。
 版管理はランタイム共々 **mise**（ルートの `mise.toml` が正。corepack は使わない。toolchain 正典: fermentary/playbooks/toolchain.md）。
