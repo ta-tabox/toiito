@@ -36,6 +36,7 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 function db(): PrismaClient {
   if (!globalForPrisma.prisma) {
     const connectionString = process.env.DATABASE_URL;
+
     if (!connectionString) {
       throw new Error(
         "DATABASE_URL が未設定。ローカルは docker compose up -d のうえ .env.local に二本引く（HARNESS.md「ローカル Postgres」）",
