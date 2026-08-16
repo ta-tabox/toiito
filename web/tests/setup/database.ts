@@ -76,7 +76,9 @@ async function truncateAllTables(): Promise<void> {
        where schemaname = 'public' and tablename <> '_prisma_migrations'
     `;
 
-    if (tables.length === 0) return;
+    if (tables.length === 0) {
+      return;
+    }
 
     const list = tables.map((t) => `"${t.tablename}"`).join(", ");
     await prisma.$executeRawUnsafe(`truncate table ${list} cascade`);

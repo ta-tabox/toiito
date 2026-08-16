@@ -1,3 +1,11 @@
+/**
+ * コンポスターの入口画面。問いの投入フォームと、投入済みの問いの一覧。
+ *
+ * 表示に要る整形だけを持ち、状態遷移や絞り込みは lib 側へ置く。
+ * 状態のラベルは値域（question.ts）を全網羅する型で受けているので、
+ * 状態を増やすと最初にここが型で落ちる——ラベルの付け忘れを構文で止めるため。
+ */
+
 import Link from "next/link";
 import { createQuestionAction } from "@/app/actions";
 import { listQuestions, questionText } from "@/lib/db";
