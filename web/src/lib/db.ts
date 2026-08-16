@@ -134,6 +134,7 @@ export function createQuestion(body: string): {
   db()
     .prepare("insert into sessions (id, question_id) values (?, ?)")
     .run(sid, qid);
+
   return { question: getQuestion(qid)!, session: getSession(sid)! };
 }
 
@@ -161,6 +162,7 @@ export function setCurrentForm(
   db()
     .prepare("update questions set current_form = ? where id = ?")
     .run(v, questionId);
+
   return getQuestion(questionId);
 }
 
@@ -176,6 +178,7 @@ export function setQuestionStatus(
   db()
     .prepare("update questions set status = ? where id = ?")
     .run(status, questionId);
+
   return getQuestion(questionId);
 }
 
@@ -198,6 +201,7 @@ export function createSession(questionId: string): Session {
   db()
     .prepare("insert into sessions (id, question_id) values (?, ?)")
     .run(sid, questionId);
+
   return getSession(sid)!;
 }
 
@@ -220,6 +224,7 @@ export function addMessage(
       "insert into messages (id, session_id, speaker, body) values (?, ?, ?, ?)",
     )
     .run(id, sessionId, speaker, body);
+
   return db().prepare("select * from messages where id = ?").get(id) as Message;
 }
 
