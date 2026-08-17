@@ -26,6 +26,9 @@ pnpm dev
 変更したら `pnpm check`（型 → lint → テスト → ビルド）。
 **赤のままコミットしない**。
 
+リモート（Claude Code on the web）ではこの節の準備が要らない。
+セッション起動時のフックが Postgres も `.env.local` も依存も用意するので、`pnpm dev` から始められる（`HARNESS.md`「リモート」）。
+
 ## 環境変数
 
 `.env.local` に置く（git 管理外。雛形は `.env.example`）。

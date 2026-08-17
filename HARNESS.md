@@ -90,6 +90,19 @@ check 制約は Prisma スキーマで表現できないので、生成された
 check の前提は Postgres が起動していること（`docker compose up -d`）。
 「外部プロセス不要」は 2026-08-15 に捨てた前提で、代わりに開発・テスト・本番の方言が揃った。
 
+### リモート（Claude Code on the web）
+
+docker が無いので `docker compose up -d` は使えない。
+代わりに `.claude/hooks/session-start.sh` がセッション起動時に走り、イメージ同梱の Postgres を `compose.yaml` と同じ `localhost:5433` に立て、node と pnpm を `mise.toml` の版で置き、`web/.env.local` を書いて `pnpm install` と `migrate deploy` まで済ませる。
+接続文字列も `pnpm check` の意味もローカルと同じで、人手の準備は要らない。
+API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環境変数で `ANTHROPIC_API_KEY` が渡っていればフェイクは入れない）。
+
+引き受ける非対称は二つ。
+どちらも外向きの通信が許可制で、塞ぐ手段がこの環境に無い:
+
+- Postgres が 17 でなく 16（apt.postgresql.org へ出られない）
+- 版の管理が mise でなく直置き（mise.run へ出られない）。版の正は `mise.toml` のままで、フックはそれを読む側
+
 ## フェーズ
 
 - **P0（今回）**: Vitest + フェイクモード + lib 層テスト + `pnpm check`

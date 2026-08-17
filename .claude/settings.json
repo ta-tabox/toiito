@@ -1,4 +1,7 @@
 {
+  "attribution": {
+    "commit": "Co-authored-by: Claude <noreply@anthropic.com>"
+  },
   "permissions": {
     "allow": [
       "Bash(cd:*)",
@@ -18,6 +21,21 @@
       "Bash(mise ls:*)",
       "Bash(mise current:*)",
       "Bash(mise where:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh",
+            "timeout": 600,
+            "statusMessage": "リモート環境を準備中"
+          }
+        ]
+      }
     ]
   }
 }

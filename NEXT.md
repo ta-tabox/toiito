@@ -19,7 +19,12 @@
 - **[Claude 向け] `.env*` は権限設定で Claude が触れない**。
   接続先の追記は済んでいる（2026-08-16 に人間が実施）。
   以後 env に何か足す必要が出たら、自分で書かず人間へ渡すこと。
-  変数の一覧と意味は `web/README.md`
+  変数の一覧と意味は `web/README.md`。
+  リモート（Claude Code on the web）だけは例外で、`.env.local` はセッション起動フックが書く（手元には存在しないファイルなので、上書きの心配は無い）
+
+- **[Claude 向け] リモートは docker 無しで動く**。
+  `.claude/hooks/session-start.sh` が Postgres・toolchain・依存・migration を用意するので、`docker compose up -d` を探しに行かない。
+  非対称（Postgres 16・mise 直置き）は `HARNESS.md`「リモート」が正
 
 - **[Claude 向け] 手元の DB は空**（#11 で SQLite からの移送を取りやめた。2026-08-16 決定）。
   一覧が空でも壊れているわけではない。
