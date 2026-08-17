@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { newSessionAction, speakAction } from "@/app/actions";
+import { SpeakForm } from "@/components/speak-form";
 import {
   getQuestion,
   latestSession,
@@ -95,20 +96,7 @@ export default async function QuestionPage({
         )}
       </div>
 
-      <form action={speak} className="mt-8 flex flex-col gap-2">
-        <textarea
-          name="body"
-          rows={3}
-          placeholder="問いについて、いま思うことを"
-          className="w-full rounded border border-neutral-300 px-3 py-2"
-        />
-        <button
-          type="submit"
-          className="self-end rounded bg-neutral-800 px-4 py-2 text-white hover:bg-neutral-700"
-        >
-          発話する（二体が応答するまで少し待つ）
-        </button>
-      </form>
+      <SpeakForm action={speak} />
     </main>
   );
 }

@@ -1,0 +1,50 @@
+"use client";
+
+/**
+ * 発話フォーム。送信中であることを画面に見せるためだけの client component。
+ *
+ * 持つのは表示だけで、入力の検証も送信先の決定も引き受けない
+ * ——Server Action は bind 済みのものを呼び出し側から受け取る。
+ * 判断が入り込むと、単体テストから呼べない層にロジックが溜まる（HARNESS.md）。
+ */
+
+import { useFormStatus } from "react-dom";
+
+/** 問いへの発話を受け取るフォーム。 */
+export function SpeakForm({
+  action,
+}: {
+  action: (formData: FormData) => Promise<void>;
+}) {
+  return (
+    <form action={action} className="mt-8 flex flex-col gap-2">
+      <textarea
+        name="body"
+        rows={3}
+        placeholder="問いについて、いま思うことを"
+        className="w-full rounded border border-neutral-300 px-3 py-2"
+      />
+      <SubmitButton />
+    </form>
+  );
+}
+
+/**
+ * 送信ボタン。応答を待つ間は押せなくなり、待っていることを自ら名乗る。
+ *
+ * useFormStatus は親フォームの状態を読むので、form を描く側と同じ
+ * コンポーネントには置けない（常に pending: false が返る）。
+ */
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="self-end rounded bg-neutral-800 px-4 py-2 text-white hover:bg-neutral-700 disabled:bg-neutral-400 disabled:hover:bg-neutral-400"
+    >
+      {pending ? "二体が応答中…" : "発話する（二体が応答するまで少し待つ）"}
+    </button>
+  );
+}
