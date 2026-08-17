@@ -44,7 +44,27 @@ function SubmitButton() {
       disabled={pending}
       className="self-end rounded bg-neutral-800 px-4 py-2 text-white hover:bg-neutral-700 disabled:bg-neutral-400 disabled:hover:bg-neutral-400"
     >
-      {pending ? "二体が応答中…" : "発話する（二体が応答するまで少し待つ）"}
+      {pending ? <RespondingLabel /> : "発話する（二体が応答するまで少し待つ）"}
     </button>
+  );
+}
+
+/**
+ * 応答待ちのラベル。三つの点が順に明滅して、止まっているのではないことを示す。
+ *
+ * 点は読み上げから外す（文字の「…」と違い、鳴らしても意味にならない）。
+ * animation-delay を負にして位相をずらす——正の値だと最初の一巡が揃って光り、
+ * 波に見え始めるまで待たせることになる。
+ */
+function RespondingLabel() {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      二体が応答中
+      <span className="inline-flex gap-1" aria-hidden="true">
+        <span className="size-1.5 animate-pulse rounded-full bg-current" />
+        <span className="size-1.5 animate-pulse rounded-full bg-current [animation-delay:-0.66s]" />
+        <span className="size-1.5 animate-pulse rounded-full bg-current [animation-delay:-1.33s]" />
+      </span>
+    </span>
   );
 }
