@@ -46,12 +46,14 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   コンテナは署名を強制し、その鍵は `noreply@anthropic.com` に紐づいているので、committer を人間名義にすると GitHub が Unverified を出す。
   author（責任）と committer（実際にコミットを作った者）は別の欄なので、片方を実態へ合わせても他方は動かない。
   手元は署名の事情が無いので両方とも人間のまま。
-- **Co-authored-by は常に付ける**。
+- **Co-authored-by は、Claude がそのコミットの中身を書いたときに付ける**。
+  判断は差分を誰が書いたかの一点で、実行場所では変わらない。
   文言の正は `.claude/settings.json` の `attribution.commit`（既定のモデル名と `Claude-Session:` URL は落としてある）。
   author と co-author は別の問いに答える——前者は責任を誰が担ったか、後者は誰が手を動かしたか。
   だから co-author を足しても author は人間名義のまま動かない。
-  **git が既定メッセージを作る経路では自分で足す**（`git merge --no-edit`、`git commit --amend`）。
-  設定が差し替えるのは Claude への指示文であって、git の動作ではない。
+  - **衝突なしのマージには付けない**。git が中身を作っており、書いた者がいない
+  - **衝突を解いたマージ・`revert`・`cherry-pick` には付ける**。git が作るのはメッセージだけで、中身は書いた側から来る。
+    この経路は設定が効かない（差し替えるのは Claude への指示文であって、git の動作ではない）ので、自分で足す
 - **メッセージ prefix は変更の型**——`feat:` `fix:` `docs:` `refactor:` `chore:` `test:`。
   **スコープは添えない**（`feat(web):` としない。コードが `web/` 配下にあることはこのプロジェクトでは自明）。
   **プロジェクト名も名乗らない**（このリポジトリが既に答えている。外の器から書き込むときも同じ型を使う）。
