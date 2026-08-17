@@ -42,6 +42,10 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 - **author は人間名義**。Claude も `-c` を付けず素の `git commit` を使う（名義は local config に焼いてある。
   リモートはクローンのたびに config が空なので、セッション起動フックが同じ名義を焼き直す）。
   author が答えるのは責任を誰が担ったかの一点で、それはどこで書いても動かない。
+- **リモートでは committer だけ Claude 名義**（`GIT_COMMITTER_*` をセッション起動フックが渡す）。
+  コンテナは署名を強制し、その鍵は `noreply@anthropic.com` に紐づいているので、committer を人間名義にすると GitHub が Unverified を出す。
+  author（責任）と committer（実際にコミットを作った者）は別の欄なので、片方を実態へ合わせても他方は動かない。
+  手元は署名の事情が無いので両方とも人間のまま。
 - **Co-authored-by は常に付ける**。
   文言の正は `.claude/settings.json` の `attribution.commit`（既定のモデル名と `Claude-Session:` URL は落としてある）。
   author と co-author は別の問いに答える——前者は責任を誰が担ったか、後者は誰が手を動かしたか。

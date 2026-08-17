@@ -37,9 +37,22 @@ log() {
 
 # 手元では local config に焼いてある名義が、リモートではクローンのたびに空になる。
 # 焼き直さないと、コンテナの global config（Claude 名義）でコミットが積まれる。
+#
+# author と committer は分ける。
+# コンテナは署名を強制し、その鍵は noreply@anthropic.com に紐づいているので、
+# committer がそれ以外だと GitHub はコミットを Unverified として扱う。
+#
+# 焼くのは author の側。
+# env が渡らなかった回は committer も人間名義へ落ちるが、そのとき失うのは Verified の印だけで、
+# 責任の所在を答える author は人間のまま残る。逆に焼くと、落ちた回に author が Claude になる。
 configure_git_identity() {
   git -C "$REPO_ROOT" config --local user.name "ta-tabox"
   git -C "$REPO_ROOT" config --local user.email "tanktabox@gmail.com"
+
+  if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+    echo 'export GIT_COMMITTER_NAME="Claude"' >> "$CLAUDE_ENV_FILE"
+    echo 'export GIT_COMMITTER_EMAIL="noreply@anthropic.com"' >> "$CLAUDE_ENV_FILE"
+  fi
 }
 
 # nodejs.org のアーカイブ名に使う表記。uname の綴りとは違う。
