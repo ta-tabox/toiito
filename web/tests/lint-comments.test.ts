@@ -8,7 +8,8 @@ function rulesOf(source: string, fileName = "sample.ts"): string[] {
 describe("モジュール冒頭コメント", () => {
   it("/** */ の冒頭コメントと空行があれば通る", () => {
     const source = `/**
- * 問いのドメイン。値域と、そこから派生する判定を持つ。
+ * 問いのドメイン。
+ * 値域と、そこから派生する判定を持つ。
  */
 
 export const a = 1;
@@ -119,7 +120,7 @@ export function f() {
 
   it("型を伴わない @param は通す（型が語れない制約はここに書く）", () => {
     const source = `${header}/**
- * @param offset UTF-16 code unit 単位。コードポイントではない
+ * @param offset UTF-16 code unit 単位（コードポイントではない）
  */
 export function f(offset: number) {
   return offset;
@@ -239,7 +240,7 @@ export function f() {}
   });
 
   it("連続する行コメントも一つの塊として見る", () => {
-    const source = `${header}// 既定の対象から tests を外している。テストの主題は実装のファイル名が
+    const source = `${header}// テストの主題は、対応する実装のファイル名が
 // 既に名指している。
 export const a = 1;
 `;
@@ -264,6 +265,93 @@ export const a = 1;
  *
  * ここで文が終わらずに
  * 次の行へ続いている。
+ */
+
+export const a = 1;
+`;
+
+    expect(lintSource("sample.ts", source)[0].line).toBe(4);
+  });
+});
+
+describe("一文一行", () => {
+  const header = "/**\n * 冒頭。\n */\n\n";
+
+  it("1 行 1 文なら通る", () => {
+    const source = `${header}/**
+ * 問いのドメイン。
+ * 値域と、そこから派生する判定を持つ。
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("1 行に 2 文あれば useOneSentencePerLine", () => {
+    const source = `${header}/**
+ * 問いのドメイン。値域と、そこから派生する判定を持つ。
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useOneSentencePerLine"]);
+  });
+
+  it("括弧の内側の句点では割らせない", () => {
+    const source = `${header}/**
+ * body は原型（投入された生の問い。訂正以外では書き換えない）を持つ。
+ */
+export function f() {}
+`;
+
+    // 括弧が閉じるまで文は終わっていない。ここで割ると括弧が行を跨ぐ。
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("1 行完結の JSDoc も見る", () => {
+    const source = `${header}/** 文字列を絞り込む。DB へ渡す前の関門。 */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useOneSentencePerLine"]);
+  });
+
+  it("1 文だけの 1 行 JSDoc は通る", () => {
+    const source = `${header}/** 文字列を QuestionStatus へ絞り込む。 */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("行コメントも見る", () => {
+    const source = `${header}export function f() {
+  // 隣り合う切断点の間が 1 セグメント。端点そのものなので途中で切れない。
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useOneSentencePerLine"]);
+  });
+
+  it("英文の終止符では割らせない", () => {
+    const source = `${header}/**
+ * 入口は lintSource。CLI は node scripts/lint-comments.mts [path...]。
+ */
+export function f() {}
+`;
+
+    // 句点で 1 回割れば済む。ファイル名や拡張子のドットを文の終わりに数えると、
+    // パスを書いた行がすべて違反になる。
+    expect(rulesOf(source)).toEqual(["comments/useOneSentencePerLine"]);
+  });
+
+  it("2 文目のある行の行番号を報告する", () => {
+    const source = `/**
+ * 冒頭。
+ *
+ * ここで 1 文目。ここが 2 文目。
  */
 
 export const a = 1;

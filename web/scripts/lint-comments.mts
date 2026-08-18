@@ -63,6 +63,15 @@ const SENTENCE_END = /[。.]$/;
  */
 const LIST_MARKER = /^(?:[-*・→]|\d+[.)])/;
 
+/**
+ * 括弧の始まり。
+ * 閉じるまで文は終わっていないので、内側の句点は文の切れ目に数えない。
+ */
+const BRACKET_OPEN = "（(「【";
+
+/** 括弧の終わり。 */
+const BRACKET_CLOSE = "）)」】";
+
 export function lintSource(fileName: string, text: string): Violation[] {
   const source = ts.createSourceFile(
     fileName,
@@ -76,6 +85,7 @@ export function lintSource(fileName: string, text: string): Violation[] {
     ...checkModuleHeader(source, text, comments),
     ...checkJsDocTypeAnnotations(source, comments),
     ...checkSentenceEndLineBreaks(source, comments),
+    ...checkOneSentencePerLine(source, comments),
   ];
 }
 
@@ -202,6 +212,64 @@ function checkSentenceEndLineBreaks(
   }
 
   return violations;
+}
+
+/**
+ * 1 行に 2 文以上置いていないかを見る。
+ *
+ * 一文一行なら、一文直したときの diff が 1 行で済み、レビューで「この文」を指せる。
+ * 桁で折らない理由がそれなので、文の途中で折らないだけでは足りない。
+ */
+function checkOneSentencePerLine(
+  source: ts.SourceFile,
+  comments: CommentRange[],
+): Violation[] {
+  const violations: Violation[] = [];
+
+  for (const block of toCommentBlocks(source, comments)) {
+    for (const line of block) {
+      if (!hasSentenceBreakInside(line.text)) {
+        continue;
+      }
+
+      violations.push({
+        line: line.line,
+        rule: "comments/useOneSentencePerLine",
+        message:
+          "1 行に 2 文以上ある。句点で割る。一文一行なら、一文直したときの diff が 1 行で済み、レビューで「この文」を指せる",
+      });
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * 行末より手前に文の切れ目があるか。
+ * 括弧の内側の句点は数えない。
+ */
+function hasSentenceBreakInside(text: string): boolean {
+  let depth = 0;
+
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index];
+
+    if (BRACKET_OPEN.includes(char)) {
+      depth++;
+      continue;
+    }
+
+    if (BRACKET_CLOSE.includes(char)) {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+
+    if (char === "。" && depth === 0 && index < text.length - 1) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
