@@ -46,7 +46,8 @@ toolchain 正典（pnpm / Biome / mise）は `fermentary/playbooks/toolchain.md`
   宣言の直前に置くと JSDoc の代用に見えて、同じ役目の説明が二つの書式で散る
 - 型で表現済みの `@param {string} name` を重複させない。型が語れない制約だけ書く
 - Prettier / Biome はコメントの内部を折り返さない（`proseWrap` が効くのは
-  Markdown のみ）。改行位置は整形任せにできず、書き手が句点で決める
+  Markdown のみ）。
+  改行位置は整形任せにできず、書き手が句点で決める（1 行 1 文）
 
 ## Prisma スキーマ（`.prisma`）のコメント
 
@@ -67,7 +68,8 @@ TS と同じ「宣言に付く説明は doc コメント」を守るが、**綴�
 |---|---|
 | モジュール冒頭コメントの有無・`/** */`・直後の空行 | `web/scripts/lint-comments.mts` |
 | `@param {string}` のような型注釈の重複 | 同上 |
-| コメントの改行が句点に乗っているか（箇条・例示の行と行末コメントは除く） | 同上 |
+| コメントの改行が句点に乗っているか（箇条・例示の行は除く） | 同上 |
+| コメント 1 行に 2 文以上置いていないか（括弧の内側の句点は除く） | 同上 |
 | import は `@` 起点（`.css` と、上の例外の 3 箇所は除外） | biome `style/noRestrictedImports` |
 | 1 行 if を分ける | biome `style/useBlockStatements` |
 | 三項の多重ネスト・複数代入・多重宣言 | biome `noNestedTernary` / `noMultiAssign` / `useSingleVarDeclarator` |
