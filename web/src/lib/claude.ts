@@ -1,8 +1,7 @@
 /**
  * Claude API 呼び出し層（サーバー側のみ）
  * 三者対話の transcript を一本のユーザーメッセージに畳んで渡す。
- * ai_b の呼び出し時には直前の ai_a の発話も transcript に含まれている前提
- * （二体は並列でなく逐次——ai_b は ai_a への応答であることに意味がある）。
+ * ai_b の呼び出し時には直前の ai_a の発話も transcript に含まれている前提（二体は並列でなく逐次——ai_b は ai_a への応答であることに意味がある）。
  */
 
 import type { Speaker } from "@/lib/types";

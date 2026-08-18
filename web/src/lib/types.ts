@@ -12,8 +12,7 @@
 import type { QuestionStatus } from "@/lib/question";
 
 /**
- * body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、
- * current_form は対話の中で言い直された焦点。
+ * body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、current_form は対話の中で言い直された焦点。
  * 二つに分けている理由は ARCHITECTURE.md「原型と現在の形」。
  */
 export type Question = {
