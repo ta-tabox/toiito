@@ -1,5 +1,6 @@
 /**
- * コンポスターの入口画面。問いの投入フォームと、投入済みの問いの一覧。
+ * コンポスターの入口画面。
+ * 問いの投入フォームと、投入済みの問いの一覧。
  *
  * 表示に要る整形だけを持ち、状態遷移や絞り込みは lib 側へ置く。
  * 状態のラベルは値域（question.ts）を全網羅する型で受けている。
@@ -24,7 +25,10 @@ const STATUS_LABEL: Record<QuestionStatus, string> = {
   discarded: "棄却",
 };
 
-/** コンポスターの入口。投入フォームと問いの一覧。 */
+/**
+ * コンポスターの入口。
+ * 投入フォームと問いの一覧。
+ */
 export default async function Home() {
   const questions = await listQuestions();
 

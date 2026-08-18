@@ -1,5 +1,6 @@
 /**
- * 一つの問いの対話画面。三者（人間・具体・抽象）の発話を時系列で並べ、次の一手を受け取る。
+ * 一つの問いの対話画面。
+ * 三者（人間・具体・抽象）の発話を時系列で並べ、次の一手を受け取る。
  *
  * 表示するのは最新セッションだけで、過去セッションの閲覧はここが引き受けない。
  * 発話の生成と永続化は Server Action と lib の領分。
@@ -28,7 +29,10 @@ const SPEAKER_STYLE: Record<Speaker, { label: string; cls: string }> = {
   ai_b: { label: PERSONA_LABEL.ai_b, cls: "border-sky-200 bg-sky-50" },
 };
 
-/** 一つの問いの対話画面。表示するのは最新セッションのみ。 */
+/**
+ * 一つの問いの対話画面。
+ * 表示するのは最新セッションのみ。
+ */
 export default async function QuestionPage({
   params,
 }: {

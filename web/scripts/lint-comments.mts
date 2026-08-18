@@ -13,7 +13,8 @@
  * Biome も vcs.useIgnoreFile で同じ正を見る。
  * 独自の除外リストを持つと、生成物（src/generated）の扱いが Biome と食い違う。
  *
- * 入口は lintSource。CLI は node scripts/lint-comments.mts [path...]。
+ * 入口は lintSource。
+ * CLI は node scripts/lint-comments.mts [path...]。
  */
 
 import { spawnSync } from "node:child_process";
@@ -46,13 +47,20 @@ const DEFAULT_TARGETS = ["src", "scripts"];
 
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
 
-// TS の型と重複する JSDoc の型注釈。@param {string} name の {string} を指す。
+// TS の型と重複する JSDoc の型注釈。
+// @param {string} name の {string} を指す。
 const JSDOC_TYPE_ANNOTATION = /@(param|returns?)\s*\{/g;
 
-/** 文がそこで閉じている印。日本語の句点と、英文・コード片の終止符。 */
+/**
+ * 文がそこで閉じている印。
+ * 日本語の句点と、英文・コード片の終止符。
+ */
 const SENTENCE_END = /[。.]$/;
 
-/** 箇条書きの行頭。散文の続きではないので、手前の行から文が流れ込んでいない。 */
+/**
+ * 箇条書きの行頭。
+ * 散文の続きではないので、手前の行から文が流れ込んでいない。
+ */
 const LIST_MARKER = /^(?:[-*・→]|\d+[.)])/;
 
 export function lintSource(fileName: string, text: string): Violation[] {
@@ -350,7 +358,8 @@ function excludeIgnored(files: string[]): string[] {
     encoding: "utf8",
   });
 
-  // 0 = 除外対象あり、1 = 無し。それ以外は git 側の失敗。
+  // 0 = 除外対象あり、1 = 無し。
+  // それ以外は git 側の失敗。
   if (found.status !== 0 && found.status !== 1) {
     return files;
   }

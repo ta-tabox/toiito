@@ -1,12 +1,15 @@
 /**
  * アプリ全体で共有するドメイン型。
- * 永続化の実装（Prisma）にも UI にも依存しない。意味の正は ARCHITECTURE.md「データモデル」。
+ * 永続化の実装（Prisma）にも UI にも依存しない。
+ * 意味の正は ARCHITECTURE.md「データモデル」。
  *
- * db.ts と UI の境界はここ一枚。Prisma の生成型はこの向こうへ出さない。
+ * db.ts と UI の境界はここ一枚。
+ * Prisma の生成型はこの向こうへ出さない。
  * 時刻は Date（Prisma の DateTime も JS の Date なので詰め替えが要らない）。
  * 表示用の文字列化は format.ts の責務で、この型は持たない。
  *
- * 実行時の値（値域の定数など）は置かない。それぞれのドメインのモジュールが持つ。
+ * 実行時の値（値域の定数など）は置かない。
+ * それぞれのドメインのモジュールが持つ。
  */
 
 import type { QuestionStatus } from "@/lib/question";
@@ -35,7 +38,10 @@ export type Message = {
   created_at: Date;
 };
 
-/** キーワードメモ。メッセージ本文の一部（anchor_start〜anchor_end）に付く。 */
+/**
+ * キーワードメモ。
+ * メッセージ本文の一部（anchor_start〜anchor_end）に付く。
+ */
 export type Memo = {
   id: string;
   message_id: string;

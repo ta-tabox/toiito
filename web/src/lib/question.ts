@@ -1,10 +1,12 @@
 /**
- * 問いのドメイン。値域と、値域から派生する判定をここに置く。
+ * 問いのドメイン。
+ * 値域と、値域から派生する判定をここに置く。
  * 型だけの器（types.ts）に実行時の値を混ぜないため、この一件は独立したモジュールにする。
  */
 
 /**
- * 問いの状態。型・DB の enum・UI ラベルはここから派生する。
+ * 問いの状態。
+ * 型・DB の enum・UI ラベルはここから派生する。
  * 各値の意味と 6 値である理由は ARCHITECTURE.md「問いの状態機械」。
  */
 export const QUESTION_STATUSES = [
@@ -18,7 +20,10 @@ export const QUESTION_STATUSES = [
 
 export type QuestionStatus = (typeof QUESTION_STATUSES)[number];
 
-/** 外から来た文字列を QuestionStatus へ絞り込む。DB へ渡す前の関門。 */
+/**
+ * 外から来た文字列を QuestionStatus へ絞り込む。
+ * DB へ渡す前の関門。
+ */
 export function isQuestionStatus(value: string): value is QuestionStatus {
   return (QUESTION_STATUSES as readonly string[]).includes(value);
 }
