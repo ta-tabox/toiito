@@ -29,6 +29,12 @@ type CommentRange = {
   text: string;
 };
 
+/** コメントから綴りの装飾を剥がした 1 行と、それが元のファイルで居た行番号。 */
+type CommentLine = {
+  line: number;
+  text: string;
+};
+
 // 既定の対象から tests を外している。テストの主題は対応する実装のファイル名が既に名指しており、冒頭コメントを要求すると規約が禁じている「ファイル名の言い換え」を量産することになる。
 const DEFAULT_TARGETS = ["src", "scripts"];
 
@@ -36,6 +42,12 @@ const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
 
 // TS の型と重複する JSDoc の型注釈。@param {string} name の {string} を指す。
 const JSDOC_TYPE_ANNOTATION = /@(param|returns?)\s*\{/g;
+
+/** 文がそこで閉じている印。日本語の句点と、英文・コード片の終止符。 */
+const SENTENCE_END = /[。.]$/;
+
+/** 箇条書きの行頭。散文の続きではないので、手前の行から文が流れ込んでいない。 */
+const LIST_MARKER = /^(?:[-*・→]|\d+[.)])/;
 
 export function lintSource(fileName: string, text: string): Violation[] {
   const source = ts.createSourceFile(
@@ -49,6 +61,7 @@ export function lintSource(fileName: string, text: string): Violation[] {
   return [
     ...checkModuleHeader(source, text, comments),
     ...checkJsDocTypeAnnotations(source, comments),
+    ...checkSentenceEndLineBreaks(source, text, comments),
   ];
 }
 
@@ -135,6 +148,111 @@ function checkJsDocTypeAnnotations(
   }
 
   return violations;
+}
+
+/**
+ * 改行が文の途中に入っていないかを見る。
+ *
+ * 句点で閉じていない行の次に本文が続いていたら、そこは文の切れ目ではなく桁で折った跡。
+ * 読点で折った場合も捕まえる——日本語としては意味の切れ目だが、桁で折った跡と機械には見分けが付かない。
+ */
+function checkSentenceEndLineBreaks(
+  source: ts.SourceFile,
+  text: string,
+  comments: CommentRange[],
+): Violation[] {
+  const violations: Violation[] = [];
+
+  for (const block of toCommentBlocks(source, text, comments)) {
+    for (const [index, current] of block.slice(0, -1).entries()) {
+      const next = block[index + 1];
+
+      if (current.text === "" || next.text === "") {
+        continue;
+      }
+
+      if (SENTENCE_END.test(current.text) || LIST_MARKER.test(next.text)) {
+        continue;
+      }
+
+      violations.push({
+        line: current.line,
+        rule: "comments/useSentenceEndLineBreak",
+        message:
+          "文の途中で改行している。次の行と繋ぐか、二文に割る——桁で折ると一語足しただけで段落全体の diff になり、日本語は語間に空白が無いので改行が無かった境界を新しく挿入する",
+      });
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * コメントを、一つの文が跨りうる範囲＝塊へまとめる。
+ *
+ * ブロックコメント 1 つが 1 塊で、連続する行コメントの並びも 1 塊。
+ * 行末コメントは手前のコードに付く独立した注釈なので塊に入れない——入れると、値ごとに注釈を添えた配列がまるごと違反になる。
+ */
+function toCommentBlocks(
+  source: ts.SourceFile,
+  text: string,
+  comments: CommentRange[],
+): CommentLine[][] {
+  const blocks: CommentLine[][] = [];
+  let run: CommentLine[] = [];
+  let runEnd = 0;
+
+  const flushRun = (): void => {
+    if (run.length > 0) {
+      blocks.push(run);
+      run = [];
+    }
+  };
+
+  for (const comment of comments) {
+    if (!startsLine(text, comment.start)) {
+      continue;
+    }
+
+    const first = lineOf(source, comment.start);
+
+    if (!comment.text.startsWith("//")) {
+      flushRun();
+      runEnd = 0;
+      blocks.push(
+        comment.text.split("\n").map((line, offset) => ({
+          line: first + offset,
+          text: stripDecoration(line),
+        })),
+      );
+      continue;
+    }
+
+    if (first !== runEnd + 1) {
+      flushRun();
+    }
+
+    run.push({ line: first, text: stripDecoration(comment.text) });
+    runEnd = first;
+  }
+
+  flushRun();
+
+  return blocks;
+}
+
+/** コメントの綴り（`//`・`/*`・行頭の `*`・閉じ）を落として本文だけにする。 */
+function stripDecoration(line: string): string {
+  return line
+    .replace(/^\s*(?:\/\*\*?|\/\/)/, "")
+    .replace(/^\s*\*(?!\/)/, "")
+    .replace(/\*\/\s*$/, "")
+    .trim();
+}
+
+/** その位置より手前が、その行では空白だけか。コードが在れば行末コメント。 */
+function startsLine(text: string, start: number): boolean {
+  return text.slice(text.lastIndexOf("\n", start - 1) + 1, start).trim() === "";
 }
 
 function collectLeadingComments(
