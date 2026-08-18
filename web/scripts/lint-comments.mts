@@ -176,8 +176,7 @@ function firstNonDirectiveStatement(
 /**
  * その文が doc コメントを持ちうるか。
  *
- * import / export 宣言は説明を持たないので、直前のコメントは行き場が無く
- * モジュールへの注釈にしかなりえない。関数・型・定数はその逆。
+ * import / export 宣言は説明を持たないので、直前のコメントは行き場が無くモジュールへの注釈にしかなりえない。関数・型・定数はその逆。
  */
 function takesDocComment(statement: ts.Statement): boolean {
   return (
@@ -218,8 +217,7 @@ export function collectSourceFiles(target: string): string[] {
 /**
  * .gitignore で除外されているファイルを落とす。
  *
- * git が引けない環境では素通しする。検査器が黙って全件を見送るより、
- * 生成物込みで騒ぐ方が気付ける。
+ * git が引けない環境では素通しする。検査器が黙って全件を見送るより、生成物込みで騒ぐ方が気付ける。
  */
 function excludeIgnored(files: string[]): string[] {
   if (files.length === 0) {
