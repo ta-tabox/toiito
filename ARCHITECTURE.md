@@ -6,19 +6,25 @@ VISION の設計原理が上位。
 
 ## 技術スタック（確定事項）
 
-- **Next.js (App Router) + TypeScript** — UI と API を一体で持つ。`web/` 配下
+- **Next.js (App Router) + TypeScript** — UI と API を一体で持つ。
+  `web/` 配下
 - **Postgres + Prisma** — 永続化。
   開発も本番も同じ方言に揃える。
   ローカルは `compose.yaml` の Postgres、本番は Neon（手順は `HARNESS.md`）
-- **Claude API** — 二体 AI の対話生成。Server Actions（サーバー側）からのみ叩く
+- **Claude API** — 二体 AI の対話生成。
+  Server Actions（サーバー側）からのみ叩く
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
 
 永続化について今も効く禁止則（経緯は `PLAN-rationale.md`）。
 
-- **方言を二重に持たない**。スキーマの正は `prisma/schema.prisma` 一箇所で、DDL を別ファイルに書き写さない
-- **repo 関数はすべて `async`**。同期前提の呼び出しを足さない
-- **Prisma を repo 層の外へ出さない**。`@prisma/client` と生成型に触れてよいのは `db.ts` だけで、UI と Server Actions が受け取るのは `types.ts` のドメイン型に限る
-- **起動に外部プロセスが要る**ことは引き受けた前提。ローカル完結性は捨てている
+- **方言を二重に持たない**。
+  スキーマの正は `prisma/schema.prisma` 一箇所で、DDL を別ファイルに書き写さない
+- **repo 関数はすべて `async`**。
+  同期前提の呼び出しを足さない
+- **Prisma を repo 層の外へ出さない**。
+  `@prisma/client` と生成型に触れてよいのは `db.ts` だけで、UI と Server Actions が受け取るのは `types.ts` のドメイン型に限る
+- **起動に外部プロセスが要る**ことは引き受けた前提。
+  ローカル完結性は捨てている
 
 ## システム全体像
 
