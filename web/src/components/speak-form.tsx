@@ -10,7 +10,7 @@
 
 import { useFormStatus } from "react-dom";
 
-/** 問いへの発話を受け取るフォーム。 */
+/** 対話へ発話を送るフォーム。 */
 export function SpeakForm({
   action,
 }: {
