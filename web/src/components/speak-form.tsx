@@ -5,7 +5,6 @@
  *
  * 持つのは表示だけで、入力の検証も送信先の決定も引き受けない
  * ——Server Action は bind 済みのものを呼び出し側から受け取る。
- * 判断が入り込むと、単体テストから呼べない層にロジックが溜まる（HARNESS.md）。
  */
 
 import { useFormStatus } from "react-dom";
