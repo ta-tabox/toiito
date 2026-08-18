@@ -61,7 +61,7 @@ export function lintSource(fileName: string, text: string): Violation[] {
   return [
     ...checkModuleHeader(source, text, comments),
     ...checkJsDocTypeAnnotations(source, comments),
-    ...checkSentenceEndLineBreaks(source, text, comments),
+    ...checkSentenceEndLineBreaks(source, comments),
   ];
 }
 
@@ -158,12 +158,11 @@ function checkJsDocTypeAnnotations(
  */
 function checkSentenceEndLineBreaks(
   source: ts.SourceFile,
-  text: string,
   comments: CommentRange[],
 ): Violation[] {
   const violations: Violation[] = [];
 
-  for (const block of toCommentBlocks(source, text, comments)) {
+  for (const block of toCommentBlocks(source, comments)) {
     for (const [index, current] of block.slice(0, -1).entries()) {
       const next = block[index + 1];
 
@@ -191,11 +190,11 @@ function checkSentenceEndLineBreaks(
  * コメントを、一つの文が跨りうる範囲＝塊へまとめる。
  *
  * ブロックコメント 1 つが 1 塊で、連続する行コメントの並びも 1 塊。
- * 行末コメントは手前のコードに付く独立した注釈なので塊に入れない——入れると、値ごとに注釈を添えた配列がまるごと違反になる。
+ * 行末コメントは収集の時点で落ちている——getLeadingCommentRanges は直前に改行が無いコメントを leading と見なさない。
+ * 拾うように変えると、値ごとに注釈を添えた配列がまるごと違反になる。
  */
 function toCommentBlocks(
   source: ts.SourceFile,
-  text: string,
   comments: CommentRange[],
 ): CommentLine[][] {
   const blocks: CommentLine[][] = [];
@@ -210,10 +209,6 @@ function toCommentBlocks(
   };
 
   for (const comment of comments) {
-    if (!startsLine(text, comment.start)) {
-      continue;
-    }
-
     const first = lineOf(source, comment.start);
 
     if (!comment.text.startsWith("//")) {
@@ -248,11 +243,6 @@ function stripDecoration(line: string): string {
     .replace(/^\s*\*(?!\/)/, "")
     .replace(/\*\/\s*$/, "")
     .trim();
-}
-
-/** その位置より手前が、その行では空白だけか。コードが在れば行末コメント。 */
-function startsLine(text: string, start: number): boolean {
-  return text.slice(text.lastIndexOf("\n", start - 1) + 1, start).trim() === "";
 }
 
 function collectLeadingComments(
