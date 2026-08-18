@@ -3,7 +3,8 @@
 /**
  * 発話フォーム。送信中であることを画面に見せるためだけの client component。
  *
- * 持つのは表示だけで、入力の検証も送信先の決定も引き受けない——Server Action は bind 済みのものを呼び出し側から受け取る。
+ * 持つのは表示だけで、入力の検証も送信先の決定も引き受けない。
+ * Server Action は bind 済みのものを呼び出し側から受け取る。
  */
 
 import { useFormStatus } from "react-dom";
@@ -52,7 +53,8 @@ function SubmitButton() {
  *
  * 三つの点が順に明滅して、止まっているのではないことを示す。
  * 点は読み上げから外す（文字の「…」と違い、鳴らしても意味にならない）。
- * animation-delay を負にして位相をずらす——正の値だと最初の一巡が揃って光り、波に見え始めるまで待たせることになる。
+ * animation-delay を負にして位相をずらす。
+ * 正の値だと最初の一巡が揃って光り、波に見え始めるまで待たせることになる。
  */
 function RespondingLabel() {
   return (

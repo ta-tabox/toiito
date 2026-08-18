@@ -32,7 +32,8 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 /**
  * 遅延生成した接続を返す。
- * 接続先が無ければここで落とす——Prisma に渡してから落とすと、原因が env であることが読めない。
+ * 接続先が無ければここで落とす。
+ * Prisma に渡してから落とすと、原因が env であることが読めない。
  */
 function db(): PrismaClient {
   if (!globalForPrisma.prisma) {
@@ -116,7 +117,8 @@ export async function getQuestion(id: string): Promise<Question | undefined> {
  * 問いの現在の形を更新する。原型（body）は触らない。
  *
  * 空文字・空白のみは「現在の形なし」として扱い、表示を原型へ戻す。
- * 問いが無ければ例外を投げる——存在しない問いへの言い直しは呼び出し側の誤りなので、黙って握らない。
+ * 問いが無ければ例外を投げる。
+ * 存在しない問いへの言い直しは呼び出し側の誤りなので、黙って握らない。
  */
 export async function setCurrentForm(
   questionId: string,

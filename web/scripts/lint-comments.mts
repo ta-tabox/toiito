@@ -1,14 +1,16 @@
 /**
  * コメント規約のうち、Biome が構造的に検出できない分だけを見る検査器（L1）。
  *
- * Biome のリンタはコメントを走査対象に持たない——built-in ルールにも GritQL プラグインにも、コメント本体へ届く経路が無い。
+ * Biome のリンタはコメントを走査対象に持たない。
+ * built-in ルールにも GritQL プラグインにも、コメント本体へ届く経路が無い。
  * ここが引き受けるのはその穴だけで、コメント以外の作法は biome.json 側に置く。
  * 同じ規約を二箇所に書かない。
  *
  * 判定は TypeScript の API へ渡す。
  * 行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約の検査器自身が嘘をつく。
  *
- * 対象から外すものは .gitignore が正——Biome も vcs.useIgnoreFile で同じ正を見る。
+ * 対象から外すものは .gitignore が正。
+ * Biome も vcs.useIgnoreFile で同じ正を見る。
  * 独自の除外リストを持つと、生成物（src/generated）の扱いが Biome と食い違う。
  *
  * 入口は lintSource。CLI は node scripts/lint-comments.mts [path...]。
@@ -96,7 +98,8 @@ function checkModuleHeader(
     return [missing];
   }
 
-  // 空行を挟まず宣言に接したコメントは、その宣言の JSDoc であってモジュールへの注釈ではない——TS もエディタもそう読む。
+  // 空行を挟まず宣言に接したコメントは、その宣言の JSDoc であってモジュールへの注釈ではない。
+  // TS もエディタもそう読む。
   // ここを冒頭コメントとして数えると、「空行を置け」と促した結果、宣言から JSDoc を剥がすことになる。
   if (
     header === leading[leading.length - 1] &&
@@ -160,7 +163,8 @@ function checkJsDocTypeAnnotations(
  * 改行が文の途中に入っていないかを見る。
  *
  * 句点で閉じていない行の次に本文が続いていたら、そこは文の切れ目ではなく桁で折った跡。
- * 読点で折った場合も捕まえる——日本語としては意味の切れ目だが、桁で折った跡と機械には見分けが付かない。
+ * 読点で折った場合も捕まえる。
+ * 日本語としては意味の切れ目だが、桁で折った跡と機械には見分けが付かない。
  */
 function checkSentenceEndLineBreaks(
   source: ts.SourceFile,
@@ -184,7 +188,7 @@ function checkSentenceEndLineBreaks(
         line: current.line,
         rule: "comments/useSentenceEndLineBreak",
         message:
-          "文の途中で改行している。次の行と繋ぐか、二文に割る——桁で折ると一語足しただけで段落全体の diff になり、日本語は語間に空白が無いので改行が無かった境界を新しく挿入する",
+          "文の途中で改行している。次の行と繋ぐか、二文に割る。桁で折ると一語足しただけで段落全体の diff になり、日本語は語間に空白が無いので改行が無かった境界を新しく挿入する",
       });
     }
   }
@@ -196,7 +200,8 @@ function checkSentenceEndLineBreaks(
  * コメントを、一つの文が跨りうる範囲＝塊へまとめる。
  *
  * ブロックコメント 1 つが 1 塊で、連続する行コメントの並びも 1 塊。
- * 行末コメントは収集の時点で落ちている——getLeadingCommentRanges は直前に改行が無いコメントを leading と見なさない。
+ * 行末コメントは収集の時点で落ちている。
+ * getLeadingCommentRanges は直前に改行が無いコメントを leading と見なさない。
  * 拾うように変えると、値ごとに注釈を添えた配列がまるごと違反になる。
  */
 function toCommentBlocks(
