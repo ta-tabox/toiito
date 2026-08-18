@@ -1,9 +1,12 @@
 /**
  * コメント規約のうち、Biome が構造的に検出できない分だけを見る検査器（L1）。
  *
- * Biome のリンタはコメントを走査対象に持たない——built-in ルールにも GritQL プラグインにも、コメント本体へ届く経路が無い。ここが引き受けるのはその穴だけで、コメント以外の作法は biome.json 側に置く。同じ規約を二箇所に書かない。
+ * Biome のリンタはコメントを走査対象に持たない——built-in ルールにも GritQL プラグインにも、コメント本体へ届く経路が無い。
+ * ここが引き受けるのはその穴だけで、コメント以外の作法は biome.json 側に置く。
+ * 同じ規約を二箇所に書かない。
  *
- * 判定は TypeScript の API へ渡す。行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約の検査器自身が嘘をつく。
+ * 判定は TypeScript の API へ渡す。
+ * 行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約の検査器自身が嘘をつく。
  *
  * 対象から外すものは .gitignore が正——Biome も vcs.useIgnoreFile で同じ正を見る。
  * 独自の除外リストを持つと、生成物（src/generated）の扱いが Biome と食い違う。
@@ -35,7 +38,8 @@ type CommentLine = {
   text: string;
 };
 
-// 既定の対象から tests を外している。テストの主題は対応する実装のファイル名が既に名指しており、冒頭コメントを要求すると規約が禁じている「ファイル名の言い換え」を量産することになる。
+// 既定の対象から tests を外している。
+// テストの主題は対応する実装のファイル名が既に名指しており、冒頭コメントを要求すると規約が禁じている「ファイル名の言い換え」を量産することになる。
 const DEFAULT_TARGETS = ["src", "scripts"];
 
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
@@ -68,7 +72,8 @@ export function lintSource(fileName: string, text: string): Violation[] {
 /**
  * 冒頭コメントを、それが飾る本体の直前まで遡って探す。
  *
- * "use server" のようなディレクティブは本体に数えない。ディレクティブの前後どちらに冒頭コメントを置いても構文上は正しく、位置まで縛る理由が無い。
+ * "use server" のようなディレクティブは本体に数えない。
+ * ディレクティブの前後どちらに冒頭コメントを置いても構文上は正しく、位置まで縛る理由が無い。
  */
 function checkModuleHeader(
   source: ts.SourceFile,
@@ -91,7 +96,8 @@ function checkModuleHeader(
     return [missing];
   }
 
-  // 空行を挟まず宣言に接したコメントは、その宣言の JSDoc であってモジュールへの注釈ではない——TS もエディタもそう読む。ここを冒頭コメントとして数えると、「空行を置け」と促した結果、宣言から JSDoc を剥がすことになる。
+  // 空行を挟まず宣言に接したコメントは、その宣言の JSDoc であってモジュールへの注釈ではない——TS もエディタもそう読む。
+  // ここを冒頭コメントとして数えると、「空行を置け」と促した結果、宣言から JSDoc を剥がすことになる。
   if (
     header === leading[leading.length - 1] &&
     !isFollowedByBlankLine(text, header.end) &&
@@ -284,7 +290,8 @@ function firstNonDirectiveStatement(
 /**
  * その文が doc コメントを持ちうるか。
  *
- * import / export 宣言は説明を持たないので、直前のコメントは行き場が無くモジュールへの注釈にしかなりえない。関数・型・定数はその逆。
+ * import / export 宣言は説明を持たないので、直前のコメントは行き場が無くモジュールへの注釈にしかなりえない。
+ * 関数・型・定数はその逆。
  */
 function takesDocComment(statement: ts.Statement): boolean {
   return (
@@ -325,7 +332,8 @@ export function collectSourceFiles(target: string): string[] {
 /**
  * .gitignore で除外されているファイルを落とす。
  *
- * git が引けない環境では素通しする。検査器が黙って全件を見送るより、生成物込みで騒ぐ方が気付ける。
+ * git が引けない環境では素通しする。
+ * 検査器が黙って全件を見送るより、生成物込みで騒ぐ方が気付ける。
  */
 function excludeIgnored(files: string[]): string[] {
   if (files.length === 0) {
