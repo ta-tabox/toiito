@@ -37,6 +37,13 @@ export default async function Home() {
         </span>
       </h1>
 
+      <Link
+        href="/memos"
+        className="mt-2 inline-block text-sm text-neutral-500 hover:underline"
+      >
+        メモ一覧 →
+      </Link>
+
       <form action={createQuestionAction} className="mt-8 flex gap-2">
         <input
           name="body"

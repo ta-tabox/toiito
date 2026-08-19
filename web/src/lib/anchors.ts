@@ -90,22 +90,37 @@ export function clampToGraphemeBoundary(body: string, index: number): number {
   return index;
 }
 
+/** 引用を、アンカーの手前・アンカー本体・その後ろへ切り分けた形。 */
+export type ExcerptParts = {
+  readonly before: string;
+  readonly anchor: string;
+  readonly after: string;
+};
+
 /**
- * メモの引用を作る。アンカー区間（メモの anchor_start / anchor_end）の前後へ margin 文字ずつ
- * 広げた範囲を返し、本文の端と書記素境界で止める。逆引き一覧（#5）が使う。
+ * メモの引用を、アンカーの手前・本体・後ろの三つに切って作る。
+ *
+ * アンカー区間（メモの anchor_start / anchor_end）の前後へ margin 文字ずつ広げ、
+ * 本文の端と書記素境界で止める。
+ * 連結すれば引用の全文になる——三つに割るのは、UI がアンカー本体だけを描き分けるため。
+ * 一本の文字列で返すと、UI 側が同じオフセット演算をやり直すことになる。
  * #11 で Memo をクラス化したら、この関数はそのメソッドへ移す。
  */
-export function excerpt(
+export function excerptParts(
   body: string,
   anchorStart: number,
   anchorEnd: number,
   margin: number,
-): string {
+): ExcerptParts {
   const from = clampToGraphemeBoundary(body, Math.max(0, anchorStart - margin));
   const to = clampToGraphemeBoundary(
     body,
     Math.min(body.length, anchorEnd + margin),
   );
 
-  return body.slice(from, to);
+  return {
+    before: body.slice(from, anchorStart),
+    anchor: body.slice(anchorStart, anchorEnd),
+    after: body.slice(anchorEnd, to),
+  };
 }
