@@ -271,17 +271,19 @@ export async function listMemosForSession(sessionId: string): Promise<Memo[]> {
 }
 
 /**
- * 全メモを、出所の発話・セッション・問いごと返す。
+ * 全メモを、出所の発話・セッション・問いごと新しい順に返す。
  *
  * メモからの逆引き用。
  * `memos → messages → sessions → questions` を一度に引き、N+1 に割らない。
+ * 古い順で読む用途が無く、件数を絞るときも先頭から取れば新しい分が残るので、並びは新しい順で確定させる。
+ * 表示側で反転すると、絞った後の並べ替えになって古い分が残る。
  */
 export async function listMemosWithContext(): Promise<MemoWithContext[]> {
   const rows = await db().memo.findMany({
     include: {
       message: { include: { session: { include: { question: true } } } },
     },
-    orderBy: [{ created_at: "asc" }, { seq: "asc" }],
+    orderBy: [{ created_at: "desc" }, { seq: "desc" }],
   });
 
   return rows.map(({ message, ...memo }) => ({
