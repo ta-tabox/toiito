@@ -1,5 +1,5 @@
-import { seed } from "@scripts/seed/index.mts";
-import { SEED_INPUTS } from "@scripts/seed/questions.mts";
+import { seed } from "@scripts/seed/index.ts";
+import { SEED_INPUTS } from "@scripts/seed/questions.ts";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import * as db from "@/lib/db";
 

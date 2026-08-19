@@ -13,7 +13,7 @@
  * 独自の除外リストを持つと、生成物（src/generated）の扱いが Biome と食い違う。
  *
  * 入口は lintSource。
- * CLI は node scripts/lint-comments.mts [path...]。
+ * CLI は node scripts/lint-comments.ts [path...]。
  */
 
 import { spawnSync } from "node:child_process";

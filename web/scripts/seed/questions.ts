@@ -1,7 +1,7 @@
 /**
  * 開発用シードとして入れる値の宣言。
  *
- * 投入の手順は持たない（それは db.ts の createQuestionWithTranscript と seed.mts のステップ）。
+ * 投入の手順は持たない（それは db.ts の createQuestionWithTranscript と seed/index.ts のステップ）。
  * ここが答えるのは「何を入れるか」だけで、この形のまま増やしていく。
  *
  * 入口は SEED_INPUTS。

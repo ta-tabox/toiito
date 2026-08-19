@@ -25,28 +25,12 @@ const srcDir = path.resolve(import.meta.dirname, "../src");
  */
 const CANDIDATE_SUFFIXES = ["", ".ts"];
 
-/**
- * .ts の解決結果に ESM だと明示する。
- *
- * package.json に type が無いため、node は .ts を読んでから ESM だと判り直し、走らせるたびに MODULE_TYPELESS_PACKAGE_JSON を出す。
- * 形式はここで名指しておく。
- */
-function asTypeScriptModule<T extends { url: string; format?: string | null }>(
-  resolved: T,
-): T {
-  if (!resolved.url.endsWith(".ts") || resolved.format) {
-    return resolved;
-  }
-
-  return { ...resolved, format: "module-typescript" };
-}
-
 /** `@/` を src へ向ける解決フックを node に登録する。 */
 export function registerSrcAlias(): void {
   registerHooks({
     resolve(specifier, context, nextResolve) {
       if (!specifier.startsWith("@/")) {
-        return asTypeScriptModule(nextResolve(specifier, context));
+        return nextResolve(specifier, context);
       }
 
       const base = path.join(srcDir, specifier.slice("@/".length));
@@ -58,10 +42,7 @@ export function registerSrcAlias(): void {
         throw new Error(`@ エイリアスを解決できない: ${specifier}`);
       }
 
-      return asTypeScriptModule({
-        url: pathToFileURL(resolved).href,
-        shortCircuit: true,
-      });
+      return { url: pathToFileURL(resolved).href, shortCircuit: true };
     },
   });
 }

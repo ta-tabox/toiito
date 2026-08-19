@@ -2,6 +2,7 @@
   "name": "web",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "engines": {
     "node": ">=22"
   },
@@ -10,8 +11,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "biome check && node scripts/lint-comments.mts",
-    "seed": "node --env-file-if-exists=.env.local scripts/seed/index.mts",
+    "lint": "biome check && node scripts/lint-comments.ts",
+    "seed": "node --env-file-if-exists=.env.local scripts/seed/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "tsc --noEmit && pnpm lint && vitest run && next build",
