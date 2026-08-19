@@ -144,7 +144,7 @@ toiito/
     │   ├── lib/           db.ts（Prisma repo 層）・claude.ts・personas.ts・anchors.ts
     │   ├── personas/      二体のシステムプロンプト（.md で管理）
     │   └── generated/     Prisma クライアント（生成物・gitignore）
-    ├── scripts/           node が直接読む開発用スクリプト（seed.mts・lint-comments.mts）
+    ├── scripts/           node が直接読む開発用スクリプト（pnpm seed・コメント検査）
     └── prisma/            schema.prisma（スキーマの正）と migrations/
 ```
 

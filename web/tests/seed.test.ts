@@ -1,4 +1,5 @@
-import { SEED_INPUTS, seed } from "@scripts/seed.mts";
+import { seed } from "@scripts/seed.mts";
+import { SEED_INPUTS } from "@scripts/seed-questions.mts";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import * as db from "@/lib/db";
 
