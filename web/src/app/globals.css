@@ -25,10 +25,13 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* 逆引き（/memos → /q/<id>#msg-<id>）で着地した発話。
-   JS を足さずに着地先を示せるのはこの擬似クラスだけなので、印はここに一本化する。
+/* 逆引き（/memos → /q/<id>#msg-<message_id>）で着地した発話に付ける印。
+   :target は CSS 標準の擬似クラスで、URL のフラグメントが指している要素に当たる（この器の命名ではない）。
+   対象を id="msg-…" の要素に絞るのは、これから足すどの id もフラグメントで指せてしまい、
+   発話以外にまで枠が付くため。id の綴りの正は q/[id]/page.tsx。
+   JS を足さずに着地を示せるのはこの擬似クラスだけなので、印はここに一本化する。
    色は明暗どちらの背景でも読めるものを選ぶ（対話画面の吹き出しは地色が固定）。 */
-:target {
+[id^="msg-"]:target {
   outline: 2px solid #f59e0b;
   outline-offset: 4px;
   scroll-margin-top: 1.5rem;
