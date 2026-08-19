@@ -10,10 +10,22 @@ AI をスピードアップではなくスローダウン（自分の問いを�
 
 ## セッション開始時にやること
 0. fermentary（第二マウント）が見えることを確認する（`fermentary/RULES.md` が読めるか）。
-   **見えなければ作業を始めず**、人間に「fermentary が並置されていない」と指摘して連携を求める（並置なしのセッションは膜からも台帳からも切断されている）
+   手元で**見えなければ作業を始めず**、人間に「fermentary が並置されていない」と指摘して連携を求める（並置なしのセッションは膜からも台帳からも切断されている）。
+   リモートは並置する口が無いので不在が既定——止まらず下の「リモートの縮退モード」で進める
 1. `NEXT.md` を見て続きを拾う（**作業単位と状態の正は GitHub Issues**、順序と横断規約の正は `ROADMAP.md`。NEXT.md は申し送りと受け渡しのみ）
 2. fermentary（第二マウント）の `NEXT.md` に自分宛の搬送メモがあれば拾う
 3. fermentary の `ATLAS.md`（terrarium 節）の自行を一瞥し、status が実態と乖離していたら直す（初回セッション実施・MVP 到達・方針転換などの節目を反映。台帳はこのプロジェクトの状態を fermentary へ伝える唯一の口）
+
+## リモートの縮退モード（fermentary 不在）
+
+リモート（Claude Code on the web）のコンテナは起動元リポジトリだけを持つ。
+第二マウントの口が無いので、fermentary の不在は異常ではなく既定。これを理由に作業を止めない。
+
+- **できる**: `web/` 配下の実装・テスト、このリポジトリ内の文書（いずれも膜の外側）
+- **できない**: `ATLAS.md` の更新、`inbox.md` / `questions.md` への追記、fermentary `NEXT.md` の搬送メモの消費。
+  書き込む先がコンテナに存在しないので、やったと報告すれば嘘になる
+- 膜行きの素材が出たら `NEXT.md` の「fermentary との受け渡し」へ**未搬送**として書き置く。
+  リポジトリに載るのでコンテナが回収されても残り、次の手元セッションが膜の判定を通して搬入する
 
 ## 開発ハーネス（正典: `HARNESS.md`）
 ローカル Postgres を立ててから作業する（ルートで `docker compose up -d`。接続は `web/.env.local` に `DATABASE_URL` と `DIRECT_URL` の二本）。
@@ -31,7 +43,9 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 
 - skill `coding-standards` — 言語固有の作法（JSDoc・import・空行）はそこの `languages/` にしかなく、CODING.md には載っていない
 - skill `karpathy-guidelines` — 過剰実装と巻き込み変更を防ぐ振る舞いの規律。
-  「変更した各行が依頼に辿れるか」で手を止める
+  「変更した各行が依頼に辿れるか」で手を止める。
+  外部のもので、本体はリポジトリに置かず `.claude/settings.json` の `enabledPlugins` が宣言している（綴りは `andrej-karpathy-skills:karpathy-guidelines`）。
+  取得は GitHub 越しなので、出られない環境では黙って不在になる
 
 **コメントも文書（`.md`）も、改行は句点で**。
 **1 行 1 文**。
@@ -56,7 +70,9 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   手元は署名の事情が無いので両方とも人間のまま。
 - **Co-authored-by は、Claude がそのコミットの中身を書いたときに付ける**。
   判断は差分を誰が書いたかの一点で、実行場所では変わらない。
-  文言の正は `.claude/settings.json` の `attribution.commit`（既定のモデル名と `Claude-Session:` URL は落としてある）。
+  文言の正は `.claude/settings.json` の `attribution`——`commit` が trailer 本体で、既定のモデル名はこの上書きで消える。
+  `Claude-Session:` URL を落とすのは `sessionUrl: false` の方で、別レバーなので `commit` の文字列をどう書いても消えない。
+  ただし届くのは無条件の指示文であって、下の条件分岐は設定では表現できない——付けるかどうかの判断はこちら側に残る。
   author と co-author は別の問いに答える。
   前者は責任を誰が担ったか、後者は誰が手を動かしたか。
   だから co-author を足しても author は人間名義のまま動かない。
@@ -77,10 +93,13 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   手元の既定は人間だが、そのセッションで人間から依頼があれば Claude が叩いてよい（依頼はセッションを越えて持ち越さない）。
   **ただし戻せない操作——force push・履歴の書き換え・ブランチやタグの削除——は、その都度人間に諾否を訊く**。
   依頼で渡るのは日常の操作までで、他人の作業を消しうる操作は渡らない。
+  リモートで毎回止まらないよう `.claude/settings.json` の `permissions.allow` に `Bash(git push:*)` を置き、戻せない綴りは `permissions.ask` で押さえてある（規則に当たった操作は auto モードの分類器へ回らない）。
+  ただし ask は前方一致なので `git push origin --force main` のような並びは素通りする——機械は保険で、正はこの規約。
 - **PR も author は人間**（そもそも author は名乗る欄でなく叩いたアカウント。bot 名義は「第三者が出したものを承認した」という嘘の外形を作る）。
   Claude の関与は author でなく**本文の「判断したこと」節**へ。
   残すのは判断の中身だけで、誰が判断したかには触れない。
   書式は `.github/pull_request_template.md`（issue テンプレの各節に PR 側で答が返る対称）。
+  既定の footer は `attribution.pr` を空にして落としてある。開示の場所を本文の節に決めた以上、末尾に二重には置かない。
 - **PR・レビュー返信の文体は だ・である調**（人間宛のコメントも同じ。チャットのですます調とは別）。
 - **返信でコミットを指すときは、ハッシュだけで一行を使う**。
   本文は次の行から書く。

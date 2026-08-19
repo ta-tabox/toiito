@@ -1,6 +1,19 @@
 {
   "attribution": {
-    "commit": "Co-authored-by: Claude <noreply@anthropic.com>"
+    "commit": "Co-authored-by: Claude <noreply@anthropic.com>",
+    "pr": "",
+    "sessionUrl": false
+  },
+  "extraKnownMarketplaces": {
+    "karpathy-skills": {
+      "source": {
+        "source": "github",
+        "repo": "forrestchang/andrej-karpathy-skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "andrej-karpathy-skills@karpathy-skills": true
   },
   "permissions": {
     "allow": [
@@ -20,7 +33,15 @@
       "Bash(pnpm install)",
       "Bash(mise ls:*)",
       "Bash(mise current:*)",
-      "Bash(mise where:*)"
+      "Bash(mise where:*)",
+      "Bash(git push:*)"
+    ],
+    "ask": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git push --delete:*)",
+      "Bash(git push --mirror:*)"
     ]
   },
   "hooks": {
