@@ -13,7 +13,7 @@
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { TEST_DATABASE_URL } from "./test-database-url";
+import { assertIsTestDatabase, TEST_DATABASE_URL } from "./test-database-url";
 
 const webRoot = path.resolve(import.meta.dirname, "../..");
 
@@ -24,6 +24,8 @@ const webRoot = path.resolve(import.meta.dirname, "../..");
  * 積むだけで既存の行は落とさない（空にするのは `truncate.ts` の役目）。
  */
 export default function setup(): void {
+  assertIsTestDatabase(TEST_DATABASE_URL);
+
   const prismaCli = createRequire(import.meta.url).resolve(
     "prisma/build/index.js",
   );

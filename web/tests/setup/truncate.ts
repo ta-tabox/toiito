@@ -12,25 +12,10 @@
  * ファイルを直列に走らせること（`vitest.config.ts` の fileParallelism）が前提。
  */
 
-import path from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
-import { TEST_DATABASE_URL } from "./test-database-url";
-
-/**
- * truncate は接続先を問答無用で空にする。
- * 開発用 DB を指したまま走らせたら手元の対話が消えるので、名前で足を止める。
- */
-function assertIsTestDatabase(url: string): void {
-  const name = path.basename(new URL(url).pathname);
-
-  if (!name.endsWith("_test")) {
-    throw new Error(
-      `テスト用 DB の名前が _test で終わっていない: ${name}。作り直しは中止する`,
-    );
-  }
-}
+import { assertIsTestDatabase, TEST_DATABASE_URL } from "./test-database-url";
 
 assertIsTestDatabase(TEST_DATABASE_URL);
 
