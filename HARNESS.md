@@ -2,7 +2,8 @@
 
 AI（Claude Code / Cowork セッション）が自律的に実装を進めるための自己検証ループの設計。
 思想は一つ: **AI が自分の変更の正しさを、人間の目を借りずに機械的に確かめられる状態を保つ**。
-検証できない変更は積み上がらない——コンポスターに例えるなら、ハーネスは温度計であり、腐敗と発酵を区別する装置。
+検証できない変更は積み上がらない。
+コンポスターに例えるなら、ハーネスは温度計であり、腐敗と発酵を区別する装置。
 
 ## 検証の層構造（下から順に回す）
 
@@ -20,7 +21,8 @@ AI は「変更 → check 緑 → コミット」を心拍として回す。
 check が赤のままコミットしない（コミットゲート）。
 
 L1 は lint と書式を Biome 一本で見る（正典: fermentary/playbooks/toolchain.md）。
-書式ずれは `pnpm format` で機械的に直す——**手で整形しない**。
+書式ずれは `pnpm format` で機械的に直す。
+**手で整形しない**。
 warning はゲートを止めない（exit 0）。
 止めたい違反は biome.json で error へ上げる。
 
@@ -28,16 +30,17 @@ warning はゲートを止めない（exit 0）。
 Biome のリンタはコメントを走査対象に持たず、built-in ルールにも GritQL プラグインにもコメント本体へ届く経路が無い。
 そこだけを `web/scripts/lint-comments.mts` が受け持ち、`pnpm lint` が Biome の後に走らせる。
 見るのは冒頭コメントの有無とスタイル（`/** */`・直後の空行）、および JSDoc の型注釈重複の二点。
-これ以外の作法は biome.json 側に置く——同じ規約を二箇所に書くと、いずれ食い違う。
+同じ規約を二箇所に書くといずれ食い違うので、これ以外の作法は biome.json 側に置く。
 判定ロジックは `tests/lint-comments.test.ts` が正。
 
 規約のうち機械が見ている分の一覧は skill `coding-standards` の `languages/typescript.md`。
-**残りは形しか見ていない**——冒頭コメントが責務と境界を語れているか、削除テストに耐えるかは L5 の領分。
+**残りは形しか見ていない**。
+冒頭コメントが責務と境界を語れているか、削除テストに耐えるかは L5 の領分。
 
 ## ローカル Postgres
 
 L2 以上は実 Postgres へ繋ぐ。
-インメモリや SQLite で代替しない——DB の enum・外部キー・check 制約は、本物に当てないと表明した意味を持たない。
+DB の enum・外部キー・check 制約は本物に当てないと表明した意味を持たないので、インメモリや SQLite で代替しない。
 
 ```bash
 docker compose up -d
@@ -48,7 +51,8 @@ docker compose up -d
 止めるのは `docker compose down`、中身ごと作り直すのは `docker compose down -v`。
 
 接続は **二本引く**。
-`DATABASE_URL` はアプリ経路（本番 Neon ではプーラー経由）、`DIRECT_URL` は Prisma Migrate 用の直結——Migrate はプーラー越しには動かないので、ローカルの時点から分けておく。
+`DATABASE_URL` はアプリ経路（本番 Neon ではプーラー経由）、`DIRECT_URL` は Prisma Migrate 用の直結。
+Migrate はプーラー越しには動かないので、ローカルの時点から分けておく。
 `web/.env.local` に書く。
 
 ```
@@ -60,7 +64,8 @@ DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
 check 制約は Prisma スキーマで表現できないので、生成された migration の SQL へ直接書き足す。
 
 テストは走るたびにテスト用 DB へ migration を積み直して（`migrate deploy`）全テーブルを空にする。
-`prisma migrate reset` は使わない——Prisma 7 はこれを破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求するので、無人で回る check のゲートには置けない。
+`prisma migrate reset` は使わない。
+Prisma 7 はこれを破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求するので、無人で回る check のゲートには置けない。
 
 ## AI フェイクモード（ハーネスの要）
 
@@ -84,7 +89,8 @@ check 制約は Prisma スキーマで表現できないので、生成された
 
 ## 実行環境
 
-ハーネスが保証するのは一点だけ——**どこで走らせても `pnpm check` が同じ意味を持つ**こと。
+ハーネスが保証するのは一点だけ。
+**どこで走らせても `pnpm check` が同じ意味を持つ**こと。
 それ以外の非対称は仕様として引き受ける。
 
 check の前提は Postgres が起動していること（`docker compose up -d`）。
@@ -101,7 +107,8 @@ API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環
 どちらも外向きの通信が許可制で、塞ぐ手段がこの環境に無い:
 
 - Postgres が 17 でなく 16（apt.postgresql.org へ出られない）
-- 版の管理が mise でなく直置き（mise.run へ出られない）。版の正は `mise.toml` のままで、フックはそれを読む側
+- 版の管理が mise でなく直置き（mise.run へ出られない）。
+  版の正は `mise.toml` のままで、フックはそれを読む側
 
 ## フェーズ
 
@@ -109,13 +116,12 @@ API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環
 - **P1**: Playwright E2E（フェイクモードで縦一本）、シードスクリプト（開発用の問い・対話・メモ一式を投入）。
   メモ機能実装と同時が効率的
 - **P2**: ペルソナ逸脱検査 — 「答えを与えない」制約を LLM-as-judge でサンプリング検査。
-  L5 の一部自動化（完全自動化はしない。
-  官能は人間の領分）
-- **CI**: リモート環境構築タスクと同時（GitHub Actions で check を回すだけ。
-  先回りして作らない）
+  L5 の一部自動化（完全自動化はしない。官能は人間の領分）
+- **CI**: リモート環境構築タスクと同時（GitHub Actions で check を回すだけ。先回りして作らない）
 
 ## 意図的にやらないこと
 
 - カバレッジ計測・閾値（個人プロジェクトで数字を KPI 化しない。VISION と同じ理屈）
-- コンポーネント単体テスト（jsdom）。UI の検証は L3 + L4 に寄せる
+- コンポーネント単体テスト（jsdom）。
+  UI の検証は L3 + L4 に寄せる
 - 実 Claude API を叩く自動テスト

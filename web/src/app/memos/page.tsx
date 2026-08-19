@@ -1,12 +1,12 @@
 /**
  * メモの一覧と、そこから出所の発話への逆引き。
  *
- * 引くのは listMemosWithContext 一本。行ごとに問いやセッションを引き直さない。
+ * 引くのは listMemosWithContext 一本。
+ * 行ごとに問いやセッションを引き直さない。
  *
  * 各行のリンク先は `/q/<question_id>#msg-<message_id>`。
  * ジャンプはこの画面だけでは完結せず、三箇所が同じ綴りを共有して初めて成立する。
- * URL を書くのがここ、飛び先の `id="msg-…"` を発話へ付けるのが `q/[id]/page.tsx`、
- * 飛んだ先でその発話を目立たせるのが globals.css の `[id^="msg-"]:target`。
+ * URL を書くのがここ、飛び先の `id="msg-…"` を発話へ付けるのが `q/[id]/page.tsx`、飛んだ先でその発話を目立たせるのが globals.css の `[id^="msg-"]:target`。
  * 綴りを変えるときは三箇所とも直す。
  *
  * 強調は CSS だけで足りるので、この画面に JS は足さない。
@@ -18,10 +18,16 @@ import { listMemosWithContext } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-/** 引用でアンカーの前後へ添える文字数。どの発話だったか思い出せる程度に留める。 */
+/**
+ * 引用でアンカーの前後へ添える文字数。
+ * どの発話だったか思い出せる程度に留める。
+ */
 const EXCERPT_MARGIN = 40;
 
-/** メモの一覧。新しい順に並べ、各行から出所の発話へ逆引きする。 */
+/**
+ * メモの一覧。
+ * 新しい順に並べ、各行から出所の発話へ逆引きする。
+ */
 export default async function MemosPage() {
   const memos = await listMemosWithContext();
 

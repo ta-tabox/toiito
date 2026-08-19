@@ -1,7 +1,8 @@
 "use server";
 
 /**
- * 画面から呼ばれる Server Action の束。フォーム入力を lib の呼び出しへ配線する。
+ * 画面から呼ばれる Server Action の束。
+ * フォーム入力を lib の呼び出しへ配線する。
  *
  * ここに判断を置かない（HARNESS.md「テスト可能性の設計制約」）。
  * Server Action は単体テストから直に呼べないので、条件分岐が入り込んだ時点で検証の外へ出る。
@@ -30,7 +31,10 @@ export async function createQuestionAction(formData: FormData) {
   redirect(`/q/${question.id}`);
 }
 
-/** 同じ問いを新しいセッションで再訪する。過去のセッションは残る。 */
+/**
+ * 同じ問いを新しいセッションで再訪する。
+ * 過去のセッションは残る。
+ */
 export async function newSessionAction(questionId: string) {
   await createSession(questionId);
   revalidatePath(`/q/${questionId}`);
