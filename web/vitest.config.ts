@@ -13,8 +13,13 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
 
-    // 実 Postgres を一つのテスト用データベースで共有する。走る前に作り直す。
+    // 実 Postgres をテスト用データベース一本で共有する。
+    // 隔離はケースごとに空にすることで作るので、同じ DB をファイル並列に踏まれると効かない。
+    fileParallelism: false,
+
+    // migration は一走に一度、テーブルを空にするのはケースごと。
     globalSetup: ["tests/setup/database.ts"],
+    setupFiles: ["tests/setup/truncate.ts"],
     env: {
       DATABASE_URL: TEST_DATABASE_URL,
       DIRECT_URL: TEST_DATABASE_URL,

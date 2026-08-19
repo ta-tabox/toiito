@@ -4,7 +4,7 @@ import * as db from "@/lib/db";
 import { QUESTION_STATUSES } from "@/lib/question";
 
 // 接続先はテスト専用データベース。
-// vitest.config.ts が env で渡し、globalSetup が走るたびに空にする。
+// vitest.config.ts が env で渡し、ケースごとに空にする（tests/setup/truncate.ts）。
 afterAll(async () => {
   await db.disconnect();
 });
@@ -31,8 +31,12 @@ describe("questions / sessions", () => {
   });
 
   it("一覧は新しい順", async () => {
+    const { question: older } = await db.createQuestion("先に投げた問い");
+    const { question: newer } = await db.createQuestion("後に投げた問い");
+
     const list = await db.listQuestions();
-    expect(list.length).toBeGreaterThanOrEqual(2);
+
+    expect(list.map((q) => q.id)).toEqual([newer.id, older.id]);
   });
 });
 

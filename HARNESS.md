@@ -63,7 +63,10 @@ DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
 スキーマを変えたら `pnpm exec prisma migrate dev --name <変更の名前>`。
 check 制約は Prisma スキーマで表現できないので、生成された migration の SQL へ直接書き足す。
 
-テストは走るたびにテスト用 DB へ migration を積み直して（`migrate deploy`）全テーブルを空にする。
+テストの隔離はケース単位。
+テスト用 DB へ一走の初めに migration を積み（`migrate deploy`）、ケースごとに全テーブルを空にする（`web/tests/setup/truncate.ts`）。
+空にするだけでは同じ DB を同時に踏む相手を防げないので、テストファイルは直列に走らせる（`fileParallelism: false`）。
+裏返しに、同時アクセスの競合はこのハーネスでは再現しない。
 `prisma migrate reset` は使わない。
 Prisma 7 はこれを破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求するので、無人で回る check のゲートには置けない。
 
