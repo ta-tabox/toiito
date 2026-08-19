@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { callPersona } from "@/lib/claude";
 import {
+  addMemo,
   addMessage,
   createQuestion,
   createSession,
@@ -74,6 +75,28 @@ export async function speakAction(
     await listMessages(sessionId),
   );
   await addMessage(sessionId, "ai_b", aiB);
+
+  revalidatePath(`/q/${questionId}`);
+}
+
+/**
+ * 発話本文の一部にメモを付ける。
+ *
+ * アンカー（anchor_start / anchor_end）は呼び出し側が確定させたものを受け取る。
+ * 本文中の位置を求めるのは DOM と anchors.ts の領分で、ここは数値を通すだけ。
+ */
+export async function createMemoAction(questionId: string, formData: FormData) {
+  const keyword = String(formData.get("keyword") ?? "").trim();
+  if (!keyword) {
+    return;
+  }
+
+  const messageId = String(formData.get("message_id") ?? "");
+  const anchorStart = Number(formData.get("anchor_start"));
+  const anchorEnd = Number(formData.get("anchor_end"));
+  const note = String(formData.get("note") ?? "").trim();
+
+  await addMemo(messageId, anchorStart, anchorEnd, keyword, note || undefined);
 
   revalidatePath(`/q/${questionId}`);
 }
