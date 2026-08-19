@@ -197,26 +197,24 @@ describe("memos", () => {
     const message = await db.addMessage(session.id, "ai_b", "逆引き対象の本文");
     const memo = await db.addMemo(message.id, 0, 4, "逆引き");
 
-    const found = (await db.listMemosWithContext()).find(
-      (m) => m.id === memo.id,
-    );
+    const [found] = await db.listMemosWithContext();
 
-    expect(found).toBeDefined();
-    expect(found?.session_id).toBe(session.id);
-    expect(found?.question_id).toBe(question.id);
-    expect(found?.question_body).toBe("問い9: 逆引き元の問い");
-    expect(found?.speaker).toBe("ai_b");
-    expect(found?.message_body).toBe("逆引き対象の本文");
+    expect(found.id).toBe(memo.id);
+    expect(found.session_id).toBe(session.id);
+    expect(found.question_id).toBe(question.id);
+    expect(found.question_body).toBe("問い9: 逆引き元の問い");
+    expect(found.speaker).toBe("ai_b");
+    expect(found.message_body).toBe("逆引き対象の本文");
   });
 
   it("listMemosWithContext は新しい順に返す", async () => {
     const { session } = await db.createQuestion("問い10: 並びの検査");
     const message = await db.addMessage(session.id, "ai_a", "先の語と後の語");
-    const older = await db.addMemo(message.id, 0, 2, `先の語 ${randomUUID()}`);
-    const newer = await db.addMemo(message.id, 4, 6, `後の語 ${randomUUID()}`);
+    const older = await db.addMemo(message.id, 0, 2, "先の語");
+    const newer = await db.addMemo(message.id, 4, 6, "後の語");
 
     const ids = (await db.listMemosWithContext()).map((m) => m.id);
 
-    expect(ids.indexOf(newer.id)).toBeLessThan(ids.indexOf(older.id));
+    expect(ids).toEqual([newer.id, older.id]);
   });
 });

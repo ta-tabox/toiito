@@ -30,25 +30,24 @@ describe("シードの宣言", () => {
 });
 
 describe("シードの投入", () => {
-  it("宣言した一件を入れると、メモから出所へ逆引きできる", async () => {
-    const input = SEED_INPUTS[0];
-    const created = await db.createQuestionWithTranscript(input);
+  it("空の DB へ宣言を一式入れ、メモから出所へ逆引きできる", async () => {
+    const summary = await seed();
 
-    expect(created.question.body).toBe(input.body);
-    expect(created.messages).toHaveLength(input.messages.length);
-    expect(created.memos.length).toBeGreaterThan(0);
+    expect(summary.questionIds).toHaveLength(SEED_INPUTS.length);
+    expect(summary.memos).toBeGreaterThan(0);
 
-    const found = (await db.listMemosWithContext()).filter(
-      (memo) => memo.question_id === created.question.id,
+    const questions = await db.listQuestions();
+    const memos = await db.listMemosWithContext();
+
+    expect(questions.map((question) => question.body).sort()).toEqual(
+      SEED_INPUTS.map((input) => input.body).sort(),
     );
+    expect(memos).toHaveLength(summary.memos);
 
-    expect(found).toHaveLength(created.memos.length);
-
-    for (const memo of found) {
+    for (const memo of memos) {
       expect(memo.message_body.slice(memo.anchor_start, memo.anchor_end)).toBe(
         memo.keyword,
       );
-      expect(memo.question_body).toBe(input.body);
     }
   });
 
