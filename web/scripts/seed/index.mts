@@ -2,24 +2,24 @@
  * 開発用データの投入。
  *
  * 問い・対話・メモを一式入れて、UI を手触りで確かめられる状態にする。
- * このファイルが持つのは投入のステップだけで、入れる値は seed-questions.mts、書き込みの手順は db.ts の createQuestionWithTranscript が持つ。
+ * このファイルが持つのは投入のステップだけで、入れる値は同じディレクトリの questions.mts、書き込みの手順は db.ts の createQuestionWithTranscript が持つ。
  * アプリと同じ経路を通らない投入口を増やさない（ARCHITECTURE.md「DB への書き込み経路」）。
  * 接続先は DATABASE_URL 一点で、db.ts が読む。投入先を選ぶ引数はここに作らない——渡し口を二つ持つと、env は開発用・引数はテスト用という食い違いが起こる。
  * 動くのは問いが一件も無い DB に対してだけで、既に入っている DB へは何も入れずに終わる。
  * 本番（NODE_ENV=production）では、空でも投入しない。
  *
- * 入口は seed。CLI は node scripts/seed.mts（pnpm seed）。
+ * 入口は seed。CLI は node scripts/seed/index.mts（pnpm seed）。
  */
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { registerSrcAlias } from "./node-alias.mts";
-import { SEED_INPUTS } from "./seed-questions.mts";
+import { registerSrcAlias } from "../node-alias.mts";
+import { SEED_INPUTS } from "./questions.mts";
 
 /**
  * db.ts の repo 関数一式。
  *
- * 実体の読み込みは seed の中まで遅らせる（理由は node-alias.mts）。
+ * 実体の読み込みは seed の中まで遅らせる（理由は ../node-alias.mts）。
  */
 type Repo = typeof import("@/lib/db");
 

@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome check && node scripts/lint-comments.mts",
-    "seed": "node --env-file-if-exists=.env.local scripts/seed.mts",
+    "seed": "node --env-file-if-exists=.env.local scripts/seed/index.mts",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "tsc --noEmit && pnpm lint && vitest run && next build",
