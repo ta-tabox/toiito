@@ -68,7 +68,9 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   手元は署名の事情が無いので両方とも人間のまま。
 - **Co-authored-by は、Claude がそのコミットの中身を書いたときに付ける**。
   判断は差分を誰が書いたかの一点で、実行場所では変わらない。
-  文言の正は `.claude/settings.json` の `attribution.commit`（既定のモデル名と `Claude-Session:` URL は落としてある）。
+  文言の正は `.claude/settings.json` の `attribution`——`commit` が trailer 本体で、既定のモデル名はこの上書きで消える。
+  `Claude-Session:` URL を落とすのは `sessionUrl: false` の方で、別レバーなので `commit` の文字列をどう書いても消えない。
+  ただし届くのは無条件の指示文であって、下の条件分岐は設定では表現できない——付けるかどうかの判断はこちら側に残る。
   author と co-author は別の問いに答える。
   前者は責任を誰が担ったか、後者は誰が手を動かしたか。
   だから co-author を足しても author は人間名義のまま動かない。
@@ -95,6 +97,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   Claude の関与は author でなく**本文の「判断したこと」節**へ。
   残すのは判断の中身だけで、誰が判断したかには触れない。
   書式は `.github/pull_request_template.md`（issue テンプレの各節に PR 側で答が返る対称）。
+  既定の footer は `attribution.pr` を空にして落としてある。開示の場所を本文の節に決めた以上、末尾に二重には置かない。
 - **PR・レビュー返信の文体は だ・である調**（人間宛のコメントも同じ。チャットのですます調とは別）。
 - **返信でコミットを指すときは、ハッシュだけで一行を使う**。
   本文は次の行から書く。
