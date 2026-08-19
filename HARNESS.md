@@ -20,6 +20,24 @@ AI（Claude Code / Cowork セッション）が自律的に実装を進めるた
 AI は「変更 → check 緑 → コミット」を心拍として回す。
 check が赤のままコミットしない（コミットゲート）。
 
+コミットゲートは規律なので、破っても機械は止めない。
+止める力は main のブランチ保護に置く（GitHub の Settings → Branches）。
+設定は GitHub 側の状態で diff に残らないので、何をどういう理由で有効にしたかの記録はここが正。
+
+- **Require a pull request before merging** — 有効。
+  main への直 push を塞ぐ。
+  `NEXT.md` の申し送り更新のような一行の変更も PR を通る（先例: cd10a6f は main へ直接入っている）。
+  例外は下の bypass の一点だけで、通常の経路には作らない
+- **Require status checks to pass before merging** — 有効。
+  必須は `check` 一本（`.github/workflows/check.yml` の job 名）。
+  `claude` 系の job は当面必須にしない
+- **Require branches to be up to date before merging** — 無効。
+  複数の issue が並行で動いているので、有効にすると main が進むたび全 PR が再 push を要求されて待ち行列が直列化する。
+  検討するのは並行度が落ちてから
+- **Do not allow bypassing the above settings** — 無効。
+  CI 自体が壊れて緑にできないときに保護設定を一時的に外して回らずに済むよう、管理者（人間）の逃げ道を残す。
+  管理者は赤い PR もマージできるので、そこだけは機械の拒否でなく規律に戻る
+
 L1 は lint と書式を Biome 一本で見る（正典: fermentary/playbooks/toolchain.md）。
 書式ずれは `pnpm format` で機械的に直す。
 **手で整形しない**。
