@@ -222,6 +222,9 @@ main() {
   install_dependencies
   apply_migrations
 
+  # 第二マウントの口が無い環境なので、不在を毎回宣言する。
+  # 宣言が無いと、CLAUDE.md 手順 0 を読んだセッションが不在を異常と受け取って止まる。
+  log "fermentary は不在（リモートの既定）。膜へは書き込まない——CLAUDE.md「リモートの縮退モード」"
   log "準備完了。web/ で pnpm check が走る"
 }
 
