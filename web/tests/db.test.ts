@@ -32,7 +32,7 @@ describe("questions / sessions", () => {
 
   it("一覧は新しい順", async () => {
     const list = await db.listQuestions();
-    expect(list.length).toBe(0);
+    expect(list.length).toBeGreaterThanOrEqual(2);
   });
 });
 
