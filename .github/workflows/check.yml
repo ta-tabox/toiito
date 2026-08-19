@@ -1,0 +1,73 @@
+# `pnpm check`（L0 型 → L1 静的 → L2 ユニット → L3 ビルド）を PR と main で機械的に回す。
+# 「1 issue = 1 セッション = 1 PR。CI 緑 + マージで閉じる」（ROADMAP.md）の緑を、
+# ローカルの自己申告でなくマージの条件として持つための一本。
+#
+# 設計の芯はローカルとの対称——ハーネスが保証するのは「どこで走らせても pnpm check が同じ意味を持つ」ことなので、
+# Postgres は compose.yaml と同じ postgres:17 を同じ 5433 に置き、ランタイムの版は mise が mise.toml から読む。
+# 版も接続文字列もここには書き下ろさない（二重管理にすると、いずれ片方だけが動く）。
+
+name: check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# 同一 PR への連続 push では古い run を捨てる。
+# main では捨てない——マージ済みの commit が緑を持たないまま残ってしまう。
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # L2 以上は実 Postgres へ繋ぐ（HARNESS.md「ローカル Postgres」）。
+    # メジャーを本番 Neon と揃えるのは方言差を出さないため。
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: toiito
+          POSTGRES_PASSWORD: toiito
+          POSTGRES_DB: toiito
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U toiito -d toiito"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      # アプリ経路と Prisma Migrate の直結の二本。
+      # 本番 Neon では前者がプーラー経由で別物になるので、ローカル同様ここでも分けておく。
+      DATABASE_URL: postgresql://toiito:toiito@localhost:5433/toiito
+      DIRECT_URL: postgresql://toiito:toiito@localhost:5433/toiito
+      # vitest の globalSetup が見る先（web/tests/setup/test-database-url.ts）。
+      # 開発用と分けるのは、truncate が作業データを巻き込まないようにするため。
+      TOIITO_TEST_DATABASE_URL: postgresql://toiito:toiito@localhost:5433/toiito_test
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v6
+
+      # node と pnpm を mise.toml の版で入れる。corepack は使わない（CLAUDE.md 開発ハーネス）。
+      - uses: jdx/mise-action@v4
+
+      # service コンテナには docker/initdb をマウントできないので、同じ SQL をここで打つ。
+      - name: テスト用データベースを作る
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'create database toiito_test owner toiito'
+
+      # postinstall が prisma generate まで走らせる（生成クライアントは git 管理外）。
+      - name: 依存を入れる
+        run: pnpm install --frozen-lockfile
+
+      - name: check
+        run: pnpm check
