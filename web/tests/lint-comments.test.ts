@@ -1,4 +1,4 @@
-import { lintSource } from "@scripts/lint-comments.mts";
+import { lintSource } from "@scripts/lint-comments.ts";
 import { describe, expect, it } from "vitest";
 
 function rulesOf(source: string, fileName = "sample.ts"): string[] {

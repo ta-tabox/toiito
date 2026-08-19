@@ -10,7 +10,7 @@ AI（Claude Code / Cowork セッション）が自律的に実装を進めるた
 | 層 | 何を保証するか | 道具 | 速度 |
 |----|--------------|------|------|
 | L0 型 | 契約の整合（repo 関数シグネチャ等） | `tsc --noEmit` | 秒 |
-| L1 静的 | 明白な誤り・作法・書式 | `biome check` + `scripts/lint-comments.mts` | 秒 |
+| L1 静的 | 明白な誤り・作法・書式 | `biome check` + `scripts/lint-comments.ts` | 秒 |
 | L2 ユニット | lib 層のロジック（db / claude / personas / anchors） | Vitest（+ ローカル Postgres） | 秒 |
 | L3 ビルド | ルーティング・Server Actions の結線 | `next build` | 十秒台 |
 | L4 E2E | 縦一本（投入→対話→メモ→逆引き）のブラウザ実挙動 | Playwright（P1） | 分 |
@@ -28,7 +28,7 @@ warning はゲートを止めない（exit 0）。
 
 **コメント規約だけは Biome の外**。
 Biome のリンタはコメントを走査対象に持たず、built-in ルールにも GritQL プラグインにもコメント本体へ届く経路が無い。
-そこだけを `web/scripts/lint-comments.mts` が受け持ち、`pnpm lint` が Biome の後に走らせる。
+そこだけを `web/scripts/lint-comments.ts` が受け持ち、`pnpm lint` が Biome の後に走らせる。
 見るのは冒頭コメントの有無とスタイル（`/** */`・直後の空行）、および JSDoc の型注釈重複の二点。
 同じ規約を二箇所に書くといずれ食い違うので、これ以外の作法は biome.json 側に置く。
 判定ロジックは `tests/lint-comments.test.ts` が正。
