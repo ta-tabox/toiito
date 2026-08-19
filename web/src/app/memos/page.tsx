@@ -49,7 +49,9 @@ export default async function MemosPage() {
                 className="block rounded border border-neutral-200 p-4 hover:border-neutral-400"
               >
                 <div className="text-base font-bold">{memo.keyword}</div>
+
                 {memo.note && <div className="mt-1 text-sm">{memo.note}</div>}
+
                 <div className="mt-2 whitespace-pre-wrap border-l-2 border-neutral-300 pl-3 text-sm text-neutral-500">
                   {quote.before}
                   <mark className="bg-amber-100 font-bold text-neutral-800">
@@ -57,6 +59,7 @@ export default async function MemosPage() {
                   </mark>
                   {quote.after}
                 </div>
+
                 <div className="mt-2 text-xs text-neutral-500">
                   {memo.question_body}
                 </div>
@@ -64,6 +67,7 @@ export default async function MemosPage() {
             </li>
           );
         })}
+
         {memos.length === 0 && (
           <li className="text-sm text-neutral-500">
             まだメモがない。対話の中で引っかかった語に印を付けるところから。
