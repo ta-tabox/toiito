@@ -30,8 +30,7 @@ warning はゲートを止めない（exit 0）。
 Biome のリンタはコメントを走査対象に持たず、built-in ルールにも GritQL プラグインにもコメント本体へ届く経路が無い。
 そこだけを `web/scripts/lint-comments.mts` が受け持ち、`pnpm lint` が Biome の後に走らせる。
 見るのは冒頭コメントの有無とスタイル（`/** */`・直後の空行）、および JSDoc の型注釈重複の二点。
-これ以外の作法は biome.json 側に置く。
-同じ規約を二箇所に書くと、いずれ食い違う。
+同じ規約を二箇所に書くといずれ食い違うので、これ以外の作法は biome.json 側に置く。
 判定ロジックは `tests/lint-comments.test.ts` が正。
 
 規約のうち機械が見ている分の一覧は skill `coding-standards` の `languages/typescript.md`。
@@ -41,8 +40,7 @@ Biome のリンタはコメントを走査対象に持たず、built-in ルー�
 ## ローカル Postgres
 
 L2 以上は実 Postgres へ繋ぐ。
-インメモリや SQLite で代替しない。
-DB の enum・外部キー・check 制約は、本物に当てないと表明した意味を持たない。
+DB の enum・外部キー・check 制約は本物に当てないと表明した意味を持たないので、インメモリや SQLite で代替しない。
 
 ```bash
 docker compose up -d

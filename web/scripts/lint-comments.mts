@@ -9,8 +9,7 @@
  * 判定は TypeScript の API へ渡す。
  * 行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約の検査器自身が嘘をつく。
  *
- * 対象から外すものは .gitignore が正。
- * Biome も vcs.useIgnoreFile で同じ正を見る。
+ * Biome も vcs.useIgnoreFile で同じ正を見るので、対象から外すものは .gitignore が正。
  * 独自の除外リストを持つと、生成物（src/generated）の扱いが Biome と食い違う。
  *
  * 入口は lintSource。
@@ -181,8 +180,7 @@ function checkJsDocTypeAnnotations(
  * 改行が文の途中に入っていないかを見る。
  *
  * 句点で閉じていない行の次に本文が続いていたら、そこは文の切れ目ではなく桁で折った跡。
- * 読点で折った場合も捕まえる。
- * 日本語としては意味の切れ目だが、桁で折った跡と機械には見分けが付かない。
+ * 日本語としては意味の切れ目だが、桁で折った跡と機械には見分けが付かないので、読点で折った場合も捕まえる。
  */
 function checkSentenceEndLineBreaks(
   source: ts.SourceFile,
@@ -276,8 +274,7 @@ function hasSentenceBreakInside(text: string): boolean {
  * コメントを、一つの文が跨りうる範囲＝塊へまとめる。
  *
  * ブロックコメント 1 つが 1 塊で、連続する行コメントの並びも 1 塊。
- * 行末コメントは収集の時点で落ちている。
- * getLeadingCommentRanges は直前に改行が無いコメントを leading と見なさない。
+ * getLeadingCommentRanges は直前に改行が無いコメントを leading と見なさないので、行末コメントは収集の時点で落ちている。
  * 拾うように変えると、値ごとに注釈を添えた配列がまるごと違反になる。
  */
 function toCommentBlocks(
