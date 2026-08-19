@@ -5,6 +5,7 @@
  * このファイルが持つのは入れる値の定義と入口の二つだけで、投入の手順は db.ts の createQuestionWithTranscript が持つ。アプリと同じ経路を通らない投入口を増やさないため。
  * 接続先は DATABASE_URL 一点で、db.ts が読む。投入先を選ぶ引数はここに作らない——渡し口を二つ持つと、env は開発用・引数はテスト用という食い違いが起こる。
  * 動くのは問いが一件も無い DB に対してだけで、既に入っている DB へは何も入れずに終わる。
+ * 本番（NODE_ENV=production）では、空でも投入しない。
  *
  * 入口は seed。CLI は node scripts/seed.mts（pnpm seed）。
  */
@@ -262,12 +263,29 @@ function toQuestionInput(questionSeed: QuestionSeed): QuestionInput {
 export const SEED_INPUTS: QuestionInput[] = SEED_QUESTIONS.map(toQuestionInput);
 
 /**
+ * 本番の DB への投入を止める。
+ *
+ * 問いの有無で止める関門（seed）は、行が在る DB にしか効かない。
+ * 立ち上げ直後の空の本番 DB は素通りするので、環境変数でも止める。
+ * 意図して流すときだけ ALLOW_PROD_SEED を渡す。
+ */
+function assertNotProduction(): void {
+  if (process.env.NODE_ENV === "production" && !process.env.ALLOW_PROD_SEED) {
+    throw new Error(
+      "NODE_ENV=production では開発用シードを投入しない。意図して流すなら ALLOW_PROD_SEED=1 を渡す",
+    );
+  }
+}
+
+/**
  * シードを投入する。接続先は DATABASE_URL。
  *
  * 問いが既にある DB へは何も入れずに戻る。投入先の取り違えを、行が増えてから気付く形にしないため。
  * 接続は閉じない。呼び出し側（CLI・テスト）が自分の都合で閉じる。
  */
 export async function seed(): Promise<SeedSummary> {
+  assertNotProduction();
+
   const repo: Repo = await import("@/lib/db");
   const summary: SeedSummary = { questionIds: [], messages: 0, memos: 0 };
 

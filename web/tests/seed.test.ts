@@ -53,6 +53,16 @@ describe("シードの投入", () => {
     }
   });
 
+  it("NODE_ENV=production では投入せず落ちる", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    try {
+      await expect(seed()).rejects.toThrow(/ALLOW_PROD_SEED/);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("問いが既にある DB へは何も入れない", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
