@@ -36,6 +36,17 @@ Postgres（questions / sessions / messages / memos / memo_links）
 マイクロサービス的分割はしない（個人用コンポスターに分散は過剰）。
 AI 呼び出しはストリーミングで UI に流す。
 
+### DB への書き込み経路（2026-08-19 追加）
+
+書き込みはアプリのロジック（`web/src/lib/db.ts` の repo 関数）を通す。
+UI からの経路も、Next の外から走るもの——開発用シード `web/scripts/seed.mts` など——も、同じ口を使う。
+経路を分けると、アプリで起きること（検証・付随する行の作成・順序）が投入したデータでは起きず、画面で確かめている状態が実際の状態とずれる。
+
+例外は、通常の経路では作れない状態を作るとき（壊れたデータの再現、移行前の形）。
+そのときは Prisma を直に触ってよい。
+ただし repo 関数と混ぜず、その用途だと分かる別のモジュールへ置く——`db.ts` の「この層の外へ Prisma を出さない」は混ぜないための境界であって、直に触ること自体の禁止ではない。
+いまその口は無い（必要になった時点で切る）。
+
 ## データモデル（発酵の地層構造）
 
 VISION の「対話は堆積して振り返れるもの」をそのままスキーマにする。
@@ -133,6 +144,7 @@ toiito/
     │   ├── lib/           db.ts（Prisma repo 層）・claude.ts・personas.ts・anchors.ts
     │   ├── personas/      二体のシステムプロンプト（.md で管理）
     │   └── generated/     Prisma クライアント（生成物・gitignore）
+    ├── scripts/           node が直接読む開発用スクリプト（seed.mts・lint-comments.mts）
     └── prisma/            schema.prisma（スキーマの正）と migrations/
 ```
 
