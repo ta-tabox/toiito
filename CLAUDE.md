@@ -44,8 +44,9 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 - skill `coding-standards` — 言語固有の作法（JSDoc・import・空行）はそこの `languages/` にしかなく、CODING.md には載っていない
 - skill `karpathy-guidelines` — 過剰実装と巻き込み変更を防ぐ振る舞いの規律。
   「変更した各行が依頼に辿れるか」で手を止める。
-  外部のもので、本体はリポジトリに置かず `.claude/settings.json` の `enabledPlugins` が宣言している（綴りは `andrej-karpathy-skills:karpathy-guidelines`）。
-  取得は GitHub 越しなので、出られない環境では黙って不在になる
+  プラグインとして引くと、コンテナが毎回空から始まるリモートでは初回セッションに間に合わないので、本体は `.claude/skills/` へ同梱してある。
+  外部由来で、出所は https://github.com/forrestchang/andrej-karpathy-skills の 2c60614（MIT）。
+  上流の更新は手で取り込む
 
 **コメントも文書（`.md`）も、改行は句点で**。
 **1 行 1 文**。
