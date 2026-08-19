@@ -2,9 +2,14 @@
  * メモの一覧と、そこから出所の発話への逆引き。
  *
  * 引くのは listMemosWithContext 一本。行ごとに問いやセッションを引き直さない。
- * 着地先の目印（`id="msg-<message_id>"`）を発話へ置くのは `q/[id]/page.tsx` の責務で、
- * ここは行き先の URL を綴るだけ。着地したことを見せる CSS は globals.css の `:target`。
- * この画面から JS は足さない。
+ *
+ * 各行のリンク先は `/q/<question_id>#msg-<message_id>`。
+ * ジャンプはこの画面だけでは完結せず、三箇所が同じ綴りを共有して初めて成立する。
+ * URL を書くのがここ、飛び先の `id="msg-…"` を発話へ付けるのが `q/[id]/page.tsx`、
+ * 飛んだ先でその発話を目立たせるのが globals.css の `[id^="msg-"]:target`。
+ * 綴りを変えるときは三箇所とも直す。
+ *
+ * 強調は CSS だけで足りるので、この画面に JS は足さない。
  */
 
 import Link from "next/link";
