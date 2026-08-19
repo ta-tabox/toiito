@@ -1,7 +1,8 @@
 # web — トイット（Toiito）のアプリ本体
 
 Next.js（App Router）+ TypeScript。
-**何を・なぜ作るかはここに書かない**——正典はリポジトリルートの `VISION.md` / `ARCHITECTURE.md` / `HARNESS.md` / `ROADMAP.md`。
+**何を・なぜ作るかはここに書かない**。
+正典はリポジトリルートの `VISION.md` / `ARCHITECTURE.md` / `HARNESS.md` / `ROADMAP.md`。
 ここに置くのは、このディレクトリで手を動かすときに要る手順と設定だけ。
 
 ## 起動
@@ -50,7 +51,8 @@ DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
 ```
 
 `TOIITO_TEST_DATABASE_URL` は既定のままでよい（`compose.yaml` が `toiito_test` を作る）。
-テストは走るたびにこのデータベースを空にするので、**開発用の接続先を渡さないこと**——名前が `_test` で終わらなければ止まるようにしてある。
+テストは走るたびにこのデータベースを空にするので、**開発用の接続先を渡さないこと**。
+名前が `_test` で終わらなければ止まるようにしてある。
 
 `TOIITO_FAKE_AI=1` は AI 呼び出しを伴う動作確認で使う。
 実 API を自動テストで叩かない（遅い・非決定的・金がかかる）。

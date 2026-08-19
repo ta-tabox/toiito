@@ -1,19 +1,21 @@
 /**
  * アプリ全体で共有するドメイン型。
- * 永続化の実装（Prisma）にも UI にも依存しない。意味の正は ARCHITECTURE.md「データモデル」。
+ * 永続化の実装（Prisma）にも UI にも依存しない。
+ * 意味の正は ARCHITECTURE.md「データモデル」。
  *
- * db.ts と UI の境界はここ一枚。Prisma の生成型はこの向こうへ出さない。
+ * db.ts と UI の境界はここ一枚。
+ * Prisma の生成型はこの向こうへ出さない。
  * 時刻は Date（Prisma の DateTime も JS の Date なので詰め替えが要らない）。
  * 表示用の文字列化は format.ts の責務で、この型は持たない。
  *
- * 実行時の値（値域の定数など）は置かない。それぞれのドメインのモジュールが持つ。
+ * 実行時の値（値域の定数など）は置かない。
+ * それぞれのドメインのモジュールが持つ。
  */
 
 import type { QuestionStatus } from "@/lib/question";
 
 /**
- * body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、
- * current_form は対話の中で言い直された焦点。
+ * body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、current_form は対話の中で言い直された焦点。
  * 二つに分けている理由は ARCHITECTURE.md「原型と現在の形」。
  */
 export type Question = {
@@ -36,7 +38,10 @@ export type Message = {
   created_at: Date;
 };
 
-/** キーワードメモ。メッセージ本文の一部（anchor_start〜anchor_end）に付く。 */
+/**
+ * キーワードメモ。
+ * メッセージ本文の一部（anchor_start〜anchor_end）に付く。
+ */
 export type Memo = {
   id: string;
   message_id: string;

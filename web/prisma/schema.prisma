@@ -73,7 +73,7 @@ model Question {
 ///
 /// 最初の一つは問いの投入時に作られる。
 /// 二つ目以降は、同じ問いを対話画面から「新しいセッションで再訪」したときに増える（`createSession`）。
-/// 過去のセッションは畳まれず、堆積したまま残る——問いに何度戻ったかが読み返せることが目的。
+/// 問いに何度戻ったかが読み返せるように、過去のセッションは畳まれず、堆積したまま残る。
 model Session {
   id          String   @id @default(uuid(4)) @db.Uuid
   question_id String   @db.Uuid
@@ -99,7 +99,7 @@ model Message {
   /// 挿入順の通し番号。発話の並びを実装依存にしないための列。
   /// created_at は同一マイクロ秒で並びうるし、id は乱数の UUIDv4 で順序を持たない。
   /// 二つだけでは全順序にならず、ai_a と ai_b が入れ替わりうる（ai_b は ai_a への応答なので、並びは意味そのもの）。
-  /// ドメイン型には出さない——並べ替え専用の列で、表示にも意味の判断にも使わない（db.ts が omit する）。
+  /// 並べ替え専用の列で、表示にも意味の判断にも使わないので、ドメイン型には出さない（db.ts が omit する）。
   seq        BigInt   @default(autoincrement()) @unique
 
   session Session @relation(fields: [session_id], references: [id])

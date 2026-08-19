@@ -1,9 +1,10 @@
 /**
- * コンポスターの入口画面。問いの投入フォームと、投入済みの問いの一覧。
+ * コンポスターの入口画面。
+ * 問いの投入フォームと、投入済みの問いの一覧。
  *
  * 表示に要る整形だけを持ち、状態遷移や絞り込みは lib 側へ置く。
- * 状態のラベルは値域（question.ts）を全網羅する型で受けているので、
- * 状態を増やすと最初にここが型で落ちる——ラベルの付け忘れを構文で止めるため。
+ * 状態のラベルは値域（question.ts）を全網羅する型で受けている。
+ * 状態を増やすと最初にここが型で落ちるので、ラベルの付け忘れが構文で止まる。
  */
 
 import Link from "next/link";
@@ -24,7 +25,10 @@ const STATUS_LABEL: Record<QuestionStatus, string> = {
   discarded: "棄却",
 };
 
-/** コンポスターの入口。投入フォームと問いの一覧。 */
+/**
+ * コンポスターの入口。
+ * 投入フォームと問いの一覧。
+ */
 export default async function Home() {
   const questions = await listQuestions();
 
@@ -36,6 +40,13 @@ export default async function Home() {
           問いのコンポスター
         </span>
       </h1>
+
+      <Link
+        href="/memos"
+        className="mt-2 inline-block text-sm text-neutral-500 hover:underline"
+      >
+        メモ一覧 →
+      </Link>
 
       <form action={createQuestionAction} className="mt-8 flex gap-2">
         <input
