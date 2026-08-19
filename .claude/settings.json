@@ -4,17 +4,6 @@
     "pr": "",
     "sessionUrl": false
   },
-  "extraKnownMarketplaces": {
-    "karpathy-skills": {
-      "source": {
-        "source": "github",
-        "repo": "forrestchang/andrej-karpathy-skills"
-      }
-    }
-  },
-  "enabledPlugins": {
-    "andrej-karpathy-skills@karpathy-skills": true
-  },
   "permissions": {
     "allow": [
       "Bash(cd:*)",
