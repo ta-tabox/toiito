@@ -19,10 +19,6 @@ const EXCERPT_MARGIN = 40;
 export default async function MemosPage() {
   const memos = await listMemosWithContext();
 
-  // listMemosWithContext が返すのは古い順なので、逆順がそのまま新しい順になる。
-  // created_at で並べ直さない——同時刻を割る seq はドメイン型に無く、逆順より粗くなる。
-  const newestFirst = memos.toReversed();
-
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
       <Link href="/" className="text-sm text-neutral-500 hover:underline">
@@ -37,7 +33,7 @@ export default async function MemosPage() {
       </h1>
 
       <ul className="mt-8 space-y-3">
-        {newestFirst.map((memo) => (
+        {memos.map((memo) => (
           <li key={memo.id}>
             <Link
               href={`/q/${memo.question_id}#msg-${memo.message_id}`}
@@ -59,7 +55,7 @@ export default async function MemosPage() {
             </Link>
           </li>
         ))}
-        {newestFirst.length === 0 && (
+        {memos.length === 0 && (
           <li className="text-sm text-neutral-500">
             まだメモがない。対話の中で引っかかった語に印を付けるところから。
           </li>
