@@ -4,11 +4,13 @@
  * 問い・対話・メモを一式入れて、UI を手触りで確かめられる状態にする。
  * このファイルが持つのは投入のステップだけで、入れる値は同じディレクトリの questions.mts、書き込みの手順は db.ts の createQuestionWithTranscript が持つ。
  * アプリと同じ経路を通らない投入口を増やさない（ARCHITECTURE.md「DB への書き込み経路」）。
- * 接続先は DATABASE_URL 一点で、db.ts が読む。投入先を選ぶ引数はここに作らない——渡し口を二つ持つと、env は開発用・引数はテスト用という食い違いが起こる。
+ * 接続先は DATABASE_URL 一点で、db.ts が読む。
+ * 投入先を選ぶ引数はここに作らない——渡し口を二つ持つと、env は開発用・引数はテスト用という食い違いが起こる。
  * 動くのは問いが一件も無い DB に対してだけで、既に入っている DB へは何も入れずに終わる。
  * 本番（NODE_ENV=production）では、空でも投入しない。
  *
- * 入口は seed。CLI は node scripts/seed/index.mts（pnpm seed）。
+ * 入口は seed。
+ * CLI は node scripts/seed/index.mts（pnpm seed）。
  */
 
 import path from "node:path";
@@ -26,7 +28,8 @@ type Repo = typeof import("@/lib/db");
 /**
  * 投入した内容。
  *
- * 問いだけ件数でなく id を返すのは、投入分を後から引けるようにするため。同じ DB を他の書き手（並行するテスト）と共有していても、これがあれば取り違えない。
+ * 問いだけ件数でなく id を返すのは、投入分を後から引けるようにするため。
+ * 同じ DB を他の書き手（並行するテスト）と共有していても、これがあれば取り違えない。
  */
 export type SeedSummary = {
   questionIds: string[];
@@ -50,10 +53,13 @@ function assertNotProduction(): void {
 }
 
 /**
- * シードを投入する。接続先は DATABASE_URL。
+ * シードを投入する。
+ * 接続先は DATABASE_URL。
  *
- * 問いが既にある DB へは何も入れずに戻る。投入先の取り違えを、行が増えてから気付く形にしないため。
- * 接続は閉じない。呼び出し側（CLI・テスト）が自分の都合で閉じる。
+ * 問いが既にある DB へは何も入れずに戻る。
+ * 投入先の取り違えを、行が増えてから気付く形にしないため。
+ * 接続は閉じない。
+ * 呼び出し側（CLI・テスト）が自分の都合で閉じる。
  */
 export async function seed(): Promise<SeedSummary> {
   assertNotProduction();
@@ -100,7 +106,8 @@ function databaseName(): string {
 /**
  * CLI の本体。
  *
- * 投入先を先に告げ、投入し、結果を報告して接続を閉じる。接続先を最初に出すのは、開発用と検証用の取り違えに投入前に気付けるようにするため。
+ * 投入先を先に告げ、投入し、結果を報告して接続を閉じる。
+ * 接続先を最初に出すのは、開発用と検証用の取り違えに投入前に気付けるようにするため。
  */
 async function main(): Promise<void> {
   registerSrcAlias();
@@ -109,7 +116,8 @@ async function main(): Promise<void> {
 
   const summary = await seed();
 
-  // 何も入れなかったときは seed 側が理由を言っている。件数ゼロを重ねて報告しない。
+  // 何も入れなかったときは seed 側が理由を言っている。
+  // 件数ゼロを重ねて報告しない。
   if (summary.questionIds.length > 0) {
     console.log(
       `投入した: 問い ${summary.questionIds.length} 件 / 発話 ${summary.messages} 件 / メモ ${summary.memos} 件`,

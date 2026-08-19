@@ -4,7 +4,8 @@
  * 投入の手順は持たない（それは db.ts の createQuestionWithTranscript と seed.mts のステップ）。
  * ここが答えるのは「何を入れるか」だけで、この形のまま増やしていく。
  *
- * 入口は SEED_INPUTS。宣言（keyword ベース）から、範囲の埋まった投入の入力へ写したもの。
+ * 入口は SEED_INPUTS。
+ * 宣言（keyword ベース）から、範囲の埋まった投入の入力へ写したもの。
  */
 
 import type { MemoInput, QuestionInput } from "@/lib/db";
@@ -143,8 +144,10 @@ const SEED_QUESTIONS: QuestionSeed[] = [
 /**
  * 宣言したメモを、範囲付きの入力へ写す。
  *
- * オフセットを直書きすると本文を一文字直すたびに全部ずれる。単位は JS の string index（UTF-16 code unit）で、anchors.ts と揃える。
- * 本文に keyword が無ければ落とす。ずれたまま投入すると、UI では無関係な語に下線が付く。
+ * オフセットを直書きすると本文を一文字直すたびに全部ずれる。
+ * 単位は JS の string index（UTF-16 code unit）で、anchors.ts と揃える。
+ * 本文に keyword が無ければ落とす。
+ * ずれたまま投入すると、UI では無関係な語に下線が付く。
  */
 function toMemoInput(body: string, memoSeed: MemoSeed): MemoInput {
   const start = body.indexOf(memoSeed.keyword);
@@ -176,7 +179,8 @@ function toQuestionInput(questionSeed: QuestionSeed): QuestionInput {
 }
 
 /**
- * 投入する入力。宣言から写した形で、メモの範囲まで埋まっている。
+ * 投入する入力。
+ * 宣言から写した形で、メモの範囲まで埋まっている。
  *
  * 写しを読み込み時に済ませるのは、キーワードの綴り誤りを投入前に落とすため。
  */

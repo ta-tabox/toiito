@@ -315,7 +315,8 @@ export type MessageInput = {
  * 問いを対話ごと作るときの入力。
  *
  * currentForm と status は、既定（原型のまま・composting）から動かすときだけ渡す。
- * メモの範囲（anchorStart / anchorEnd）は呼び出し側が決める。本文中の位置を求めるのは DB 非依存の計算で、この層の仕事ではない。
+ * メモの範囲（anchorStart / anchorEnd）は呼び出し側が決める。
+ * 本文中の位置を求めるのは DB 非依存の計算で、この層の仕事ではない。
  */
 export type QuestionInput = {
   body: string;
@@ -329,7 +330,8 @@ export type QuestionInput = {
  *
  * 書き込みの順序と経路はアプリと同じ（createQuestion → addMessage → addMemo）。
  * 投入の口を別に作ると、アプリで起きることが投入したデータでは起きなくなり、画面で確かめている状態が実際の状態とずれる。
- * 一つのトランザクションには畳まない。畳むには repo 関数を tx 版へ組み直すことになり、アプリと同じ経路を通るという上の性質を失う。
+ * 一つのトランザクションには畳まない。
+ * 畳むには repo 関数を tx 版へ組み直すことになり、アプリと同じ経路を通るという上の性質を失う。
  */
 export async function createQuestionWithTranscript(
   input: QuestionInput,
@@ -389,7 +391,8 @@ const SETUP_ERROR_CODES = new Set(["P1001", "P1003", "P2021"]);
  * DB の準備ができていない失敗なら、手当てを促す文へ包み直す。
  *
  * Prisma のエラーコードを読めるのはこの層だけなので、判定もここが持つ（この層の外へ Prisma を出さない）。
- * それ以外の失敗はそのまま返す。原因を伏せると、準備の問題でない失敗まで docker を疑わせることになる。
+ * それ以外の失敗はそのまま返す。
+ * 原因を伏せると、準備の問題でない失敗まで docker を疑わせることになる。
  */
 export function withSetupGuidance(cause: unknown): unknown {
   const code =
