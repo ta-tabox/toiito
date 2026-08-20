@@ -85,7 +85,13 @@
   },
   "overrides": [
     {
-      "includes": ["vitest.config.ts", "tests/setup/**", "scripts/**"],
+      "includes": [
+        "vitest.config.ts",
+        "playwright.config.ts",
+        "tests/setup/**",
+        "e2e/**",
+        "scripts/**"
+      ],
       "linter": {
         "rules": {
           "style": {
