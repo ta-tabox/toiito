@@ -29,11 +29,48 @@ jobs:
       issues: read
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
+
+    # ここから下の実行環境は check.yml の複製。
+    # 二本しか無いので共通化しない（合成アクションに切り出すと、この job が何を持っているかが読めなくなる）。
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: toiito
+          POSTGRES_PASSWORD: toiito
+          POSTGRES_DB: toiito
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U toiito -d toiito"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://toiito:toiito@localhost:5433/toiito
+      DIRECT_URL: postgresql://toiito:toiito@localhost:5433/toiito
+      TOIITO_TEST_DATABASE_URL: postgresql://toiito:toiito@localhost:5433/toiito_test
+      # ここは無人で回る経路なので、実 Claude API を叩かせない（HARNESS.md「意図的にやらないこと」）。
+      TOIITO_FAKE_AI: "1"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      # node と pnpm を mise.toml の版で入れる。corepack は使わない（CLAUDE.md 開発ハーネス）。
+      - uses: jdx/mise-action@v4
+
+      # service コンテナには docker/initdb をマウントできないので、同じ SQL をここで打つ。
+      - name: テスト用データベースを作る
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'create database toiito_test owner toiito'
+
+      # postinstall が prisma generate まで走らせる（生成クライアントは git 管理外）。
+      - name: 依存を入れる
+        working-directory: web
+        run: pnpm install --frozen-lockfile
 
       - name: Run Claude Code
         id: claude
@@ -48,8 +85,7 @@ jobs:
           # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
           # prompt: 'Update the pull request description to include a summary of changes.'
 
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr *)'
-
+          # check に要る三つだけを名指しする（`Bash(pnpm *)` のようなワイルドカードでは開けすぎる）。
+          # このアクションはリポジトリルートで走り、そこに package.json は無いので、web へ降りる `cd` も要る（`cd` 単体では何も起きないので、手元の `.claude/settings.json` と同じく綴りは絞らない）。
+          # 連鎖したコマンドは `&&` で分割して一つずつ照合されるので、`cd web && pnpm check` はこの四つで通る。
+          claude_args: '--allowed-tools "Bash(cd:*),Bash(pnpm check),Bash(pnpm lint),Bash(pnpm test)"'
