@@ -56,12 +56,11 @@ describe("縦一本", () => {
     expect(await db.listMemosForSession(session.id)).toHaveLength(1);
 
     // メモからセッションと問いへ逆引きできる
-    const found = (await db.listMemosWithContext()).find(
-      (m) => m.id === memo.id,
-    );
+    const [found] = await db.listMemosWithContext();
 
-    expect(found?.session_id).toBe(session.id);
-    expect(found?.question_body).toBe("速さを求めることは、何を失うことなのか");
-    expect(found?.speaker).toBe("ai_a");
+    expect(found.id).toBe(memo.id);
+    expect(found.session_id).toBe(session.id);
+    expect(found.question_body).toBe("速さを求めることは、何を失うことなのか");
+    expect(found.speaker).toBe("ai_a");
   });
 });

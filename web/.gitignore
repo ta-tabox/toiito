@@ -46,3 +46,6 @@ next-env.d.ts
 
 # prisma generated client
 /src/generated
+
+# next dev がエージェント検出時に書き足す（生成は next.config.ts の agentRules: false で止めてあり、これは取りこぼしの保険）
+/AGENTS.md

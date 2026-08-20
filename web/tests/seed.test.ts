@@ -3,10 +3,8 @@ import { SEED_INPUTS } from "@scripts/seed/questions.ts";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import * as db from "@/lib/db";
 
-// 接続先はテスト専用データベース。vitest.config.ts が env で渡す。
-// この DB は他のテストファイルと共有していて空とは限らないので、投入そのものは
-// seed が呼ぶ口（createQuestionWithTranscript）へ直に当てる。
-// seed 自身については、空でない DB で何もしないことを見る。
+// 接続先はテスト専用データベース。
+// vitest.config.ts が env で渡し、ケースごとに空にする（tests/setup/truncate.ts）。
 afterAll(async () => {
   await db.disconnect();
 });
@@ -32,25 +30,24 @@ describe("シードの宣言", () => {
 });
 
 describe("シードの投入", () => {
-  it("宣言した一件を入れると、メモから出所へ逆引きできる", async () => {
-    const input = SEED_INPUTS[0];
-    const created = await db.createQuestionWithTranscript(input);
+  it("空の DB へ宣言を一式入れ、メモから出所へ逆引きできる", async () => {
+    const summary = await seed();
 
-    expect(created.question.body).toBe(input.body);
-    expect(created.messages).toHaveLength(input.messages.length);
-    expect(created.memos.length).toBeGreaterThan(0);
+    expect(summary.questionIds).toHaveLength(SEED_INPUTS.length);
+    expect(summary.memos).toBeGreaterThan(0);
 
-    const found = (await db.listMemosWithContext()).filter(
-      (memo) => memo.question_id === created.question.id,
+    const questions = await db.listQuestions();
+    const memos = await db.listMemosWithContext();
+
+    expect(questions.map((question) => question.body).sort()).toEqual(
+      SEED_INPUTS.map((input) => input.body).sort(),
     );
+    expect(memos).toHaveLength(summary.memos);
 
-    expect(found).toHaveLength(created.memos.length);
-
-    for (const memo of found) {
+    for (const memo of memos) {
       expect(memo.message_body.slice(memo.anchor_start, memo.anchor_end)).toBe(
         memo.keyword,
       );
-      expect(memo.question_body).toBe(input.body);
     }
   });
 
@@ -67,22 +64,13 @@ describe("シードの投入", () => {
   it("問いが既にある DB へは何も入れない", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    // 全件を数えると並行して走る他のテストの投入を拾うので、
-    // 宣言した問い文（このファイルしか書かない）だけを数える。
-    const seededBodies = SEED_INPUTS.map((input) => input.body);
-    const countSeeded = async (): Promise<number> =>
-      (await db.listQuestions()).filter((question) =>
-        seededBodies.includes(question.body),
-      ).length;
-
     try {
-      const before = await countSeeded();
-      const summary = await seed(); // 前のテストが入れた分が既に在る
+      await seed();
+      const summary = await seed(); // 一度目の分が既に在る
 
-      expect(before).toBeGreaterThan(0);
       expect(summary.questionIds).toEqual([]);
       expect(warn).toHaveBeenCalled();
-      expect(await countSeeded()).toBe(before);
+      expect(await db.listQuestions()).toHaveLength(SEED_INPUTS.length);
     } finally {
       warn.mockRestore();
     }

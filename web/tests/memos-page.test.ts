@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { afterAll, describe, expect, it } from "vitest";
 import MemosPage from "@/app/memos/page";
@@ -55,9 +54,7 @@ function childrenOf(element: ReactElement): ReactNode {
 async function memoInLongMessage(keyword: string, note?: string) {
   const before = "前".repeat(100);
   const after = "後".repeat(100);
-  const { question, session } = await db.createQuestion(
-    `逆引きの検査 ${randomUUID()}`,
-  );
+  const { question, session } = await db.createQuestion("逆引きの検査");
   const message = await db.addMessage(
     session.id,
     "ai_a",
@@ -76,9 +73,7 @@ async function memoInLongMessage(keyword: string, note?: string) {
 
 describe("/memos", () => {
   it("各行から出所の発話へ逆引きするリンクを張る", async () => {
-    const { question, message } = await memoInLongMessage(
-      `逆引き対象-${randomUUID()}`,
-    );
+    const { question, message } = await memoInLongMessage("逆引き対象");
 
     const hrefs = hrefsOf(await MemosPage());
 
@@ -86,7 +81,7 @@ describe("/memos", () => {
   });
 
   it("キーワード・メモ・前後を添えた引用・問い本文を並べる", async () => {
-    const keyword = `焦点の語-${randomUUID()}`;
+    const keyword = "焦点の語";
     const { question, before, after } = await memoInLongMessage(
       keyword,
       "この言い換えが効いた",
@@ -104,8 +99,8 @@ describe("/memos", () => {
   });
 
   it("新しいメモが先に来る", async () => {
-    const older = `古いメモ-${randomUUID()}`;
-    const newer = `新しいメモ-${randomUUID()}`;
+    const older = "古いメモ";
+    const newer = "新しいメモ";
     await memoInLongMessage(older);
     await memoInLongMessage(newer);
 
