@@ -9,9 +9,10 @@
 - **MVP の縦一本の残り**: #4（メモ UI。PR #39 で進行中）→ #6（E2E のメモまわり 2 シナリオ）→ #7（MVP 到達判定）。
   #1 / #2 / #3 / #5 / #11 は完了済み。
   #5 の `/memos` は既に `#msg-<id>` へリンクしているが着地先がまだ無く、それを埋めるのが #4
-- **#42（Playwright の足場）は #4 と並行に回せる**。
-  2026-08-20 に #6 を割って切り出した——Playwright 導入・e2e 専用 DB・`pnpm e2e` / `pnpm check:full`・シナリオ 1 は #4 に依存しない。
-  触るのは `web/e2e/` と `playwright.config.ts` と `web/package.json` で、PR #39 の `web/src/` とは重ならない
+- **#42（Playwright の足場）は入った**。
+  webServer・E2E 専用 DB（`toiito_e2e`）・`pnpm e2e` / `pnpm check:full`・シナリオ 1（投入 → 発話 → 二体の応答）まで。
+  残る 2 シナリオ（メモまわり）は #4 のメモ UI が入ってから #6 で足す。
+  走らせ方は `HARNESS.md`「E2E（L4）」、変数は `web/README.md`
 - **開発ハーネスの別トラックはほぼ畳んだ**（ROADMAP の依存グラフには載っていない一群）。
   #16（CI で `pnpm check`）・#33（テスト隔離のケース単位化）・#30（`next dev` の AGENTS.md 書き換え停止）・#18（Actions 上の @claude に check を通させる）が 2026-08-20 に入った。
   #19（Actions 経由の Claude の名義）も案 A で決着し、`CLAUDE.md` の git 節に入った——Actions 上の @claude はコメントまでで、コミットは押させない。
@@ -39,6 +40,10 @@
   一覧が空でも壊れているわけではない。
   #3 が入ったので `docker compose up -d` → `pnpm seed` で開発用の一式が入る（自分の問いで埋めたいなら `pnpm dev`）。
   旧 SQLite の実体は `web/data/`（git 管理外）に残っているので、S0 の対話を読み返す手はある
+
+- **[人間向け] E2E の実走は手元（macOS）**。
+  初回だけ `web/` で `pnpm exec playwright install chromium` が要る（ブラウザの実体は `pnpm install` では入らない）。
+  リモートは cdn.playwright.dev へ出られないのでこれができず、L4 だけは手元でしか緑にできない
 
 - **[人間・任意] 空の DB からの手触り確認**。
   問いを一件投げて二体が応答するところまで。

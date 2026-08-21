@@ -13,7 +13,7 @@ AI（Claude Code / Cowork セッション）が自律的に実装を進めるた
 | L1 静的 | 明白な誤り・作法・書式 | `biome check` + `scripts/lint-comments.ts` | 秒 |
 | L2 ユニット | lib 層のロジック（db / claude / personas / anchors） | Vitest（+ ローカル Postgres） | 秒 |
 | L3 ビルド | ルーティング・Server Actions の結線 | `next build` | 十秒台 |
-| L4 E2E | 縦一本（投入→対話→メモ→逆引き）のブラウザ実挙動 | Playwright（P1） | 分 |
+| L4 E2E | 縦一本（投入→対話→メモ→逆引き）のブラウザ実挙動 | Playwright（`pnpm e2e`） | 分 |
 | L5 官能 | 対話の質・「答えを与えない」制約の遵守 | 人間（将来 LLM-judge 補助） | — |
 
 入口は一つ: **`pnpm check`**（L0→L1→L2→L3 を直列実行）。
@@ -80,6 +80,37 @@ Prisma 7 はこれを破壊的操作として検知し、AI エージェント�
 - 実 API の疎通は L5 側（人間が実キーで常用する）で担保。
   ユニットテストで実 API を叩かない（遅い・非決定的・金がかかる）
 
+## E2E（L4）
+
+ブラウザ実挙動は Playwright で見る。
+入口は `pnpm e2e`。
+`pnpm check` は L0〜L3 のままで、E2E を含めない（心拍を遅くしない）。
+下から通しで確かめたいときは `pnpm check:full`（check → e2e の順）。
+
+ブラウザの実体はリポジトリにも node_modules にも入らないので、初回だけ取ってくる。
+
+```bash
+pnpm exec playwright install chromium
+```
+
+設定は `web/playwright.config.ts`、spec は `web/e2e/`。
+webServer が `next dev` を `TOIITO_FAKE_AI=1` で起こすので、API キーは要らない。
+口は 3100 で開発サーバー（3000）と分けてあり、`pnpm dev` を止めずに走らせられる。
+
+接続先は E2E 専用の `toiito_e2e`。
+走るたびにデータベースごと落として作り直し、migration を積み、`pnpm seed` と同じシードを入れる（`web/e2e/setup/reset-database.ts`）。
+作るのも作り直す側なので、`compose.yaml` の initdb はこのデータベースを知らない。
+vitest の `toiito_test` とは分ける。
+どちらも走る前に中身を作り直すので、同じ DB を向けると互いの行を踏む。
+名前が `_e2e` で終わらなければ作り直しは止まる。
+上書きの口は `TOIITO_E2E_DATABASE_URL`。
+
+作り直しは globalSetup でなく webServer の command に置く。
+Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、逆にすると dev サーバーが接続を張った後で足元の DB を落とすことになる。
+
+入っているのはシナリオ 1（問い投入 → 発話 → 二体が ai_a → ai_b の順に応答）だけ。
+メモまわりの 2 シナリオは、メモ UI が入ってから足す（issue #6）。
+
 ## テスト可能性の設計制約（コードの書き方に課すルール)
 
 1. **ロジックは lib 層へ寄せる**。
@@ -106,18 +137,20 @@ docker が無いので `docker compose up -d` は使えない。
 接続文字列も `pnpm check` の意味もローカルと同じで、人手の準備は要らない。
 API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環境変数で `ANTHROPIC_API_KEY` が渡っていればフェイクは入れない）。
 
-引き受ける非対称は二つ。
-どちらも外向きの通信が許可制で、塞ぐ手段がこの環境に無い:
+引き受ける非対称は三つ。
+どれも外向きの通信が許可制で、塞ぐ手段がこの環境に無い:
 
 - Postgres が 17 でなく 16（apt.postgresql.org へ出られない）
 - 版の管理が mise でなく直置き（mise.run へ出られない）。
   版の正は `mise.toml` のままで、フックはそれを読む側
+- L4 が走らない（cdn.playwright.dev へ出られず、ブラウザを取ってこられない）。
+  設定と spec はリモートで書けるが、`pnpm e2e` の実走は手元（macOS）が担う
 
 ## フェーズ
 
 - **P0（今回）**: Vitest + フェイクモード + lib 層テスト + `pnpm check`
-- **P1**: Playwright E2E（フェイクモードで縦一本）、シードスクリプト（開発用の問い・対話・メモ一式を投入）。
-  メモ機能実装と同時が効率的
+- **P1**: シードスクリプト（`pnpm seed`）は入った。
+  Playwright は足場（webServer・専用 DB・`pnpm e2e` / `pnpm check:full`）とシナリオ 1 まで入っており、残るメモまわりの 2 シナリオはメモ UI 待ち（issue #6）
 - **P2**: ペルソナ逸脱検査 — 「答えを与えない」制約を LLM-as-judge でサンプリング検査。
   L5 の一部自動化（完全自動化はしない。官能は人間の領分）
 - **CI**: リモート環境構築タスクと同時（GitHub Actions で check を回すだけ。先回りして作らない）
