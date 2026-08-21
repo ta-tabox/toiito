@@ -17,3 +17,14 @@ const TIMESTAMP = new Intl.DateTimeFormat("sv-SE", {
 export function formatTimestamp(at: Date): string {
   return TIMESTAMP.format(at);
 }
+
+/** 問いを投げてからの経過日数の表示形（`3 日前`）。 */
+export function formatElapsedDays(from: Date, now: Date): string {
+  const days = Math.floor(
+    (now.getTime() - from.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (days === 0) {
+    return "今日";
+  }
+  return `${days} 日前`;
+}
