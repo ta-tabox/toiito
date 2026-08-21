@@ -15,7 +15,9 @@
     "seed": "node --env-file-if-exists=.env.local scripts/seed/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "e2e": "playwright test",
     "check": "tsc --noEmit && pnpm lint && vitest run && next build",
+    "check:full": "pnpm check && pnpm e2e",
     "format": "biome format --write"
   },
   "dependencies": {
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.6",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.0",
     "@types/react": "^19",

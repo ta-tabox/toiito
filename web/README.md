@@ -42,6 +42,7 @@ pnpm dev
 | `TOIITO_MODEL` | 任意 | `claude-sonnet-5` | 二体 AI が使うモデルの上書き |
 | `TOIITO_FAKE_AI` | 任意 | 未設定 | `1` でネットワークに出ず決定的な応答を返す。API キー無しで縦一本を通すためのハーネス |
 | `TOIITO_TEST_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_test` | テストの接続先。CI で差し替える口 |
+| `TOIITO_E2E_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_e2e` | E2E の接続先。テストと同じ DB を向けると互いの行を踏むので分ける |
 
 ローカルの二本はどちらも同じ Postgres を指す。
 
@@ -54,8 +55,28 @@ DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
 テストは走るたびにこのデータベースを空にするので、**開発用の接続先を渡さないこと**。
 名前が `_test` で終わらなければ止まるようにしてある。
 
+`TOIITO_E2E_DATABASE_URL` も既定のままでよい（走るたびに作り直す側が、無ければ作る）。
+こちらは名前が `_e2e` で終わらなければ止まる。
+
 `TOIITO_FAKE_AI=1` は AI 呼び出しを伴う動作確認で使う。
 実 API を自動テストで叩かない（遅い・非決定的・金がかかる）。
+
+## E2E を走らせる
+
+ブラウザの実体は `pnpm install` では入らないので、初回だけ取ってくる。
+
+```bash
+pnpm exec playwright install chromium
+```
+
+```bash
+pnpm e2e
+```
+
+`pnpm check` は E2E を含まない（心拍を遅くしない）。
+通しで確かめるのは `pnpm check:full`（check → e2e）。
+webServer が 3100 で `next dev` を起こすので、`pnpm dev` は止めなくてよい。
+詳細は `HARNESS.md`「E2E（L4）」。
 
 ## スキーマを変えるとき
 
