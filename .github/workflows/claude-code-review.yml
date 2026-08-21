@@ -27,6 +27,7 @@ jobs:
       pull-requests: read
       issues: read
       id-token: write
+      actions: read # Required for Claude to read CI results on PRs
 
     steps:
       - name: Checkout repository
@@ -39,6 +40,12 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          # tag mode は mcp__github_ci__get_workflow_run_details を許可ツールへ自動で載せるので、これが無いと CI サーバの導入だけが飛ぶ。
+          # レビューが check.yml の緑を確認したうえで書いているのかを区別できなくなるので、claude.yml と同じ二つを揃える。
+          additional_permissions: |
+            actions: read
+
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
