@@ -2,6 +2,9 @@ name: Claude Code Review
 
 on:
   pull_request:
+    # 毎 push で走ると増分のたびに同じ指摘が積むので、synchronize は入れない。
+    # 自動で走らせるのは開いた一度だけ（draft から上げた ready_for_review と、閉じて開き直した reopened も同じ一度に当たる）。
+    # 以後の再レビューは PR コメントの @claude で明示的に呼ぶ。
     types: [opened, ready_for_review, reopened]
     # Optional: Only run on specific file changes
     # paths:
