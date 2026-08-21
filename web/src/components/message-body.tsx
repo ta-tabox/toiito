@@ -134,11 +134,13 @@ function MemoForm({
 
       <input
         name="keyword"
+        aria-label="キーワード"
         defaultValue={draft.keyword}
         className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
       />
       <input
         name="note"
+        aria-label="メモ"
         placeholder="なぜ引っかかったか（任意）"
         className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
       />
