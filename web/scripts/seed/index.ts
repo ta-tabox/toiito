@@ -15,7 +15,7 @@
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { registerSrcAlias } from "../node-alias.ts";
+import { registerPathAliases } from "../node-alias.ts";
 import { SEED_INPUTS } from "./questions.ts";
 
 /**
@@ -110,7 +110,7 @@ function databaseName(): string {
  * 接続先を最初に出すのは、開発用と検証用の取り違えに投入前に気付けるようにするため。
  */
 async function main(): Promise<void> {
-  registerSrcAlias();
+  registerPathAliases();
 
   console.log(`接続先: ${databaseName()}`);
 

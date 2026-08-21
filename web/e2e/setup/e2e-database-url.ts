@@ -3,9 +3,6 @@
  *
  * vitest の `TOIITO_TEST_DATABASE_URL` とは別に分ける。
  * どちらも走る前に中身を作り直すので、同じ DB を向けると互いの行を踏む。
- *
- * import は相対で綴る。
- * この値を読む reset-database.ts は素の node が走らせるため、`@` エイリアスがそこには無い。
  */
 
 import path from "node:path";

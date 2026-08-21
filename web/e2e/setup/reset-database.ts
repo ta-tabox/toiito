@@ -8,14 +8,17 @@
  * Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、globalSetup へ置くと dev サーバーが先に接続を張った後で足元の DB を落とすことになる。
  *
  * 素の node が走らせる CLI で、入口はこのファイルの実行そのもの。
- * `@` エイリアスはバンドラと vitest のもので node には無いため、import は相対で綴る。
+ * エイリアスは node の解決に無いので、呼び出し側が `--import ./scripts/alias-hook.ts` で登録してから走らせる（playwright.config.ts の webServer）。
  */
 
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import {
+  assertIsE2eDatabase,
+  E2E_DATABASE_URL,
+} from "@e2e/setup/e2e-database-url";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../src/generated/prisma/client.ts";
-import { assertIsE2eDatabase, E2E_DATABASE_URL } from "./e2e-database-url.ts";
+import { PrismaClient } from "@/generated/prisma/client";
 
 const webRoot = path.resolve(import.meta.dirname, "../..");
 

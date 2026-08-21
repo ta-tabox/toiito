@@ -9,8 +9,8 @@
  * データベースは専用の `toiito_e2e`、口は 3100 で、`pnpm dev` を止めずに走らせられる。
  */
 
+import { E2E_DATABASE_URL } from "@e2e/setup/e2e-database-url";
 import { defineConfig, devices } from "@playwright/test";
-import { E2E_DATABASE_URL } from "./e2e/setup/e2e-database-url.ts";
 
 /** 開発サーバー（3000）と衝突させないための口。 */
 const PORT = 3100;
@@ -34,7 +34,8 @@ export default defineConfig({
   webServer: {
     // データベースの作り直しを dev サーバーの起動と同じ一本に繋ぐ。
     // Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、globalSetup へ置くと順序が逆になる。
-    command: `node e2e/setup/reset-database.ts && pnpm exec next dev --port ${PORT}`,
+    // 作り直しの側はエイリアスを node の解決に持たないので、--import で先にフックを載せる。
+    command: `node --import ./scripts/alias-hook.ts e2e/setup/reset-database.ts && pnpm exec next dev --port ${PORT}`,
     url: BASE_URL,
 
     // 前の走りが残したサーバーは掴まない。
