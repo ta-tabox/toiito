@@ -10,7 +10,11 @@
 
 import path from "node:path";
 
-/** E2E の接続先。CI や別ポートの Postgres へ向けるときだけ環境変数で上書きする。 */
+/**
+ * E2E の接続先。
+ *
+ * CI や別ポートの Postgres へ向けるときだけ環境変数で上書きする。
+ */
 export const E2E_DATABASE_URL =
   process.env.TOIITO_E2E_DATABASE_URL ??
   "postgresql://toiito:toiito@localhost:5433/toiito_e2e";

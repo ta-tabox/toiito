@@ -23,6 +23,7 @@ const databaseName = path.basename(new URL(E2E_DATABASE_URL).pathname);
 
 /**
  * 作り直しを指示するための接続先。
+ *
  * データベースは自分自身へ繋いだまま落とせないので、同じサーバーの `postgres` を経由する。
  */
 function adminUrl(): string {
