@@ -108,8 +108,20 @@ vitest の `toiito_test` とは分ける。
 作り直しは globalSetup でなく webServer の command に置く。
 Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、逆にすると dev サーバーが接続を張った後で足元の DB を落とすことになる。
 
-入っているのはシナリオ 1（問い投入 → 発話 → 二体が ai_a → ai_b の順に応答）だけ。
-メモまわりの 2 シナリオは、メモ UI が入ってから足す（issue #6）。
+入っているのは 3 シナリオ。
+
+| spec | 見るもの |
+|---|---|
+| `dialogue.spec.ts` | 問い投入 → 発話 → 二体が ai_a → ai_b の順に応答 |
+| `memo.spec.ts` | 発話の選択 → メモ作成 → アンダーライン出現 |
+| 同上 | メモが `/memos` に並び、そこから出所の発話へ着地 |
+
+選択は Range を組んで document へ mouseup を投げる形で作る。
+Playwright のドラッグでは文字の途中で始まる範囲を安定して作れず、選択を拾う側は document の mouseup を見ている。
+
+`memo.spec.ts` には `test.fail()` を付けた表明が一本ある。
+クライアント遷移では着地の印（`[id^="msg-"]:target`）が出ず、同じ URL をリロードすると出る。
+落ちることを期待する形で置いてあるので、直った時点で「落ちるはずが通った」として報告され、annotation を外す合図になる。
 
 ## テスト可能性の設計制約（コードの書き方に課すルール)
 
@@ -149,8 +161,8 @@ API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環
 ## フェーズ
 
 - **P0（今回）**: Vitest + フェイクモード + lib 層テスト + `pnpm check`
-- **P1**: シードスクリプト（`pnpm seed`）は入った。
-  Playwright は足場（webServer・専用 DB・`pnpm e2e` / `pnpm check:full`）とシナリオ 1 まで入っており、残るメモまわりの 2 シナリオはメモ UI 待ち（issue #6）
+- **P1**: 済み。
+  シードスクリプト（`pnpm seed`）、Playwright の足場（webServer・専用 DB・`pnpm e2e` / `pnpm check:full`）、3 シナリオが揃っている
 - **P2**: ペルソナ逸脱検査 — 「答えを与えない」制約を LLM-as-judge でサンプリング検査。
   L5 の一部自動化（完全自動化はしない。官能は人間の領分）
 - **CI**: リモート環境構築タスクと同時（GitHub Actions で check を回すだけ。先回りして作らない）
