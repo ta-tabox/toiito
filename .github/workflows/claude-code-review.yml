@@ -46,6 +46,10 @@ jobs:
           additional_permissions: |
             actions: read
 
+          # permission_denials_count の内訳を測るための一時設定。
+          # 全ツール実行結果がログに出るので、計測が済んだ時点で必ず外す。
+          show_full_output: true
+
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
