@@ -34,8 +34,8 @@ export default defineConfig({
   webServer: {
     // データベースの作り直しを dev サーバーの起動と同じ一本に繋ぐ。
     // Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、globalSetup へ置くと順序が逆になる。
-    // 作り直しの側はエイリアスを node の解決に持たないので、--import で先にフックを載せる。
-    command: `node --import ./scripts/alias-hook.ts e2e/setup/reset-database.ts && pnpm exec next dev --port ${PORT}`,
+    // 接続先は env で渡す（作り直す側はそれを読むだけで、決める口をもう一つ持たない）。
+    command: `node e2e/setup/reset-database.ts && pnpm exec next dev --port ${PORT}`,
     url: BASE_URL,
 
     // 前の走りが残したサーバーは掴まない。
