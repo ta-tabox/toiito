@@ -107,7 +107,7 @@ export function MessageBody({
 
 /**
  * メモの小フォーム。
- * キーワードは選択文字列で充填し、書き換えられる。
+ * キーワードは選択文字列で固定し、書き換えさせない。
  */
 function MemoForm({
   messageId,
@@ -132,11 +132,14 @@ function MemoForm({
       <input type="hidden" name="anchor_start" value={draft.anchorStart} />
       <input type="hidden" name="anchor_end" value={draft.anchorEnd} />
 
+      {/* キーワードはアンカーが指す文字列そのもの。
+          書き換えられると、下線の位置と語が食い違ったメモが残る。 */}
       <input
         name="keyword"
         aria-label="キーワード"
-        defaultValue={draft.keyword}
-        className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+        value={draft.keyword}
+        readOnly
+        className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1 text-sm text-neutral-600"
       />
       <input
         name="note"
