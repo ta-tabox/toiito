@@ -146,7 +146,10 @@ function SegmentText({
 
 /**
  * メモの小フォーム。
- * キーワードは選択文字列で固定し、書き換えさせない。
+ *
+ * キーワードは選択した文字列そのものなので、引用として見せるだけで入力欄にしない。
+ * 触れる形にすると、下線の位置と語が食い違ったメモを作れてしまう。
+ * 送るのは hidden で、書き手が埋めるのはノートだけ。
  */
 function MemoForm({
   messageId,
@@ -170,16 +173,12 @@ function MemoForm({
       <input type="hidden" name="message_id" value={messageId} />
       <input type="hidden" name="anchor_start" value={draft.anchorStart} />
       <input type="hidden" name="anchor_end" value={draft.anchorEnd} />
+      <input type="hidden" name="keyword" value={draft.keyword} />
 
-      {/* キーワードはアンカーが指す文字列そのもの。
-          書き換えられると、下線の位置と語が食い違ったメモが残る。 */}
-      <input
-        name="keyword"
-        aria-label="キーワード"
-        value={draft.keyword}
-        readOnly
-        className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1 text-sm text-neutral-600"
-      />
+      <blockquote className="border-l-2 border-neutral-400 pl-3 text-sm text-neutral-600">
+        {draft.keyword}
+      </blockquote>
+
       <input
         name="note"
         aria-label="メモ"

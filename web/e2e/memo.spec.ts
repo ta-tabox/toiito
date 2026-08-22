@@ -35,17 +35,20 @@ test("発話の一部を選ぶとメモを作れ、その区間にアンダー�
   );
   await selectTextIn(page, await idOf(aiA), UNDERLINE_UTTERANCE);
 
-  // キーワードは選択文字列そのもので、書き換えさせない。
-  const keyword = page.getByLabel("キーワード");
-  await expect(keyword).toHaveValue(UNDERLINE_UTTERANCE);
-  await expect(keyword).toHaveAttribute("readonly", "");
+  // 選択した語は引用として見せるだけで、触れる入力欄にしない。
+  await expect(page.getByRole("blockquote")).toHaveText(UNDERLINE_UTTERANCE);
+  await expect(page.getByLabel("キーワード")).toHaveCount(0);
 
   await page.getByLabel("メモ").fill("この言い換えが効いた");
   await page.getByRole("button", { name: "メモする" }).click();
 
-  // 下線は ai_a の枠の中だけを見る。
-  // 同じ文字列は人間の発話にも ai_b の引用にも出るので、枠で絞らないと別の発話を指しうる。
-  const marked = aiA.getByText(UNDERLINE_UTTERANCE, { exact: true });
+  // 下線は ai_a の枠の中の、リンクになっている区間だけを見る。
+  // 同じ文字列は人間の発話にも ai_b の引用にも出るので枠で絞り、
+  // 選択直後はフォームの引用にも出るので role で絞る。
+  const marked = aiA.getByRole("link", {
+    name: UNDERLINE_UTTERANCE,
+    exact: true,
+  });
   await expect(marked).toHaveCSS("text-decoration-line", "underline");
   await expect(marked).toHaveAttribute(
     "title",
@@ -65,10 +68,9 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
   await selectTextIn(page, messageId, LOOKUP_UTTERANCE);
 
   await page.getByRole("button", { name: "メモする" }).click();
-  await expect(aiA.getByText(LOOKUP_UTTERANCE, { exact: true })).toHaveCSS(
-    "text-decoration-line",
-    "underline",
-  );
+  await expect(
+    aiA.getByRole("link", { name: LOOKUP_UTTERANCE, exact: true }),
+  ).toHaveCSS("text-decoration-line", "underline");
 
   await page.goto("/memos");
   await page.getByRole("link", { name: LOOKUP_UTTERANCE }).click();
@@ -95,7 +97,7 @@ test("下線を押すと、その語のメモが一覧で開く", async ({ page 
   await selectTextIn(page, await idOf(aiA), FORWARD_UTTERANCE);
   await page.getByRole("button", { name: "メモする" }).click();
 
-  await aiA.getByText(FORWARD_UTTERANCE, { exact: true }).click();
+  await aiA.getByRole("link", { name: FORWARD_UTTERANCE, exact: true }).click();
 
   // 開くのは押した下線に紐づくメモ一件で、一覧を出すだけでは足りない。
   const dialog = page.getByRole("dialog");
