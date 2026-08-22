@@ -8,12 +8,13 @@
  * ここは並べて描くところまで。
  *
  * 各発話に付ける id="msg-<message_id>" は逆引き（/memos）の着地点。
- * 綴りは /memos が組み立てるリンクと globals.css の [id^="msg-"]:target が共有しているので、変えるならその三箇所とも直す。
+ * 綴りは /memos が組み立てるリンクと、着地の印を出す landing-mark.tsx / globals.css が共有しているので、変えるならその三箇所とも直す。
  */
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createMemoAction, newSessionAction, speakAction } from "@/app/actions";
+import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
 import { SpeakForm } from "@/components/speak-form";
 import {
@@ -115,6 +116,7 @@ export default async function QuestionPage({
       </div>
 
       <SpeakForm action={speak} />
+      <LandingMark />
     </main>
   );
 }

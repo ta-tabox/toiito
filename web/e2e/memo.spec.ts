@@ -105,13 +105,7 @@ test("下線を押すと、その語のメモが一覧で開く", async ({ page 
   await expect(dialog.getByRole("heading")).toHaveText(FORWARD_UTTERANCE);
 });
 
-test("着地した発話に :target の印が出る", async ({ page }) => {
-  // クライアント遷移では印が出ない（リロードすると出る）。
-  // 遷移で URL のフラグメントは変わるが :target が評価し直されないためで、逆引きの導線が黙って半分になっている。
-  // 直し方は /memos のリンクを文書遷移へ戻すか、印を :target から外すかの二択で、どちらも #5 の領分。
-  // 直った時点でこの表明は「落ちるはずが通った」として報告されるので、annotation を外す合図になる。
-  test.fail();
-
+test("着地した発話に印が付く", async ({ page }) => {
   const aiA = await postQuestionAndSpeak(page, MARK_QUESTION, MARK_UTTERANCE);
   const messageId = await idOf(aiA);
   await selectTextIn(page, messageId, MARK_UTTERANCE);
@@ -125,9 +119,11 @@ test("着地した発話に :target の印が出る", async ({ page }) => {
     .getByRole("link", { name: "この発話へ" })
     .click();
 
-  await expect(page.locator(`#${messageId}`)).toHaveCSS(
-    "outline-color",
-    "rgb(245, 158, 11)",
+  // 見るのは印が付いたことまで。
+  // 色と消え方は CSS の animation が持つので、そこは L5 の領分。
+  await expect(page.locator(`#${messageId}`)).toHaveAttribute(
+    "data-landed",
+    "",
   );
 });
 
