@@ -119,7 +119,11 @@ pnpm exec playwright install chromium
 
 設定は `web/playwright.config.ts`、spec は `web/e2e/`。
 webServer が `next dev` を `TOIITO_FAKE_AI=1` で起こすので、API キーは要らない。
-口は 3100 で開発サーバー（3000）と分けてあり、`pnpm dev` を止めずに走らせられる。
+
+開発サーバーからは三重に離してあり、`pnpm dev` を止めずに走らせられる。
+口が 3100、データベースが `toiito_e2e`、ビルド出力先が `.next-e2e`。
+出力先まで分けるのは、`next dev` の二重起動検知が `.next/dev/lock` 一つを見ており、口を分けただけでは 3000 で動いている開発サーバーと衝突するため。
+差し替えの口は `TOIITO_DIST_DIR` で、受けるのは `next.config.ts`。
 
 接続先は E2E 専用の `toiito_e2e`。
 走るたびにデータベースごと落として作り直し、migration を積み、`pnpm seed` と同じシードを入れる（`web/e2e/setup/reset-database.ts`）。
@@ -132,8 +136,21 @@ vitest の `toiito_test` とは分ける。
 作り直しは globalSetup でなく webServer の command に置く。
 Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、逆にすると dev サーバーが接続を張った後で足元の DB を落とすことになる。
 
-入っているのはシナリオ 1（問い投入 → 発話 → 二体が ai_a → ai_b の順に応答）だけ。
-メモまわりの 2 シナリオは、メモ UI が入ってから足す（issue #6）。
+入っているのは 5 シナリオ。
+
+| spec | 見るもの |
+|---|---|
+| `dialogue.spec.ts` | 問い投入 → 発話 → 二体が ai_a → ai_b の順に応答 |
+| `memo.spec.ts` | 発話の選択 → メモ作成 → アンダーライン出現 |
+| 同上 | メモが `/memos` に並び、拡大表示から出所の発話へ着地 |
+| 同上 | 下線を押すと、その語のメモが一覧で開く |
+| 同上 | 着地した発話に印が付く |
+
+選択は Range を組んで document へ mouseup を投げる形で作る。
+Playwright のドラッグでは文字の途中で始まる範囲を安定して作れず、選択を拾う側は document の mouseup を見ている。
+
+本文の下線は role で指す。
+選択した直後だけ、同じ文字列が本文とメモフォームの引用の二箇所に出るので、文字で指すとリンクでない側を掴む。
 
 ## テスト可能性の設計制約（コードの書き方に課すルール)
 
@@ -173,8 +190,8 @@ API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環
 ## フェーズ
 
 - **P0（今回）**: Vitest + フェイクモード + lib 層テスト + `pnpm check`
-- **P1**: シードスクリプト（`pnpm seed`）は入った。
-  Playwright は足場（webServer・専用 DB・`pnpm e2e` / `pnpm check:full`）とシナリオ 1 まで入っており、残るメモまわりの 2 シナリオはメモ UI 待ち（issue #6）
+- **P1**: 済み。
+  シードスクリプト（`pnpm seed`）、Playwright の足場（webServer・専用 DB・`pnpm e2e` / `pnpm check:full`）、5 シナリオが揃っている
 - **P2**: ペルソナ逸脱検査 — 「答えを与えない」制約を LLM-as-judge でサンプリング検査。
   L5 の一部自動化（完全自動化はしない。官能は人間の領分）
 - **CI**: リモート環境構築タスクと同時（GitHub Actions で check を回すだけ。先回りして作らない）

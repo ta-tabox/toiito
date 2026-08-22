@@ -5,8 +5,9 @@
  * AI 呼び出しはフェイクモードに固定する（HARNESS.md「AI フェイクモード」）。
  * 実 API を自動テストで叩かない。
  *
- * 接続先とサーバーは開発用から二重に離す。
- * データベースは専用の `toiito_e2e`、口は 3100 で、`pnpm dev` を止めずに走らせられる。
+ * 接続先とサーバーは開発用から三重に離す。
+ * データベースは専用の `toiito_e2e`、口は 3100、出力先は `.next-e2e`。
+ * 出力先まで分けるのは、next dev の二重起動検知が `.next/dev/lock` 一つを見ており、口を分けただけでは `pnpm dev` と衝突するため。
  */
 
 import { E2E_DATABASE_URL } from "@e2e/setup/e2e-database-url";
@@ -14,6 +15,12 @@ import { defineConfig, devices } from "@playwright/test";
 
 /** 開発サーバー（3000）と衝突させないための口。 */
 const PORT = 3100;
+
+/**
+ * 開発サーバーと分けるビルド出力先。
+ * next.config.ts が TOIITO_DIST_DIR として受け取る。
+ */
+const DIST_DIR = ".next-e2e";
 
 const BASE_URL = `http://localhost:${PORT}`;
 
@@ -49,6 +56,7 @@ export default defineConfig({
       DATABASE_URL: E2E_DATABASE_URL,
       DIRECT_URL: E2E_DATABASE_URL,
       TOIITO_FAKE_AI: "1",
+      TOIITO_DIST_DIR: DIST_DIR,
     },
   },
 });

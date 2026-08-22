@@ -71,13 +71,37 @@ async function memoInLongMessage(keyword: string, note?: string) {
   return { question, message, memo, before, after };
 }
 
+/** クエリ無しで一覧を描く。 */
+async function listPage() {
+  return MemosPage({ searchParams: Promise.resolve({}) });
+}
+
 describe("/memos", () => {
-  it("各行から出所の発話へ逆引きするリンクを張る", async () => {
-    const { question, message } = await memoInLongMessage("逆引き対象");
+  it("各行はそのメモの拡大表示へリンクする", async () => {
+    const { memo } = await memoInLongMessage("拡大表示の対象");
 
-    const hrefs = hrefsOf(await MemosPage());
+    const hrefs = hrefsOf(await listPage());
 
-    expect(hrefs).toContain(`/q/${question.id}#msg-${message.id}`);
+    expect(hrefs).toContain(`/memos?memo=${memo.id}`);
+  });
+
+  it("拡大表示したメモから出所の発話へ逆引きする", async () => {
+    const { question, message, memo } = await memoInLongMessage("逆引き対象");
+
+    const opened = await MemosPage({
+      searchParams: Promise.resolve({ memo: memo.id }),
+    });
+
+    expect(hrefsOf(opened)).toContain(`/q/${question.id}#msg-${message.id}`);
+  });
+
+  it("クエリで指していなければ拡大表示を出さない", async () => {
+    const { question, message } = await memoInLongMessage("開かない対象");
+
+    const hrefs = hrefsOf(await listPage());
+
+    // 逆引きのリンクは拡大表示の中にしか無い。
+    expect(hrefs).not.toContain(`/q/${question.id}#msg-${message.id}`);
   });
 
   it("キーワード・メモ・前後を添えた引用・問い本文を並べる", async () => {
@@ -87,7 +111,7 @@ describe("/memos", () => {
       "この言い換えが効いた",
     );
 
-    const text = textOf(await MemosPage());
+    const text = textOf(await listPage());
 
     expect(text).toContain(keyword);
     expect(text).toContain("この言い換えが効いた");
@@ -104,7 +128,7 @@ describe("/memos", () => {
     await memoInLongMessage(older);
     await memoInLongMessage(newer);
 
-    const text = textOf(await MemosPage());
+    const text = textOf(await listPage());
 
     expect(text.indexOf(newer)).toBeLessThan(text.indexOf(older));
   });

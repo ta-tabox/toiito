@@ -75,7 +75,7 @@ pnpm e2e
 
 `pnpm check` は E2E を含まない（心拍を遅くしない）。
 通しで確かめるのは `pnpm check:full`（check → e2e）。
-webServer が 3100 で `next dev` を起こすので、`pnpm dev` は止めなくてよい。
+webServer は口（3100）・データベース（`toiito_e2e`）・ビルド出力先（`.next-e2e`）を開発用から分けるので、`pnpm dev` は止めなくてよい。
 詳細は `HARNESS.md`「E2E（L4）」。
 
 ## スキーマを変えるとき

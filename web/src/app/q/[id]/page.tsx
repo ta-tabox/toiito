@@ -4,16 +4,23 @@
  *
  * 表示するのは最新セッションだけで、過去セッションの閲覧はここが引き受けない。
  * 発話の生成と永続化は Server Action と lib の領分。
+ * 本文の描画と選択からのメモ作成は MessageBody の領分。
  * ここは並べて描くところまで。
+ *
+ * 各発話に付ける id="msg-<message_id>" は逆引き（/memos）の着地点。
+ * 綴りは /memos が組み立てるリンクと、着地の印を出す landing-mark.tsx / globals.css が共有しているので、変えるならその三箇所とも直す。
  */
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { newSessionAction, speakAction } from "@/app/actions";
+import { createMemoAction, newSessionAction, speakAction } from "@/app/actions";
+import { LandingMark } from "@/components/landing-mark";
+import { MessageBody } from "@/components/message-body";
 import { SpeakForm } from "@/components/speak-form";
 import {
   getQuestion,
   latestSession,
+  listMemosForSession,
   listMessages,
   questionText,
 } from "@/lib/db";
@@ -50,9 +57,11 @@ export default async function QuestionPage({
   }
 
   const messages = await listMessages(session.id);
+  const memos = await listMemosForSession(session.id);
 
   const speak = speakAction.bind(null, question.id, session.id);
   const newSession = newSessionAction.bind(null, question.id);
+  const createMemo = createMemoAction.bind(null, question.id);
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
@@ -86,12 +95,17 @@ export default async function QuestionPage({
         {messages.map((m) => (
           <div
             key={m.id}
+            id={`msg-${m.id}`}
             className={`rounded border p-4 ${SPEAKER_STYLE[m.speaker].cls}`}
           >
             <div className="mb-1 text-xs font-bold text-neutral-500">
               {SPEAKER_STYLE[m.speaker].label}
             </div>
-            <div className="whitespace-pre-wrap leading-relaxed">{m.body}</div>
+            <MessageBody
+              message={m}
+              memos={memos.filter((memo) => memo.message_id === m.id)}
+              action={createMemo}
+            />
           </div>
         ))}
         {messages.length === 0 && (
@@ -102,6 +116,7 @@ export default async function QuestionPage({
       </div>
 
       <SpeakForm action={speak} />
+      <LandingMark />
     </main>
   );
 }
