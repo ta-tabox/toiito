@@ -95,7 +95,11 @@ pnpm exec playwright install chromium
 
 設定は `web/playwright.config.ts`、spec は `web/e2e/`。
 webServer が `next dev` を `TOIITO_FAKE_AI=1` で起こすので、API キーは要らない。
-口は 3100 で開発サーバー（3000）と分けてあり、`pnpm dev` を止めずに走らせられる。
+
+開発サーバーからは三重に離してあり、`pnpm dev` を止めずに走らせられる。
+口が 3100、データベースが `toiito_e2e`、ビルド出力先が `.next-e2e`。
+出力先まで分けるのは、`next dev` の二重起動検知が `.next/dev/lock` 一つを見ており、口を分けただけでは 3000 で動いている開発サーバーと衝突するため。
+差し替えの口は `TOIITO_DIST_DIR` で、受けるのは `next.config.ts`。
 
 接続先は E2E 専用の `toiito_e2e`。
 走るたびにデータベースごと落として作り直し、migration を積み、`pnpm seed` と同じシードを入れる（`web/e2e/setup/reset-database.ts`）。
