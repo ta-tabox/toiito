@@ -76,3 +76,6 @@
 | GitHub Issues | 何を作るか + 状態（実行単位の正） |
 | `PLAN-rationale.md` | なぜそう決めたか（経緯層。着手時に読む必要はない） |
 | `extensions/` | MVP 後に解凍する構想（graph-view / fermentation-and-outlets） |
+
+
+## forkの動作テストのために修正
