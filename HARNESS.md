@@ -40,6 +40,10 @@ check が赤のままコミットしない（コミットゲート）。
   管理者は赤い PR のマージも main への直 push も通るので、そこだけは機械の拒否でなく規律に戻る。
   既定の For pull requests only はマージだけを抜けさせて直 push は塞いだままなので、逃げ道としては足りない
 
+ruleset が enforce されるのは public であることが前提。
+Free プランの private では保存はできても止まらない（GitHub Pro 以上なら private でも効く）。
+非公開へ戻す判断をするなら、このゲートも同時に失われる。
+
 L1 は lint と書式を Biome 一本で見る（正典: fermentary/playbooks/toolchain.md）。
 書式ずれは `pnpm format` で機械的に直す。
 **手で整形しない**。
