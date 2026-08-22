@@ -12,7 +12,10 @@ on:
 
 jobs:
   claude:
-    # 公開後は誰でもコメントできるので、書き込み権限を持つ人だけに起動を絞る（絞らないと API 利用料と Actions 分を第三者が自由に燃やせる）。
+    # 公開後は誰でもコメントできるので、リポジトリに招かれた人だけに起動を絞る（絞らないと API 利用料と Actions 分を第三者が自由に燃やせる）。
+    # ただし COLLABORATOR が意味するのは招待されたことだけなので、Read や Triage で招いた相手も通る。
+    # 実権限で弾くには Permission API を引く別ステップが要り、if: の式には書けない。
+    # 招くのは Write 以上だけ、という運用でこの差を埋める。
     # 見るのは「@claude と書いた本人」の association で、それが載っているオブジェクトは経路ごとに違う。
     # issue_comment と pull_request_review_comment はコメント側（github.event.comment）、pull_request_review はレビュー側（github.event.review）。
     # issue_comment で github.event.issue.author_association を見てはいけない。
