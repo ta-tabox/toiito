@@ -21,22 +21,24 @@ AI は「変更 → check 緑 → コミット」を心拍として回す。
 check が赤のままコミットしない（コミットゲート）。
 
 コミットゲートは規律なので、破っても機械は止めない。
-止める力は main のブランチ保護に置く（GitHub の Settings → Branches）。
+止める力は main の ruleset に置く（GitHub の Settings → Rules → Rulesets、名前は `main: via PR + check green`）。
 設定は GitHub 側の状態で diff に残らないので、何をどういう理由で有効にしたかの記録はここが正。
 
-- **Require a pull request before merging** — 有効。
+- **Require a pull request before merging** — 有効、承認は 0 件。
   main への直 push を塞ぐ。
   `NEXT.md` の申し送り更新のような一行の変更も PR を通る（先例: cd10a6f は main へ直接入っている）。
-  例外は下の bypass の一点だけで、通常の経路には作らない
+  例外は下の bypass の一点だけで、通常の経路には作らない。
+  承認を 1 件以上にすると GitHub は自分の PR を自分で承認させないので、全ての PR が bypass 頼みになる
 - **Require status checks to pass before merging** — 有効。
   必須は `check` 一本（`.github/workflows/check.yml` の job 名）。
   `claude` 系の job は当面必須にしない
 - **Require branches to be up to date before merging** — 有効。
   main の差分を取り込んだ状態で CI を通さないと、緑の PR がマージ後に初めて壊れる組み合わせを取り逃がす。
   main が進むたび PR 側の取り込みが要るが、Update branch 一つで済むので手間として引き受ける
-- **Do not allow bypassing the above settings** — 無効。
-  CI 自体が壊れて緑にできないときに保護設定を一時的に外して回らずに済むよう、管理者（人間）の逃げ道を残す。
-  管理者は赤い PR もマージできるので、そこだけは機械の拒否でなく規律に戻る
+- **Bypass list** — Repository admin を Always で入れる。
+  CI 自体が壊れて緑にできないときに ruleset を一時的に外して回らずに済むよう、管理者（人間）の逃げ道を残す。
+  管理者は赤い PR のマージも main への直 push も通るので、そこだけは機械の拒否でなく規律に戻る。
+  既定の For pull requests only はマージだけを抜けさせて直 push は塞いだままなので、逃げ道としては足りない
 
 L1 は lint と書式を Biome 一本で見る（正典: fermentary/playbooks/toolchain.md）。
 書式ずれは `pnpm format` で機械的に直す。
