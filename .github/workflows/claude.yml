@@ -12,10 +12,21 @@ on:
 
 jobs:
   claude:
+    # 公開後は誰でもコメントできるので、書き込み権限を持つ人だけに起動を絞る（絞らないと API 利用料と Actions 分を第三者が自由に燃やせる）。
+    # 見るのは「@claude と書いた本人」の association で、それが載っているオブジェクトは経路ごとに違う。
+    # issue_comment と pull_request_review_comment はコメント側（github.event.comment）、pull_request_review はレビュー側（github.event.review）。
+    # issue_comment で github.event.issue.author_association を見てはいけない。
+    # それは issue を立てた人のもので後から誰がコメントしても変わらないので、OWNER が立てた issue へのコメントが権限を問わず全部通る。
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+      (github.event_name == 'issue_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review' &&
+        contains(github.event.review.body, '@claude') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.review.author_association))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
