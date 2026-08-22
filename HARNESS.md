@@ -31,9 +31,9 @@ check が赤のままコミットしない（コミットゲート）。
 - **Require status checks to pass before merging** — 有効。
   必須は `check` 一本（`.github/workflows/check.yml` の job 名）。
   `claude` 系の job は当面必須にしない
-- **Require branches to be up to date before merging** — 無効。
-  複数の issue が並行で動いているので、有効にすると main が進むたび全 PR が再 push を要求されて待ち行列が直列化する。
-  検討するのは並行度が落ちてから
+- **Require branches to be up to date before merging** — 有効。
+  main の差分を取り込んだ状態で CI を通さないと、緑の PR がマージ後に初めて壊れる組み合わせを取り逃がす。
+  main が進むたび PR 側の取り込みが要るが、Update branch 一つで済むので手間として引き受ける
 - **Do not allow bypassing the above settings** — 無効。
   CI 自体が壊れて緑にできないときに保護設定を一時的に外して回らずに済むよう、管理者（人間）の逃げ道を残す。
   管理者は赤い PR もマージできるので、そこだけは機械の拒否でなく規律に戻る
