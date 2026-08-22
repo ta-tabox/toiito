@@ -1,7 +1,7 @@
 /**
  * シナリオ 2・3: 発話の選択からメモを作り、そのメモから対話へ逆引きする。
  *
- * 見るのは縦一本の後半（選択 → メモ → アンダーライン → 逆引きの着地）で、投入から応答までは dialogue.spec.ts が持つ。
+ * 見るのは縦一本の後半（選択 → メモ → アンダーライン → 両向きの行き来）で、投入から応答までは dialogue.spec.ts が持つ。
  * 各シナリオは自分の問いを投入して自分の前提を作る。
  * E2E のデータベースは走り単位でしか作り直されないので、前のシナリオが残した行に寄りかかると順序に縛られる。
  */
@@ -17,14 +17,13 @@ const LOOKUP_QUESTION = "E2E: メモから対話へ戻れるのか";
 
 const LOOKUP_UTTERANCE = "E2E: 語から場面を思い出せるか試す";
 
-/** 逆引きの行を一意に指すための目印。 */
-const LOOKUP_KEYWORD = "E2E: 逆引きの目印";
-
 const MARK_QUESTION = "E2E: 着地の印は出るのか";
 
 const MARK_UTTERANCE = "E2E: 飛んだ先で目印が要る";
 
-const MARK_KEYWORD = "E2E: 着地の目印";
+const FORWARD_QUESTION = "E2E: 下線からメモへ戻れるのか";
+
+const FORWARD_UTTERANCE = "E2E: 印から中身へ辿れるか試す";
 
 test("発話の一部を選ぶとメモを作れ、その区間にアンダーラインが出る", async ({
   page,
@@ -36,9 +35,10 @@ test("発話の一部を選ぶとメモを作れ、その区間にアンダー�
   );
   await selectTextIn(page, await idOf(aiA), UNDERLINE_UTTERANCE);
 
-  // キーワードは選択文字列で自動充填される。
+  // キーワードは選択文字列そのもので、書き換えさせない。
   const keyword = page.getByLabel("キーワード");
   await expect(keyword).toHaveValue(UNDERLINE_UTTERANCE);
+  await expect(keyword).toHaveAttribute("readonly", "");
 
   await page.getByLabel("メモ").fill("この言い換えが効いた");
   await page.getByRole("button", { name: "メモする" }).click();
@@ -64,7 +64,6 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
   const messageId = await idOf(aiA);
   await selectTextIn(page, messageId, LOOKUP_UTTERANCE);
 
-  await page.getByLabel("キーワード").fill(LOOKUP_KEYWORD);
   await page.getByRole("button", { name: "メモする" }).click();
   await expect(aiA.getByText(LOOKUP_UTTERANCE, { exact: true })).toHaveCSS(
     "text-decoration-line",
@@ -72,13 +71,36 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
   );
 
   await page.goto("/memos");
-  await page.getByRole("link", { name: LOOKUP_KEYWORD }).click();
+  await page.getByRole("link", { name: LOOKUP_UTTERANCE }).click();
+
+  // 行を押すと拡大表示が開く。
+  // 出所の発話への逆引きはその中にある。
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("link", { name: "この発話へ" }).click();
 
   // 着地の印は三箇所が同じ綴りを共有して初めて出る。
   // /memos が組み立てるリンク、発話へ付けた id、globals.css の [id^="msg-"]:target。
   await expect(page).toHaveURL(new RegExp(`/q/[^#]+#${messageId}$`));
 
   await expect(page.locator(`#${messageId}`)).toBeInViewport();
+});
+
+test("下線を押すと、その語のメモが一覧で開く", async ({ page }) => {
+  const aiA = await postQuestionAndSpeak(
+    page,
+    FORWARD_QUESTION,
+    FORWARD_UTTERANCE,
+  );
+  await selectTextIn(page, await idOf(aiA), FORWARD_UTTERANCE);
+  await page.getByRole("button", { name: "メモする" }).click();
+
+  await aiA.getByText(FORWARD_UTTERANCE, { exact: true }).click();
+
+  // 開くのは押した下線に紐づくメモ一件で、一覧を出すだけでは足りない。
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("heading")).toHaveText(FORWARD_UTTERANCE);
 });
 
 test("着地した発話に :target の印が出る", async ({ page }) => {
@@ -92,11 +114,14 @@ test("着地した発話に :target の印が出る", async ({ page }) => {
   const messageId = await idOf(aiA);
   await selectTextIn(page, messageId, MARK_UTTERANCE);
 
-  await page.getByLabel("キーワード").fill(MARK_KEYWORD);
   await page.getByRole("button", { name: "メモする" }).click();
 
   await page.goto("/memos");
-  await page.getByRole("link", { name: MARK_KEYWORD }).click();
+  await page.getByRole("link", { name: MARK_UTTERANCE }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("link", { name: "この発話へ" })
+    .click();
 
   await expect(page.locator(`#${messageId}`)).toHaveCSS(
     "outline-color",

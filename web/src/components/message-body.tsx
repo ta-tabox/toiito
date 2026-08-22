@@ -9,8 +9,12 @@
  *
  * 複数の発話へ跨る選択は捨てる。
  * メモのアンカーは発話一件の本文へ閉じており、跨いだ範囲を一件では表せない。
+ *
+ * 下線の掛かった区間は `/memos?memo=<id>` へのリンクにする。
+ * 逆向き（メモ → 発話）は /memos が持っているので、こちらは発話 → メモを埋める側。
  */
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   clampToGraphemeBoundary,
@@ -81,14 +85,12 @@ export function MessageBody({
     <>
       <div ref={bodyRef} className="whitespace-pre-wrap leading-relaxed">
         {segments.map((segment, index) => (
-          <span
+          <SegmentText
             key={segment.start}
-            data-segment-index={index}
-            title={memoHint(segment, memos)}
-            className={segment.memoIds.length > 0 ? MARKED_STYLE : undefined}
-          >
-            {segment.text}
-          </span>
+            segment={segment}
+            index={index}
+            memos={memos}
+          />
         ))}
       </div>
 
@@ -102,6 +104,43 @@ export function MessageBody({
         />
       )}
     </>
+  );
+}
+
+/**
+ * セグメント一つ分の描画。
+ *
+ * メモが掛かっていればメモ一覧の当該メモへのリンクにし、掛かっていなければただの span。
+ * 重なっている区間はいちばん古いメモへ繋ぐ（重なりの描き分けは別 issue）。
+ *
+ * draggable を切るのは、下線の内側から選択を始めたときにリンクのドラッグが起きるのを防ぐため。
+ * 既にメモの付いた区間へ重ねてメモを作る経路が塞がる。
+ */
+function SegmentText({
+  segment,
+  index,
+  memos,
+}: {
+  segment: Segment;
+  index: number;
+  memos: Memo[];
+}) {
+  const [firstMemoId] = segment.memoIds;
+
+  if (!firstMemoId) {
+    return <span data-segment-index={index}>{segment.text}</span>;
+  }
+
+  return (
+    <Link
+      href={`/memos?memo=${firstMemoId}`}
+      data-segment-index={index}
+      title={memoHint(segment, memos)}
+      draggable={false}
+      className={MARKED_STYLE}
+    >
+      {segment.text}
+    </Link>
   );
 }
 
