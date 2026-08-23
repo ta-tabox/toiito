@@ -30,6 +30,57 @@ describe("questions / sessions", () => {
     expect(first.id).not.toBe(second.id);
   });
 
+  it("listSessionsWithKeywords はセッションを古い順で返す", async () => {
+    const { question, session: first } =
+      await db.createQuestion("再訪する問い");
+    const second = await db.createSession(question.id);
+
+    const sessions = await db.listSessionsWithKeywords(question.id);
+
+    expect(sessions.map((session) => session.id)).toEqual([
+      first.id,
+      second.id,
+    ]);
+  });
+
+  it("listSessionsWithKeywords は各セッションに、そのセッションのキーワードだけを付ける", async () => {
+    const { question, session: first } = await db.createQuestionWithTranscript({
+      body: "どのセッションで言った語か",
+      messages: [
+        {
+          speaker: "ai_a",
+          body: "一度目の応答",
+          memos: [{ anchorStart: 0, anchorEnd: 2, keyword: "一度" }],
+        },
+      ],
+    });
+    const second = await db.createSession(question.id);
+    const laterMessage = await db.addMessage(second.id, "ai_a", "二度目の応答");
+    await db.addMemo(laterMessage.id, 0, 2, "二度");
+
+    const sessions = await db.listSessionsWithKeywords(question.id);
+
+    expect(sessions.map((session) => session.keywords)).toEqual([
+      ["一度"],
+      ["二度"],
+    ]);
+    expect(sessions[0].id).toBe(first.id);
+  });
+
+  it("listSessionsWithKeywords はメモの無いセッションへ空の配列を返し、同じ語は一度だけ出す", async () => {
+    const { question, messages } = await db.createQuestionWithTranscript({
+      body: "同じ語に何度も印を付ける",
+      messages: [{ speaker: "ai_a", body: "惰性と惰性" }],
+    });
+    await db.addMemo(messages[0].id, 0, 2, "惰性");
+    await db.addMemo(messages[0].id, 3, 5, "惰性");
+    await db.createSession(question.id);
+
+    const sessions = await db.listSessionsWithKeywords(question.id);
+
+    expect(sessions.map((session) => session.keywords)).toEqual([["惰性"], []]);
+  });
+
   it("一覧は新しい順", async () => {
     const { question: older } = await db.createQuestion("先に投げた問い");
     const { question: newer } = await db.createQuestion("後に投げた問い");
