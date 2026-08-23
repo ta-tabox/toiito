@@ -8,7 +8,9 @@
  * 開いているメモを URL で持つのは、対話画面の下線から特定のメモを名指しで開く経路があるため。
  * client の state に持つと、そこから指せる口が無くなる。
  *
- * 出所の発話への逆引き（`/q/<question_id>#msg-<message_id>`）は拡大表示の中に置く。
+ * 出所の発話への逆引き（`/q/<question_id>?s=<session_id>#msg-<message_id>`）は拡大表示の中に置く。
+ * セッションを名指しするのは、再訪で最新が入れ替わってもメモを付けた当時の発話へ着地させるため。
+ * 落とすと問いの画面には飛ぶが、着地先が DOM に無く、何も起きずに終わる。
  * ジャンプはこの画面だけでは完結せず、三箇所が同じ綴りを共有して初めて成立する。
  * URL を書くのがここ、飛び先の `id="msg-…"` を発話へ付けるのが `q/[id]/page.tsx`、飛んだ先でその発話を光らせるのが `landing-mark.tsx`。
  * 綴りを変えるときは三箇所とも直す。
@@ -130,7 +132,7 @@ export default async function MemosPage({
           </p>
 
           <Link
-            href={`/q/${opened.question_id}#msg-${opened.message_id}`}
+            href={`/q/${opened.question_id}?s=${opened.session_id}#msg-${opened.message_id}`}
             className="mt-2 inline-block text-sm text-neutral-500 hover:underline"
           >
             この発話へ →

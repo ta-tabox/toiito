@@ -2,8 +2,12 @@
  * 一つの問いの対話画面。
  * 三者（人間・具体・抽象）の発話を時系列で並べ、次の一手を受け取る。
  *
- * 表示するのは最新セッションだけで、過去セッションの閲覧はここが引き受けない。
- * 発話の生成と永続化は Server Action と lib の領分。
+ * 一度に描くのはセッション一つ。
+ * 既定は最新で、`?s=<session_id>` が指すセッションがあればそちらを描く。
+ * 過去のセッションは読み取り専用にする。
+ * 再訪は前の続きではなく「また話す」ことなので、足したい発話は最新のセッションへ行く（ARCHITECTURE.md「再訪と、過去セッションの読み方」）。
+ *
+ * 発話の生成と永続化は Server Action の領分。
  * 本文の描画と選択からのメモ作成は MessageBody の領分。
  * ここは並べて描くところまで。
  *
@@ -19,9 +23,9 @@ import { MessageBody } from "@/components/message-body";
 import { SpeakForm } from "@/components/speak-form";
 import {
   getQuestion,
-  latestSession,
   listMemosForSession,
   listMessages,
+  listSessionsWithKeywords,
   questionText,
 } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
@@ -29,6 +33,12 @@ import { PERSONA_LABEL } from "@/lib/personas";
 import type { Speaker } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * 切り替え口の一行へ出すキーワードの数。
+ * どのセッションだったか思い出せれば足りるので、全部は並べない。
+ */
+const SWITCHER_KEYWORDS = 3;
 
 const SPEAKER_STYLE: Record<Speaker, { label: string; cls: string }> = {
   human: { label: "あなた", cls: "border-neutral-300 bg-white" },
@@ -38,24 +48,35 @@ const SPEAKER_STYLE: Record<Speaker, { label: string; cls: string }> = {
 
 /**
  * 一つの問いの対話画面。
- * 表示するのは最新セッションのみ。
+ * 描くのは `?s` が指すセッション、無ければ最新セッション。
  */
 export default async function QuestionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ s?: string }>;
 }) {
   const { id } = await params;
+  const { s: selectedId } = await searchParams;
   const question = await getQuestion(id);
   if (!question) {
     notFound();
   }
 
-  const session = await latestSession(id);
-  if (!session) {
+  const sessions = await listSessionsWithKeywords(id);
+  const latest = sessions.at(-1);
+
+  // 選ぶ先をこの問いのセッションの中から引くことで、他の問いのセッション ID を ?s に差し込まれても届かない。
+  const session = selectedId
+    ? sessions.find((candidate) => candidate.id === selectedId)
+    : latest;
+
+  if (!session || !latest) {
     notFound();
   }
 
+  const isLatest = session.id === latest.id;
   const messages = await listMessages(session.id);
   const memos = await listMemosForSession(session.id);
 
@@ -69,14 +90,23 @@ export default async function QuestionPage({
         <Link href="/" className="text-sm text-neutral-500 hover:underline">
           ← コンポスター
         </Link>
-        <form action={newSession}>
-          <button
-            type="submit"
+        {isLatest ? (
+          <form action={newSession}>
+            <button
+              type="submit"
+              className="text-sm text-neutral-500 hover:underline"
+            >
+              新しいセッションで再訪
+            </button>
+          </form>
+        ) : (
+          <Link
+            href={`/q/${question.id}`}
             className="text-sm text-neutral-500 hover:underline"
           >
-            新しいセッションで再訪
-          </button>
-        </form>
+            最新のセッションへ →
+          </Link>
+        )}
       </div>
 
       <h1 className="mt-4 text-xl font-bold leading-relaxed">
@@ -90,6 +120,30 @@ export default async function QuestionPage({
       <p className="mt-1 text-xs text-neutral-500">
         セッション開始: {formatTimestamp(session.started_at)}
       </p>
+
+      {sessions.length > 1 && (
+        <nav
+          aria-label="セッション"
+          className="mt-4 flex flex-col items-start gap-1 border-l-2 border-neutral-200 pl-3"
+        >
+          {sessions.map((candidate, index) => (
+            <Link
+              key={candidate.id}
+              href={
+                candidate.id === latest.id
+                  ? `/q/${question.id}`
+                  : `/q/${question.id}?s=${candidate.id}`
+              }
+              aria-current={candidate.id === session.id ? "page" : undefined}
+              className="text-xs text-neutral-500 hover:underline aria-[current]:font-bold aria-[current]:text-neutral-800"
+            >
+              {index + 1} 回目 · {formatTimestamp(candidate.started_at)}
+              {candidate.keywords.length > 0 &&
+                ` · ${candidate.keywords.slice(0, SWITCHER_KEYWORDS).join("・")}`}
+            </Link>
+          ))}
+        </nav>
+      )}
 
       <div className="mt-8 space-y-4">
         {messages.map((m) => (
@@ -115,7 +169,13 @@ export default async function QuestionPage({
         )}
       </div>
 
-      <SpeakForm action={speak} />
+      {isLatest ? (
+        <SpeakForm action={speak} />
+      ) : (
+        <p className="mt-8 text-sm text-neutral-500">
+          読み返しているのは過去のセッション。ここへは発話を足せない。
+        </p>
+      )}
       <LandingMark />
     </main>
   );
