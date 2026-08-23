@@ -15,11 +15,14 @@ on:
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # fork からの PR では GitHub が GITHUB_TOKEN を read-only へ降格し、ワークフローが宣言した id-token: write を無視する。
+    # ACTIONS_ID_TOKEN_REQUEST_URL が注入されず OIDC トークンを取れないので、action は Anthropic API へ到達する前に必ず落ちる。
+    # 直しようのない赤い ✗ が残るだけなので、同一リポジトリ由来の PR に限る。
+    # 見るのは author_association でなく head.repo。
+    # シークレットと id-token が渡るかどうかを決めているのは fork かどうかであって、PR を出した人の権限ではない。
+    # step でなく job に置く。
+    # step だけを止めると job は成功で終わり、中身が空の成功と実際にレビューが走った成功を check 一覧で区別できなくなる。
+    if: github.event.pull_request.head.repo.full_name == github.repository
 
     runs-on: ubuntu-latest
     permissions:
