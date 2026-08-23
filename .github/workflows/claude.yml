@@ -37,11 +37,12 @@ jobs:
       # 同じ issue/PR での連投は直列化する。走っている応答を途中で殺すと中途半端なコメントが残るので cancel はしない。
       cancel-in-progress: false
     permissions:
+      # contents: read で固定する（Actions 経由の Claude はコメントまで。コミットは押させない）。
       contents: read
       pull-requests: read
       issues: read
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
+      actions: read # Claude が PR 上で CI の結果を読むのに要る
 
     # ここから下の実行環境は check.yml の複製。
     # 二本しか無いので共通化しない（合成アクションに切り出すと、この job が何を持っているかが読めなくなる）。
@@ -91,12 +92,9 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # This is an optional setting that allows Claude to read CI results on PRs
+          # Claude に PR 上の CI 結果を読ませる
           additional_permissions: |
             actions: read
-
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
 
           # check に要る三つだけを名指しする（`Bash(pnpm *)` のようなワイルドカードでは開けすぎる）。
           # このアクションはリポジトリルートで走り、そこに package.json は無いので、web へ降りる `cd` も要る（`cd` 単体では何も起きないので、手元の `.claude/settings.json` と同じく綴りは絞らない）。
