@@ -49,7 +49,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 - skill `karpathy-guidelines` — 過剰実装と巻き込み変更を防ぐ振る舞いの規律。
   「変更した各行が依頼に辿れるか」で手を止める。
   プラグインとして引くと、コンテナが毎回空から始まるリモートでは初回セッションに間に合わないので、本体は `.claude/skills/` へ同梱してある。
-  外部由来で、出所は https://github.com/forrestchang/andrej-karpathy-skills の 2c60614（MIT）。
+  外部由来で、出所は https://github.com/multica-ai/andrej-karpathy-skills の 2c60614（MIT。旧 owner は forrestchang で、改称前の URL もリダイレクトで通るが正は新綴り）。
   上流の更新は手で取り込む
 
 **コメントも文書（`.md`）も、改行は句点で**。
