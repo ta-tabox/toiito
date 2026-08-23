@@ -44,6 +44,11 @@ ruleset が enforce されるのは public であることが前提。
 Free プランの private では保存はできても止まらない（GitHub Pro 以上なら private でも効く）。
 非公開へ戻す判断をするなら、このゲートも同時に失われる。
 
+claude-code-action は PR のワークフローファイルが default branch のものと内容一致しないと本体を実行せず自己スキップするので、**`claude-review` の緑はワークフロー自身を変える PR では意味を持たない**。
+出るのは `Workflow validation failed. The workflow file must exist and have identical content to the version on the repository's default branch.` の一行だけ。
+スキップは job の失敗でなく成功として畳まれるため、`.github/workflows/claude*.yml` を触った PR には十数秒で緑が付き、レビューは一行も走っていない。
+効きの確認はマージ後に main で行う（実測 2026-08-23・PR #77）。
+
 L1 は lint と書式を Biome 一本で見る（正典: fermentary/playbooks/toolchain.md）。
 書式ずれは `pnpm format` で機械的に直す。
 **手で整形しない**。
