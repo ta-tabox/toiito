@@ -62,6 +62,11 @@
   変数の一覧と意味は `web/README.md`。
   リモート（Claude Code on the web）だけは例外で、`.env.local` はセッション起動フックが書く（手元には存在しないファイルなので、上書きの心配は無い）
 
+- **[人間向け] マージの前にクラウド環境の環境変数へ `GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` を入れる**（#81）。
+  フックから名義の焼き直しを落とし、未設定なら止める検査に替えたので、入れないままだとリモートのセッションが立たなくなる。
+  入れたら新しいセッションで `env | grep GIT_AUTHOR` が返ることと、コミットが author=人間 / committer=Claude / Verified になることを見る。
+  置き場の規則は `HARNESS.md`「設定の置き場」
+
 - **[Claude 向け] リモートは docker 無しで動く**。
   `.claude/hooks/session-start.sh` が Postgres・toolchain・依存・migration を用意するので、`docker compose up -d` を探しに行かない。
   非対称（Postgres 16・mise 直置き）は `HARNESS.md`「リモート」が正
