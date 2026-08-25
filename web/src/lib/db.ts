@@ -21,6 +21,7 @@ import type {
   Message,
   Question,
   Session,
+  SessionWithKeywords,
   Speaker,
 } from "@/lib/types";
 
@@ -192,6 +193,41 @@ export async function latestSession(
  */
 export async function createSession(questionId: string): Promise<Session> {
   return db().session.create({ data: { question_id: questionId } });
+}
+
+/**
+ * 問いのセッションを、そのセッションで付いたメモのキーワードごと古い順に返す。
+ *
+ * 日付だけの一覧ではどのセッションだったか思い出せないので、人間が印を付けた語を手掛かりとして添える。
+ * 同じ語に何度も印を付けることがあるため、キーワードは重複を落として返す。
+ * 並びは古い順で、latestSession（新しい順の先頭）とは逆になる。
+ * 読み返しは投入からの順に辿るので、切り替え口に出す回数（1 回目・2 回目）と並びが一致する方を採る。
+ * セッションごとにメモを引くと N+1 になるので、メモは問い単位で一度に引いてから束ね直す。
+ */
+export async function listSessionsWithKeywords(
+  questionId: string,
+): Promise<SessionWithKeywords[]> {
+  const sessions = await db().session.findMany({
+    where: { question_id: questionId },
+    orderBy: [{ started_at: "asc" }, { seq: "asc" }],
+  });
+
+  const memos = await db().memo.findMany({
+    where: { message: { session: { question_id: questionId } } },
+    select: { keyword: true, message: { select: { session_id: true } } },
+    orderBy: [{ created_at: "asc" }, { seq: "asc" }],
+  });
+
+  return sessions.map((session) => ({
+    ...session,
+    keywords: [
+      ...new Set(
+        memos
+          .filter((memo) => memo.message.session_id === session.id)
+          .map((memo) => memo.keyword),
+      ),
+    ],
+  }));
 }
 
 /**

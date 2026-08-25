@@ -68,7 +68,7 @@ async function memoInLongMessage(keyword: string, note?: string) {
     note,
   );
 
-  return { question, message, memo, before, after };
+  return { question, session, message, memo, before, after };
 }
 
 /** クエリ無しで一覧を描く。 */
@@ -85,23 +85,33 @@ describe("/memos", () => {
     expect(hrefs).toContain(`/memos?memo=${memo.id}`);
   });
 
-  it("拡大表示したメモから出所の発話へ逆引きする", async () => {
-    const { question, message, memo } = await memoInLongMessage("逆引き対象");
+  it("拡大表示したメモから、当時のセッションの発話へ逆引きする", async () => {
+    const { question, session, message, memo } =
+      await memoInLongMessage("逆引き対象");
+
+    // 再訪を挟む。
+    // セッションを名指ししていないと、着地先が最新セッションになって発話が DOM に無い（issue #57）。
+    await db.createSession(question.id);
 
     const opened = await MemosPage({
       searchParams: Promise.resolve({ memo: memo.id }),
     });
 
-    expect(hrefsOf(opened)).toContain(`/q/${question.id}#msg-${message.id}`);
+    expect(hrefsOf(opened)).toContain(
+      `/q/${question.id}?s=${session.id}#msg-${message.id}`,
+    );
   });
 
   it("クエリで指していなければ拡大表示を出さない", async () => {
-    const { question, message } = await memoInLongMessage("開かない対象");
+    const { question, session, message } =
+      await memoInLongMessage("開かない対象");
 
     const hrefs = hrefsOf(await listPage());
 
     // 逆引きのリンクは拡大表示の中にしか無い。
-    expect(hrefs).not.toContain(`/q/${question.id}#msg-${message.id}`);
+    expect(hrefs).not.toContain(
+      `/q/${question.id}?s=${session.id}#msg-${message.id}`,
+    );
   });
 
   it("キーワード・メモ・前後を添えた引用・問い本文を並べる", async () => {

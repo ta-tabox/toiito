@@ -1,5 +1,6 @@
 /**
  * シナリオ 2・3: 発話の選択からメモを作り、そのメモから対話へ逆引きする。
+ * 再訪を挟んでも逆引きが着地することと、過去セッションを画面から辿れることまで見る（issue #57）。
  *
  * 見るのは縦一本の後半（選択 → メモ → アンダーライン → 両向きの行き来）で、投入から応答までは dialogue.spec.ts が持つ。
  * 各シナリオは自分の問いを投入して自分の前提を作る。
@@ -24,6 +25,14 @@ const MARK_UTTERANCE = "E2E: 飛んだ先で目印が要る";
 const FORWARD_QUESTION = "E2E: 下線からメモへ戻れるのか";
 
 const FORWARD_UTTERANCE = "E2E: 印から中身へ辿れるか試す";
+
+const REVISIT_QUESTION = "E2E: 再訪しても当時の発話へ戻れるのか";
+
+const REVISIT_UTTERANCE = "E2E: 日を空けてまた話す前に印を付ける";
+
+const SWITCH_QUESTION = "E2E: 過去セッションを画面から辿れるのか";
+
+const SWITCH_UTTERANCE = "E2E: 一度目の対話がここにある";
 
 test("発話の一部を選ぶとメモを作れ、その区間にアンダーラインが出る", async ({
   page,
@@ -125,6 +134,64 @@ test("着地した発話に印が付く", async ({ page }) => {
     "data-landed",
     "",
   );
+});
+
+test("再訪したあとでも、メモからそのメモを付けた当時の発話へ着地する", async ({
+  page,
+}) => {
+  const aiA = await postQuestionAndSpeak(
+    page,
+    REVISIT_QUESTION,
+    REVISIT_UTTERANCE,
+  );
+  const messageId = await idOf(aiA);
+  await selectTextIn(page, messageId, REVISIT_UTTERANCE);
+  await page.getByRole("button", { name: "メモする" }).click();
+
+  await page.getByRole("button", { name: "新しいセッションで再訪" }).click();
+
+  // 再訪すると画面は新しいセッションへ移る。
+  // メモを付けた発話はここには無い（消えたのではなく、描いているセッションが違う）。
+  await expect(page.locator(`#${messageId}`)).toHaveCount(0);
+
+  await page.goto("/memos");
+  await page.getByRole("link", { name: REVISIT_UTTERANCE }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("link", { name: "この発話へ" })
+    .click();
+
+  // 着地の条件は、飛べたことではなく、当時の発話がそこに描かれていること。
+  await expect(page.locator(`#${messageId}`)).toBeInViewport();
+  await expect(page.locator(`#${messageId}`)).toContainText(REVISIT_UTTERANCE);
+});
+
+test("再訪すると切り替え口が出て、過去セッションを読み返せる", async ({
+  page,
+}) => {
+  const aiA = await postQuestionAndSpeak(
+    page,
+    SWITCH_QUESTION,
+    SWITCH_UTTERANCE,
+  );
+  const messageId = await idOf(aiA);
+
+  // セッションが一つのうちは切り替え口を出さない（選ぶ先が無い）。
+  const switcher = page.getByRole("navigation", { name: "セッション" });
+  await expect(switcher).toHaveCount(0);
+
+  await page.getByRole("button", { name: "新しいセッションで再訪" }).click();
+  await expect(switcher.getByRole("link")).toHaveCount(2);
+
+  await switcher.getByRole("link").first().click();
+
+  // 過去セッションは読み返すだけ。
+  // 続けたくなったときのために、最新へ戻る口だけを残す。
+  await expect(page.locator(`#${messageId}`)).toBeVisible();
+  await expect(page.getByRole("button", { name: /^発話する/ })).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "最新のセッションへ" }),
+  ).toBeVisible();
 });
 
 /**
