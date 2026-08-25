@@ -116,8 +116,14 @@ link_toolchain() {
   done
 
   # PATH の並びはこちらの契約ではないので、Claude のセッションへは明示的にも渡す。
+  # ただし CLAUDE_ENV_FILE は追記専用で、書けば resume のたびに同じ一行が積まれるので、BIN_DIR が既に先頭なら書かない。
+  # 見るのは有無でなく先頭かどうか。
+  # 別の版の node を持つディレクトリが前にあると、BIN_DIR が PATH にあっても掴む版が変わる。
   if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-    echo "export PATH=\"$BIN_DIR:\$PATH\"" >> "$CLAUDE_ENV_FILE"
+    case ":$PATH:" in
+      ":$BIN_DIR:"*) ;;
+      *) echo "export PATH=\"$BIN_DIR:\$PATH\"" >> "$CLAUDE_ENV_FILE" ;;
+    esac
   fi
 }
 
