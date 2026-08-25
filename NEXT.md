@@ -62,6 +62,11 @@
   変数の一覧と意味は `web/README.md`。
   リモート（Claude Code on the web）だけは例外で、`.env.local` はセッション起動フックが書く（手元には存在しないファイルなので、上書きの心配は無い）
 
+- **[人間向け] マージの前にクラウド環境の環境変数へ `GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` を入れる**（#81）。
+  フックから名義の焼き直しを落とし、未設定なら止める検査に替えたので、入れないままだとリモートのセッションが立たなくなる。
+  入れたら新しいセッションで `env | grep GIT_AUTHOR` が返ることと、コミットが author=人間 / committer=Claude / Verified になることを見る。
+  置き場の規則は `HARNESS.md`「設定の置き場」
+
 - **[Claude 向け] リモートは docker 無しで動く**。
   `.claude/hooks/session-start.sh` が Postgres・toolchain・依存・migration を用意するので、`docker compose up -d` を探しに行かない。
   非対称（Postgres 16・mise 直置き）は `HARNESS.md`「リモート」が正
@@ -91,6 +96,32 @@
 - セッション開始時に fermentary `NEXT.md` の自分宛（`[→toiito]`）搬送メモを確認し、拾ったら消す。
   宛先が自分でないメモは実行も削除も編集もしない
 - 常用中に出た違和感は膜の一行判定で振り分ける（アプリ改善ネタ → issue、概念的な学び → fermentary の inbox/questions）
+
+### 未搬送（リモートで出た依頼。次の手元セッションが session-intake を通して搬入する）
+
+```text
+<!-- fermentary搬送ブロック v1.2 | session-harvest -->
+# 搬送ブロック
+- 出所: toiito #81 リモート環境の設定の置き場を切り分ける
+- 日付: 2026-08-25
+
+## 問い
+なし
+
+## ナレッジ
+なし
+
+## ノート候補
+なし
+
+## タスク
+### T: リモート環境の設定の置き場の切り分け規則を playbook 化する ［宛先: fermentary］
+- 原語: 「**他プロジェクトへ持っていく雛形**。置き場は決定に従う（このリポジトリの `HARNESS.md` か、fermentary の playbook か）。fermentary 側にするなら、リモートからは書けないので `NEXT.md` へ搬送メモを置く」（issue #81「作るもの」）。置き場の選択は「fermentary の playbook」
+- 文脈: Claude Code on the web の環境設定には置き場が三つある（リポジトリの `.claude/hooks/session-start.sh`・クラウド環境の環境変数欄・同じ画面のセットアップスクリプト欄）。toiito では規則を「リポジトリの内容から復元できるものはフック、利用者や環境に固有のものはクラウド設定」と決め、`HARNESS.md`「設定の置き場」に表として置いた（issue #81・この PR）。規則そのものは toiito に固有でないので、他プロジェクトで新しい環境を作るときに引ける形へ移したい。素材は `HARNESS.md` の当該節がそのまま使える。残っているのは playbook としての置き場と綴りの確定で、リモートからは fermentary へ書けないためこちらでは手が付かない
+
+## 判定保留
+なし
+```
 
 ## 文書の地図
 

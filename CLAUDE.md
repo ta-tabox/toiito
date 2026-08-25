@@ -67,9 +67,9 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 あれは知識リポジトリの掃引の話で、コードの読み手は差分から意図を復元するレビュアーなので、区切るのは時間でなく関心。
 正典は @CODING.md「コミットの粒度」。
 - **author は人間名義**。
-  Claude も `-c` を付けず素の `git commit` を使う（名義は local config に焼いてある。リモートはクローンのたびに config が空なので、セッション起動フックが同じ名義を焼き直す）。
+  Claude も `-c` を付けず素の `git commit` を使う（手元は local config に焼いてある。リモートはクラウド環境の `GIT_AUTHOR_*` が渡し、無ければセッション起動フックが止まる。置き場の規則は `HARNESS.md`「設定の置き場」）。
   author が答えるのは責任を誰が担ったかの一点で、それはどこで書いても動かない。
-- **リモートでは committer だけ Claude 名義**（`GIT_COMMITTER_*` をセッション起動フックが渡す）。
+- **リモートでは committer だけ Claude 名義**（コンテナの global config が既にその値なので、こちらから渡すものは無い）。
   コンテナは署名を強制し、その鍵は `noreply@anthropic.com` に紐づいているので、committer を人間名義にすると GitHub が Unverified を出す。
   author（責任）と committer（実際にコミットを作った者）は別の欄なので、片方を実態へ合わせても他方は動かない。
   手元は署名の事情が無いので両方とも人間のまま。

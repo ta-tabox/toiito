@@ -35,24 +35,21 @@ log() {
   echo "[toiito] $1"
 }
 
-# 手元では local config に焼いてある名義が、リモートではクローンのたびに空になる。
-# 焼き直さないと、コンテナの global config（Claude 名義）でコミットが積まれる。
+# author の名義は利用者に固有なので、リポジトリでなくクラウド環境の環境変数が持つ（HARNESS.md「設定の置き場」）。
+# ここへ焼くと、他人が fork で立てたセッションのコミットが持ち主名義で積まれる。
 #
-# author と committer は分ける。
-# コンテナは署名を強制し、その鍵は noreply@anthropic.com に紐づいているので、
-# committer がそれ以外だと GitHub はコミットを Unverified として扱う。
+# GIT_AUTHOR_* は config より優先されるので、リポジトリ側の user.name / user.email は要らない。
+# committer はコンテナの global config（Claude 名義・署名鍵つき）から落ちるので、こちらも触らない。
 #
-# 焼くのは author の側。
-# env が渡らなかった回は committer も人間名義へ落ちるが、そのとき失うのは Verified の印だけで、
-# 責任の所在を答える author は人間のまま残る。逆に焼くと、落ちた回に author が Claude になる。
-configure_git_identity() {
-  git -C "$REPO_ROOT" config --local user.name "ta-tabox"
-  git -C "$REPO_ROOT" config --local user.email "tanktabox@gmail.com"
-
-  if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-    echo 'export GIT_COMMITTER_NAME="Claude"' >> "$CLAUDE_ENV_FILE"
-    echo 'export GIT_COMMITTER_EMAIL="noreply@anthropic.com"' >> "$CLAUDE_ENV_FILE"
+# 未設定のまま進めると author が Claude になり、
+# 「第三者が出したものを承認した」という嘘の外形を誰も気づかないまま履歴へ残すので、止める。
+require_git_author() {
+  if [ -n "${GIT_AUTHOR_NAME:-}" ] && [ -n "${GIT_AUTHOR_EMAIL:-}" ]; then
+    return
   fi
+
+  echo "GIT_AUTHOR_NAME / GIT_AUTHOR_EMAIL がこの環境に無い。クラウド環境の環境変数へ入れ、セッションを立て直す（HARNESS.md「設定の置き場」）" >&2
+  exit 1
 }
 
 # nodejs.org のアーカイブ名に使う表記。uname の綴りとは違う。
@@ -211,7 +208,7 @@ main() {
     exit 0
   fi
 
-  configure_git_identity
+  require_git_author
   install_node
   install_pnpm
   link_toolchain
