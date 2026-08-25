@@ -116,8 +116,19 @@ link_toolchain() {
   done
 
   # PATH の並びはこちらの契約ではないので、Claude のセッションへは明示的にも渡す。
+  # 既に先頭にあるなら渡す先が無いので書かない。
+  # 見るのは有無でなく先頭かどうか。
+  # 別の版の node を持つディレクトリが前にあると、BIN_DIR が PATH にあっても掴む版が変わる。
+  #
+  # フックを起こすプロセスの PATH には前回の追記が反映されない（効くのはツールのシェル側だけ）ので、先頭判定だけでは resume のたびに積まれる。
+  # CLAUDE_ENV_FILE は追記専用なので、書く前に同じ行が無いことも見る。
   if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-    echo "export PATH=\"$BIN_DIR:\$PATH\"" >> "$CLAUDE_ENV_FILE"
+    local path_line="export PATH=\"$BIN_DIR:\$PATH\""
+
+    case ":$PATH:" in
+      ":$BIN_DIR:"*) ;;
+      *) grep -qxF "$path_line" "$CLAUDE_ENV_FILE" 2>/dev/null || echo "$path_line" >> "$CLAUDE_ENV_FILE" ;;
+    esac
   fi
 }
 
