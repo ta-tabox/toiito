@@ -1,5 +1,5 @@
 ---
-name: 作業
+name: Task
 about: 1 issue = 1 セッション = 1 PR
 title: ''
 labels: ''

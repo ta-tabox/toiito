@@ -6,20 +6,17 @@ on:
     # 自動で走らせるのは開いた一度だけ（draft から上げた ready_for_review と、閉じて開き直した reopened も同じ一度に当たる）。
     # 以後の再レビューは PR コメントの @claude で明示的に呼ぶ。
     types: [opened, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # fork からの PR では GitHub が GITHUB_TOKEN を read-only へ降格し、ワークフローが宣言した id-token: write を無視する。
+    # ACTIONS_ID_TOKEN_REQUEST_URL が注入されず OIDC トークンを取れないので、action は Anthropic API へ到達する前に必ず落ちる。
+    # 直しようのない赤い ✗ が残るだけなので、同一リポジトリ由来の PR に限る。
+    # 見るのは author_association でなく head.repo。
+    # シークレットと id-token が渡るかどうかを決めているのは fork かどうかであって、PR を出した人の権限ではない。
+    # step でなく job に置く。
+    # step だけを止めると job は成功で終わり、中身が空の成功と実際にレビューが走った成功を check 一覧で区別できなくなる。
+    if: github.event.pull_request.head.repo.full_name == github.repository
 
     runs-on: ubuntu-latest
     permissions:
@@ -27,7 +24,7 @@ jobs:
       pull-requests: read
       issues: read
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
+      actions: read # Claude が PR 上で CI の結果を読むのに要る
 
     steps:
       - name: Checkout repository
@@ -57,6 +54,3 @@ jobs:
           # checkout が fetch-depth: 1 で origin/main を持たないため、origin/main...HEAD の差分には fetch が要る。
           # 連鎖したコマンドは && で分割して一つずつ照合されるので、fetch を落とすと diff の側が許可されていても前半で止まる。
           claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git merge-base:*),Bash(git rev-parse:*),Bash(git fetch:*)" --append-system-prompt "レビューの本文・要約・インラインコメントはすべて日本語で書く。文体は だ・である調。識別子・ルール名・パス・引用したコードは原文のまま残す。指摘が無い場合も、何を読んで問題無しと判断したかを要約として残す。"'
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-

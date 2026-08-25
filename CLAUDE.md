@@ -26,6 +26,10 @@ AI をスピードアップではなくスローダウン（自分の問いを�
   書き込む先がコンテナに存在しないので、やったと報告すれば嘘になる
 - 膜行きの素材が出たら `NEXT.md` の「fermentary との受け渡し」へ**未搬送**として書き置く。
   リポジトリに載るのでコンテナが回収されても残り、次の手元セッションが膜の判定を通して搬入する
+- fermentary への**依頼**（行為の要求）は、同じ節へ**タスク区分のミニブロック**で書き置く（搬送ブロック v1.2・正典は skill `session-harvest` の手順0と書式節）。
+  依頼を膜行きの素材に混ぜると知識の器へ潰れ、宛先で「知見」として棚に置かれたまま誰も手を動かさないので、器を分ける。
+  埋めるのはタスク区分だけで、他セクションは「なし」と明記する（`### T: <依頼を一行で>［宛先: fermentary］` に `原語` と `文脈`）。
+  次の手元セッションが session-intake を通して fermentary `NEXT.md` の搬送行へ変換する
 
 ## 開発ハーネス（正典: `HARNESS.md`）
 ローカル Postgres を立ててから作業する（ルートで `docker compose up -d`。接続は `web/.env.local` に `DATABASE_URL` と `DIRECT_URL` の二本）。
@@ -45,7 +49,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 - skill `karpathy-guidelines` — 過剰実装と巻き込み変更を防ぐ振る舞いの規律。
   「変更した各行が依頼に辿れるか」で手を止める。
   プラグインとして引くと、コンテナが毎回空から始まるリモートでは初回セッションに間に合わないので、本体は `.claude/skills/` へ同梱してある。
-  外部由来で、出所は https://github.com/forrestchang/andrej-karpathy-skills の 2c60614（MIT）。
+  外部由来で、出所は https://github.com/multica-ai/andrej-karpathy-skills の 2c60614（MIT。旧 owner は forrestchang で、改称前の URL もリダイレクトで通るが正は新綴り）。
   上流の更新は手で取り込む
 
 **コメントも文書（`.md`）も、改行は句点で**。
@@ -63,9 +67,9 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 あれは知識リポジトリの掃引の話で、コードの読み手は差分から意図を復元するレビュアーなので、区切るのは時間でなく関心。
 正典は @CODING.md「コミットの粒度」。
 - **author は人間名義**。
-  Claude も `-c` を付けず素の `git commit` を使う（名義は local config に焼いてある。リモートはクローンのたびに config が空なので、セッション起動フックが同じ名義を焼き直す）。
+  Claude も `-c` を付けず素の `git commit` を使う（手元は local config に焼いてある。リモートはクラウド環境の `GIT_AUTHOR_*` が渡し、無ければセッション起動フックが止まる。置き場の規則は `HARNESS.md`「設定の置き場」）。
   author が答えるのは責任を誰が担ったかの一点で、それはどこで書いても動かない。
-- **リモートでは committer だけ Claude 名義**（`GIT_COMMITTER_*` をセッション起動フックが渡す）。
+- **リモートでは committer だけ Claude 名義**（コンテナの global config が既にその値なので、こちらから渡すものは無い）。
   コンテナは署名を強制し、その鍵は `noreply@anthropic.com` に紐づいているので、committer を人間名義にすると GitHub が Unverified を出す。
   author（責任）と committer（実際にコミットを作った者）は別の欄なので、片方を実態へ合わせても他方は動かない。
   手元は署名の事情が無いので両方とも人間のまま。

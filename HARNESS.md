@@ -44,6 +44,13 @@ ruleset が enforce されるのは public であることが前提。
 Free プランの private では保存はできても止まらない（GitHub Pro 以上なら private でも効く）。
 非公開へ戻す判断をするなら、このゲートも同時に失われる。
 
+claude-code-action は、走っているワークフローファイルが default branch のものと内容一致しないと本体を実行せず自己スキップする。
+出るのは `Workflow validation failed. The workflow file must exist and have identical content to the version on the repository's default branch.` の一行だけ。
+スキップは job の失敗でなく成功として畳まれるので、**そのファイル自身を変える PR では、その job の緑が意味を持たない**。
+`claude-code-review.yml` を触った PR には `claude-review` の緑が十数秒で付き、レビューは一行も走っていない（実測 2026-08-23・PR #77）。
+判定するのは走っている当のファイルだけなので、`claude.yml` だけを触った PR で `claude-review` を疑う必要は無い（`claude.yml` 側の症状は `@claude` を呼んだときの `claude` job に出るはずだが、そちらは測っていない）。
+効きの確認はマージ後に main で行う。
+
 L1 は lint と書式を Biome 一本で見る（正典: fermentary/playbooks/toolchain.md）。
 書式ずれは `pnpm format` で機械的に直す。
 **手で整形しない**。
@@ -186,6 +193,32 @@ API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環
   版の正は `mise.toml` のままで、フックはそれを読む側
 - L4 が走らない（cdn.playwright.dev へ出られず、ブラウザを取ってこられない）。
   設定と spec はリモートで書けるが、`pnpm e2e` の実走は手元（macOS）が担う
+
+#### 設定の置き場
+
+リモートの準備には置き場が三つある。
+リポジトリの `.claude/hooks/session-start.sh`、クラウド環境の環境変数欄、同じ画面のセットアップスクリプト欄。
+振り分けの規則は一行:
+
+> **リポジトリの内容から復元できるものはフック、利用者や環境に固有のものはクラウド設定。**
+
+前者を設定画面へ持つと、版を上げてもリポジトリだけが動いて設定が置いていかれる。
+後者をリポジトリへ持つと、fork した他人のコンテナにこちらの固有値が焼かれる。
+
+| 置くもの | 置き場 | 理由 |
+|---|---|---|
+| node / pnpm の版 | フック | 正は `mise.toml`。上げれば同じコミットでフックが追随する |
+| Postgres の起動・ロール・DB | フック | `compose.yaml` と `docker/initdb/` を復元しているだけ |
+| `web/.env.local` の接続文字列 | フック | 値が上の二つから決まる |
+| `GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` | クラウド環境変数 | 利用者に固有。リポジトリへ焼くと、他人が fork で立てたセッションのコミットが持ち主名義で積まれる |
+| `GIT_COMMITTER_*` | どこにも置かない | コンテナの global config が既に Claude 名義で、署名鍵もそこに紐づいている。上書きすると Unverified になる |
+| `ANTHROPIC_API_KEY` | どこにも置かない | 環境変数欄は「この環境を使用するすべてのユーザーに表示される」ので秘密を置けない。リモートはフェイクモードで走る |
+| セットアップスクリプト欄 | 空のまま | 準備の中身はすべてリポジトリから復元できるので、フック一本に集約する |
+
+`GIT_AUTHOR_*` が環境変数で来ない環境では、フックが `exit 1` で止まる。
+黙って Claude 名義のコミットが積まれるより、セッションが立たない方が気づけるため（`CLAUDE.md`「git」）。
+
+環境を新しく作るときの順序は、環境変数を入れる → セッションを立てて `env | grep GIT_AUTHOR` で届くのを見る → 作業を始める。
 
 ## フェーズ
 
