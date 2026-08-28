@@ -143,7 +143,7 @@ vitest の `toiito_test` とは分ける。
 作り直しは globalSetup でなく webServer の command に置く。
 Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、逆にすると dev サーバーが接続を張った後で足元の DB を落とすことになる。
 
-入っているのは 5 シナリオ。
+入っているのは 7 シナリオ。
 
 | spec | 見るもの |
 |---|---|
@@ -152,6 +152,11 @@ Playwright は webServer をプラグインとして globalSetup より先に立
 | 同上 | メモが `/memos` に並び、拡大表示から出所の発話へ着地 |
 | 同上 | 下線を押すと、その語のメモが一覧で開く |
 | 同上 | 着地した発話に印が付く |
+| 同上 | 再訪したあとでも、メモが当時の発話へ着地する |
+| 同上 | 再訪するとセッションの切り替え口が出て、過去を読み返せる |
+
+末尾の 2 本は #57（再訪と過去セッションの読み方）で足した。
+逆引きの着地が再訪を挟んでも切れないことを見る。
 
 選択は Range を組んで document へ mouseup を投げる形で作る。
 Playwright のドラッグでは文字の途中で始まる範囲を安定して作れず、選択を拾う側は document の mouseup を見ている。
@@ -186,13 +191,15 @@ docker が無いので `docker compose up -d` は使えない。
 API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環境変数で `ANTHROPIC_API_KEY` が渡っていればフェイクは入れない）。
 
 引き受ける非対称は三つ。
-どれも外向きの通信が許可制で、塞ぐ手段がこの環境に無い:
+最初の二つは外向きの通信が許可制で、塞ぐ手段がこの環境に無いことから来る:
 
 - Postgres が 17 でなく 16（apt.postgresql.org へ出られない）
 - 版の管理が mise でなく直置き（mise.run へ出られない）。
   版の正は `mise.toml` のままで、フックはそれを読む側
-- L4 が走らない（cdn.playwright.dev へ出られず、ブラウザを取ってこられない）。
-  設定と spec はリモートで書けるが、`pnpm e2e` の実走は手元（macOS）が担う
+- L4 の実走は手元（macOS）が担う。
+  三つ目だけは通信の話ではない——ブラウザは `/opt/pw-browsers` に同梱されており、2026-08-23 のセッションで E2E 7 本がリモートで緑になっている。
+  ただし同梱の `chromium-1194` と `@playwright/test` 1.62.1 が要求する版（1234）がずれており、`executablePath` を差さないと起動しない。
+  **その設定は常設しない**（下の表の最終行）ので、リモートで書けるのは設定と spec までという段取りは変わらない
 
 #### 設定の置き場
 
@@ -214,6 +221,7 @@ API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環
 | `GIT_COMMITTER_*` | どこにも置かない | コンテナの global config が既に Claude 名義で、署名鍵もそこに紐づいている。上書きすると Unverified になる |
 | `ANTHROPIC_API_KEY` | どこにも置かない | 環境変数欄は「この環境を使用するすべてのユーザーに表示される」ので秘密を置けない。リモートはフェイクモードで走る |
 | セットアップスクリプト欄 | 空のまま | 準備の中身はすべてリポジトリから復元できるので、フック一本に集約する |
+| Playwright の `executablePath` | どこにも置かない | 同梱ブラウザの版はイメージ側の都合で動く。リポジトリへ焼けば手元と CI が巻き添えになり、環境変数へ置けば版が動いた日に黙って古いパスを差す。リモートで実走させる回だけ `playwright.config.ts` へ書き捨てる（`channel` は `executablePath` と併記できないので落とす） |
 
 `GIT_AUTHOR_*` が環境変数で来ない環境では、フックが `exit 1` で止まる。
 黙って Claude 名義のコミットが積まれるより、セッションが立たない方が気づけるため（`CLAUDE.md`「git」）。
@@ -224,7 +232,7 @@ API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環
 
 - **P0（今回）**: Vitest + フェイクモード + lib 層テスト + `pnpm check`
 - **P1**: 済み。
-  シードスクリプト（`pnpm seed`）、Playwright の足場（webServer・専用 DB・`pnpm e2e` / `pnpm check:full`）、5 シナリオが揃っている
+  シードスクリプト（`pnpm seed`）、Playwright の足場（webServer・専用 DB・`pnpm e2e` / `pnpm check:full`）、7 シナリオが揃っている
 - **P2**: ペルソナ逸脱検査 — 「答えを与えない」制約を LLM-as-judge でサンプリング検査。
   L5 の一部自動化（完全自動化はしない。官能は人間の領分）
 - **CI**: リモート環境構築タスクと同時（GitHub Actions で check を回すだけ。先回りして作らない）

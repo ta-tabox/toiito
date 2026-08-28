@@ -9,7 +9,7 @@ VISION の設計原理が上位。
 - **Next.js (App Router) + TypeScript** — UI と API を一体で持つ。
   `web/` 配下
 - **Vercel（Hobby）** — 本番の実行環境。
-  Hobby は非商用限定なので、他人へ開いて収益化する段になったら必ず一度決め直す（選定の経緯は `PLAN-rationale.md`）
+  Hobby は非商用限定なので、他人へ開いて収益化する段になったら必ず一度決め直す（選定の経緯は `docs/adr/0002-production-runtime.md`）
 - **Postgres + Prisma** — 永続化。
   開発も本番も同じ方言に揃える。
   ローカルは `compose.yaml` の Postgres、本番は Neon（手順は `HARNESS.md`）
