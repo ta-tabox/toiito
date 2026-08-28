@@ -17,7 +17,7 @@ VISION の設計原理が上位。
   Server Actions（サーバー側）からのみ叩く
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
 
-永続化について今も効く禁止則（経緯は `PLAN-rationale.md`）。
+永続化について今も効く禁止則（経緯は `docs/adr/0003-persistence-prisma-postgres.md`）。
 
 - **方言を二重に持たない**。
   スキーマの正は `prisma/schema.prisma` 一箇所で、DDL を別ファイルに書き写さない
