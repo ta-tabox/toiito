@@ -351,3 +351,33 @@ issue #11 は「既存のローカルデータは移送する（S0 の実キー�
 消えて困るものが無い以上、恒久的にリポジトリへ残る複雑さの方が高くつく。
 
 結果、migration は init 一本になった（後付けの `add_insertion_sequence` は、`seq` を最初から schema に持てば存在しない migration だった）。
+
+## 実行環境を Vercel に決めた（2026-08-26 決定 / issue #71）
+
+DB（Neon）は先に決着していたが、アプリ側の実行環境だけが `ARCHITECTURE.md` の開いた問いに残っていた。
+候補は Vercel / Cloudflare Workers（OpenNext）/ Fly.io / Railway / Render / VPS + Docker の六つ。
+四軸（App Router と Server Actions・Prisma 7 の driver adapter・AI 呼び出しの実行時間上限・費用）で比較した材料は issue #71 のコメントにある。
+
+決め手は費用でも上限でもなく**暫定の門**だった。
+#65（認証方式の決定）/ #68（Google OAuth のログイン）が入るまでは自分だけが入れる状態にする必要があるが、既製の門を無料で持つのは Vercel だけだった。
+Vercel Authentication は全プランで使えて Production も保護できる一方、Render の IP 制限は Scale プラン、Fly.io と Railway には既製の門が無く、VPS は自分で nginx か Caddy に掛けることになる。
+そしてこの依存は #68 が入れば用済みになるので、育たない。
+
+四軸そのものでは差が付かなかった。
+一往復は `max_tokens: 1024` を二回逐次で待つ形なので実時間は数十秒に収まる見込みで、どの候補の上限にも触れない（Vercel Hobby の 300 秒でも足りる）。
+`@prisma/adapter-pg` はどの候補でも動く見込みで、workerd 上でも Prisma 公式の Cloudflare Workers ガイドがこのアダプタを名指ししている。
+費用が 0 円になるのは Vercel Hobby と Cloudflare 無料だけで、Fly.io と Railway は無料枠が廃止済み、Render の無料はスピンダウン（15 分無アクセス・復帰に約 1 分）を伴う。
+
+**ポートフォリオ期と一般サービス期を分ける構造は、規約の側が既に用意している。**
+Vercel Hobby は "for personal, non-commercial use" と明記されているので、他人へ開いて収益化する段では必ず Pro か別の環境へ移ることになる。
+つまり「一度 Vercel にすると抜けられない」ではなく、「無料で始めて、商用化の時点で必ず一度決め直す」という形になる。
+その席で選択肢を両方残すために置いたのが `ARCHITECTURE.md` の禁止則「Vercel 固有の口をアプリへ入れない」で、移植性を決めるのは実行環境の選択ではなくアプリが何に触っているかだという判断がその根拠。
+
+Fly.io を落とした理由だけは具体的なものがある。
+`prisma.config.ts` が `datasource.url` に `env("DIRECT_URL")` を即時解決で置いているため、`postinstall` の `prisma generate` は `DIRECT_URL` がインストール段階で見えないと exit 1 で落ちる（2026-08-26 に実測）。
+Fly.io の secrets は実行時にしか注入されないので、buildpack のビルドがそのまま落ちる。
+回避はできるが、環境の都合でリポジトリを変えることになる。
+
+デプロイの実作業は #90 へ割った。
+決定を文書へ落とすことと実際に動かすことは検証の粒度が違い、前者は `pnpm check` で閉じるが後者はアカウントと本番 URL が要る。
+一本に持つと「決まっているのに閉じられない issue」になる。
