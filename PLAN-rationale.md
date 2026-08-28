@@ -351,4 +351,3 @@ issue #11 は「既存のローカルデータは移送する（S0 の実キー�
 消えて困るものが無い以上、恒久的にリポジトリへ残る複雑さの方が高くつく。
 
 結果、migration は init 一本になった（後付けの `add_insertion_sequence` は、`seq` を最初から schema に持てば存在しない migration だった）。
-
