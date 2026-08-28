@@ -91,6 +91,50 @@ export const a = 1;
   });
 });
 
+describe("テストファイルの免除", () => {
+  it("冒頭コメントが無くても通る", () => {
+    const source = 'import { it } from "vitest";\n';
+
+    expect(rulesOf(source, "src/app/page.test.tsx")).toEqual([]);
+  });
+
+  it("spec の綴りも同じに扱う", () => {
+    const source = 'import { it } from "vitest";\n';
+
+    expect(rulesOf(source, "src/lib/range.spec.ts")).toEqual([]);
+  });
+
+  it("免れるのは要求だけで、書いたなら /** */ を要求する", () => {
+    const source = `// 区間の重なりの検査。
+
+import { it } from "vitest";
+`;
+
+    expect(rulesOf(source, "src/lib/range.test.ts")).toEqual([
+      "comments/useJsDocModuleHeader",
+    ]);
+  });
+
+  it("書式の規則はテストにも当たる", () => {
+    const source = `// 境界は含む。ここは 2 文目。
+
+import { it } from "vitest";
+`;
+
+    expect(rulesOf(source, "src/lib/range.test.ts")).toContain(
+      "comments/useOneSentencePerLine",
+    );
+  });
+
+  it("test.ts という名前そのものは免除しない", () => {
+    const source = 'import { it } from "vitest";\n';
+
+    expect(rulesOf(source, "src/test.ts")).toEqual([
+      "comments/useModuleHeader",
+    ]);
+  });
+});
+
 describe("JSDoc の型注釈", () => {
   const header = "/**\n * 冒頭。\n */\n\n";
 
@@ -148,8 +192,8 @@ describe("字面でなく構文で見ていること", () => {
 export const a = url;
 `;
 
-    // 冒頭コメント欠如の一件だけが出る。url の // をコメントと読むと
-    // useJsDocModuleHeader も一緒に出て、指摘が二重になる。
+    // 冒頭コメント欠如の一件だけが出る。
+    // url の // をコメントと読むと useJsDocModuleHeader も一緒に出て、指摘が二重になる。
     expect(rulesOf(source)).toEqual(["comments/useModuleHeader"]);
   });
 
@@ -305,7 +349,8 @@ export function f() {}
 export function f() {}
 `;
 
-    // 括弧が閉じるまで文は終わっていない。ここで割ると括弧が行を跨ぐ。
+    // 括弧が閉じるまで文は終わっていない。
+    // ここで割ると括弧が行を跨ぐ。
     expect(rulesOf(source)).toEqual([]);
   });
 
@@ -342,8 +387,8 @@ export function f() {}
 export function f() {}
 `;
 
-    // 句点で 1 回割れば済む。ファイル名や拡張子のドットを文の終わりに数えると、
-    // パスを書いた行がすべて違反になる。
+    // 句点で 1 回割れば済む。
+    // ファイル名や拡張子のドットを文の終わりに数えると、パスを書いた行がすべて違反になる。
     expect(rulesOf(source)).toEqual(["comments/useOneSentencePerLine"]);
   });
 
