@@ -136,6 +136,5 @@
 | `HARNESS.md` | どう検証するか（L0〜L5・フェイクモード・ブランチ保護） |
 | `ROADMAP.md` | どの順で作るか（依存グラフ・横断規約・MVP 完了条件） |
 | GitHub Issues | 何を作るか + 状態（実行単位の正） |
-| `docs/adr/` | なぜそう決めたか（1決定1レコード。#88 以後の決定はここ） |
-| `PLAN-rationale.md` | S0 の計画がなぜその形になったか（`docs/adr/` を作る前の経緯層。着手時に読む必要はない） |
+| `docs/adr/` | なぜそう決めたか（1決定1レコード。この器の決定はすべてここ） |
 | `extensions/` | MVP 後に解凍する構想（graph-view / fermentation-and-outlets） |
