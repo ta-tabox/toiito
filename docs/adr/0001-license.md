@@ -22,7 +22,7 @@
 2. **リポジトリ内の文書もコードと分けない**。
    `VISION.md` 等の設計文書・`web/src/personas/*.md` のプロンプト・`web/scripts/seed/questions.ts` のシード対話は、すべて同じ MIT が覆う。
 3. **外部由来は `.claude/skills/karpathy-guidelines/` の一つだけ**で、自分のライセンスの範囲外とする。
-   出所と上流の主張は README の第三者由来の節が持つ。
+   出所と上流の主張は README の「同梱している外部由来のもの」の節が持つ。
 4. **範囲の限定は `LICENSE` 本文の外へ書く**。
    持つのは README。
 
