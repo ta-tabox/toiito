@@ -8,6 +8,8 @@ VISION の設計原理が上位。
 
 - **Next.js (App Router) + TypeScript** — UI と API を一体で持つ。
   `web/` 配下
+- **Vercel（Hobby）** — 本番の実行環境。
+  Hobby は非商用限定なので、他人へ開いて収益化する段になったら必ず一度決め直す（選定の経緯は `docs/adr/0002-production-runtime.md`）
 - **Postgres + Prisma** — 永続化。
   開発も本番も同じ方言に揃える。
   ローカルは `compose.yaml` の Postgres、本番は Neon（手順は `HARNESS.md`）
@@ -25,6 +27,13 @@ VISION の設計原理が上位。
   `@prisma/client` と生成型に触れてよいのは `db.ts` だけで、UI と Server Actions が受け取るのは `types.ts` のドメイン型に限る
 - **起動に外部プロセスが要る**ことは引き受けた前提。
   ローカル完結性は捨てている
+
+実行環境について今も効く禁止則。
+
+- **Vercel 固有の口をアプリへ入れない**。
+  移植性を決めるのは実行環境の選択ではなくアプリが何に触っているかなので、`@vercel/*` の import・ISR のオンデマンド再検証・Edge Config・Cron Jobs を入れない。
+  ホスティング側の設定だけで閉じるもの（暫定の門に使う Vercel Authentication など）はアプリのコードに現れないので、この禁止則の対象ではない。
+  入れたくなったら、それは実行環境を決め直す合図として一度戻る
 
 ## システム全体像
 
@@ -203,5 +212,4 @@ toiito/
 - 「発酵した」状態の判定（status 列は用意したが遷移条件は未定義）
 - リンキングの実装粒度（memo_links の kind をキーワード一致か埋め込みか）
 - fermentary questions.md との膜接続（当面は重複を許容し、混ぜない）
-- リモート環境構築（Neon への接続と本番デプロイ。別タスク）
 - AI 応答のストリーミング化（現状は Server Action で二体分を待つ同期型）
