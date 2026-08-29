@@ -38,6 +38,8 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
    Marketplace 経由で作ると Neon プロジェクトが Vercel 所有の組織の配下に入り、そこから自分のアカウントへ移すセルフサービスの経路が無い。
    **Postgres は 18 を選ぶ**（ローカルと CI も 18。`docs/adr/0009-postgres-18.md`）。
    Neon はメジャーの in-place upgrade を持たず、後から変えるにはプロジェクトごと作り直すことになる。
+   Region は **AWS US East 1 (N. Virginia)** で、Vercel の関数リージョンの既定（`iad1`）と揃える。
+   揃っていないと DB の往復が毎回大陸をまたぐ。
    接続文字列 2 本の違いはホスト名の `-pooler` だけ
 2. Vercel でリポジトリを import する。
    import 画面で環境変数を入れられるので、上の 3 本をそこで入れる。
