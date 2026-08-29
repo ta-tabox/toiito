@@ -1,0 +1,52 @@
+# main へ入った migration を本番 Neon へ流す一本。
+# Vercel に release_command 相当が無いので、経路をここへ分けている（決定の経緯は docs/adr/0008-production-migration-path.md）。
+#
+# Vercel のデプロイとは競走するが、migrate deploy は秒・next build は分なので、順序は構造上ほぼ守られる。
+# 後方非互換な変更（列の削除・改名）はこの前提が効かないので、自動経路に載せず人間が三段階へ割る（DEPLOY.md）。
+#
+# 走らせる条件を migration ファイルの有無で絞っていない。
+# migrate deploy は流すものが無ければ何もしないので、paths の綴りを誤って黙って流れないより、毎回走らせて落ちたら赤で気づく方を採る。
+
+name: migrate
+
+on:
+  push:
+    branches: [main]
+
+# 本番 DB へ同時に二本流さない。
+# 走り始めた分は最後まで通す（途中で切ると migration が半端な状態で残る）。
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+# 本番 DB の資格情報を持つ job なので、リポジトリへの書き込みは渡さない。
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      # prisma.config.ts が datasource.url に置いているのはこの一本だけ（Migrate はプーラー越しには動かない）。
+      # アプリ経路の DATABASE_URL はここでは要らない。
+      DIRECT_URL: ${{ secrets.PRODUCTION_DIRECT_URL }}
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v6
+
+      # node と pnpm を mise.toml の版で入れる。corepack は使わない（CLAUDE.md 開発ハーネス）。
+      - uses: jdx/mise-action@v4
+
+      # postinstall が prisma generate まで走らせる（生成クライアントは git 管理外）。
+      # prisma.config.ts が DIRECT_URL を即時解決するので、この step にも上の env が要る。
+      - name: 依存を入れる
+        run: pnpm install --frozen-lockfile
+
+      - name: migration を流す
+        run: pnpm exec prisma migrate deploy
