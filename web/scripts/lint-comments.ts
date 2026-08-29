@@ -9,9 +9,9 @@
  * 判定は TypeScript の API へ渡す。
  * 行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約の検査器自身が嘘をつく。
  *
- * パーサは `typescript` を引く（器固有の逸脱。雛形は `@typescript/typescript6`）。
- * この器は typescript を 6 系で固定しており旧 JS コンパイラ API がそこにあるので、別名の devDependency を足さずに済む。
- * 7 系は Go 移植で既定 export から `createSourceFile` が外れるので、上げる日には雛形の綴りへ戻す。
+ * パーサは `@typescript/typescript6` を名指しで引く。
+ * TypeScript 7 は Go 移植で `typescript` の既定 export から旧 JS コンパイラ API が外れており、`createSourceFile` が無い。
+ * 器が `typescript` に何を入れていてもここは 6 系の JS API を掴むので、この import を `typescript` へ戻さない。
  *
  * Biome も vcs.useIgnoreFile で同じ正を見るので、対象から外すものは .gitignore が正。
  * 独自の除外リストを持つと、生成物の扱いが Biome と食い違う。
@@ -27,7 +27,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
+import ts from "@typescript/typescript6";
 
 /**
  * 違反 1 件。
