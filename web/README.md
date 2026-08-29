@@ -39,6 +39,8 @@ pnpm dev
 | `DATABASE_URL` | 必須 | — | アプリからの接続先。本番 Neon ではプーラー経由 |
 | `DIRECT_URL` | 必須 | — | Prisma Migrate 用の直結。プーラー越しには Migrate が動かないので分ける |
 | `ANTHROPIC_API_KEY` | 実 AI を使うなら必須 | — | Claude API のキー。**サーバー側のみ**で使い、クライアントへ露出させない |
+| `TOIITO_BASIC_AUTH_USER` | 本番では必須 | — | Basic 認証の利用者名。development では未設定なら認証を掛けない |
+| `TOIITO_BASIC_AUTH_PASSWORD` | 本番では必須 | — | 同じ Basic 認証のパスワード。片方だけ設定すると起動時に落ちる |
 | `TOIITO_MODEL` | 任意 | `claude-sonnet-5` | 二体 AI が使うモデルの上書き |
 | `TOIITO_FAKE_AI` | 任意 | 未設定 | `1` でネットワークに出ず決定的な応答を返す。API キー無しで縦一本を通すためのハーネス |
 | `TOIITO_TEST_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_test` | テストの接続先。CI で差し替える口 |

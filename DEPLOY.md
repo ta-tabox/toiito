@@ -21,13 +21,15 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 | `DATABASE_URL` | Vercel の Environment Variables（Production） | Neon のプーラー経由（ホスト名に `-pooler` が付く方） |
 | `DIRECT_URL` | 同上 | Neon の直結 |
 | `ANTHROPIC_API_KEY` | 同上 | Claude API のキー |
+| `TOIITO_BASIC_AUTH_USER` | 同上 | Basic 認証の利用者名（任意の文字列） |
+| `TOIITO_BASIC_AUTH_PASSWORD` | 同上 | Basic 認証のパスワード |
 | `PRODUCTION_DIRECT_URL` | GitHub の Settings → Secrets and variables → Actions | `DIRECT_URL` と同じ値。migration を流す workflow だけが読む |
 
 `TOIITO_MODEL` は任意（既定 `claude-sonnet-5`）。
 `TOIITO_FAKE_AI` は**本番に入れない**。
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
 
-**3 本とも Production に入れてから最初のビルドを回す**。
+**5 本とも Production に入れてから最初のビルドを回す**。
 `postinstall` の `prisma generate` は `prisma.config.ts` 経由で `DIRECT_URL` を即時解決するので、無いとインストール段階で exit 1 になる。
 要るのは解決できることだけで、接続は要らない（`prisma generate` は DB へ繋がない）。
 
@@ -42,7 +44,7 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
    揃っていないと DB の往復が毎回大陸をまたぐ。
    接続文字列 2 本の違いはホスト名の `-pooler` だけ
 2. Vercel でリポジトリを import する。
-   import 画面で環境変数を入れられるので、上の 3 本をそこで入れる。
+   import 画面で環境変数を入れられるので、上の 5 本をそこで入れる。
    入れずに import すると最初のビルドが `prisma generate` で落ちる（落ちても、入れてから Redeploy すれば済む）
 3. Project Settings → Build and Deployment → Root Directory に `web/` を入れる
 4. Project Settings → Functions → Node.js Version を 24 にする（版の正は `mise.toml`）
@@ -104,31 +106,46 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 ただし履歴は **6 時間・変更 1 GB-month** までで、戻せるのは root ブランチだけ。
 枠を超えた時点より前へは戻せないので、これを常用の安全網と見なさない。
 
-## 門
+## アクセス制限
 
-#65（認証と所有権の方式を決める）/ #68（ログイン（Google OAuth）とリソースの所有権）が入るまでの繋ぎとして、Vercel Authentication を **Standard Protection** で掛ける。
-Vercel にログイン済みで、かつこのチームの一員でないと入れない。
+#65（認証と所有権の方式を決める）/ #68（ログイン（Google OAuth）とリソースの所有権）が入るまでの繋ぎとして、**アプリ側の Basic 認証**で本番を囲う。
+`web/src/proxy.ts` が全リクエストを見て、`TOIITO_BASIC_AUTH_USER` と `TOIITO_BASIC_AUTH_PASSWORD` に一致しなければ 401 を返す。
 
-**チームの一員が開くとログイン画面を挟まず通る**。
-門が外れているわけではないので、効きを確かめるならプライベートウィンドウで開く。
+**本番で二本が欠けていれば、リクエストを捌く前に落ちる**。
+掛けたつもりの制限が掛かっていない状態を作らないための設計で、経緯は `docs/adr/0013-production-basic-auth.md`。
 
-**この門は本番の URL を守っていない**（2026-08-29 に実測）。
-Standard Protection の API 上の名前が `prod_deployment_urls_and_all_previews` で、守るのは production の**デプロイ URL**（`<project>-<hash>-<team>.vercel.app`）と Preview だけである。
-**production の domain（`<project>.vercel.app` を含む）は素通しになる**。
+**ホスティング側のアクセス制限は本番に効かない**（2026-08-29 に実測）。
+Hobby で選べる Vercel Authentication の Standard Protection は、API 上の名前が `prod_deployment_urls_and_all_previews` で、守るのは production の**デプロイ URL**（`<project>-<hash>-<team>.vercel.app`）と Preview だけである。
+production の domain（`<project>.vercel.app`）は素通しになる。
 シークレットウィンドウでも Safari でもログインを求められずアプリへ到達することを確認した。
+囲える All Deployments は Pro の Advanced Deployment Protection（月 150 ドル）が要る。
 
-塞げる `all`（All Deployments）は Pro の Advanced Deployment Protection（月 150 ドル）が要るので、**Hobby には本番を門で囲う手が無い**。
+**Vercel Authentication は無効化しない**。
+デプロイ URL と Preview はあちらが守り続ける。
 
-これは ADR 0002 が Vercel を選んだ決め手を崩している。
-扱いは #102 が持つ。
+#68 が入ったら Basic 認証ごと外す。
 
-#68 が入ったら外す。
+### 効きの確認
+
+**設定した後、本番の URL を直接叩いて確かめる。**
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://<project>.vercel.app/
+```
+
+401 が返れば掛かっている。
+200 が返ったら効いていないので、環境変数が Production に入っているかを見る。
+
+**この確認を省かない。**
+2026-08-29 に二度、設定上は掛かっているはずの制限が実際には通っていた（一度目は Vercel Authentication の適用範囲、二度目は Edge ランタイムで環境変数が読めない件）。
+どちらもリクエストを一度投げるまで誰にも見えなかった。
+
+ローカルの `pnpm e2e` にも制限の spec があるが、**あちらは Vercel のランタイム差を再現しない**（`HARNESS.md`「E2E」）。
+退行を見るための層で、本番が閉じている証拠にはならない。
 
 独自ドメインは当てていない。
 `<project>.vercel.app` のまま使い、当てるのは #68 が入るか Hobby から動かすときにする。
-
-**当てると、そのドメインだけ上の門の外に出る**。
-塞ぐ手は月 150 ドルの Advanced Deployment Protection を買うか、#68 が入って門自体が要らなくなるのを待つかの二つしかない。
+アクセス制限はアプリ側にあるので、当てても保護は付いてくる。
 Hobby は非商用限定なので、他人へ開く段では実行環境ごと決め直すことになる（`docs/adr/0002-production-runtime.md`「覆る条件」）。
 
 ## 引き受けている非対称

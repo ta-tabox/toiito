@@ -121,6 +121,12 @@ test("着地した発話に印が付く", async ({ page }) => {
 
   await page.getByRole("button", { name: "メモする" }).click();
 
+  // 下線が出るまでは、メモがまだ出来ていない。
+  // 待たずに移ると、そのメモが並んでいない一覧を相手にすることになる。
+  await expect(
+    aiA.getByRole("link", { name: MARK_UTTERANCE, exact: true }),
+  ).toBeVisible();
+
   await page.goto("/memos");
   await page.getByRole("link", { name: MARK_UTTERANCE }).click();
   await page
