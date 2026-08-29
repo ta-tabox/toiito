@@ -91,6 +91,50 @@ export const a = 1;
   });
 });
 
+describe("テストファイルの免除", () => {
+  it("冒頭コメントが無くても通る", () => {
+    const source = 'import { it } from "vitest";\n';
+
+    expect(rulesOf(source, "src/app/page.test.tsx")).toEqual([]);
+  });
+
+  it("spec の綴りも同じに扱う", () => {
+    const source = 'import { it } from "vitest";\n';
+
+    expect(rulesOf(source, "src/lib/range.spec.ts")).toEqual([]);
+  });
+
+  it("免れるのは要求だけで、書いたなら /** */ を要求する", () => {
+    const source = `// 区間の重なりの検査。
+
+import { it } from "vitest";
+`;
+
+    expect(rulesOf(source, "src/lib/range.test.ts")).toEqual([
+      "comments/useJsDocModuleHeader",
+    ]);
+  });
+
+  it("書式の規則はテストにも当たる", () => {
+    const source = `// 境界は含む。ここは 2 文目。
+
+import { it } from "vitest";
+`;
+
+    expect(rulesOf(source, "src/lib/range.test.ts")).toContain(
+      "comments/useOneSentencePerLine",
+    );
+  });
+
+  it("test.ts という名前そのものは免除しない", () => {
+    const source = 'import { it } from "vitest";\n';
+
+    expect(rulesOf(source, "src/test.ts")).toEqual([
+      "comments/useModuleHeader",
+    ]);
+  });
+});
+
 describe("JSDoc の型注釈", () => {
   const header = "/**\n * 冒頭。\n */\n\n";
 
@@ -148,8 +192,8 @@ describe("字面でなく構文で見ていること", () => {
 export const a = url;
 `;
 
-    // 冒頭コメント欠如の一件だけが出る。url の // をコメントと読むと
-    // useJsDocModuleHeader も一緒に出て、指摘が二重になる。
+    // 冒頭コメント欠如の一件だけが出る。
+    // url の // をコメントと読むと useJsDocModuleHeader も一緒に出て、指摘が二重になる。
     expect(rulesOf(source)).toEqual(["comments/useModuleHeader"]);
   });
 
@@ -239,6 +283,65 @@ export function f() {}
     expect(rulesOf(source)).toEqual([]);
   });
 
+  it("表の行は散文でないと宣言できる", () => {
+    const source = `${header}/**
+ * 対応表を持つ。
+ * | 記号 | 意味 |
+ * | --- | --- |
+ * | a | 先頭 |
+ *
+ * 表の後ろの散文。
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("コードフェンスの内側は見ない", () => {
+    const source = `${header}/**
+ * 呼び出しの形。
+ * \`\`\`ts
+ * lintSource("a.ts", text);
+ * \`\`\`
+ *
+ * フェンスの後ろの散文。
+ */
+export function f() {}
+`;
+
+    // 区間はフェンスの行ごと空行に見せる。
+    // コードは散文でないので行末の記号に意味が無く、フェンスの行そのものも散文ではない。
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("閉じないフェンスは塊の末尾までを区間と見なす", () => {
+    const source = `${header}/**
+ * 呼び出しの形。
+ * \`\`\`ts
+ * lintSource("a.ts", text);
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("フェンスの外へ戻れば見る", () => {
+    const source = `${header}/**
+ * 呼び出しの形。
+ * \`\`\`ts
+ * lintSource("a.ts", text);
+ * \`\`\`
+ * ここは散文で、句点を欠いたまま
+ * 次の行へ続いている。
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useSentenceEndLineBreak"]);
+  });
+
   it("連続する行コメントも一つの塊として見る", () => {
     const source = `${header}// テストの主題は、対応する実装のファイル名が
 // 既に名指している。
@@ -305,7 +408,42 @@ export function f() {}
 export function f() {}
 `;
 
-    // 括弧が閉じるまで文は終わっていない。ここで割ると括弧が行を跨ぐ。
+    // 括弧が閉じるまで文は終わっていない。
+    // ここで割ると括弧が行を跨ぐ。
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("句点の後ろの閉じ強調では割らせない", () => {
+    const source = `${header}/**
+ * **赤のままコミットしない。**
+ */
+export function f() {}
+`;
+
+    // 強調の内側に句点を置いた形は 1 文である。
+    // ここで割ると強調が行を跨ぐか、句点を強調の外へ動かすことになる。
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("飾りの後ろに本文が続けば割らせる", () => {
+    const source = `${header}/**
+ * **赤のままコミットしない。** 直してから積む。
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useOneSentencePerLine"]);
+  });
+
+  it("行を跨いだ括弧の後ろ半分は 1 文と数える", () => {
+    const source = `${header}/**
+ * body は原型を持つ（投入された生の問い。
+ * 訂正以外では書き換えない。）
+ */
+export function f() {}
+`;
+
+    // 開きは前の行にあるので、2 行目の閉じ括弧は深さで免除できない。
     expect(rulesOf(source)).toEqual([]);
   });
 
@@ -342,8 +480,8 @@ export function f() {}
 export function f() {}
 `;
 
-    // 句点で 1 回割れば済む。ファイル名や拡張子のドットを文の終わりに数えると、
-    // パスを書いた行がすべて違反になる。
+    // 句点で 1 回割れば済む。
+    // ファイル名や拡張子のドットを文の終わりに数えると、パスを書いた行がすべて違反になる。
     expect(rulesOf(source)).toEqual(["comments/useOneSentencePerLine"]);
   });
 

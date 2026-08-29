@@ -3,7 +3,7 @@
 # ローカルの自己申告でなくマージの条件として持つための一本。
 #
 # 設計の芯はローカルとの対称——ハーネスが保証するのは「どこで走らせても pnpm check が同じ意味を持つ」ことなので、
-# Postgres は compose.yaml と同じ postgres:17 を同じ 5433 に置き、ランタイムの版は mise が mise.toml から読む。
+# Postgres は compose.yaml と同じ postgres:18 を同じ 5433 に置き、ランタイムの版は mise が mise.toml から読む。
 # 版も接続文字列もここには書き下ろさない（二重管理にすると、いずれ片方だけが動く）。
 
 name: check
@@ -29,7 +29,7 @@ jobs:
     # メジャーを本番 Neon と揃えるのは方言差を出さないため。
     services:
       postgres:
-        image: postgres:17
+        image: postgres:18
         env:
           POSTGRES_USER: toiito
           POSTGRES_PASSWORD: toiito
