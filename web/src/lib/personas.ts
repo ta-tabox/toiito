@@ -4,9 +4,19 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import type { Effort } from "@/lib/claude";
+import { type Effort, isEffort } from "@/lib/claude";
 
 export type PersonaId = "ai_a" | "ai_b";
+
+/**
+ * 環境変数から effort を読む。
+ * 値域の外（未設定・綴り違い）は既定へ倒す。
+ */
+function readEffort(name: string, fallback?: Effort): Effort | undefined {
+  const value = process.env[name];
+
+  return value && isEffort(value) ? value : fallback;
+}
 
 /**
  * ペルソナごとの思考の深さ。
@@ -15,8 +25,8 @@ export type PersonaId = "ai_a" | "ai_b";
  * undefined は API の既定（high）で走らせるという指定。
  */
 export const PERSONA_EFFORT: Record<PersonaId, Effort | undefined> = {
-  ai_a: undefined,
-  ai_b: "medium",
+  ai_a: readEffort("TOIITO_EFFORT_AI_A"),
+  ai_b: readEffort("TOIITO_EFFORT_AI_B", "medium"),
 };
 
 export const PERSONA_LABEL: Record<PersonaId, string> = {

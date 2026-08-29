@@ -42,6 +42,8 @@ pnpm dev
 | `TOIITO_BASIC_AUTH_USER` | 本番では必須 | — | Basic 認証の利用者名。development では未設定なら認証を掛けない |
 | `TOIITO_BASIC_AUTH_PASSWORD` | 本番では必須 | — | 同じ Basic 認証のパスワード。片方だけ設定すると起動時に落ちる |
 | `TOIITO_MODEL` | 任意 | `claude-sonnet-5` | 二体 AI が使うモデルの上書き |
+| `TOIITO_EFFORT_AI_A` | 任意 | 未設定（API の既定） | 具体さんの思考の深さ。`low` / `medium` / `high` / `xhigh` / `max`。値域の外は既定へ倒す |
+| `TOIITO_EFFORT_AI_B` | 任意 | `medium` | 抽象さんの思考の深さ。値域は同上 |
 | `TOIITO_FAKE_AI` | 任意 | 未設定 | `1` でネットワークに出ず決定的な応答を返す。API キー無しで縦一本を通すためのハーネス |
 | `TOIITO_TEST_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_test` | テストの接続先。CI で差し替える口 |
 | `TOIITO_E2E_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_e2e` | E2E の接続先。テストと同じ DB を向けると互いの行を踏むので分ける |

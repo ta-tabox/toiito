@@ -34,7 +34,17 @@ const SPEAKER_TAG: Record<Speaker, string> = {
  * 思考にどれだけ費やすか。
  * 値域は Claude API の `output_config.effort`。
  */
-export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+
+export type Effort = (typeof EFFORTS)[number];
+
+/**
+ * 外から来た文字列を Effort へ絞り込む。
+ * API へ渡す前の関門。
+ */
+export function isEffort(value: string): value is Effort {
+  return (EFFORTS as readonly string[]).includes(value);
+}
 
 /**
  * システムプロンプト冒頭の見出しから、どのペルソナかを表す一行を取り出す。
