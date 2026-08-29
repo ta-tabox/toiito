@@ -97,6 +97,86 @@ Vercel のビルドとは競走するが、`migrate deploy` は秒・`next build
 
 決定の経緯と、この規律が守れなかったときの倒し先は `docs/adr/0008-production-migration-path.md`。
 
+## Preview
+
+PR ごとの Preview デプロイにも環境変数を 5 本入れる（Vercel の Environment Variables で環境に **Preview** を選ぶ）。
+接続先は Neon の `preview` ブランチで、本番とは別の DB を向く。
+
+| 変数 | 値 |
+|---|---|
+| `DATABASE_URL` | `preview` ブランチのプーラー経由 |
+| `DIRECT_URL` | 同ブランチの直結 |
+| `TOIITO_FAKE_AI` | `1` |
+| `TOIITO_BASIC_AUTH_USER` | Production と同じ値 |
+| `TOIITO_BASIC_AUTH_PASSWORD` | 同上 |
+
+接続 2 本の末尾は本番と同じく `sslmode=verify-full`。
+
+**アクセス制限の 2 本を落とさない**。
+欠けていると `proxy.ts` がモジュールの評価時に投げ、Preview の全リクエストが 500 になる。
+`next build` は proxy を実行しないのでビルドは通るため、**Vercel のチェックは緑のまま中身だけ壊れる**。
+
+決定の経緯と採らなかった案は `docs/adr/0015-preview-neon-branch.md`。
+
+### ブランチを切る
+
+Neon の toiito → Branches → Create branch。
+名前は `preview`、parent は `production`、種類は **Branch schema only**。
+
+既定の Branch data and schema は親の HEAD をコピーするので、本番の問いがそのまま Preview に入る。
+後から消す手も採れるが、消し忘れと接続先の取り違えが挟まるので、**最初から入れない**方を採る。
+
+**auto-delete は付けない**。
+全 PR が共有する 1 本なので、期限で消えると Preview のビルドが黙って赤へ戻る。
+
+**schema only は `_prisma_migrations` も空にする**（2026-08-29 に実測）。
+テーブルは在るのに Prisma からは migration が一つも当たっていないと見えるので、そのまま `migrate deploy` を流すと同じ migration を二重に当てにいって落ちる。
+辻褄を合わせてから開発用データを入れる。
+`web/` で叩き、`prisma/migrations/` に在る分をすべて `--applied` で入れる（いまは init の一本だけ）。
+
+```bash
+DIRECT_URL='<preview の直結>' pnpm exec prisma migrate resolve --applied 20260816090000_init
+DATABASE_URL='<preview のプーラー>' pnpm seed
+```
+
+接続先はシェルの環境変数が `.env.local` より優先される（`process.loadEnvFile` も `--env-file` も、既に環境にある値を上書きしない）。
+`migrate status` が `Database schema is up to date!` を返せば辻褄が合っている。
+
+最後に接続文字列 2 本を Vercel の Preview へ入れる（上の表）。
+
+### migration を含む PR
+
+**Preview の DB へ migration を自動で流す経路は無い**。
+新しい列を足す PR の画面を Preview で見るなら、`preview` ブランチの直結を `DIRECT_URL` に置いて手元から一度流す。
+
+流さないまま開くと、DB が新しい列を持たないので画面が落ちる。
+
+### 効きの確認
+
+**Preview は制限が二重になる**ので、素で叩いた応答をアプリ側の証拠として読まない。
+外側の Vercel Authentication が先に答え、**401 ですらなく 302 で SSO へ飛ばす**（2026-08-29 に実測）。
+
+```
+HTTP/2 302
+location: https://vercel.com/sso-api?url=...
+```
+
+アプリ側まで届いているかを見るには、外側を抜けてから叩く。
+Vercel の共有リンク（`?_vercel_share=...`、23 時間で失効）で cookie を取り、その cookie のまま資格情報なしで叩く。
+
+```bash
+curl -s -c jar -b jar -L -o /dev/null 'https://<preview-url>/?_vercel_share=<token>'
+curl -s -b jar -D - -o /dev/null 'https://<preview-url>/no-such-page'
+```
+
+`WWW-Authenticate: Basic realm="toiito"` を伴う 401 が返ればアプリ側の制限に届いている。
+この realm は `web/src/proxy.ts` にしかない綴りなので、どちらの層が答えたかがこれで割れる。
+アプリのルートに当たらない経路を叩くのは、制限が routing より前に掛かっていることも同時に見るため。
+
+**向いている DB は、Preview のランタイムログで見る**。
+表示された問いの ID が seed のものであれば `preview` ブランチを読んでいる。
+本番の ID が出てきたら接続文字列が Production のものになっている。
+
 ## 切り戻し
 
 コードは Vercel の Instant Rollback で戻す。
