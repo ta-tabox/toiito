@@ -33,7 +33,9 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 
 ## 初回のセットアップ
 
-1. Neon で本番プロジェクトを作り、接続文字列を 2 本控える。
+1. **Neon 側で自分の組織を切り**、その下に本番プロジェクトを作って接続文字列を 2 本控える。
+   Vercel Marketplace の Neon 統合は使わない（`docs/adr/0012-neon-outside-vercel-marketplace.md`）。
+   Marketplace 経由で作ると Neon プロジェクトが Vercel 所有の組織の配下に入り、そこから自分のアカウントへ移すセルフサービスの経路が無い。
    **Postgres は 18 を選ぶ**（ローカルと CI も 18。`docs/adr/0009-postgres-18.md`）。
    Neon はメジャーの in-place upgrade を持たず、後から変えるにはプロジェクトごと作り直すことになる。
    接続文字列 2 本の違いはホスト名の `-pooler` だけ
