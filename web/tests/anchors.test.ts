@@ -1,5 +1,6 @@
-// anchors.ts のテスト。境界（本文の先頭・末尾）・区間の重複・サロゲートペアの
-// 三つを各関数で必ず踏む。
+/**
+ * 境界（本文の先頭・末尾）・区間の重複・サロゲートペアの三つを、各関数で必ず踏む。
+ */
 
 import { describe, expect, it } from "vitest";
 import {
@@ -151,8 +152,8 @@ describe("excerptParts", () => {
   });
 
   it("マルチバイト境界にかかる margin は書記素単位に丸められる", () => {
-    // "ab😀cd" — a=0,b=1,high=2,low=3,c=4,d=5,length=6
-    // start(4) - margin(1) = 3 はペアの途中 → 2 まで丸めて絵文字ごと含める
+    // "ab😀cd" の添字は a=0,b=1,high=2,low=3,c=4,d=5 で length=6。
+    // start(4) - margin(1) = 3 はペアの途中なので、2 まで丸めて絵文字ごと含める。
     expect(joined(excerptParts("ab😀cd", 4, 5, 1))).toBe("😀cd");
   });
 

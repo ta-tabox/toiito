@@ -9,11 +9,18 @@
  * 判定は TypeScript の API へ渡す。
  * 行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約の検査器自身が嘘をつく。
  *
+ * パーサは `typescript` を引く（器固有の逸脱。雛形は `@typescript/typescript6`）。
+ * この器は typescript を 6 系で固定しており旧 JS コンパイラ API がそこにあるので、別名の devDependency を足さずに済む。
+ * 7 系は Go 移植で既定 export から `createSourceFile` が外れるので、上げる日には雛形の綴りへ戻す。
+ *
  * Biome も vcs.useIgnoreFile で同じ正を見るので、対象から外すものは .gitignore が正。
  * 独自の除外リストを持つと、生成物（src/generated）の扱いが Biome と食い違う。
  *
  * 入口は lintSource。
  * CLI は node scripts/lint-comments.ts [path...]。
+ *
+ * 正典は fermentary/tools/coding-standards/scripts/lint-comments.ts で、各器のこれはコピー。
+ * 器固有の逸脱を足すときは、このコメントの直下に理由を書く（規約は playbooks/coding-standards.md「進化の規約」）。
  */
 
 import { spawnSync } from "node:child_process";
@@ -40,14 +47,30 @@ type CommentLine = {
   text: string;
 };
 
-// 既定の対象から tests を外している。
-// テストの主題は対応する実装のファイル名が既に名指しており、冒頭コメントを要求すると規約が禁じている「ファイル名の言い換え」を量産することになる。
-const DEFAULT_TARGETS = ["src", "scripts"];
+/**
+ * 器ごとに変える唯一の箇所。
+ * ソースの置き場所は器の構成で変わるが、規則そのものは変わらない。
+ *
+ * tests を併置する器にはこのディレクトリが無いので、既定の対象に限り main が存在しないものを飛ばす。
+ */
+const DEFAULT_TARGETS = ["src", "scripts", "tests"];
 
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
 
-// TS の型と重複する JSDoc の型注釈。
-// @param {string} name の {string} を指す。
+/**
+ * テストファイルの綴り。
+ * `foo.test.ts` や `foo.spec.tsx` のように、拡張子の手前へ test / spec を挟む形を指す。
+ *
+ * 判定をディレクトリでなくファイル名に置いている。
+ * 免除の理由は「対応する実装のファイル名が主題を既に名指している」ことなので、その名が src/ に居ても tests/ に居ても情報量は変わらない。
+ * ディレクトリで判定すると、テストを併置する器で同じ規約が別の意味になる。
+ */
+const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
+
+/**
+ * TS の型と重複する JSDoc の型注釈。
+ * `@param` や `@returns` の直後に波括弧で型を書いた形を指す。
+ */
 const JSDOC_TYPE_ANNOTATION = /@(param|returns?)\s*\{/g;
 
 /**
@@ -104,15 +127,24 @@ function checkModuleHeader(
     body?.getStart(source) ?? source.endOfFileToken.getStart(source);
   const leading = comments.filter((comment) => comment.end <= bodyStart);
   const header = leading[0];
-  const missing = {
-    line: lineOf(source, bodyStart),
-    rule: "comments/useModuleHeader",
-    message:
-      "モジュール冒頭コメントが無い。責務と、引き受けない境界を書く（ファイル名の言い換えにしない）",
-  };
+
+  // テストは冒頭コメントの「要求」だけを免れる。
+  // テストの主題は対応する実装のファイル名が既に名指しており、要求すると規約が禁じている「ファイル名の言い換え」を量産することになる。
+  // 免れるのは要求であって書式ではないので、書いた場合の /** */ と直後の空行は下でそのまま見る。
+  // 残る三規則（JSDoc の型注釈・改行の位置・一文一行）もテストに当たる（CODING.md「テストコードも本体と同じ可読性規約に従う」）。
+  const missing = TEST_FILE.test(source.fileName)
+    ? []
+    : [
+        {
+          line: lineOf(source, bodyStart),
+          rule: "comments/useModuleHeader",
+          message:
+            "モジュール冒頭コメントが無い。責務と、引き受けない境界を書く（ファイル名の言い換えにしない）",
+        },
+      ];
 
   if (header === undefined) {
-    return [missing];
+    return missing;
   }
 
   // 空行を挟まず宣言に接したコメントは、その宣言の JSDoc であってモジュールへの注釈ではない。
@@ -124,7 +156,7 @@ function checkModuleHeader(
     body !== undefined &&
     takesDocComment(body)
   ) {
-    return [missing];
+    return missing;
   }
 
   if (!header.text.startsWith("/**")) {
@@ -434,8 +466,18 @@ function excludeIgnored(files: string[]): string[] {
   return files.filter((file) => !ignored.has(file));
 }
 
+/**
+ * 既定の対象は器の構成に対する見込みなので、無いディレクトリは黙って飛ばす。
+ * 引数で名指しされた場所が無いのは打ち間違いなので、そちらは collectSourceFiles に落とさせる。
+ */
+function resolveTargets(argv: string[]): string[] {
+  return argv.length > 0
+    ? argv
+    : DEFAULT_TARGETS.filter((target) => fs.existsSync(target));
+}
+
 function main(argv: string[]): number {
-  const targets = argv.length > 0 ? argv : DEFAULT_TARGETS;
+  const targets = resolveTargets(argv);
   const files = excludeIgnored(targets.flatMap(collectSourceFiles));
   let total = 0;
 
