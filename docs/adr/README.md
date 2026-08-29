@@ -66,6 +66,7 @@ ADR にしない側へ倒す。
 | [0005](0005-drop-data-migration.md) | 既存データの移送を取りやめる | 2026-08-16 | 採用 |
 | [0006](0006-drop-cowork-sandbox.md) | Cowork サンドボックスを副環境として扱う前提を落とす | 2026-08-15 | 採用 |
 | [0007](0007-production-pnpm-version.md) | Vercel の pnpm は Install Command で版を名指しする | 2026-08-28 | 採用 |
+| [0008](0008-production-migration-path.md) | 本番の migration は main への push を起点に GitHub Actions から流す | 2026-08-28 | 採用 |
 
 決定日は元の決定日で、番号順とは揃わない。
 0003〜0006 は #92 でこの受け皿を作る前の散文から後から割ったものなので、`docs/adr/` の新設（0001）より前の日付を持つ。
