@@ -9,12 +9,12 @@
  * 判定は TypeScript の API へ渡す。
  * 行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約の検査器自身が嘘をつく。
  *
- * パーサは `typescript` を引く（器固有の逸脱。雛形は `@typescript/typescript6`）。
- * この器は typescript を 6 系で固定しており旧 JS コンパイラ API がそこにあるので、別名の devDependency を足さずに済む。
- * 7 系は Go 移植で既定 export から `createSourceFile` が外れるので、上げる日には雛形の綴りへ戻す。
+ * パーサは `@typescript/typescript6` を名指しで引く。
+ * TypeScript 7 は Go 移植で `typescript` の既定 export から旧 JS コンパイラ API が外れており、`createSourceFile` が無い。
+ * 器が `typescript` に何を入れていてもここは 6 系の JS API を掴むので、この import を `typescript` へ戻さない。
  *
  * Biome も vcs.useIgnoreFile で同じ正を見るので、対象から外すものは .gitignore が正。
- * 独自の除外リストを持つと、生成物（src/generated）の扱いが Biome と食い違う。
+ * 独自の除外リストを持つと、生成物の扱いが Biome と食い違う。
  *
  * 入口は lintSource。
  * CLI は node scripts/lint-comments.ts [path...]。
@@ -27,14 +27,19 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
+import ts from "@typescript/typescript6";
 
+/**
+ * 違反 1 件。
+ * 行番号と規則 ID に加えて、直し方まで含んだ説明を持つ。
+ */
 export type Violation = {
   line: number;
   rule: string;
   message: string;
 };
 
+/** 元のテキスト上でのコメントの範囲と、その中身。 */
 type CommentRange = {
   start: number;
   end: number;
@@ -51,10 +56,14 @@ type CommentLine = {
  * 器ごとに変える唯一の箇所。
  * ソースの置き場所は器の構成で変わるが、規則そのものは変わらない。
  *
- * tests を併置する器にはこのディレクトリが無いので、既定の対象に限り main が存在しないものを飛ばす。
+ * tests を併置する器にはこのディレクトリが無いので、既定の対象に限り存在しないディレクトリを飛ばす。
  */
 const DEFAULT_TARGETS = ["src", "scripts", "tests"];
 
+/**
+ * 検査の対象にする拡張子。
+ * ここに無い拡張子は、ディレクトリを名指しで渡されても集めない。
+ */
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
 
 /**
@@ -80,10 +89,19 @@ const JSDOC_TYPE_ANNOTATION = /@(param|returns?)\s*\{/g;
 const SENTENCE_END = /[。.]$/;
 
 /**
- * 箇条書きの行頭。
+ * 散文でないことを行頭で宣言する印。
+ * 箇条書きと表の行が持つ。
+ *
  * 散文の続きではないので、手前の行から文が流れ込んでいない。
+ * 機械が図を見抜いているのではなく、書き手が宣言している。
  */
-const LIST_MARKER = /^(?:[-*・→]|\d+[.)])/;
+const LIST_MARKER = /^(?:[-*・→|]|\d+[.)])/;
+
+/**
+ * コードフェンスの行頭。
+ * 開いた行から次に現れた同じ行までは散文でないので、規則を当てない。
+ */
+const CODE_FENCE = /^`{3}/;
 
 /**
  * 括弧の始まり。
@@ -94,6 +112,19 @@ const BRACKET_OPEN = "（(「【";
 /** 括弧の終わり。 */
 const BRACKET_CLOSE = "）)」】";
 
+/**
+ * 句点の後ろに残っても二文目にしない飾りだけの並び。
+ * 強調やコード片の閉じ記号と、開きを伴わない閉じ括弧を指す。
+ *
+ * 閉じ括弧は BRACKET_OPEN との対で数えているが、その対は 1 行の内側でしか閉じない。
+ * 括弧が行を跨いだ後ろ半分は開きを持たないので、深さでは免除できない。
+ */
+const TRAILING_DECORATION = /^[*_`）)」】\s]*$/;
+
+/**
+ * 検査器の入口。
+ * ソース 1 ファイル分を受け取り、規則ごとの検査を束ねて違反の一覧を返す。
+ */
 export function lintSource(fileName: string, text: string): Violation[] {
   const source = ts.createSourceFile(
     fileName,
@@ -185,6 +216,12 @@ function checkModuleHeader(
   return [];
 }
 
+/**
+ * JSDoc の中に TS の型と重複する型注釈が無いかを見る。
+ *
+ * 対象を JSDoc に絞っている。
+ * 行コメントの中の同じ綴りは型注釈として読まれないので、重複が起きない。
+ */
 function checkJsDocTypeAnnotations(
   source: ts.SourceFile,
   comments: CommentRange[],
@@ -276,7 +313,7 @@ function checkOneSentencePerLine(
 
 /**
  * 行末より手前に文の切れ目があるか。
- * 括弧の内側の句点は数えない。
+ * 括弧の内側の句点と、飾りしか後ろに続かない句点は数えない。
  */
 function hasSentenceBreakInside(text: string): boolean {
   let depth = 0;
@@ -294,7 +331,11 @@ function hasSentenceBreakInside(text: string): boolean {
       continue;
     }
 
-    if (char === "。" && depth === 0 && index < text.length - 1) {
+    if (
+      char === "。" &&
+      depth === 0 &&
+      !TRAILING_DECORATION.test(text.slice(index + 1))
+    ) {
       return true;
     }
   }
@@ -319,7 +360,7 @@ function toCommentBlocks(
 
   const flushRun = (): void => {
     if (run.length > 0) {
-      blocks.push(run);
+      blocks.push(maskFencedRegions(run));
       run = [];
     }
   };
@@ -331,10 +372,12 @@ function toCommentBlocks(
       flushRun();
       runEnd = 0;
       blocks.push(
-        comment.text.split("\n").map((line, offset) => ({
-          line: first + offset,
-          text: stripDecoration(line),
-        })),
+        maskFencedRegions(
+          comment.text.split("\n").map((line, offset) => ({
+            line: first + offset,
+            text: stripDecoration(line),
+          })),
+        ),
       );
       continue;
     }
@@ -352,6 +395,27 @@ function toCommentBlocks(
   return blocks;
 }
 
+/**
+ * コードフェンスに挟まれた区間を、フェンスの行ごと空行に見せる。
+ *
+ * 空行は塊の切れ目なので、区間の内側だけでなく前後の隣接判定も同時に落ちる。
+ * コードは散文ではないから行末の記号に意味が無く、フェンスの行そのものも散文ではない。
+ * 閉じないまま塊が終わる場合は、開いた行から末尾までを区間として扱う。
+ */
+function maskFencedRegions(lines: CommentLine[]): CommentLine[] {
+  let inside = false;
+
+  return lines.map((entry) => {
+    if (CODE_FENCE.test(entry.text)) {
+      inside = !inside;
+
+      return { line: entry.line, text: "" };
+    }
+
+    return inside ? { line: entry.line, text: "" } : entry;
+  });
+}
+
 /** コメントの綴り（`//`・`/*`・行頭の `*`・閉じ）を落として本文だけにする。 */
 function stripDecoration(line: string): string {
   return line
@@ -361,6 +425,11 @@ function stripDecoration(line: string): string {
     .trim();
 }
 
+/**
+ * ソース中の leading コメントを重複なく集め、出現順に並べて返す。
+ *
+ * 同じコメントが親と子の両方で leading として返るので、開始位置で重複を落とす。
+ */
 function collectLeadingComments(
   source: ts.SourceFile,
   text: string,
@@ -391,6 +460,10 @@ function collectLeadingComments(
   return comments.sort((a, b) => a.start - b.start);
 }
 
+/**
+ * ディレクティブを除いた最初の文を返す。
+ * 冒頭コメントが飾っている本体はこれになる。
+ */
 function firstNonDirectiveStatement(
   source: ts.SourceFile,
 ): ts.Statement | undefined {
@@ -409,6 +482,10 @@ function takesDocComment(statement: ts.Statement): boolean {
   );
 }
 
+/**
+ * その文がディレクティブか。
+ * 構文の上ではただの文字列式なので、式文かつ文字列リテラルであることで見分ける。
+ */
 function isDirective(statement: ts.Statement): boolean {
   return (
     ts.isExpressionStatement(statement) &&
@@ -416,14 +493,26 @@ function isDirective(statement: ts.Statement): boolean {
   );
 }
 
+/**
+ * 指定した位置の直後に空行が続くか。
+ * 行末までの空白を跨いで改行が 2 つ並ぶ形を空行と数える。
+ */
 function isFollowedByBlankLine(text: string, end: number): boolean {
   return /^[^\S\n]*\n[^\S\n]*\n/.test(text.slice(end));
 }
 
+/**
+ * 文字位置を 1 始まりの行番号へ直す。
+ * パーサが返す行番号は 0 始まりだが、エディタと `file:line` の綴りは 1 始まり。
+ */
 function lineOf(source: ts.SourceFile, position: number): number {
   return source.getLineAndCharacterOfPosition(position).line + 1;
 }
 
+/**
+ * 対象の配下から検査するソースを再帰で集める。
+ * ファイルを直に渡されたときは、拡張子が合う場合だけそれ 1 件を返す。
+ */
 export function collectSourceFiles(target: string): string[] {
   const stats = fs.statSync(target);
 
@@ -476,6 +565,10 @@ function resolveTargets(argv: string[]): string[] {
     : DEFAULT_TARGETS.filter((target) => fs.existsSync(target));
 }
 
+/**
+ * CLI の本体。
+ * 違反を 1 件ずつ標準エラーへ書き、総数を終了コードへ畳む。
+ */
 function main(argv: string[]): number {
   const targets = resolveTargets(argv);
   const files = excludeIgnored(targets.flatMap(collectSourceFiles));
