@@ -42,6 +42,7 @@ pnpm dev
 | `TOIITO_BASIC_AUTH_USER` | 本番では必須 | — | Basic 認証の利用者名。development では未設定なら認証を掛けない |
 | `TOIITO_BASIC_AUTH_PASSWORD` | 本番では必須 | — | 同じ Basic 認証のパスワード。片方だけ設定すると起動時に落ちる |
 | `TOIITO_MODEL` | 任意 | `claude-sonnet-5` | 二体 AI が使うモデルの上書き |
+| `TOIITO_MAX_TOKENS` | 任意 | `16000` | 一回の応答に許すトークン数の上書き。thinking のトークンもここから引かれるので、下げすぎると本文が途中で切れる |
 | `TOIITO_EFFORT_AI_A` | 任意 | 未設定（API の既定） | 具体さんの思考の深さ。`low` / `medium` / `high` / `xhigh` / `max`。値域の外は既定へ倒す |
 | `TOIITO_EFFORT_AI_B` | 任意 | `medium` | 抽象さんの思考の深さ。値域は同上 |
 | `TOIITO_FAKE_AI` | 任意 | 未設定 | `1` でネットワークに出ず決定的な応答を返す。API キー無しで縦一本を通すためのハーネス |

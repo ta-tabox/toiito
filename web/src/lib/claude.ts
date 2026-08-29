@@ -15,8 +15,9 @@ const MODEL = process.env.TOIITO_MODEL ?? "claude-sonnet-5";
  * thinking のトークンもここから引かれるので、本文の想定長で見積もると足りない。
  * 足りなければ本文が途中で切れるか、text ブロックごと出てこない。
  * ストリーミングを使っていないため、上限は HTTP のタイムアウトに収まる範囲で選ぶ。
+ * 数として読めない値（未設定・空・非数）は既定へ倒す。
  */
-const MAX_TOKENS = 16000;
+const MAX_TOKENS = Number(process.env.TOIITO_MAX_TOKENS) || 16000;
 
 /**
  * transcript の発話者見出し。
