@@ -95,11 +95,11 @@ ADR にしない側へ倒す。
 - **暫定の門を Vercel Authentication の Standard Protection で掛ける**（2026-08-28 決定・2026-08-29 に範囲を訂正・#90（本番環境へデプロイする））。
   門で差が付いたことは 0002 が既に書いているので、掛けること自体はその踏襲になる。
   **範囲には選択の余地が無かった**——Hobby で選べるのは Standard Protection だけで、All Deployments は Pro の Advanced Deployment Protection（月 150 ドル）が要る。
-  Standard Protection が保護対象から外すのは production の独自ドメインだけなので、ドメインを当てない限り本番は門の内側にいる。
+  そして 2026-08-29 の実測で、**Standard Protection は本番の URL を守らない**ことが分かった（守るのは production のデプロイ URL と Preview だけで、`<project>.vercel.app` は素通し）。
+  扱いは #102 が持つ。
   現況は `DEPLOY.md`
 - **独自ドメインを当てない**（2026-08-28・#90（本番環境へデプロイする））。
   何もしないという選択なので、覆る条件が「当てたくなったら」以上に書けない（規約5）。
-  2026-08-29 に理由が一つ増えた——Hobby の Standard Protection は production の独自ドメインを保護対象から外すので、**当てるとそのドメインだけ暫定の門の外に出る**。
   当てる時期の見立ては `DEPLOY.md`
 - **本番のリージョンを Vercel と Neon の既定で揃える**（2026-08-29・#90（本番環境へデプロイする））。
   `iad1`（Vercel）と AWS US East 1（Neon）。

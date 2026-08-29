@@ -112,10 +112,15 @@ Vercel にログイン済みで、かつこのチームの一員でないと入�
 **チームの一員が開くとログイン画面を挟まず通る**。
 門が外れているわけではないので、効きを確かめるならプライベートウィンドウで開く。
 
-**Hobby で選べるのは Standard Protection だけ**である（2026-08-29 に画面で確認）。
-もう一つの All Deployments は Pro の Advanced Deployment Protection（月 150 ドル）が要る。
-二つの差は**独自ドメインだけ**で、Standard Protection が保護対象から外すのは production の独自ドメインに限られる。
-Vercel が割り当てる `<project>.vercel.app` は Standard Protection でも門の内側にいる。
+**この門は本番の URL を守っていない**（2026-08-29 に実測）。
+Standard Protection の API 上の名前が `prod_deployment_urls_and_all_previews` で、守るのは production の**デプロイ URL**（`<project>-<hash>-<team>.vercel.app`）と Preview だけである。
+**production の domain（`<project>.vercel.app` を含む）は素通しになる**。
+シークレットウィンドウでも Safari でもログインを求められずアプリへ到達することを確認した。
+
+塞げる `all`（All Deployments）は Pro の Advanced Deployment Protection（月 150 ドル）が要るので、**Hobby には本番を門で囲う手が無い**。
+
+これは ADR 0002 が Vercel を選んだ決め手を崩している。
+扱いは #102 が持つ。
 
 #68 が入ったら外す。
 
