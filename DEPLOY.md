@@ -97,6 +97,53 @@ Vercel のビルドとは競走するが、`migrate deploy` は秒・`next build
 
 決定の経緯と、この規律が守れなかったときの倒し先は `docs/adr/0008-production-migration-path.md`。
 
+## Preview
+
+PR ごとの Preview デプロイにも環境変数を 5 本入れる（Vercel の Environment Variables で環境に **Preview** を選ぶ）。
+接続先は Neon の `preview` ブランチで、本番とは別の DB を向く。
+
+| 変数 | 値 |
+|---|---|
+| `DATABASE_URL` | `preview` ブランチのプーラー経由 |
+| `DIRECT_URL` | 同ブランチの直結 |
+| `TOIITO_FAKE_AI` | `1` |
+| `TOIITO_BASIC_AUTH_USER` | Production と同じ値 |
+| `TOIITO_BASIC_AUTH_PASSWORD` | 同上 |
+
+接続 2 本の末尾は本番と同じく `sslmode=verify-full`。
+
+**アクセス制限の 2 本を落とさない**。
+欠けていると `proxy.ts` がモジュールの評価時に投げ、Preview の全リクエストが 500 になる。
+`next build` は proxy を実行しないのでビルドは通るため、**Vercel のチェックは緑のまま中身だけ壊れる**。
+
+決定の経緯と採らなかった案は `docs/adr/0015-preview-neon-branch.md`。
+
+### ブランチを切る
+
+Neon の toiito → Branches → Create branch。
+名前は `preview`、parent は `production`。
+
+**切った直後にデータを空へ戻す**。
+Neon のブランチは親の HEAD をコピーするので、そのままだと本番の問いが Preview に入る。
+`web/` で叩く（`pnpm seed` は `.env.local` を読む口なので、投入先を差し替えるときは素の `node` で呼ぶ）。
+
+```bash
+DIRECT_URL='<preview の直結>' pnpm exec prisma migrate reset --force
+DATABASE_URL='<preview のプーラー>' node scripts/seed/index.ts
+```
+
+**`migrate reset` は渡した接続先を丸ごと消す**ので、`preview` の綴りであることを叩く前に確かめる。
+`production` の直結を渡すと本番のデータが消え、戻せるのは Neon の point-in-time restore の枠（6 時間）の内側だけになる。
+
+最後に接続文字列 2 本を Vercel の Preview へ入れる（上の表）。
+
+### migration を含む PR
+
+**Preview の DB へ migration を自動で流す経路は無い**。
+新しい列を足す PR の画面を Preview で見るなら、`preview` ブランチの直結を `DIRECT_URL` に置いて手元から一度流す。
+
+流さないまま開くと、DB が新しい列を持たないので画面が落ちる。
+
 ## 切り戻し
 
 コードは Vercel の Instant Rollback で戻す。
