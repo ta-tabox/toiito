@@ -1,5 +1,5 @@
 /**
- * コメント規約のうち、Biome が構造的に検出できない分だけを見る検査器（L1）。
+ * コメント規約のうち、Biome が構造的に検出できない分だけを見るリンタ（L1）。
  *
  * Biome のリンタはコメントを走査対象に持たない。
  * built-in ルールにも GritQL プラグインにも、コメント本体へ届く経路が無い。
@@ -7,11 +7,11 @@
  * 同じ規約を二箇所に書かない。
  *
  * 判定は TypeScript の API へ渡す。
- * 行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約の検査器自身が嘘をつく。
+ * 行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約のリンタ自身が嘘をつく。
  *
  * パーサは `@typescript/typescript6` を名指しで引く。
  * TypeScript 7 は Go 移植で `typescript` の既定 export から旧 JS コンパイラ API が外れており、`createSourceFile` が無い。
- * 器が `typescript` に何を入れていてもここは 6 系の JS API を掴むので、この import を `typescript` へ戻さない。
+ * このリポジトリが `typescript` に何を入れていてもここは 6 系の JS API を掴むので、この import を `typescript` へ戻さない。
  *
  * Biome も vcs.useIgnoreFile で同じ正を見るので、対象から外すものは .gitignore が正。
  * 独自の除外リストを持つと、生成物の扱いが Biome と食い違う。
@@ -19,8 +19,8 @@
  * 入口は lintSource。
  * CLI は node scripts/lint-comments.ts [path...]。
  *
- * 正典は fermentary/tools/coding-standards/scripts/lint-comments.ts で、各器のこれはコピー。
- * 器固有の逸脱を足すときは、このコメントの直下に理由を書く（規約は playbooks/coding-standards.md「進化の規約」）。
+ * このファイルは複数のリポジトリで同じ内容を保つ共有物である。
+ * このリポジトリ固有の逸脱を足すときは、このコメントの直下に理由を書く。
  */
 
 import { spawnSync } from "node:child_process";
@@ -53,10 +53,10 @@ type CommentLine = {
 };
 
 /**
- * 器ごとに変える唯一の箇所。
- * ソースの置き場所は器の構成で変わるが、規則そのものは変わらない。
+ * リポジトリごとに変える唯一の箇所。
+ * ソースの置き場所はリポジトリの構成で変わるが、規則そのものは変わらない。
  *
- * tests を併置する器にはこのディレクトリが無いので、既定の対象に限り存在しないディレクトリを飛ばす。
+ * tests を併置するリポジトリにはこのディレクトリが無いので、既定の対象に限り存在しないディレクトリを飛ばす。
  */
 const DEFAULT_TARGETS = ["src", "scripts", "tests"];
 
@@ -72,7 +72,7 @@ const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
  *
  * 判定をディレクトリでなくファイル名に置いている。
  * 免除の理由は「対応する実装のファイル名が主題を既に名指している」ことなので、その名が src/ に居ても tests/ に居ても情報量は変わらない。
- * ディレクトリで判定すると、テストを併置する器で同じ規約が別の意味になる。
+ * ディレクトリで判定すると、テストを併置するリポジトリで同じ規約が別の意味になる。
  */
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 
@@ -122,7 +122,7 @@ const BRACKET_CLOSE = "）)」】";
 const TRAILING_DECORATION = /^[*_`）)」】\s]*$/;
 
 /**
- * 検査器の入口。
+ * リンタの入口。
  * ソース 1 ファイル分を受け取り、規則ごとの検査を束ねて違反の一覧を返す。
  */
 export function lintSource(fileName: string, text: string): Violation[] {
@@ -532,7 +532,7 @@ export function collectSourceFiles(target: string): string[] {
  * .gitignore で除外されているファイルを落とす。
  *
  * git が引けない環境では素通しする。
- * 検査器が黙って全件を見送るより、生成物込みで騒ぐ方が気付ける。
+ * リンタが黙って全件を見送るより、生成物込みで騒ぐ方が気付ける。
  */
 function excludeIgnored(files: string[]): string[] {
   if (files.length === 0) {
@@ -556,7 +556,7 @@ function excludeIgnored(files: string[]): string[] {
 }
 
 /**
- * 既定の対象は器の構成に対する見込みなので、無いディレクトリは黙って飛ばす。
+ * 既定の対象はリポジトリの構成に対する見込みなので、無いディレクトリは黙って飛ばす。
  * 引数で名指しされた場所が無いのは打ち間違いなので、そちらは collectSourceFiles に落とさせる。
  */
 function resolveTargets(argv: string[]): string[] {

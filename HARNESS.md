@@ -51,7 +51,7 @@ claude-code-action は、走っているワークフローファイルが defaul
 判定するのは走っている当のファイルだけなので、`claude.yml` だけを触った PR で `claude-review` を疑う必要は無い（`claude.yml` 側の症状は `@claude` を呼んだときの `claude` job に出るはずだが、そちらは測っていない）。
 効きの確認はマージ後に main で行う。
 
-L1 は lint と書式を Biome 一本で見る（正典: fermentary/playbooks/toolchain.md）。
+L1 は lint と書式を Biome 一本で見る。
 書式ずれは `pnpm format` で機械的に直す。
 **手で整形しない**。
 warning はゲートを止めない（exit 0）。
