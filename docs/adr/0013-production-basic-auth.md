@@ -23,12 +23,13 @@ Hobby で選べるのは Standard Protection だけで、その API 上の名前
 ## 決定
 
 **アクセス制限をホスティングからアプリへ移す。**
-`web/src/middleware.ts` が Basic 認証を掛け、判定は `web/src/lib/basic-auth.ts` の純関数が持つ。
+`web/src/proxy.ts` が Basic 認証を掛け、判定は `web/src/lib/basic-auth.ts` の純関数が持つ。
 
 - 資格情報は `TOIITO_BASIC_AUTH_USER` と `TOIITO_BASIC_AUTH_PASSWORD` の二本
 - **両方無ければ認証を掛けない。ただし `NODE_ENV` が production なら投げる**
 - 片方だけでも投げる
 - **matcher を書かず、全リクエストを通す**
+- 旧 `middleware` 規約でなく `proxy` 規約で書く
 - Vercel Authentication は無効化しない。
   デプロイ URL と Preview はあちらが守り続ける
 
@@ -39,13 +40,18 @@ Hobby で選べるのは Standard Protection だけで、その API 上の名前
 `ARCHITECTURE.md`「意図的にやらないこと」は「マルチユーザー対応の作り込み（自分専用。**Auth は門としてのみ**）」と書いており、アクセスを制限すること自体は許している。
 Basic 認証は所有権の概念を持たず、通すか通さないかしか決めないので、この線の内側に収まる。
 
-`middleware.ts` は Next.js の標準機能で `next start` の自己ホストでも動く。
+`proxy.ts` は Next.js の標準機能で `next start` の自己ホストでも動く。
 ADR 0002 の禁止則が挙げる `@vercel/*` の import・ISR のオンデマンド再検証・Edge Config・Cron Jobs のどれでもない。
 **副産物として、アクセス制限が Vercel 依存でなくなる**。
 
 **設定が無いときに素通しへ倒さなかった条件**: 今回の失敗が「掛けたつもりの制限が掛かっていなかった」ことだったので、同じ形をもう一度作らない。
 production で資格情報が欠けていればモジュールの評価時に投げ、リクエストを捌く前に落ちる。
 development では素通しするので、`pnpm dev` と E2E は認証を知らずに済む。
+
+**旧 `middleware` 規約を採らなかった条件**: Next 16 が非推奨にしており、既定が Edge ランタイムになる。
+Edge の `process.env` は Next が注入した数個しか持たず、`TOIITO_BASIC_AUTH_*` も `NODE_ENV` も実行時に undefined になる（2026-08-29 に生成物で確認。ビルド時置換も掛からず `process.env.X` の綴りが残る）。
+**素通しへ倒す分岐だけが生き残る**ので、守りたい場面でだけ効かない形になっていた。
+`proxy` は常に Node.js ランタイムで走ると規約が決めているので、この危険が構造から消える。
 
 **`VERCEL_ENV` でなく `NODE_ENV` を見る条件**: 前者はホストに固有で、他所へ移した日に未定義となり、判定が黙って素通し側へ落ちる。
 
