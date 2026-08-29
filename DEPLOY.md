@@ -25,6 +25,12 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 | `TOIITO_BASIC_AUTH_PASSWORD` | 同上 | Basic 認証のパスワード |
 | `PRODUCTION_DIRECT_URL` | GitHub の Settings → Secrets and variables → Actions → **Repository secrets** | `DIRECT_URL` と同じ値。migration を流す workflow だけが読む |
 
+`pg` v9 で `sslmode=require` が libpq の意味へ変わって証明書を検証しなくなるので、**接続の 3 本は `sslmode=verify-full` で終える**。
+明示しない綴りのままだと、依存を上げた日に本番の DB 接続だけが黙って弱くなる。
+Neon は直結・プーラーのどちらのホストでも `verify-full` を通す（2026-08-29 に `pg` 8.23.0 で実測）。
+
+ローカルと CI の接続文字列はこの綴りを持たない（`localhost` へ TLS を張っていないので関係が無い）。
+
 `TOIITO_MODEL` は任意（既定 `claude-sonnet-5`）。
 `TOIITO_FAKE_AI` は**本番に入れない**。
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
