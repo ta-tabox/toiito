@@ -4,7 +4,7 @@
 自分の問いと向き合うことを AI が支える Web アプリケーション。
 
 AI はもっぱらスピードアップ——速く答えに到達すること——の文脈で語られる。
-この器はその逆方向を試すために作っている。
+このアプリはその逆方向を試すために作っている。
 **スローダウン**のために AI を使い、自分の問いを深め、安易な答え・一般論・暫定解に逃げないための道具にする。
 
 やらないことが、このアプリのアイデンティティである。
@@ -63,7 +63,7 @@ Next.js (App Router) + TypeScript。
 
 ## 同梱している外部由来のもの
 
-`.claude/skills/karpathy-guidelines/` は外部から取り込んだもので、この器のライセンスは及ばない。
+`.claude/skills/karpathy-guidelines/` は外部から取り込んだもので、このリポジトリのライセンスは及ばない。
 
 - 出所: <https://github.com/multica-ai/andrej-karpathy-skills>（ピンしたコミットは `2c60614`）
 - 上流は README 本文で MIT を宣言しているが、**LICENSE ファイルを持たない**。
@@ -74,7 +74,7 @@ Next.js (App Router) + TypeScript。
 
 MIT（[LICENSE](LICENSE)）。
 
-コードだけでなく、この器の文書・AI ペルソナのプロンプト（`web/src/personas/`）・開発用シードの対話（`web/scripts/seed/`）も同じ MIT が覆う。
+コードだけでなく、このリポジトリの文書・AI ペルソナのプロンプト（`web/src/personas/`）・開発用シードの対話（`web/scripts/seed/`）も同じ MIT が覆う。
 上の「同梱している外部由来のもの」だけが範囲外。
 
 利用者が投げた問いと対話はデータベースにあり、このリポジトリには載らない。

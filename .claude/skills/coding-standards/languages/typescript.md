@@ -1,7 +1,7 @@
 # TypeScript / JavaScript への写像
 
 核の原則（CODING.md）を TS のイディオムに落とす。
-toolchain 正典（pnpm / Biome / mise）は `fermentary/playbooks/toolchain.md` が持つ。
+toolchain（pnpm / Biome / mise）の設定はここでは扱わない。
 ここは書き方のみ。
 
 ## 不変を既定に
@@ -89,7 +89,7 @@ TS と同じ「宣言に付く説明は doc コメント」を守るが、**綴�
 | 関数の認知的複雑度（分割の合図） | biome `noExcessiveCognitiveComplexity` |
 | 引数 3 つ超（warn。ゲートは止めない） | biome `complexity/useMaxParams` |
 
-対象から外すものは `.gitignore` が正で、検査器も Biome も同じ正を見る（`src/generated` の Prisma 生成物はここで落ちる）。
+対象から外すものは `.gitignore` が正で、リンタも Biome も同じ正を見る（`src/generated` の Prisma 生成物はここで落ちる）。
 
 `style/useNamingConvention` は入れていない。
 DB 由来の列名が snake_case のまま型と往復するため、誤検出が数十件になる。
@@ -106,10 +106,10 @@ DB 由来の列名が snake_case のまま型と往復するため、誤検出�
   例外は `@` を解決する側。
   エイリアスを定義する設定ファイル（`vitest.config.ts`）と、node が直接読むスクリプト（`scripts/`）。
   `@` はバンドラと vitest のエイリアスであって、素の ESM 解決には無い
-- **型だけの器に実行時の値を置かない**。
+- **型だけを置くモジュールに実行時の値を置かない**。
   値域の定数と、そこから派生する判定は、その概念のモジュールが持つ（`question.ts` の `QUESTION_STATUSES` と `isQuestionStatus`）
 - **振る舞いを持つクラスは、それを扱うモジュールへ置く**。
-  型の器に置くのは、モジュール間の受け渡しに使う型だけ。
+  型だけのモジュールに置くのは、モジュール間の受け渡しに使う型だけ。
   モジュール内に閉じる型はそのモジュールに留める（`anchors.ts` の `AnchorRange`）
 - **文字境界の丸めは書記素クラスタで**（`Intl.Segmenter`）。
   サロゲートペア判定では、異体字セレクタ（`神︀` = U+795E + U+FE00）・ZWJ 連結・肌色修飾が漏れて字が割れる
