@@ -151,6 +151,32 @@ DATABASE_URL='<preview のプーラー>' pnpm seed
 
 流さないまま開くと、DB が新しい列を持たないので画面が落ちる。
 
+### 効きの確認
+
+**Preview は制限が二重になる**ので、素で叩いた応答をアプリ側の証拠として読まない。
+外側の Vercel Authentication が先に答え、**401 ですらなく 302 で SSO へ飛ばす**（2026-08-29 に実測）。
+
+```
+HTTP/2 302
+location: https://vercel.com/sso-api?url=...
+```
+
+アプリ側まで届いているかを見るには、外側を抜けてから叩く。
+Vercel の共有リンク（`?_vercel_share=...`、23 時間で失効）で cookie を取り、その cookie のまま資格情報なしで叩く。
+
+```bash
+curl -s -c jar -b jar -L -o /dev/null 'https://<preview-url>/?_vercel_share=<token>'
+curl -s -b jar -D - -o /dev/null 'https://<preview-url>/no-such-page'
+```
+
+`WWW-Authenticate: Basic realm="toiito"` を伴う 401 が返ればアプリ側の制限に届いている。
+この realm は `web/src/proxy.ts` にしかない綴りなので、どちらの層が答えたかがこれで割れる。
+アプリのルートに当たらない経路を叩くのは、制限が routing より前に掛かっていることも同時に見るため。
+
+**向いている DB は、Preview のランタイムログで見る**。
+表示された問いの ID が seed のものであれば `preview` ブランチを読んでいる。
+本番の ID が出てきたら接続文字列が Production のものになっている。
+
 ## 切り戻し
 
 コードは Vercel の Instant Rollback で戻す。
