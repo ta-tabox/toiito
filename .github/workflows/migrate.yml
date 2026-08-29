@@ -31,6 +31,9 @@ jobs:
     env:
       # prisma.config.ts が datasource.url に置いているのはこの一本だけ（Migrate はプーラー越しには動かない）。
       # アプリ経路の DATABASE_URL はここでは要らない。
+      #
+      # 置き場は Repository secrets。
+      # この job は environment: を宣言していないので、Environment secrets へ入れると空文字が渡り、設定したのに効かない状態になる。
       DIRECT_URL: ${{ secrets.PRODUCTION_DIRECT_URL }}
 
     defaults:

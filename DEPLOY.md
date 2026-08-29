@@ -23,7 +23,7 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 | `ANTHROPIC_API_KEY` | 同上 | Claude API のキー |
 | `TOIITO_BASIC_AUTH_USER` | 同上 | Basic 認証の利用者名（任意の文字列） |
 | `TOIITO_BASIC_AUTH_PASSWORD` | 同上 | Basic 認証のパスワード |
-| `PRODUCTION_DIRECT_URL` | GitHub の Settings → Secrets and variables → Actions | `DIRECT_URL` と同じ値。migration を流す workflow だけが読む |
+| `PRODUCTION_DIRECT_URL` | GitHub の Settings → Secrets and variables → Actions → **Repository secrets** | `DIRECT_URL` と同じ値。migration を流す workflow だけが読む |
 
 `TOIITO_MODEL` は任意（既定 `claude-sonnet-5`）。
 `TOIITO_FAKE_AI` は**本番に入れない**。
@@ -49,9 +49,14 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 3. Project Settings → Build and Deployment → Root Directory に `web/` を入れる
 4. Project Settings → Functions → Node.js Version を 24 にする（版の正は `mise.toml`）
 5. Project Settings → Deployment Protection → Vercel Authentication を有効にする（**Standard Protection**。Hobby で選べるのはこれだけ）
-6. GitHub の Settings → Secrets and variables → Actions に `PRODUCTION_DIRECT_URL` を入れる
+6. GitHub の Settings → Secrets and variables → Actions → **Repository secrets** に `PRODUCTION_DIRECT_URL` を入れる。
+   同じ画面にある Environment secrets ではない（下記）
 
 Install Command は `web/vercel.json` が持つので、ダッシュボードでは触らない。
+
+**secret は Repository secrets へ入れる**。
+Environment secrets は `environment:` を宣言した job にしか渡らず、`.github/workflows/migrate.yml` はそれを宣言していない。
+そちらへ入れると `secrets.PRODUCTION_DIRECT_URL` が空文字になり、設定したのに効かない状態になる。
 
 **secret は migration の workflow が main へ入る前に入れる**。
 `migrate.yml` は main への push で走るので、secret が無いまま入れると空文字が渡って最初の job が赤くなる。
