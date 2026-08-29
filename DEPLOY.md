@@ -121,19 +121,26 @@ PR ごとの Preview デプロイにも環境変数を 5 本入れる（Vercel �
 ### ブランチを切る
 
 Neon の toiito → Branches → Create branch。
-名前は `preview`、parent は `production`。
+名前は `preview`、parent は `production`、種類は **Branch schema only**。
 
-**切った直後にデータを空へ戻す**。
-Neon のブランチは親の HEAD をコピーするので、そのままだと本番の問いが Preview に入る。
-`web/` で叩く（`pnpm seed` は `.env.local` を読む口なので、投入先を差し替えるときは素の `node` で呼ぶ）。
+既定の Branch data and schema は親の HEAD をコピーするので、本番の問いがそのまま Preview に入る。
+後から消す手も採れるが、消し忘れと接続先の取り違えが挟まるので、**最初から入れない**方を採る。
+
+**auto-delete は付けない**。
+全 PR が共有する 1 本なので、期限で消えると Preview のビルドが黙って赤へ戻る。
+
+**schema only は `_prisma_migrations` も空にする**（2026-08-29 に実測）。
+テーブルは在るのに Prisma からは migration が一つも当たっていないと見えるので、そのまま `migrate deploy` を流すと同じ migration を二重に当てにいって落ちる。
+辻褄を合わせてから開発用データを入れる。
+`web/` で叩き、`prisma/migrations/` に在る分をすべて `--applied` で入れる（いまは init の一本だけ）。
 
 ```bash
-DIRECT_URL='<preview の直結>' pnpm exec prisma migrate reset --force
-DATABASE_URL='<preview のプーラー>' node scripts/seed/index.ts
+DIRECT_URL='<preview の直結>' pnpm exec prisma migrate resolve --applied 20260816090000_init
+DATABASE_URL='<preview のプーラー>' pnpm seed
 ```
 
-**`migrate reset` は渡した接続先を丸ごと消す**ので、`preview` の綴りであることを叩く前に確かめる。
-`production` の直結を渡すと本番のデータが消え、戻せるのは Neon の point-in-time restore の枠（6 時間）の内側だけになる。
+接続先はシェルの環境変数が `.env.local` より優先される（`process.loadEnvFile` も `--env-file` も、既に環境にある値を上書きしない）。
+`migrate status` が `Database schema is up to date!` を返せば辻褄が合っている。
 
 最後に接続文字列 2 本を Vercel の Preview へ入れる（上の表）。
 
