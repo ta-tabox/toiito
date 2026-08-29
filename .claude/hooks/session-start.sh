@@ -2,7 +2,7 @@
 #
 # リモート環境（Claude Code on the web）のセッション起動フック。
 # 責務は一点——docker の無いコンテナで `pnpm check` と `pnpm dev` がローカルと同じ意味を持つところまで組む。
-# 手元の環境は docker compose + mise が正典なので、このフックはリモートでしか走らない。
+# 手元の環境は docker compose + mise が正なので、このフックはリモートでしか走らない。
 #
 # リモート特有の非対称は二つ。どちらも外向きの通信が許可制で塞げないもの（HARNESS.md「実行環境」）:
 #   - Postgres は 17 でなく、イメージに同梱の 16（apt.postgresql.org へ出られない）
@@ -230,9 +230,9 @@ main() {
   install_dependencies
   apply_migrations
 
-  # 第二マウントの口が無い環境なので、不在を毎回宣言する。
-  # 宣言が無いと、CLAUDE.md 手順 0 を読んだセッションが不在を異常と受け取って止まる。
-  log "fermentary は不在（リモートの既定）。膜へは書き込まない——CLAUDE.md「リモートの縮退モード」"
+  # 手元との連携に使うファイル（CLAUDE.local.md・NEXT.md）は追跡しないので、この環境には存在しない。
+  # 無いのが既定だと宣言しておくと、探しに行って止まる形を防げる。
+  log "手元専用のファイル（CLAUDE.local.md / NEXT.md）はこの環境に無い（既定）"
   log "準備完了。web/ で pnpm check が走る"
 }
 

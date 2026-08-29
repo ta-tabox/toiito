@@ -2,7 +2,7 @@
 
 Next.js（App Router）+ TypeScript。
 **何を・なぜ作るかはここに書かない**。
-正典はリポジトリルートの `VISION.md` / `ARCHITECTURE.md` / `HARNESS.md` / `ROADMAP.md`。
+正はリポジトリルートの `VISION.md` / `ARCHITECTURE.md` / `HARNESS.md` / `ROADMAP.md`。
 ここに置くのは、このディレクトリで手を動かすときに要る手順と設定だけ。
 
 ## 起動

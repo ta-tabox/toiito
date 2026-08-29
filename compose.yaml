@@ -3,7 +3,7 @@
 #
 # 起動: docker compose up -d ／ 停止: docker compose down
 # テスト用 DB（toiito_test）は初回起動時に initdb スクリプトが作る。
-# 手順の正典は HARNESS.md「ローカル Postgres」。
+# 手順の正は HARNESS.md「ローカル Postgres」。
 #
 # volume は 18 以降の綴りで /var/lib/postgresql へ当てる。
 # 18 からイメージがデータをメジャーごとの部分ディレクトリへ置くようになったので、17 までの /var/lib/postgresql/data を当てると起動時に弾かれる。

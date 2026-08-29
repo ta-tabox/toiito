@@ -9,7 +9,7 @@
  *
  * 素の node が走らせる CLI で、接続先は webServer から渡る DATABASE_URL。
  * リポジトリ内のモジュールを import しない形に閉じてある。
- * tsconfig の paths が効くのは型検査と、それを読む実行器（Playwright・vitest・Next）までで、素の node の解決には無い。
+ * tsconfig の paths が効くのは型検査と、それを読む実行側（Playwright・vitest・Next）までで、素の node の解決には無い。
  * ここが import を持つと、エイリアスの写しを node 側へもう一つ持つことになる。
  */
 
