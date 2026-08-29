@@ -283,6 +283,65 @@ export function f() {}
     expect(rulesOf(source)).toEqual([]);
   });
 
+  it("表の行は散文でないと宣言できる", () => {
+    const source = `${header}/**
+ * 対応表を持つ。
+ * | 記号 | 意味 |
+ * | --- | --- |
+ * | a | 先頭 |
+ *
+ * 表の後ろの散文。
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("コードフェンスの内側は見ない", () => {
+    const source = `${header}/**
+ * 呼び出しの形。
+ * \`\`\`ts
+ * lintSource("a.ts", text);
+ * \`\`\`
+ *
+ * フェンスの後ろの散文。
+ */
+export function f() {}
+`;
+
+    // 区間はフェンスの行ごと空行に見せる。
+    // コードは散文でないので行末の記号に意味が無く、フェンスの行そのものも散文ではない。
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("閉じないフェンスは塊の末尾までを区間と見なす", () => {
+    const source = `${header}/**
+ * 呼び出しの形。
+ * \`\`\`ts
+ * lintSource("a.ts", text);
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("フェンスの外へ戻れば見る", () => {
+    const source = `${header}/**
+ * 呼び出しの形。
+ * \`\`\`ts
+ * lintSource("a.ts", text);
+ * \`\`\`
+ * ここは散文で、句点を欠いたまま
+ * 次の行へ続いている。
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useSentenceEndLineBreak"]);
+  });
+
   it("連続する行コメントも一つの塊として見る", () => {
     const source = `${header}// テストの主題は、対応する実装のファイル名が
 // 既に名指している。
@@ -351,6 +410,40 @@ export function f() {}
 
     // 括弧が閉じるまで文は終わっていない。
     // ここで割ると括弧が行を跨ぐ。
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("句点の後ろの閉じ強調では割らせない", () => {
+    const source = `${header}/**
+ * **赤のままコミットしない。**
+ */
+export function f() {}
+`;
+
+    // 強調の内側に句点を置いた形は 1 文である。
+    // ここで割ると強調が行を跨ぐか、句点を強調の外へ動かすことになる。
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("飾りの後ろに本文が続けば割らせる", () => {
+    const source = `${header}/**
+ * **赤のままコミットしない。** 直してから積む。
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useOneSentencePerLine"]);
+  });
+
+  it("行を跨いだ括弧の後ろ半分は 1 文と数える", () => {
+    const source = `${header}/**
+ * body は原型を持つ（投入された生の問い。
+ * 訂正以外では書き換えない。）
+ */
+export function f() {}
+`;
+
+    // 開きは前の行にあるので、2 行目の閉じ括弧は深さで免除できない。
     expect(rulesOf(source)).toEqual([]);
   });
 
