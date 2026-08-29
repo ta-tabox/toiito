@@ -12,7 +12,7 @@ VISION の設計原理が上位。
   Hobby は非商用限定なので、他人へ開いて収益化する段になったら必ず一度決め直す（選定の経緯は `docs/adr/0002-production-runtime.md`）
 - **Postgres + Prisma** — 永続化。
   開発も本番も同じ方言に揃える。
-  ローカルは `compose.yaml` の Postgres、本番は Neon（手順は `HARNESS.md`）
+  ローカルは `compose.yaml` の Postgres、本番は Neon（手順は `DEPLOY.md`）
 - **Claude API** — 二体 AI の対話生成。
   Server Actions（サーバー側）からのみ叩く
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
