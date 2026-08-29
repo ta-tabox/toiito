@@ -87,6 +87,13 @@ describe("isAuthorized", () => {
     expect(isAuthorized(null, credentials)).toBe(false);
   });
 
+  it("スキーム名の大文字小文字は問わない", () => {
+    const encoded = basic("toiito", "秘密:のことば").slice("Basic ".length);
+
+    expect(isAuthorized(`basic ${encoded}`, credentials)).toBe(true);
+    expect(isAuthorized(`BASIC ${encoded}`, credentials)).toBe(true);
+  });
+
   it("Basic 以外の綴りは通さない", () => {
     expect(isAuthorized("Bearer token", credentials)).toBe(false);
   });

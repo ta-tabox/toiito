@@ -84,13 +84,22 @@ export function isAuthorized(
 
 /** Basic の Authorization ヘッダを利用者名とパスワードへ解く。 */
 function decodeBasic(header: string | null): BasicAuthCredentials | null {
-  const prefix = "Basic ";
-
-  if (header === null || !header.startsWith(prefix)) {
+  if (header === null) {
     return null;
   }
 
-  const decoded = decodeBase64Utf8(header.slice(prefix.length));
+  // RFC 7235 のスキーム名は大文字小文字を区別しない。
+  // ブラウザは Basic と綴るが、綴りの違いで弾く理由は無い。
+  const schemeEnd = header.indexOf(" ");
+
+  if (
+    schemeEnd === -1 ||
+    header.slice(0, schemeEnd).toLowerCase() !== "basic"
+  ) {
+    return null;
+  }
+
+  const decoded = decodeBase64Utf8(header.slice(schemeEnd + 1));
 
   if (decoded === null) {
     return null;
