@@ -46,7 +46,7 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
    入れずに import すると最初のビルドが `prisma generate` で落ちる（落ちても、入れてから Redeploy すれば済む）
 3. Project Settings → Build and Deployment → Root Directory に `web/` を入れる
 4. Project Settings → Functions → Node.js Version を 24 にする（版の正は `mise.toml`）
-5. Project Settings → Deployment Protection → Vercel Authentication を **All Deployments** にする
+5. Project Settings → Deployment Protection → Vercel Authentication を有効にする（**Standard Protection**。Hobby で選べるのはこれだけ）
 6. GitHub の Settings → Secrets and variables → Actions に `PRODUCTION_DIRECT_URL` を入れる
 
 Install Command は `web/vercel.json` が持つので、ダッシュボードでは触らない。
@@ -106,13 +106,24 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 
 ## 門
 
-#65（認証と所有権の方式を決める）/ #68（ログイン（Google OAuth）とリソースの所有権）が入るまでの繋ぎとして、Vercel Authentication を **All Deployments** で掛ける。
-Production も含めて Vercel のアカウントでログインしないと入れない。
-Standard Protection は production ドメインを素通しにするので選ばない。
+#65（認証と所有権の方式を決める）/ #68（ログイン（Google OAuth）とリソースの所有権）が入るまでの繋ぎとして、Vercel Authentication を **Standard Protection** で掛ける。
+Vercel にログイン済みで、かつこのチームの一員でないと入れない。
+
+**チームの一員が開くとログイン画面を挟まず通る**。
+門が外れているわけではないので、効きを確かめるならプライベートウィンドウで開く。
+
+**Hobby で選べるのは Standard Protection だけ**である（2026-08-29 に画面で確認）。
+もう一つの All Deployments は Pro の Advanced Deployment Protection（月 150 ドル）が要る。
+二つの差は**独自ドメインだけ**で、Standard Protection が保護対象から外すのは production の独自ドメインに限られる。
+Vercel が割り当てる `<project>.vercel.app` は Standard Protection でも門の内側にいる。
+
 #68 が入ったら外す。
 
 独自ドメインは当てていない。
 `<project>.vercel.app` のまま使い、当てるのは #68 が入るか Hobby から動かすときにする。
+
+**当てると、そのドメインだけ上の門の外に出る**。
+塞ぐ手は月 150 ドルの Advanced Deployment Protection を買うか、#68 が入って門自体が要らなくなるのを待つかの二つしかない。
 Hobby は非商用限定なので、他人へ開く段では実行環境ごと決め直すことになる（`docs/adr/0002-production-runtime.md`「覆る条件」）。
 
 ## 引き受けている非対称
