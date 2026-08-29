@@ -23,10 +23,13 @@ function readEffort(name: string, fallback?: Effort): Effort | undefined {
  *
  * 抽象さんは構造を取り出して材料を添える役で thinking が膨らみやすいので、一段落とす。
  * undefined は API の既定（high）で走らせるという指定。
+ *
+ * 環境変数の名前は役割を語る側（concrete / abstract）で、キーの内部 ID とは揃っていない。
+ * #122（ペルソナの内部識別子を役割の語へ改名する）で片側へ寄せる。
  */
 export const PERSONA_EFFORT: Record<PersonaId, Effort | undefined> = {
-  ai_a: readEffort("TOIITO_EFFORT_AI_A"),
-  ai_b: readEffort("TOIITO_EFFORT_AI_B", "medium"),
+  ai_a: readEffort("TOIITO_EFFORT_CONCRETE"),
+  ai_b: readEffort("TOIITO_EFFORT_ABSTRACT", "medium"),
 };
 
 export const PERSONA_LABEL: Record<PersonaId, string> = {
