@@ -34,7 +34,9 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 ## 初回のセットアップ
 
 1. Neon で本番プロジェクトを作り、接続文字列を 2 本控える。
-   違いはホスト名の `-pooler` だけ
+   **Postgres は 18 を選ぶ**（ローカルと CI も 18。`docs/adr/0009-postgres-18.md`）。
+   Neon はメジャーの in-place upgrade を持たず、後から変えるにはプロジェクトごと作り直すことになる。
+   接続文字列 2 本の違いはホスト名の `-pooler` だけ
 2. Vercel でリポジトリを import する。
    import 画面で環境変数を入れられるので、上の 3 本をそこで入れる。
    入れずに import すると最初のビルドが `prisma generate` で落ちる（落ちても、入れてから Redeploy すれば済む）
