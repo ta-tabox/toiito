@@ -77,7 +77,7 @@ DB の enum・外部キー・check 制約は本物に当てないと表明した
 docker compose up -d
 ```
 
-リポジトリルートの `compose.yaml` が Postgres 17（本番 Neon と同じメジャー）を `localhost:5433` に立てる。
+リポジトリルートの `compose.yaml` が Postgres 18（本番 Neon と同じメジャー）を `localhost:5433` に立てる。
 開発用 `toiito` とテスト用 `toiito_test` の二つを初回起動時に作る。
 止めるのは `docker compose down`、中身ごと作り直すのは `docker compose down -v`。
 
@@ -193,7 +193,7 @@ API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環
 引き受ける非対称は三つ。
 最初の二つは外向きの通信が許可制で、塞ぐ手段がこの環境に無いことから来る:
 
-- Postgres が 17 でなく 16（apt.postgresql.org へ出られない）
+- Postgres が 18 でなく 16（apt.postgresql.org へ出られない）
 - 版の管理が mise でなく直置き（mise.run へ出られない）。
   版の正は `mise.toml` のままで、フックはそれを読む側
 - L4 の実走は手元（macOS）が担う。

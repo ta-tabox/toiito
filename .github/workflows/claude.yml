@@ -48,7 +48,7 @@ jobs:
     # 二本しか無いので共通化しない（合成アクションに切り出すと、この job が何を持っているかが読めなくなる）。
     services:
       postgres:
-        image: postgres:17
+        image: postgres:18
         env:
           POSTGRES_USER: toiito
           POSTGRES_PASSWORD: toiito
