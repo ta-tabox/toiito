@@ -25,6 +25,34 @@ const SPEAKER_TAG: Record<Speaker, string> = {
 };
 
 /**
+ * システムプロンプト冒頭の見出しから、どのペルソナかを表す一行を取り出す。
+ * ペルソナ定義（`src/personas/*.md`）は `# ai_a — 具体派` で始まる。
+ */
+function personaLabel(systemPrompt: string): string {
+  return systemPrompt.split("\n")[0].replace(/^#\s*/, "");
+}
+
+/**
+ * 一回の API 呼び出しの結果を 1 行の JSON で残す。
+ *
+ * 発話本文は出さない。
+ * 投入される問いは機微な出自を含みうるので、外へ渡すのは打ち切りの検出に足りる長さだけにする。
+ * 応答をパースした直後に呼ぶので、この後で例外になった呼び出しも 1 行残る。
+ */
+function logCall(fields: {
+  persona: string;
+  stop_reason: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  duration_ms: number;
+  body_length: number;
+}): void {
+  console.log(
+    JSON.stringify({ event: "claude_call", model: MODEL, ...fields }),
+  );
+}
+
+/**
  * ハーネス用フェイクモード（HARNESS.md 参照）。
  * TOIITO_FAKE_AI=1 でネットワークに出ず決定的応答を返す。
  * ペルソナ ID と直近の人間発話を含めることで、E2E 側から「どの体が・何を受けて」応答したかをアサート可能にする。
@@ -33,7 +61,7 @@ function fakeResponse(
   systemPrompt: string,
   transcript: { speaker: Speaker; body: string }[],
 ): string {
-  const personaLine = systemPrompt.split("\n")[0].replace(/^#\s*/, "");
+  const personaLine = personaLabel(systemPrompt);
   const lastHuman = [...transcript]
     .reverse()
     .find((m) => m.speaker === "human");
@@ -82,6 +110,7 @@ export async function callPersona(
     `あなたの役割定義に従い、次の一手を発話せよ。発話本文のみを出力すること。`,
   ].join("\n\n");
 
+  const startedAt = Date.now();
   const res = await fetch(API_URL, {
     method: "POST",
     headers: {
@@ -105,7 +134,22 @@ export async function callPersona(
   const data = (await res.json()) as {
     content: { type: string; text?: string }[];
     stop_reason: string | null;
+    usage?: { input_tokens: number; output_tokens: number };
   };
+
+  const body = data.content
+    .filter((b) => b.type === "text")
+    .map((b) => b.text ?? "")
+    .join("");
+
+  logCall({
+    persona: personaLabel(systemPrompt),
+    stop_reason: data.stop_reason,
+    input_tokens: data.usage?.input_tokens ?? null,
+    output_tokens: data.usage?.output_tokens ?? null,
+    duration_ms: Date.now() - startedAt,
+    body_length: body.length,
+  });
 
   // 切れた本文を messages へ入れると、immutable なので後から直せない。
   if (data.stop_reason === "max_tokens") {
@@ -113,11 +157,6 @@ export async function callPersona(
       `Claude API の応答が max_tokens (${MAX_TOKENS}) で打ち切られた`,
     );
   }
-
-  const body = data.content
-    .filter((b) => b.type === "text")
-    .map((b) => b.text ?? "")
-    .join("");
 
   // thinking だけで応答が終わると text ブロックが一つも来ない。
   if (!body) {

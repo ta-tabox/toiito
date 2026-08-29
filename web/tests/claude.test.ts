@@ -6,6 +6,7 @@ const ORIGINAL_ENV = { ...process.env };
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV };
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 /**
@@ -82,5 +83,62 @@ describe("実モード", () => {
     await expect(callPersona("# ai_b", { body: "q" }, [])).rejects.toThrow(
       /text ブロック/,
     );
+  });
+});
+
+describe("呼び出しログ", () => {
+  /** console.log を捕まえて、残った行を JSON として読めるようにする。 */
+  function captureLog() {
+    return vi.spyOn(console, "log").mockImplementation(() => {});
+  }
+
+  it("応答をパースした時点で 1 行の JSON を残す", async () => {
+    const logged = captureLog();
+    stubApiResponse({
+      content: [{ type: "text", text: "十文字ちょうどの本文" }],
+      stop_reason: "end_turn",
+      usage: { input_tokens: 1200, output_tokens: 340 },
+    });
+
+    await callPersona("# ai_b — 抽象派", { body: "q" }, []);
+
+    expect(logged).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
+      event: "claude_call",
+      persona: "ai_b — 抽象派",
+      stop_reason: "end_turn",
+      input_tokens: 1200,
+      output_tokens: 340,
+      body_length: 10,
+    });
+  });
+
+  it("発話本文そのものは残さない", async () => {
+    const logged = captureLog();
+    stubApiResponse({
+      content: [{ type: "text", text: "外へ出してはいけない問いの中身" }],
+      stop_reason: "end_turn",
+    });
+
+    await callPersona("# ai_a — 具体派", { body: "q" }, []);
+
+    expect(String(logged.mock.calls[0][0])).not.toContain(
+      "外へ出してはいけない問いの中身",
+    );
+  });
+
+  it("打ち切られた呼び出しも、例外を投げる前に残す", async () => {
+    const logged = captureLog();
+    stubApiResponse({
+      content: [{ type: "text", text: "途中で切れた発" }],
+      stop_reason: "max_tokens",
+    });
+
+    await expect(callPersona("# ai_b", { body: "q" }, [])).rejects.toThrow();
+
+    expect(logged).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
+      stop_reason: "max_tokens",
+    });
   });
 });
