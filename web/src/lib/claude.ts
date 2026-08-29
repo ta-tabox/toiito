@@ -9,6 +9,15 @@ import type { Speaker } from "@/lib/types";
 const API_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = process.env.TOIITO_MODEL ?? "claude-sonnet-5";
 
+/**
+ * 一回の応答に許すトークン数。
+ *
+ * thinking のトークンもここから引かれるので、本文の想定長で見積もると足りない。
+ * 足りなければ本文が途中で切れるか、text ブロックごと出てこない。
+ * ストリーミングを使っていないため、上限は HTTP のタイムアウトに収まる範囲で選ぶ。
+ */
+const MAX_TOKENS = 16000;
+
 const SPEAKER_TAG: Record<Speaker, string> = {
   human: "人間",
   ai_a: "ai_a（具体派）",
@@ -41,6 +50,7 @@ export type QuestionRef = { body: string; current_form?: string | null };
  * ペルソナ一体を呼んで発話本文を返す。
  * TOIITO_FAKE_AI=1 のときはネットワークに出ない。
  * transcript はここまでの全発話で、呼ぶ側が順序を保証する。
+ * 応答が打ち切られたときと本文が空のときは例外を投げる（欠けた本文を返さない）。
  */
 export async function callPersona(
   systemPrompt: string,
@@ -81,7 +91,7 @@ export async function callPersona(
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 1024,
+      max_tokens: MAX_TOKENS,
       system: systemPrompt,
       messages: [{ role: "user", content: userContent }],
     }),
@@ -94,9 +104,25 @@ export async function callPersona(
 
   const data = (await res.json()) as {
     content: { type: string; text?: string }[];
+    stop_reason: string | null;
   };
-  return data.content
+
+  // 切れた本文を messages へ入れると、immutable なので後から直せない。
+  if (data.stop_reason === "max_tokens") {
+    throw new Error(
+      `Claude API の応答が max_tokens (${MAX_TOKENS}) で打ち切られた`,
+    );
+  }
+
+  const body = data.content
     .filter((b) => b.type === "text")
     .map((b) => b.text ?? "")
     .join("");
+
+  // thinking だけで応答が終わると text ブロックが一つも来ない。
+  if (!body) {
+    throw new Error("Claude API の応答に text ブロックが無い");
+  }
+
+  return body;
 }

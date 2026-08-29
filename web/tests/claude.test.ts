@@ -1,11 +1,26 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { callPersona } from "@/lib/claude";
 
 const ORIGINAL_ENV = { ...process.env };
 
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV };
+  vi.unstubAllGlobals();
 });
+
+/**
+ * Claude API の応答一件を返す fetch に差し替える。
+ * 実モードの分岐へ入れるため、フェイクモードを解いて API キーも置く。
+ */
+function stubApiResponse(payload: unknown): void {
+  delete process.env.TOIITO_FAKE_AI;
+  process.env.ANTHROPIC_API_KEY = "test-key";
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })),
+  );
+}
 
 describe("フェイクモード (TOIITO_FAKE_AI=1)", () => {
   it("ネットワークに出ず、ペルソナ ID と直近の人間発話を含む決定的応答を返す", async () => {
@@ -33,6 +48,39 @@ describe("実モード", () => {
     delete process.env.ANTHROPIC_API_KEY;
     await expect(callPersona("# ai_a", { body: "q" }, [])).rejects.toThrow(
       /ANTHROPIC_API_KEY/,
+    );
+  });
+
+  it("完結した応答の本文を返す", async () => {
+    stubApiResponse({
+      content: [{ type: "text", text: "最後まで出た発話" }],
+      stop_reason: "end_turn",
+    });
+
+    await expect(callPersona("# ai_b", { body: "q" }, [])).resolves.toBe(
+      "最後まで出た発話",
+    );
+  });
+
+  it("max_tokens で打ち切られた応答は、途中までの本文を返さず失敗する", async () => {
+    stubApiResponse({
+      content: [{ type: "text", text: "途中で切れた発" }],
+      stop_reason: "max_tokens",
+    });
+
+    await expect(callPersona("# ai_b", { body: "q" }, [])).rejects.toThrow(
+      /max_tokens/,
+    );
+  });
+
+  it("text ブロックの無い応答は、空文字列を返さず失敗する", async () => {
+    stubApiResponse({
+      content: [{ type: "thinking", thinking: "" }],
+      stop_reason: "end_turn",
+    });
+
+    await expect(callPersona("# ai_b", { body: "q" }, [])).rejects.toThrow(
+      /text ブロック/,
     );
   });
 });
