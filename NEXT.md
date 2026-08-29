@@ -52,12 +52,13 @@
   **実行時間上限はどの候補でも一往復を切らない見込み**なので、上限を理由に #9（ストリーミング化 spike）/ #10（ストリーミング実装）を前倒しする必要は無い
 - **本番デプロイは四つの決定が付き、#90（本番環境へデプロイする）と #96（本番の migration 経路を通す）へ割れた**（2026-08-28）。
   pnpm の版は `web/vercel.json` の Install Command で固定（ADR 0007）、独自ドメインは当てず、Vercel Authentication は All Deployments で掛ける（後の二つは既定の踏襲なので ADR にせず `docs/adr/README.md`「ADR にしないもの」へ列挙した）。
-  migration は main への push を起点に Actions から流すと決めてあり、実装は #96 が持つ。
+  migration は main への push を起点に Actions から流す（ADR 0008・`.github/workflows/migrate.yml`）。
   **割ったのは失敗の切り分けを分けるため**——「Vercel でビルドが通って Next が起動するか」と「本番 DB へ migration が流れるか」は別の失敗モードなので、一枚の PR に混ぜると詰まったときにどちらが原因か分からない。
-  #90 の間は本番 DB が空なので、DB へ触る画面は 500 を返す（想定内）。
+  #90 だけがマージされた状態では本番 DB が空なので、DB へ触る画面は 500 を返す（想定内）。
   **手順の正は `DEPLOY.md`**（`HARNESS.md` は検証の文書なので、出す側の手順は持たない）。
-  **残りは人間の手**——Neon と Vercel のプロジェクト作成、環境変数 3 本、そして #96 での GitHub secret と疎通確認。
-  `postinstall` の `prisma generate` が `DIRECT_URL` を要求するので、3 本とも Production に入れてから最初のビルドを回すこと
+  **残りは人間の手**——Neon と Vercel のプロジェクト作成、環境変数 3 本、GitHub secret `PRODUCTION_DIRECT_URL`、そして実キーでの疎通確認。
+  `postinstall` の `prisma generate` が `DIRECT_URL` を要求するので、3 本とも Production に入れてから最初のビルドを回すこと。
+  secret は #96 が main へ入る前に入れること（無いと最初の `migrate` job が空文字で赤くなる）
 - **#65 は `ARCHITECTURE.md` の改定を伴う**。
   「マルチユーザー対応の作り込み（自分専用。Auth は門としてのみ）」が意図的にやらないことへ挙がっているので、#68 以降はそこを書き換えないと規約違反のまま進む
 - **#8 / #9 / #10 は #7 の後**（post-mvp ラベル）。
