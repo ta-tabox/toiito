@@ -8,25 +8,22 @@
 
 アプリは Vercel（Hobby）、DB は Neon の無料プラン（選定の経緯は `docs/adr/0002-production-runtime.md`）。
 Vercel の Root Directory は `web/`。
-main へ入れば Vercel が本番を差し替える。
+main へ入れば Vercel が本番を差し替え、同じ push で `.github/workflows/migrate.yml` が migration を流す。
 手で叩くものは無い。
-
-**migration の経路はまだ通っていない**（#96（本番の migration 経路を通す））。
-本番 DB にテーブルが無いので、DB へ触る画面は 500 を返す。
-ここで確かめられるのは、ビルドが通って Next が立つところまで。
 
 ## 秘密の置き場
 
-Vercel の Environment Variables（Production）へ 5 本入れる。
-値を持つのは人間だけで、リポジトリにも `.env*` にも書かない。
+置き場は二つで、値を持つのは人間だけ。
+リポジトリにも `.env*` にも本番の値を書かない。
 
-| 変数 | 値 |
-|---|---|
-| `DATABASE_URL` | Neon のプーラー経由（ホスト名に `-pooler` が付く方） |
-| `DIRECT_URL` | Neon の直結 |
-| `ANTHROPIC_API_KEY` | Claude API のキー |
-| `TOIITO_BASIC_AUTH_USER` | Basic 認証の利用者名（任意の文字列） |
-| `TOIITO_BASIC_AUTH_PASSWORD` | Basic 認証のパスワード |
+| 変数 | 置き場 | 値 |
+|---|---|---|
+| `DATABASE_URL` | Vercel の Environment Variables（Production） | Neon のプーラー経由（ホスト名に `-pooler` が付く方） |
+| `DIRECT_URL` | 同上 | Neon の直結 |
+| `ANTHROPIC_API_KEY` | 同上 | Claude API のキー |
+| `TOIITO_BASIC_AUTH_USER` | 同上 | Basic 認証の利用者名（任意の文字列） |
+| `TOIITO_BASIC_AUTH_PASSWORD` | 同上 | Basic 認証のパスワード |
+| `PRODUCTION_DIRECT_URL` | GitHub の Settings → Secrets and variables → Actions → **Repository secrets** | `DIRECT_URL` と同じ値。migration を流す workflow だけが読む |
 
 `TOIITO_MODEL` は任意（既定 `claude-sonnet-5`）。
 `TOIITO_FAKE_AI` は**本番に入れない**。
@@ -38,16 +35,31 @@ Vercel の Environment Variables（Production）へ 5 本入れる。
 
 ## 初回のセットアップ
 
-1. Neon で本番プロジェクトを作り、接続文字列を 2 本控える。
-   違いはホスト名の `-pooler` だけ
+1. **Neon 側で自分の組織を切り**、その下に本番プロジェクトを作って接続文字列を 2 本控える。
+   Vercel Marketplace の Neon 統合は使わない（`docs/adr/0012-neon-outside-vercel-marketplace.md`）。
+   Marketplace 経由で作ると Neon プロジェクトが Vercel 所有の組織の配下に入り、そこから自分のアカウントへ移すセルフサービスの経路が無い。
+   **Postgres は 18 を選ぶ**（ローカルと CI も 18。`docs/adr/0009-postgres-18.md`）。
+   Neon はメジャーの in-place upgrade を持たず、後から変えるにはプロジェクトごと作り直すことになる。
+   Region は **AWS US East 1 (N. Virginia)** で、Vercel の関数リージョンの既定（`iad1`）と揃える。
+   揃っていないと DB の往復が毎回大陸をまたぐ。
+   接続文字列 2 本の違いはホスト名の `-pooler` だけ
 2. Vercel でリポジトリを import する。
    import 画面で環境変数を入れられるので、上の 5 本をそこで入れる。
    入れずに import すると最初のビルドが `prisma generate` で落ちる（落ちても、入れてから Redeploy すれば済む）
 3. Project Settings → Build and Deployment → Root Directory に `web/` を入れる
 4. Project Settings → Functions → Node.js Version を 24 にする（版の正は `mise.toml`）
-5. Project Settings → Deployment Protection → Vercel Authentication を **All Deployments** にする
+5. Project Settings → Deployment Protection → Vercel Authentication を有効にする（**Standard Protection**。Hobby で選べるのはこれだけ）
+6. GitHub の Settings → Secrets and variables → Actions → **Repository secrets** に `PRODUCTION_DIRECT_URL` を入れる。
+   同じ画面にある Environment secrets ではない（下記）
 
 Install Command は `web/vercel.json` が持つので、ダッシュボードでは触らない。
+
+**secret は Repository secrets へ入れる**。
+Environment secrets は `environment:` を宣言した job にしか渡らず、`.github/workflows/migrate.yml` はそれを宣言していない。
+そちらへ入れると `secrets.PRODUCTION_DIRECT_URL` が空文字になり、設定したのに効かない状態になる。
+
+**secret は migration の workflow が main へ入る前に入れる**。
+`migrate.yml` は main への push で走るので、secret が無いまま入れると空文字が渡って最初の job が赤くなる。
 
 **import は main へマージした後に回す**。
 Vercel の production ビルドが見るのは main なので、`web/vercel.json` の無い main を先に import すると、下の pnpm の版の失敗を初回ビルドで一度踏むことになる。
@@ -63,6 +75,22 @@ corepack は使わない（`CLAUDE.md`「開発ハーネス」）。
 
 自動検出に任せない理由と、採らなかった案は `docs/adr/0007-production-pnpm-version.md`。
 
+## migration
+
+main への push で `.github/workflows/migrate.yml` が `prisma migrate deploy` を流す。
+流すものが無ければ何もしないので、migration を含まない push でも走らせている。
+
+Vercel のビルドとは競走するが、`migrate deploy` は秒・`next build` は分なので、順序は構造上ほぼ守られる。
+
+**後方非互換な変更はこの前提が効かない**。
+列の削除・改名のように旧コードが動かなくなる migration は、自動経路へそのまま載せず三段階に割る。
+
+1. 旧コードでも動く形（列の追加・NULL 許容・二重書き）だけを先に main へ入れる
+2. 旧コードが古い列を使わなくなる変更を、次の PR で入れる
+3. 古い列を落とす migration は、さらにその後の PR で入れる
+
+決定の経緯と、この規律が守れなかったときの倒し先は `docs/adr/0008-production-migration-path.md`。
+
 ## 切り戻し
 
 コードは Vercel の Instant Rollback で戻す。
@@ -75,7 +103,13 @@ vercel rollback <previous-deployment-url-or-id>
 ダッシュボードの Deployments からも同じことができる。
 Hobby で戻せるのは直前の production デプロイまで（任意の過去デプロイへ戻せるのは Pro 以上）。
 
-DB 側の切り戻しは #96（本番の migration 経路を通す）が持つ。
+**migration は戻らない**。
+`prisma migrate deploy` に取り消しは無いので、スキーマを戻すには打ち消す migration を書いて流すことになる。
+コードだけ戻して直る範囲に収めるのが、上の三段階に割る規律の目的。
+
+データごと巻き戻すなら Neon の point-in-time restore を使う（2026-08-28 時点で無料プランでも使える）。
+ただし履歴は **6 時間・変更 1 GB-month** までで、戻せるのは root ブランチだけ。
+枠を超えた時点より前へは戻せないので、これを常用の安全網と見なさない。
 
 ## アクセス制限
 
