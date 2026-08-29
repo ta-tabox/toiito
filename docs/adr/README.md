@@ -93,11 +93,11 @@ ADR にしない側へ倒す。
 - **発話周期の固定に対する「観測器を先に立てる」**（2026-07-20）。
   何を先にやるかという順序の判断である。
   診断の原文ごと #8（発話周期の可変化）が持つ
-- **暫定の門を Vercel Authentication の Standard Protection で掛ける**（2026-08-28 決定・2026-08-29 に範囲を訂正・#90（本番環境へデプロイする））。
-  門で差が付いたことは 0002 が既に書いているので、掛けること自体はその踏襲になる。
-  **範囲には選択の余地が無かった**——Hobby で選べるのは Standard Protection だけで、All Deployments は Pro の Advanced Deployment Protection（月 150 ドル）が要る。
+- **Vercel Authentication を Standard Protection のまま有効にしておく**（2026-08-28 決定・2026-08-29 に位置づけを訂正・#90（本番環境へデプロイする））。
+  Hobby で選べるのはこれだけで、All Deployments は Pro の Advanced Deployment Protection（月 150 ドル）が要る。
   そして 2026-08-29 の実測で、**Standard Protection は本番の URL を守らない**ことが分かった（守るのは production のデプロイ URL と Preview だけで、`<project>.vercel.app` は素通し）。
-  扱いは #102 が持つ。
+  **本番のアクセス制限はアプリ側の Basic 認証が持つ**（0013）ので、これは残る二つ——デプロイ URL と Preview——を守るためだけに有効なままにしてある。
+  無効化しない理由がそれで、決定というより据え置きになる。
   現況は `DEPLOY.md`
 - **独自ドメインを当てない**（2026-08-28・#90（本番環境へデプロイする））。
   何もしないという選択なので、覆る条件が「当てたくなったら」以上に書けない（規約5）。

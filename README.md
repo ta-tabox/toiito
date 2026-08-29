@@ -30,7 +30,7 @@ AI は答えを与えない。
 MVP の縦一本——問い投入 → 二視点 AI との対話 → キーワードメモ → メモからのセッション逆引き——は実装として動く。
 
 **他人が試せる URL は無い**。
-本番の実行環境は Vercel に決まっているが（[ADR-0002](docs/adr/0002-production-runtime.md)）、そこには作者だけが入れる門を掛ける。
+本番は Vercel に立っているが（[ADR-0002](docs/adr/0002-production-runtime.md)）、作者だけが通れるようアクセスを制限してある（[ADR-0013](docs/adr/0013-production-basic-auth.md)）。
 自分専用の道具なので、当面その形は変えない。
 出す手順は [DEPLOY.md](DEPLOY.md)。
 

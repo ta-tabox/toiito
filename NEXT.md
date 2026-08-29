@@ -46,19 +46,27 @@
   **ハーネス系は載せない**——あの地図はハーネス系 issue を一件も持たない分担で、正は `HARNESS.md` と issue 側にある
 - **#71（実行環境を決める）は Vercel（Hobby）で決着した**（2026-08-28）。
   四軸の比較は issue #71 のコメント、決定の経緯は ADR 0002（本番の実行環境を Vercel にする）。
-  決め手は費用でも実行時間上限でもなく暫定の門で、既製の門を無料で持つのは Vercel だけだった。
-  この依存は #68（Google OAuth のログイン）が入れば用済みになる。
+  決め手は費用でも実行時間上限でもなくアクセス制限で、既製の制限を無料で持つのは Vercel だけだと読んでいた。
+  **その読みは 2026-08-29 に実測で崩れた**——Hobby の Vercel Authentication は本番の URL を守らない（ADR 0013）。
+  決定（Vercel を使う）は動いていないが、**次に実行環境を問い直すとき、アクセス制限は比較の材料にならない**。
+  制限はアプリ側へ移ったので、どの候補へ移しても付いてくる。
   移植性は `ARCHITECTURE.md` の禁止則「Vercel 固有の口をアプリへ入れない」が持つ。
   **実行時間上限はどの候補でも一往復を切らない見込み**なので、上限を理由に #9（ストリーミング化 spike）/ #10（ストリーミング実装）を前倒しする必要は無い
-- **本番デプロイは四つの決定が付き、#90（本番環境へデプロイする）と #96（本番の migration 経路を通す）へ割れた**（2026-08-28）。
-  pnpm の版は `web/vercel.json` の Install Command で固定（ADR 0007）、独自ドメインは当てず、Vercel Authentication は All Deployments で掛ける（後の二つは既定の踏襲なので ADR にせず `docs/adr/README.md`「ADR にしないもの」へ列挙した）。
-  migration は main への push を起点に Actions から流す（ADR 0008・`.github/workflows/migrate.yml`）。
-  **割ったのは失敗の切り分けを分けるため**——「Vercel でビルドが通って Next が起動するか」と「本番 DB へ migration が流れるか」は別の失敗モードなので、一枚の PR に混ぜると詰まったときにどちらが原因か分からない。
-  #90 だけがマージされた状態では本番 DB が空なので、DB へ触る画面は 500 を返す（想定内）。
+- **本番は立ち、アクセス制限も掛かった**（2026-08-29）。
   **手順の正は `DEPLOY.md`**（`HARNESS.md` は検証の文書なので、出す側の手順は持たない）。
-  **残りは人間の手**——Neon と Vercel のプロジェクト作成、環境変数 3 本、GitHub secret `PRODUCTION_DIRECT_URL`、そして実キーでの疎通確認。
-  `postinstall` の `prisma generate` が `DIRECT_URL` を要求するので、3 本とも Production に入れてから最初のビルドを回すこと。
-  secret は #96 が main へ入る前に入れること（無いと最初の `migrate` job が空文字で赤くなる）
+  残るのは #96（本番の migration 経路を通す）だけで、それが入ればテーブルが揃って実キーの一巡ができる。
+
+  決定は ADR が持つ——pnpm の版（0007）、migration の経路（0008）、Postgres 18（0009）、Neon を Marketplace 経由で作らない（0012）、アクセス制限をアプリ側の Basic 認証で持つ（0013）。
+  既定の踏襲だったもの（独自ドメイン・リージョン・Vercel Authentication の範囲）は `docs/adr/README.md`「ADR にしないもの」。
+
+  **この一日で二度、掛けたつもりの制限が実際には通っていた**。
+  一度目は Hobby の Vercel Authentication が本番の URL を守らないこと、二度目は Edge ランタイムで環境変数が読めず制限が素通しに倒れること。
+  どちらも設定画面と単体テストからは見えず、**リクエストを一度投げるまで誰にも分からなかった**。
+  だから `DEPLOY.md`「アクセス制限」に curl の確認を置いてある。
+  同じ形の場所を触るときは、実物を叩くまで信用しない。
+
+  秘密の置き場も一度取り違えた。
+  Vercel は 5 本すべて Production、GitHub は **Repository secrets**（Environment secrets ではない。`migrate.yml` が `environment:` を宣言していないので空文字になる）。
 - **#65 は `ARCHITECTURE.md` の改定を伴う**。
   「マルチユーザー対応の作り込み（自分専用。Auth は門としてのみ）」が意図的にやらないことへ挙がっているので、#68 以降はそこを書き換えないと規約違反のまま進む
 - **#8 / #9 / #10 は #7 の後**（post-mvp ラベル）。
