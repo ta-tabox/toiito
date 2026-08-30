@@ -2,20 +2,18 @@
 #
 # 戻せない git push を人間の諾否へ回す PreToolUse フック。
 #
-# `.claude/settings.json` の権限パターンはコマンド文字列への前方一致なので、
-# `Bash(git push --force:*)` はフラグが push の直後に来る語順にしか当たらない。
-# `git push origin --force` のように remote 名が先に来る書き方は素の
-# `Bash(git push:*)` の allow へ落ちる。ここはコマンド全文を見るので語順に依存しない。
+# `.claude/settings.json` の権限パターンはコマンド文字列への前方一致なので、`Bash(git push --force:*)` はフラグが push の直後に来る語順にしか当たらない。
+# `git push origin --force` のように remote 名が先に来る書き方は素の `Bash(git push:*)` の allow へ落ちる。
+# ここはコマンド全文を見るので語順に依存しない。
 #
-# 前方一致では表現できない形も拾う——短オプションの束（`-fu`）、
-# `+src:dst` の force refspec、`:branch` の削除 refspec。
+# 前方一致では表現できない形も拾う——短オプションの束（`-fu`）・`+src:dst` の force refspec・`:branch` の削除 refspec。
 #
 # 判定は「戻せない形か」だけで、それ以外は何も言わず settings.json の判定へ委ねる。
-# 迷ったら ask へ倒す。余計に訊かれるのは摩擦で済むが、素通りは事故になる。
+# 迷ったら ask へ倒す。
+# 余計に訊かれるのは摩擦で済むが、素通りは事故になる。
 #
-# settings.json の `if` は起動を絞るだけで、判定の責任は持たない。あれは best-effort で、
-# `$( )` やバッククォートを含む行——sleep を待つ until ループのような、git と無縁のもの——では
-# 開いて倒れて起動してくるので、git push かどうかはこのスクリプトの側でも確かめる。
+# settings.json の `if` は起動を絞るだけで、判定の責任は持たない。
+# あれは best-effort で、`$( )` やバッククォートを含む行——sleep を待つ until ループのような、git と無縁のもの——では開いて倒れて起動してくるので、git push かどうかはこのスクリプトの側でも確かめる。
 
 set -euo pipefail
 
@@ -41,7 +39,8 @@ command_line=$(jq -r '.tool_input.command // ""') || {
 }
 
 # --force / --force-with-lease / --delete / --mirror を語順を問わず拾う。
-# `-[a-zA-Z]*[fd][a-zA-Z]*` は -f・-d と、それらを含む束（-fu）に当たる。-u だけなら当たらない。
+# `-[a-zA-Z]*[fd][a-zA-Z]*` は -f・-d と、それらを含む束（-fu）に当たる。
+# -u だけなら当たらない。
 destructive='(^|[[:space:]])--(force|delete|mirror)'
 destructive+='|(^|[[:space:]])-[a-zA-Z]*[fd][a-zA-Z]*([[:space:]]|$)'
 destructive+='|(^|[[:space:]])\+[^[:space:]]+:'
