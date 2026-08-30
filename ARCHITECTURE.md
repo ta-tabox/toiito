@@ -71,7 +71,7 @@ VISION の「対話は堆積して振り返れるもの」をそのままスキ�
 
 ```
 questions      問い。発酵槽への仕込み単位
-  id, body(原型・不変), current_form(現在の形・可変), status, created_at
+  id, user_id, body(原型・不変), current_form(現在の形・可変), status, created_at
 
 sessions       一つの問いに対する対話セッション（複数回ありうる＝再訪）
   id, question_id, started_at
@@ -85,6 +85,19 @@ memos          キーワードメモ。文字選択で残す
 memo_links     （将来）メモ間・問い間のリンキング辺
   id, from_memo_id, to_memo_id, kind
 ```
+
+### 所有権（2026-08-30 決定）
+
+`user_id` を持つのは**所有のルートだけ**で、いまは `questions` 一つである（#64 でペルソナがテーブルになれば二つ目のルートになる）。
+`sessions` / `messages` / `memos` は持たず、所有者は親から辿る。
+下位にも持たせない理由と、却下した案は `docs/adr/0020-ownership-granularity.md`。
+
+**絞り込みは `db.ts` の repo 関数が行う**。
+UI 側でやらない。
+入口の `proxy.ts` は cookie の有無しか見ない楽観的な判定なので、他人のリソースを弾く最後の層はここになる。
+
+認証まわりの四表（`user` / `session` / `account` / `verification`）は Better Auth が持ち、綴りは生成されたままにする（`db.ts` から読まないので、snake_case へ揃える利益が発生しない）。
+**Better Auth の `session` は対話の `sessions` と別物である**——前者はログイン、後者は問いへの再訪。
 
 ### 原型と現在の形（2026-07-19 追加）
 
