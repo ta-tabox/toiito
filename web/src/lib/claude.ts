@@ -2,22 +2,17 @@
  * Claude API 呼び出し層（サーバー側のみ）。
  * 三者対話の transcript を一本のユーザーメッセージに畳んで渡す。
  * ai_b の呼び出し時には直前の ai_a の発話も transcript に含まれている前提（二体は並列でなく逐次——ai_b は ai_a への応答であることに意味がある）。
+ *
+ * env を読まない。
+ * モデル名・トークン上限・フェイクモード・API キーは呼び出し側が解決して渡す（config.ts が env から作る）。
  */
 
+import type { AiSettings } from "@/lib/config";
+import type { Effort } from "@/lib/effort";
+import type { PersonaId } from "@/lib/personas";
 import type { Speaker } from "@/lib/types";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = process.env.TOIITO_MODEL ?? "claude-sonnet-5";
-
-/**
- * 一回の応答に許すトークン数。
- *
- * thinking のトークンもここから引かれるので、本文の想定長で見積もると足りない。
- * 足りなければ本文が途中で切れるか、text ブロックごと出てこない。
- * ストリーミングを使っていないため、上限は HTTP のタイムアウトに収まる範囲で選ぶ。
- * 数として読めない値（未設定・空・非数）は既定へ倒す。
- */
-const MAX_TOKENS = Number(process.env.TOIITO_MAX_TOKENS) || 16000;
 
 /**
  * transcript の発話者見出し。
@@ -32,28 +27,19 @@ const SPEAKER_TAG: Record<Speaker, string> = {
 };
 
 /**
- * 思考にどれだけ費やすか。
- * 値域は Claude API の `output_config.effort`。
+ * ペルソナ一体を呼ぶときの指定。
+ *
+ * どの体か（id）・何を渡すか（prompt）・どれだけ考えさせるか（effort）と、API 側の設定を一つの値にまとめる。
+ * 識別子を prompt から復元しない。
+ * ペルソナ定義の見出しに依存すると、見出しを変えた回に黙って壊れる。
+ * effort を省くと API の既定（high）で走る。
  */
-export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
-
-export type Effort = (typeof EFFORTS)[number];
-
-/**
- * 外から来た文字列を Effort へ絞り込む。
- * API へ渡す前の関門。
- */
-export function isEffort(value: string): value is Effort {
-  return (EFFORTS as readonly string[]).includes(value);
-}
-
-/**
- * システムプロンプト冒頭の見出しから、どのペルソナかを表す一行を取り出す。
- * ペルソナ定義（`src/personas/*.md`）は `# ai_a — 具体派` で始まる。
- */
-function personaLabel(systemPrompt: string): string {
-  return systemPrompt.split("\n")[0].replace(/^#\s*/, "");
-}
+export type PersonaCall = {
+  readonly id: PersonaId;
+  readonly prompt: string;
+  readonly effort?: Effort;
+  readonly settings: AiSettings;
+};
 
 /**
  * 一回の API 呼び出しの結果を 1 行の JSON で残す。
@@ -63,32 +49,30 @@ function personaLabel(systemPrompt: string): string {
  * 応答をパースした直後に呼ぶので、この後で例外になった呼び出しも 1 行残る。
  */
 function logCall(fields: {
-  persona: string;
+  model: string;
+  persona: PersonaId;
   stop_reason: string | null;
   input_tokens: number | null;
   output_tokens: number | null;
   duration_ms: number;
   body_length: number;
 }): void {
-  console.log(
-    JSON.stringify({ event: "claude_call", model: MODEL, ...fields }),
-  );
+  console.log(JSON.stringify({ event: "claude_call", ...fields }));
 }
 
 /**
  * ハーネス用フェイクモード（HARNESS.md 参照）。
- * TOIITO_FAKE_AI=1 でネットワークに出ず決定的応答を返す。
+ * ネットワークに出ず決定的応答を返す。
  * ペルソナ ID と直近の人間発話を含めることで、E2E 側から「どの体が・何を受けて」応答したかをアサート可能にする。
  */
 function fakeResponse(
-  systemPrompt: string,
+  id: PersonaId,
   transcript: { speaker: Speaker; body: string }[],
 ): string {
-  const personaLine = personaLabel(systemPrompt);
   const lastHuman = [...transcript]
     .reverse()
     .find((m) => m.speaker === "human");
-  return `[fake:${personaLine}] 「${lastHuman?.body ?? "(発話なし)"}」への応答`;
+  return `[fake:${id}] 「${lastHuman?.body ?? "(発話なし)"}」への応答`;
 }
 
 /**
@@ -99,23 +83,22 @@ export type QuestionRef = { body: string; current_form?: string | null };
 
 /**
  * ペルソナ一体を呼んで発話本文を返す。
- * TOIITO_FAKE_AI=1 のときはネットワークに出ない。
+ * settings.fake が立っているときはネットワークに出ない。
  * transcript はここまでの全発話で、呼ぶ側が順序を保証する。
  * 応答が打ち切られたときと本文が空のときは例外を投げる（欠けた本文を返さない）。
- * effort を省くと API の既定（high）で走る。
  */
 export async function callPersona(
-  systemPrompt: string,
+  call: PersonaCall,
   question: QuestionRef,
   transcript: { speaker: Speaker; body: string }[],
-  effort?: Effort,
 ): Promise<string> {
-  if (process.env.TOIITO_FAKE_AI === "1") {
-    return fakeResponse(systemPrompt, transcript);
+  const { settings } = call;
+
+  if (settings.fake) {
+    return fakeResponse(call.id, transcript);
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  if (!settings.apiKey) {
     throw new Error("ANTHROPIC_API_KEY が未設定（web/.env.local を確認）");
   }
 
@@ -140,14 +123,14 @@ export async function callPersona(
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-api-key": apiKey,
+      "x-api-key": settings.apiKey,
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      ...(effort ? { output_config: { effort } } : {}),
-      system: systemPrompt,
+      model: settings.model,
+      max_tokens: settings.maxTokens,
+      ...(call.effort ? { output_config: { effort: call.effort } } : {}),
+      system: call.prompt,
       messages: [{ role: "user", content: userContent }],
     }),
   });
@@ -169,7 +152,8 @@ export async function callPersona(
     .join("");
 
   logCall({
-    persona: personaLabel(systemPrompt),
+    model: settings.model,
+    persona: call.id,
     stop_reason: data.stop_reason,
     input_tokens: data.usage?.input_tokens ?? null,
     output_tokens: data.usage?.output_tokens ?? null,
@@ -180,7 +164,7 @@ export async function callPersona(
   // 切れた本文を messages へ入れると、immutable なので後から直せない。
   if (data.stop_reason === "max_tokens") {
     throw new Error(
-      `Claude API の応答が max_tokens (${MAX_TOKENS}) で打ち切られた`,
+      `Claude API の応答が max_tokens (${settings.maxTokens}) で打ち切られた`,
     );
   }
 

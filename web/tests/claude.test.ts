@@ -1,22 +1,45 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { callPersona, isEffort } from "@/lib/claude";
-
-const ORIGINAL_ENV = { ...process.env };
+import { callPersona, type PersonaCall } from "@/lib/claude";
+import { AI_DEFAULTS, type AiSettings } from "@/lib/config";
+import { EFFORT } from "@/lib/effort";
 
 afterEach(() => {
-  process.env = { ...ORIGINAL_ENV };
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
-/**
- * Claude API の応答一件を返す fetch に差し替える。
- * 実モードの分岐へ入れるため、フェイクモードを解いて API キーも置く。
- */
-function stubApiResponse(payload: unknown) {
-  delete process.env.TOIITO_FAKE_AI;
-  process.env.ANTHROPIC_API_KEY = "test-key";
+/** 実 API を叩く側の設定。 */
+const SETTINGS: AiSettings = {
+  model: AI_DEFAULTS.model,
+  maxTokens: AI_DEFAULTS.maxTokens,
+  fake: false,
+  apiKey: "test-key",
+};
 
+/**
+ * 渡した値が載ることを見るための上書き。
+ * 既定と違うことだけに意味がある。
+ */
+const OVERRIDE = {
+  model: "claude-opus-5",
+  maxTokens: 2048,
+};
+
+/**
+ * ペルソナ呼び出しの指定を組み立てる。
+ * 既定は実モードの ai_b で、そのケースが見たい一点だけ上書きする。
+ */
+function personaCall(overrides: Partial<PersonaCall> = {}): PersonaCall {
+  return { id: "ai_b", prompt: "# 抽象派", settings: SETTINGS, ...overrides };
+}
+
+/** フェイクモードの指定を組み立てる。 */
+function fakeCall(id: PersonaCall["id"]): PersonaCall {
+  return personaCall({ id, settings: { ...SETTINGS, fake: true } });
+}
+
+/** Claude API の応答一件を返す fetch に差し替える。 */
+function stubApiResponse(payload: unknown) {
   const fetchMock = vi.fn<
     (url: string, init: RequestInit) => Promise<Response>
   >(async () => new Response(JSON.stringify(payload), { status: 200 }));
@@ -39,15 +62,16 @@ function stubOkResponse() {
 /** モックした fetch が送ったリクエストボディを読む。 */
 function sentBody(fetchMock: ReturnType<typeof stubApiResponse>) {
   return JSON.parse(String(fetchMock.mock.calls[0][1].body)) as {
+    model: string;
+    max_tokens: number;
     output_config?: { effort: string };
     messages: { content: string }[];
   };
 }
 
-describe("フェイクモード (TOIITO_FAKE_AI=1)", () => {
+describe("フェイクモード", () => {
   it("ネットワークに出ず、ペルソナ ID と直近の人間発話を含む決定的応答を返す", async () => {
-    process.env.TOIITO_FAKE_AI = "1";
-    const res = await callPersona("# ai_a — 具体派", { body: "問い本文" }, [
+    const res = await callPersona(fakeCall("ai_a"), { body: "問い本文" }, [
       { speaker: "human", body: "最初の発話" },
     ]);
 
@@ -56,19 +80,18 @@ describe("フェイクモード (TOIITO_FAKE_AI=1)", () => {
   });
 
   it("同じ入力には同じ応答（決定性）", async () => {
-    process.env.TOIITO_FAKE_AI = "1";
     const t = [{ speaker: "human" as const, body: "同じ入力" }];
-    expect(await callPersona("# ai_b — 抽象派", { body: "q" }, t)).toBe(
-      await callPersona("# ai_b — 抽象派", { body: "q" }, t),
+    expect(await callPersona(fakeCall("ai_b"), { body: "q" }, t)).toBe(
+      await callPersona(fakeCall("ai_b"), { body: "q" }, t),
     );
   });
 });
 
 describe("実モード", () => {
   it("API キー未設定なら呼び出し前に明示的に失敗する", async () => {
-    delete process.env.TOIITO_FAKE_AI;
-    delete process.env.ANTHROPIC_API_KEY;
-    await expect(callPersona("# ai_a", { body: "q" }, [])).rejects.toThrow(
+    const call = personaCall({ settings: { ...SETTINGS, apiKey: undefined } });
+
+    await expect(callPersona(call, { body: "q" }, [])).rejects.toThrow(
       /ANTHROPIC_API_KEY/,
     );
   });
@@ -79,7 +102,7 @@ describe("実モード", () => {
       stop_reason: "end_turn",
     });
 
-    await expect(callPersona("# ai_b", { body: "q" }, [])).resolves.toBe(
+    await expect(callPersona(personaCall(), { body: "q" }, [])).resolves.toBe(
       "最後まで出た発話",
     );
   });
@@ -90,7 +113,7 @@ describe("実モード", () => {
       stop_reason: "max_tokens",
     });
 
-    await expect(callPersona("# ai_b", { body: "q" }, [])).rejects.toThrow(
+    await expect(callPersona(personaCall(), { body: "q" }, [])).rejects.toThrow(
       /max_tokens/,
     );
   });
@@ -101,7 +124,7 @@ describe("実モード", () => {
       stop_reason: "end_turn",
     });
 
-    await expect(callPersona("# ai_b", { body: "q" }, [])).rejects.toThrow(
+    await expect(callPersona(personaCall(), { body: "q" }, [])).rejects.toThrow(
       /text ブロック/,
     );
   });
@@ -121,12 +144,13 @@ describe("呼び出しログ", () => {
       usage: { input_tokens: 1200, output_tokens: 340 },
     });
 
-    await callPersona("# ai_b — 抽象派", { body: "q" }, []);
+    await callPersona(personaCall({ id: "ai_b" }), { body: "q" }, []);
 
     expect(logged).toHaveBeenCalledTimes(1);
     expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
       event: "claude_call",
-      persona: "ai_b — 抽象派",
+      model: AI_DEFAULTS.model,
+      persona: "ai_b",
       stop_reason: "end_turn",
       input_tokens: 1200,
       output_tokens: 340,
@@ -141,7 +165,7 @@ describe("呼び出しログ", () => {
       stop_reason: "end_turn",
     });
 
-    await callPersona("# ai_a — 具体派", { body: "q" }, []);
+    await callPersona(personaCall({ id: "ai_a" }), { body: "q" }, []);
 
     expect(String(logged.mock.calls[0][0])).not.toContain(
       "外へ出してはいけない問いの中身",
@@ -155,7 +179,9 @@ describe("呼び出しログ", () => {
       stop_reason: "max_tokens",
     });
 
-    await expect(callPersona("# ai_b", { body: "q" }, [])).rejects.toThrow();
+    await expect(
+      callPersona(personaCall(), { body: "q" }, []),
+    ).rejects.toThrow();
 
     expect(logged).toHaveBeenCalledTimes(1);
     expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
@@ -168,7 +194,7 @@ describe("リクエストの組み立て", () => {
   it("発話者の見出しに内部 ID を出さない", async () => {
     const fetchMock = stubOkResponse();
 
-    await callPersona("# ai_b — 抽象派", { body: "q" }, [
+    await callPersona(personaCall(), { body: "q" }, [
       { speaker: "human", body: "問いを投げた" },
       { speaker: "ai_a", body: "具体で問い返した" },
     ]);
@@ -182,25 +208,30 @@ describe("リクエストの組み立て", () => {
   it("effort を渡すと output_config に載る", async () => {
     const fetchMock = stubOkResponse();
 
-    await callPersona("# ai_b", { body: "q" }, [], "medium");
+    const call = personaCall({ effort: EFFORT.medium });
 
-    expect(sentBody(fetchMock).output_config).toEqual({ effort: "medium" });
+    await callPersona(call, { body: "q" }, []);
+
+    expect(sentBody(fetchMock).output_config).toEqual({
+      effort: EFFORT.medium,
+    });
   });
 
   it("effort を省くと output_config を送らない（API の既定に任せる）", async () => {
     const fetchMock = stubOkResponse();
 
-    await callPersona("# ai_a", { body: "q" }, []);
+    await callPersona(personaCall(), { body: "q" }, []);
 
     expect(sentBody(fetchMock).output_config).toBeUndefined();
   });
-});
 
-describe("effort の値域", () => {
-  it("API の値域だけを通す", () => {
-    expect(isEffort("medium")).toBe(true);
-    expect(isEffort("xhigh")).toBe(true);
-    expect(isEffort("middle")).toBe(false);
-    expect(isEffort("")).toBe(false);
+  it("モデルとトークン上限は渡された設定から載る", async () => {
+    const fetchMock = stubOkResponse();
+    const settings: AiSettings = { ...SETTINGS, ...OVERRIDE };
+
+    await callPersona(personaCall({ settings }), { body: "q" }, []);
+
+    expect(sentBody(fetchMock).model).toBe(OVERRIDE.model);
+    expect(sentBody(fetchMock).max_tokens).toBe(OVERRIDE.maxTokens);
   });
 });

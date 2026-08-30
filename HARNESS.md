@@ -186,8 +186,13 @@ Playwright のドラッグでは文字の途中で始まる範囲を安定して
 1. **ロジックは lib 層へ寄せる**。
    UI コンポーネントや Server Actions にロジックを埋めない。
    actions.ts は「lib を呼ぶ配線」に留める
-2. **環境依存は env 変数一点で切り替える**（DB 接続先、AI フェイク、モデル名）。
-   テストは env を差し替えるだけで隔離できる
+2. **env を読むのは `web/src/lib/config.ts` と `web/src/proxy.ts` だけ**（前者が DB 接続先・AI フェイク・モデル名・トークン上限・思考の深さ、後者が Basic 認証）。
+   既定値もそこで決め、他のモジュールは解決済みの値を参照する。
+   呼び出しごとに変わりうる値は引数で受け取る。
+   env の読み方そのものは、env を模した object を渡す純関数として検査する（`readAiSettings` / `readBasicAuthCredentials`）。
+   テストは `process.env` を書き換えない。
+   別プロセスで起動する `web/scripts/` と `web/e2e/setup/` は、env が入口なのでこの限りでない。
+   プロセス自身の挙動を切り替える `TZ` も設定ではないので同じく外れる
 3. **messages は immutable** 等の不変条件は、スキーマの check 制約とテストの両方で表明する（片方に頼らない）
 4. 新機能は「lib 関数 + テスト」→「UI 配線」の順で作る
 
