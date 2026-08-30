@@ -27,6 +27,15 @@ import type { Memo, Message } from "@/lib/types";
 const MARKED_STYLE =
   "underline decoration-2 decoration-amber-500 underline-offset-4";
 
+/**
+ * 選択を読み直す発話の登録簿。
+ *
+ * document へのリスナを画面に 1 本だけ張るために、React の外へ置く。
+ * 発話ごとに張ると選択のたびに載っている発話の数だけ走り、当たる 1 本以外は捨てるためだけに回る（issue #129）。
+ * 鍵が本文の要素そのものなので、開発時に effect が二度走っても同じ発話が二重に載らない。
+ */
+const readers = new Map<Element, () => void>();
+
 /** 選択が確定してから、メモとして送られるまでの下書き。 */
 type MemoDraft = {
   anchorStart: number;
@@ -58,38 +67,32 @@ export function MessageBody({
   );
 
   /**
-   * 選択の確定を拾って下書きを立てる。
+   * この発話を登録簿へ載せ、自分宛ての選択で下書きを立てる。
    *
-   * 下へ払って選ぶと手を離す位置が本文の外になるので、listener は document に置く。
-   * 本文の div に付けると払った分の選択を落とすうえ、静的な要素へ対話を持たせることになる（biome の a11y）。
-   * keyup も見るのは shift + 矢印による選択を落とさないため。
    * 読み取れない選択で下書きを消さないのは、開いているフォームが選択の解除で畳まれるため。
    */
   useEffect(() => {
-    function readSelection() {
-      const selected = draftFromSelection(
-        message.body,
-        segments,
-        bodyRef.current,
-      );
+    const container = bodyRef.current;
+    if (!container) {
+      return;
+    }
+
+    return subscribeSelection(container, () => {
+      const selected = draftFromSelection(message.body, segments, container);
 
       if (selected) {
         setDraft(selected);
       }
-    }
-
-    document.addEventListener("mouseup", readSelection);
-    document.addEventListener("keyup", readSelection);
-
-    return () => {
-      document.removeEventListener("mouseup", readSelection);
-      document.removeEventListener("keyup", readSelection);
-    };
+    });
   }, [message.body, segments]);
 
   return (
     <>
-      <div ref={bodyRef} className="whitespace-pre-wrap leading-relaxed">
+      <div
+        ref={bodyRef}
+        data-message-body=""
+        className="whitespace-pre-wrap leading-relaxed"
+      >
         {segments.map((segment, index) => (
           <SegmentText
             key={segment.start}
@@ -212,6 +215,54 @@ function MemoForm({
 }
 
 /**
+ * 発話を登録簿へ載せ、外し方を返す。
+ *
+ * document のリスナは登録簿が空でなくなったときに張り、空に戻ったときに外す。
+ * 下へ払って選ぶと手を離す位置が本文の外になるので、リスナは document に置く。
+ * 本文の div に付けると払った分の選択を落とすうえ、静的な要素へ対話を持たせることになる（biome の a11y）。
+ * keyup も見るのは shift + 矢印による選択を落とさないため。
+ */
+function subscribeSelection(container: Element, read: () => void): () => void {
+  if (readers.size === 0) {
+    document.addEventListener("mouseup", notifySelectedMessage);
+    document.addEventListener("keyup", notifySelectedMessage);
+  }
+
+  readers.set(container, read);
+
+  return () => {
+    readers.delete(container);
+
+    if (readers.size === 0) {
+      document.removeEventListener("mouseup", notifySelectedMessage);
+      document.removeEventListener("keyup", notifySelectedMessage);
+    }
+  };
+}
+
+/**
+ * 選択の始点が居る発話にだけ、読み直しを伝える。
+ *
+ * 始点で引くので、発話を跨いだ選択は始点側の発話へ届く。
+ * 捨てる判断は受け取った側が引き続き両端を見て行う（draftFromSelection）。
+ * 潰れた選択でここを抜けるのは、打鍵のたびに登録簿を引かないため。
+ */
+function notifySelectedMessage(): void {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed) {
+    return;
+  }
+
+  const container = elementOf(selection.getRangeAt(0).startContainer)?.closest(
+    "[data-message-body]",
+  );
+
+  if (container) {
+    readers.get(container)?.();
+  }
+}
+
+/**
  * いまの選択範囲から下書きを作る。
  *
  * 選択が無い・潰れている・この発話の外へ出ているときは undefined。
@@ -220,10 +271,10 @@ function MemoForm({
 function draftFromSelection(
   body: string,
   segments: Segment[],
-  container: HTMLElement | null,
+  container: Element,
 ): MemoDraft | undefined {
   const selection = window.getSelection();
-  if (!container || !selection || selection.isCollapsed) {
+  if (!selection || selection.isCollapsed) {
     return undefined;
   }
 
@@ -281,13 +332,19 @@ function absoluteOffsetOf(
 
 /** 端点が居るセグメントの添字を data 属性から読む。 */
 function segmentIndexOf(container: Node): number | undefined {
-  const element =
-    container instanceof Element ? container : container.parentElement;
-  const index = element
+  const index = elementOf(container)
     ?.closest("[data-segment-index]")
     ?.getAttribute("data-segment-index");
 
   return index ? Number(index) : undefined;
+}
+
+/**
+ * ノードを、印を辿れる要素へ読み替える。
+ * closest は text node に無いので、text node なら親を返す。
+ */
+function elementOf(node: Node): Element | null {
+  return node instanceof Element ? node : node.parentElement;
 }
 
 /**
