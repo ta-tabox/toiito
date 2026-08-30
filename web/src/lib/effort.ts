@@ -19,3 +19,11 @@ export type Effort = (typeof EFFORTS)[number];
 export function isEffort(value: string): value is Effort {
   return (EFFORTS as readonly string[]).includes(value);
 }
+
+/**
+ * 値域に収まる文字列だけを Effort として通す。
+ * 未設定と綴り違いはどちらも undefined へ倒す。
+ */
+export function toEffort(value: string | undefined): Effort | undefined {
+  return value && isEffort(value) ? value : undefined;
+}

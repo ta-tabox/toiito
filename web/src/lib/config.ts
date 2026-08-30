@@ -9,7 +9,7 @@
  * 変数の名前と既定値の正は web/README.md の表。
  */
 
-import { type Effort, isEffort } from "@/lib/effort";
+import { type Effort, toEffort } from "@/lib/effort";
 import type { PersonaRole } from "@/lib/personas";
 
 /** Claude API の呼び出しに効く環境変数。 */
@@ -74,11 +74,6 @@ export function readPersonaEffort(
     concrete: toEffort(env.TOIITO_EFFORT_CONCRETE),
     abstract: toEffort(env.TOIITO_EFFORT_ABSTRACT) ?? "medium",
   };
-}
-
-/** 値域に収まる文字列だけを Effort として通す。 */
-function toEffort(value: string | undefined): Effort | undefined {
-  return value && isEffort(value) ? value : undefined;
 }
 
 /**
