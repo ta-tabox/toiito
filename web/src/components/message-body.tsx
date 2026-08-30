@@ -49,6 +49,7 @@ export function MessageBody({
 }) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<MemoDraft | null>(null);
+
   // useMemo を通すのは、これが下の useEffect の依存だから。
   // 素で呼ぶとレンダリングのたびに新しい配列になり、選択のたびに listener を外して張り直すことになる。
   const segments = useMemo(
