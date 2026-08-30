@@ -1,5 +1,5 @@
 /**
- * コンポスターの入口画面。
+ * 発酵槽の入口画面。
  * 問いの投入フォームと、投入済みの問いの一覧。
  *
  * 表示に要る整形だけを持ち、状態遷移や絞り込みは lib 側へ置く。
@@ -26,7 +26,7 @@ const STATUS_LABEL: Record<QuestionStatus, string> = {
 };
 
 /**
- * コンポスターの入口。
+ * 発酵槽の入口。
  * 投入フォームと問いの一覧。
  */
 export default async function Home() {
@@ -37,7 +37,7 @@ export default async function Home() {
       <h1 className="text-2xl font-bold tracking-wide">
         toiito{" "}
         <span className="text-sm font-normal text-neutral-500">
-          問いのコンポスター
+          問いの発酵槽
         </span>
       </h1>
 
