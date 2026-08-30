@@ -15,13 +15,19 @@ import type { QuestionStatus } from "@/lib/question";
 
 export const dynamic = "force-dynamic";
 
-/** 意味の正は ARCHITECTURE.md「問いの状態機械」 */
+/**
+ * 状態の表示名。
+ * 意味の正は ARCHITECTURE.md「問いの状態機械」、語の正は VISION.md「語彙」節。
+ *
+ * 比喩を持つのはこのラベルだけで、値の側は一般語のまま動かない（`docs/adr/0017-status-value-set.md`）。
+ */
 const STATUS_LABEL: Record<QuestionStatus, string> = {
-  composting: "堆肥化中",
-  fermented: "発酵",
-  promoted: "結晶した",
-  open: "持ち続ける",
-  perennial: "閉じない問い",
+  new: "仕込み中",
+  stocked: "発酵",
+  resolved: "一旦閉じた",
+  exported: "結晶した",
+  holding: "持ち続ける",
+  permanent: "閉じない問い",
   discarded: "棄却",
 };
 

@@ -350,7 +350,7 @@ export type MessageInput = {
 /**
  * 問いを対話ごと作るときの入力。
  *
- * currentForm と status は、既定（原型のまま・composting）から動かすときだけ渡す。
+ * currentForm と status は、既定（原型のまま・new）から動かすときだけ渡す。
  * メモの範囲（anchorStart / anchorEnd）は呼び出し側が決める。
  * 本文中の位置を求めるのは DB 非依存の計算で、この層の仕事ではない。
  */
