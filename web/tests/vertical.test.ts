@@ -4,18 +4,27 @@
  * Server Actions 自体は next/cache・next/navigation を掴むので、配線の検証は L3（next build）に任せる。
  */
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { callPersona } from "@/lib/claude";
+import type { AiSettings } from "@/lib/config";
 import * as db from "@/lib/db";
-import { loadPersona } from "@/lib/personas";
+import { loadPersona, type PersonaId } from "@/lib/personas";
 
-beforeAll(() => {
-  process.env.TOIITO_FAKE_AI = "1";
-});
+/** 実 API を叩かないための設定（HARNESS.md「実 API を自動テストで叩かない」）。 */
+const FAKE_SETTINGS: AiSettings = {
+  model: "claude-sonnet-5",
+  maxTokens: 16000,
+  fake: true,
+};
 
 afterAll(async () => {
   await db.disconnect();
 });
+
+/** ペルソナ一体分の呼び出し指定を、定義ファイルごと組み立てる。 */
+function personaCall(id: PersonaId) {
+  return { id, prompt: loadPersona(id), settings: FAKE_SETTINGS };
+}
 
 describe("縦一本", () => {
   it("問いを投げると二体が応答し、その語にメモを付けて逆引きできる", async () => {
@@ -28,7 +37,7 @@ describe("縦一本", () => {
     await db.addMessage(session.id, "human", "急ぐほど問いが痩せる気がする");
 
     const aiA = await callPersona(
-      loadPersona("ai_a"),
+      personaCall("ai_a"),
       question,
       await db.listMessages(session.id),
     );
@@ -36,7 +45,7 @@ describe("縦一本", () => {
 
     const transcriptForB = await db.listMessages(session.id);
     const aiB = await callPersona(
-      loadPersona("ai_b"),
+      personaCall("ai_b"),
       question,
       transcriptForB,
     );

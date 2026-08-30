@@ -14,6 +14,7 @@
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
+import { DATABASE_URL } from "@/lib/config";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
 import type {
   Memo,
@@ -27,27 +28,25 @@ import type {
 
 /**
  * 接続は遅延（初回アクセス時）。
- * テストが env を差し替えてから初回呼び出しできるようにするため（HARNESS.md 設計制約 2）。
+ * モジュールを読み込んだだけで接続が張られると、DB へ触らない経路まで Postgres を要求する。
  * dev の hot reload で接続が増殖しないよう globalThis に載せる。
  */
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 /**
  * 遅延生成した接続を返す。
- * Prisma に渡してから落とすと原因が env であることが読めないので、接続先が無ければここで落とす。
+ * Prisma に渡してから落とすと原因が設定であることが読めないので、接続先が無ければここで落とす。
  */
 function db(): PrismaClient {
   if (!globalForPrisma.prisma) {
-    const connectionString = process.env.DATABASE_URL;
-
-    if (!connectionString) {
+    if (!DATABASE_URL) {
       throw new Error(
         "環境変数 DATABASE_URL が設定されていないため、データベースへ接続できません。設定すべき変数の一覧は web/README.md の「環境変数」を参照してください。",
       );
     }
 
     globalForPrisma.prisma = new PrismaClient({
-      adapter: new PrismaPg({ connectionString }),
+      adapter: new PrismaPg({ connectionString: DATABASE_URL }),
 
       // seq は並べ替えのためだけの列なので、読み出した行から落とす。
       // これで戻り値がドメイン型とちょうど一致し、BigInt が UI 側へ渡ることも起きない。
