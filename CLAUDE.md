@@ -85,6 +85,10 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   境目は場所でなく、他人の作業を消しうるかどうかにある。
   毎回止まらないよう `.claude/settings.json` の `permissions.allow` に `Bash(git push:*)` を置き、戻せない綴りは `permissions.ask` で押さえてある（規則に当たった操作は auto モードの自動分類へ回らない）。
   ask は前方一致なので `git push origin --force main` のような並びを拾えないが、その語順は `.claude/hooks/guard-force-push.sh` がコマンド全文を見て ask へ回す。
+- **issue と PR の起票・コメント・close は Claude が叩いてよい**（閲覧・`gh run` の確認も同じ）。
+  どれも reopen で戻るので、他人の作業を消さない側に入る。
+  **マージだけは、その都度人間に諾否を訊く**——main への push が本番デプロイと migration を起こす（ADR-0008）ので、reopen で戻る操作と同じには扱えない。
+  public 化（`gh repo edit`）・secret・`gh auth`・`gh api` も人間の側で、いずれも `permissions.ask` に並べてある。
 - **PR も author は人間**（そもそも author は名乗る欄でなく叩いたアカウント。bot 名義は「第三者が出したものを承認した」という嘘の外形を作る）。
   Claude の関与は author でなく**本文の「判断したこと」節**へ。
   残すのは判断の中身だけで、誰が判断したかには触れない。
