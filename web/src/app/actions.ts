@@ -66,7 +66,7 @@ export async function speakAction(
     loadPersona("ai_a"),
     question,
     await listMessages(sessionId),
-    PERSONA_EFFORT.ai_a,
+    PERSONA_EFFORT.concrete,
   );
   await addMessage(sessionId, "ai_a", aiA);
 
@@ -74,7 +74,7 @@ export async function speakAction(
     loadPersona("ai_b"),
     question,
     await listMessages(sessionId),
-    PERSONA_EFFORT.ai_b,
+    PERSONA_EFFORT.abstract,
   );
   await addMessage(sessionId, "ai_b", aiB);
 
