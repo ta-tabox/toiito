@@ -15,7 +15,7 @@
  */
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   clampToGraphemeBoundary,
   type Segment,
@@ -49,7 +49,13 @@ export function MessageBody({
 }) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<MemoDraft | null>(null);
-  const segments = segmentBody(message.body, memos);
+
+  // useMemo を通すのは、これが下の useEffect の依存だから。
+  // 素で呼ぶとレンダリングのたびに新しい配列になり、選択のたびに listener を外して張り直すことになる。
+  const segments = useMemo(
+    () => segmentBody(message.body, memos),
+    [message.body, memos],
+  );
 
   /**
    * 選択の確定を拾って下書きを立てる。
