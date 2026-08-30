@@ -15,6 +15,9 @@ VISION の設計原理が上位。
   ローカルは `compose.yaml` の Postgres、本番は Neon（手順は `DEPLOY.md`）
 - **Claude API** — 二体 AI の対話生成。
   Server Actions（サーバー側）からのみ叩く
+- **Better Auth（自前ホスト）** — 認証。
+  Google OAuth 一本で、パスワードは持たない。
+  入れるのは許可リストに載ったメールアドレスだけ（選定の経緯は `docs/adr/0019-auth-better-auth.md`、開き方は `docs/adr/0018-invite-only-multi-user.md`）
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
 
 永続化について今も効く禁止則（経緯は `docs/adr/0003-persistence-prisma-postgres.md`）。
@@ -44,7 +47,7 @@ VISION の設計原理が上位。
 Next.js サーバー層 ──── Claude API（二体のシステムプロンプトを切替えて逐次呼出）
    │
    ▼
-Postgres（questions / sessions / messages / memos / memo_links）
+Postgres（questions / sessions / messages / memos / memo_links ＋ Better Auth の四表）
 ```
 
 単一 Web アプリ。
@@ -205,6 +208,9 @@ toiito/
 - **公開登録**（2026-08-30 改定）。
   他人にも使わせる器へ改めたが、入れるのは許可リストに載ったメールアドレスだけで、誰でも登録できる形は開けない。
   費用を止める手（#69）と自分のキーへ逃がす手（#70）が揃うまで、AI の課金が誰にでも走る状態を作らない（経緯は `docs/adr/0018-invite-only-multi-user.md`）
+- **パスワード認証**。
+  パスワードハッシュは漏れたら他サービスまで巻き添えにするので、守るのではなく資産ごと持たない。
+  入口は Google OAuth 一本（`docs/adr/0019-auth-better-auth.md`）
 
 ## 持ち越した開いた問い
 
