@@ -48,7 +48,7 @@ Postgres（questions / sessions / messages / memos / memo_links）
 ```
 
 単一 Web アプリ。
-マイクロサービス的分割はしない（個人用コンポスターに分散は過剰）。
+マイクロサービス的分割はしない（個人用の発酵槽に分散は過剰）。
 AI 呼び出しはストリーミングで UI に流す。
 
 ### DB への書き込み経路（2026-08-19 追加）
@@ -67,7 +67,7 @@ UI からの経路も、Next の外から走るもの——開発用シード `w
 VISION の「対話は堆積して振り返れるもの」をそのままスキーマにする。
 
 ```
-questions      問い。コンポスターへの投入単位
+questions      問い。発酵槽への仕込み単位
   id, body(原型・不変), current_form(現在の形・可変), status, created_at
 
 sessions       一つの問いに対する対話セッション（複数回ありうる＝再訪）
@@ -116,6 +116,9 @@ memo_links     （将来）メモ間・問い間のリンキング辺
 DB 側の正は `prisma/schema.prisma` の enum `QuestionStatus`、アプリ側の正は `web/src/lib/question.ts` の `QUESTION_STATUSES`（型と UI ラベルがここから派生する）。
 二重管理に見えるが、両者がずれると repo 関数の戻り値がドメイン型へ代入できなくなり `tsc` が落ちる。
 **ずれは L0 で捕まる**ので、片方を消して他方へ依存させる必要はない。
+
+値は比喩を持たない一般語へ組み直し、`resolved`（一旦閉じた）を足して 7 値にする（`docs/adr/0017-status-value-set.md`）。
+値とラベルの対応は `VISION.md`「語彙」節が持ち、この表と enum は #125（`status` の 6 値を一般語へ組み直す migration）で追随する。
 
 ### 再訪と、過去セッションの読み方（2026-08-23 決定）
 
