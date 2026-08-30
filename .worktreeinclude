@@ -1,0 +1,15 @@
+# worktree を作るとき、本体のワーキングツリーからコピーするファイル。
+# 対象は git が無視しているファイルだけで、追跡しているものは worktree に元からある。
+# 書式は gitignore と同じ（空行と # 始まりは無視）。
+#
+# CLAUDE.local.md は書かない。
+# worktree は <ルート>/.claude/worktrees/<名前> にあってルートが祖先に当たるので、上方向の走査で既に読まれる。
+# ここへ書くとコピーが worktree 側に生まれ、近い方が優先されて本体との二重管理になる。
+#
+# web/.env.local も書かない。
+# 本体と同じ DATABASE_URL を指すコピーが生まれ、worktree の migration が本体の DB へ積まれる。
+#
+# 同期ではなくコピーなので、worktree で書いた申し送りは本体へ返らない。
+# 効くのは worktree の作成時だけで、既にある worktree には遡及しない。
+
+NEXT.md
