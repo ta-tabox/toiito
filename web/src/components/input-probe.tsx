@@ -10,6 +10,9 @@
  * 計器が再レンダリングを起こすと、測りたい対象を計器自身が汚す。
  * 数え上げは ref の中で行い、画面へは一定間隔で DOM へ直接書く。
  *
+ * キー入力とポインタは分けて出す。
+ * iOS はタップ一回から mouseover / mousedown / mouseup / click を合成するので、混ぜると打鍵の数字がタップに埋もれる。
+ *
  * 測れない項目は 0 でなく「未対応」と出す。
  * iOS Safari は longtask を報告しないので、0 と書くと「引っかかっていない」と読み違える。
  */
@@ -22,19 +25,39 @@ const REPAINT_MS = 250;
 /** フレーム間隔を保つ本数（60fps で 10 秒ぶん）。 */
 const FRAME_SAMPLES = 600;
 
-/** 遅い入力イベントを保つ件数。 */
-const SLOW_EVENT_SAMPLES = 8;
+/** 入力イベントを保つ件数（種類ごと）。 */
+const EVENT_SAMPLES = 4;
 
 /**
- * ここを超えた入力イベントだけを拾う（60fps の 3 コマ分）。
+ * Event Timing に拾わせる下限。
  *
- * 16ms まで下げると普通の打鍵が全部載る。
- * Chromium は duration を 8ms 単位へ丸めるので、閾値ぴったりの値が床として並び、遅くないものを遅いと読ませる。
+ * ブラウザが受け付ける最小値で、これより短いイベントは観測できない。
+ * 下限で拾って重い方だけ残すのは、引っかからなかった回を「正常時の基準線」として持ち帰るため。
  */
-const SLOW_EVENT_MS = 48;
+const OBSERVE_MS = 16;
+
+/**
+ * 体感の引っかかりとみなす境（60fps の 3 コマ分）。
+ *
+ * 拾う下限と別にするのは、下限で数えると普通の打鍵が全部「遅い」に化けるため。
+ * Chromium は duration を 8ms 単位へ丸めるので、下限ちょうどの値が床として並ぶ。
+ */
+const FELT_MS = 48;
 
 /** これを超えたフレーム間隔を「落ちた」と数える（60fps の 2 コマ分）。 */
 const DROPPED_FRAME_MS = 34;
+
+/** キーボードと変換に由来する入力イベントの名前。 */
+const KEY_EVENT_NAMES = new Set([
+  "keydown",
+  "keypress",
+  "keyup",
+  "beforeinput",
+  "input",
+  "compositionstart",
+  "compositionupdate",
+  "compositionend",
+]);
 
 /**
  * Event Timing の観測条件。
@@ -45,8 +68,8 @@ type EventTimingObserverInit = PerformanceObserverInit & {
   readonly durationThreshold: number;
 };
 
-/** 一件の遅い入力イベント。 */
-type SlowEvent = {
+/** 観測した入力イベント一件。 */
+type ObservedEvent = {
   readonly name: string;
   readonly durationMs: number;
   readonly handlerMs: number;
@@ -58,7 +81,10 @@ type Readings = {
   keydowns: number;
   compositions: number;
   frameGaps: number[];
-  slowEvents: SlowEvent[];
+  keyEvents: ObservedEvent[];
+  pointerEvents: ObservedEvent[];
+  feltKeys: number;
+  feltPointers: number;
   longTasks: number;
   longTaskMs: number;
   supportsEventTiming: boolean;
@@ -73,7 +99,10 @@ function emptyReadings(): Readings {
     keydowns: 0,
     compositions: 0,
     frameGaps: [],
-    slowEvents: [],
+    keyEvents: [],
+    pointerEvents: [],
+    feltKeys: 0,
+    feltPointers: 0,
     longTasks: 0,
     longTaskMs: 0,
     supportsEventTiming: supported.includes("event"),
@@ -203,39 +232,60 @@ function startObserver(
 }
 
 /**
- * 入力イベントのうち、次の描画まで SLOW_EVENT_MS 以上かかったものを拾う。
+ * 入力イベントを拾って種類ごとに振り分ける。
  *
  * processingEnd - processingStart がハンドラの総時間で、message-body の N 本もここに入る。
  * duration は「イベントから次の描画まで」で、体感の引っかかりに一番近い。
- * 残すのは直近でなく重い方で、引っかかった瞬間は打ち続けると流れて消える。
  */
 function eventTimingObserver(readings: Readings): PerformanceObserver {
   const observer = new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
       const timing = entry as PerformanceEventTiming;
 
-      readings.slowEvents.push({
+      recordEvent(readings, {
         name: timing.name,
         durationMs: Math.round(timing.duration),
         handlerMs: Math.round(timing.processingEnd - timing.processingStart),
         delayMs: Math.round(timing.processingStart - timing.startTime),
       });
     }
-
-    readings.slowEvents.sort((a, b) => b.durationMs - a.durationMs);
-    readings.slowEvents.length = Math.min(
-      readings.slowEvents.length,
-      SLOW_EVENT_SAMPLES,
-    );
   });
 
   const options: EventTimingObserverInit = {
     type: "event",
-    durationThreshold: SLOW_EVENT_MS,
+    durationThreshold: OBSERVE_MS,
   };
   observer.observe(options);
 
   return observer;
+}
+
+/** 一件をキー入力とポインタへ振り分けて数える。 */
+function recordEvent(readings: Readings, seen: ObservedEvent): void {
+  const isKey = KEY_EVENT_NAMES.has(seen.name);
+
+  keepWorst(isKey ? readings.keyEvents : readings.pointerEvents, seen);
+
+  if (seen.durationMs < FELT_MS) {
+    return;
+  }
+
+  if (isKey) {
+    readings.feltKeys++;
+    return;
+  }
+
+  readings.feltPointers++;
+}
+
+/**
+ * 重い方から EVENT_SAMPLES 件だけ残す。
+ * 直近でなく重い方を残すのは、引っかかった瞬間が打ち続けると流れて消えるため。
+ */
+function keepWorst(events: ObservedEvent[], seen: ObservedEvent): void {
+  events.push(seen);
+  events.sort((a, b) => b.durationMs - a.durationMs);
+  events.length = Math.min(events.length, EVENT_SAMPLES);
 }
 
 /** 50ms を超えたタスクを数える（報告するのは Chromium 系だけ）。 */
@@ -286,27 +336,41 @@ function report(readings: Readings, messageCount: number): string {
   return [
     `発話 ${messageCount} 件 / 打鍵 ${readings.keydowns} / 変換 ${readings.compositions}`,
     `フレーム 最大 ${round(max(gaps))}ms 中央 ${round(median(gaps))}ms 落ち ${dropped}/${gaps.length}`,
-    readings.supportsEventTiming
-      ? `${SLOW_EVENT_MS}ms 超の入力 ${readings.slowEvents.length} 件${formatSlowEvents(readings.slowEvents)}`
-      : `${SLOW_EVENT_MS}ms 超の入力: この端末は Event Timing 未対応`,
+    ...inputLines(readings),
     readings.supportsLongTask
       ? `長タスク ${readings.longTasks} 件 / 計 ${round(readings.longTaskMs)}ms`
       : "長タスク: この端末は longtask 未報告",
   ].join("\n");
 }
 
-/** 遅い入力イベントを一行ずつに並べる。 */
-function formatSlowEvents(events: SlowEvent[]): string {
-  if (events.length === 0) {
-    return "";
+/** 入力イベントの行を作る。 */
+function inputLines(readings: Readings): string[] {
+  if (!readings.supportsEventTiming) {
+    return ["入力: この端末は Event Timing 未対応"];
   }
 
-  return events
-    .map(
-      (event) =>
-        `\n  ${event.name} 全 ${event.durationMs}ms 待ち ${event.delayMs}ms 処理 ${event.handlerMs}ms`,
-    )
-    .join("");
+  return [
+    `キー最悪 ${worstOf(readings.keyEvents)}`,
+    `ポインタ最悪 ${worstOf(readings.pointerEvents)}`,
+    `${FELT_MS}ms 超 キー ${readings.feltKeys} 件 / ポインタ ${readings.feltPointers} 件`,
+    ...readings.keyEvents.map(formatEvent),
+  ];
+}
+
+/** 最悪の一件を一行にする。 */
+function worstOf(events: ObservedEvent[]): string {
+  const [worst] = events;
+
+  if (!worst) {
+    return `${OBSERVE_MS}ms 超なし`;
+  }
+
+  return `${worst.name} ${worst.durationMs}ms（待ち ${worst.delayMs} 処理 ${worst.handlerMs}）`;
+}
+
+/** 一件を一行にする。 */
+function formatEvent(event: ObservedEvent): string {
+  return `  ${event.name} 全 ${event.durationMs}ms 待ち ${event.delayMs}ms 処理 ${event.handlerMs}ms`;
 }
 
 /** 小数第一位まで丸める。 */
