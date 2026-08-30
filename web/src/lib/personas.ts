@@ -4,7 +4,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { type Effort, isEffort } from "@/lib/claude";
+import { type Effort, isEffort } from "@/lib/effort";
 
 export type PersonaId = "ai_a" | "ai_b";
 

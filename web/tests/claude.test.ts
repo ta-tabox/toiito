@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { callPersona, isEffort } from "@/lib/claude";
+import { callPersona } from "@/lib/claude";
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -193,14 +193,5 @@ describe("リクエストの組み立て", () => {
     await callPersona("# ai_a", { body: "q" }, []);
 
     expect(sentBody(fetchMock).output_config).toBeUndefined();
-  });
-});
-
-describe("effort の値域", () => {
-  it("API の値域だけを通す", () => {
-    expect(isEffort("medium")).toBe(true);
-    expect(isEffort("xhigh")).toBe(true);
-    expect(isEffort("middle")).toBe(false);
-    expect(isEffort("")).toBe(false);
   });
 });

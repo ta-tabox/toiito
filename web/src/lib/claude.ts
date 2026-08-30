@@ -4,6 +4,7 @@
  * ai_b の呼び出し時には直前の ai_a の発話も transcript に含まれている前提（二体は並列でなく逐次——ai_b は ai_a への応答であることに意味がある）。
  */
 
+import type { Effort } from "@/lib/effort";
 import type { Speaker } from "@/lib/types";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
@@ -30,22 +31,6 @@ const SPEAKER_TAG: Record<Speaker, string> = {
   ai_a: "具体さん",
   ai_b: "抽象さん",
 };
-
-/**
- * 思考にどれだけ費やすか。
- * 値域は Claude API の `output_config.effort`。
- */
-export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
-
-export type Effort = (typeof EFFORTS)[number];
-
-/**
- * 外から来た文字列を Effort へ絞り込む。
- * API へ渡す前の関門。
- */
-export function isEffort(value: string): value is Effort {
-  return (EFFORTS as readonly string[]).includes(value);
-}
 
 /**
  * システムプロンプト冒頭の見出しから、どのペルソナかを表す一行を取り出す。
