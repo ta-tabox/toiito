@@ -7,10 +7,20 @@
 /**
  * 思考にどれだけ費やすか。
  * 値域は Claude API の `output_config.effort`。
+ * 既定値を書く側が名前で引けるよう、並びでなく名前付きで持つ。
  */
-export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+export const EFFORT = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+  xhigh: "xhigh",
+  max: "max",
+} as const;
 
-export type Effort = (typeof EFFORTS)[number];
+export type Effort = (typeof EFFORT)[keyof typeof EFFORT];
+
+/** 値域の一覧。 */
+export const EFFORTS: readonly Effort[] = Object.values(EFFORT);
 
 /**
  * 外から来た文字列を Effort へ絞り込む。

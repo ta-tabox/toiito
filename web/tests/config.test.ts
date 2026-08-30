@@ -4,32 +4,56 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { readAiSettings, readPersonaEffort } from "@/lib/config";
+import { AI_DEFAULTS, readAiSettings, readPersonaEffort } from "@/lib/config";
+import { EFFORT } from "@/lib/effort";
+
+/**
+ * 上書きが載ることを見るための値。
+ * 値そのものに意味は無い。
+ */
+const OVERRIDE = {
+  model: "claude-opus-5",
+  maxTokens: 2048,
+  effort: EFFORT.xhigh,
+};
+
+describe("既定値", () => {
+  it("web/README.md の表と一致する", () => {
+    expect(AI_DEFAULTS.model).toBe("claude-sonnet-5");
+    expect(AI_DEFAULTS.maxTokens).toBe(16000);
+    expect(AI_DEFAULTS.effort.concrete).toBeUndefined();
+    expect(AI_DEFAULTS.effort.abstract).toBe("medium");
+  });
+});
 
 describe("readAiSettings", () => {
   it("未設定なら既定へ倒す", () => {
     expect(readAiSettings({})).toEqual({
-      model: "claude-sonnet-5",
-      maxTokens: 16000,
+      model: AI_DEFAULTS.model,
+      maxTokens: AI_DEFAULTS.maxTokens,
       fake: false,
       apiKey: undefined,
     });
   });
 
   it("TOIITO_MAX_TOKENS の上書きが効く", () => {
-    expect(readAiSettings({ TOIITO_MAX_TOKENS: "2048" }).maxTokens).toBe(2048);
+    const env = { TOIITO_MAX_TOKENS: String(OVERRIDE.maxTokens) };
+
+    expect(readAiSettings(env).maxTokens).toBe(OVERRIDE.maxTokens);
   });
 
   it("数として読めない TOIITO_MAX_TOKENS は既定へ倒す", () => {
-    expect(readAiSettings({ TOIITO_MAX_TOKENS: "" }).maxTokens).toBe(16000);
+    expect(readAiSettings({ TOIITO_MAX_TOKENS: "" }).maxTokens).toBe(
+      AI_DEFAULTS.maxTokens,
+    );
     expect(readAiSettings({ TOIITO_MAX_TOKENS: "たくさん" }).maxTokens).toBe(
-      16000,
+      AI_DEFAULTS.maxTokens,
     );
   });
 
   it("TOIITO_MODEL の上書きが効く", () => {
-    expect(readAiSettings({ TOIITO_MODEL: "claude-opus-5" }).model).toBe(
-      "claude-opus-5",
+    expect(readAiSettings({ TOIITO_MODEL: OVERRIDE.model }).model).toBe(
+      OVERRIDE.model,
     );
   });
 
@@ -41,25 +65,22 @@ describe("readAiSettings", () => {
 });
 
 describe("readPersonaEffort", () => {
-  it("未設定なら具体系は API の既定・抽象系は medium", () => {
-    expect(readPersonaEffort({})).toEqual({
-      concrete: undefined,
-      abstract: "medium",
-    });
+  it("未設定なら既定へ倒す", () => {
+    expect(readPersonaEffort({})).toEqual(AI_DEFAULTS.effort);
   });
 
   it("TOIITO_EFFORT_ABSTRACT の上書きが効く", () => {
-    expect(
-      readPersonaEffort({ TOIITO_EFFORT_ABSTRACT: "xhigh" }).abstract,
-    ).toBe("xhigh");
+    const env = { TOIITO_EFFORT_ABSTRACT: OVERRIDE.effort };
+
+    expect(readPersonaEffort(env).abstract).toBe(OVERRIDE.effort);
   });
 
   it("値域の外は既定へ倒す", () => {
-    expect(
-      readPersonaEffort({
-        TOIITO_EFFORT_CONCRETE: "middle",
-        TOIITO_EFFORT_ABSTRACT: "middle",
-      }),
-    ).toEqual({ concrete: undefined, abstract: "medium" });
+    const env = {
+      TOIITO_EFFORT_CONCRETE: "middle",
+      TOIITO_EFFORT_ABSTRACT: "middle",
+    };
+
+    expect(readPersonaEffort(env)).toEqual(AI_DEFAULTS.effort);
   });
 });

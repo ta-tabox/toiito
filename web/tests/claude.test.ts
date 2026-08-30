@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { callPersona, type PersonaCall } from "@/lib/claude";
-import type { AiSettings } from "@/lib/config";
+import { AI_DEFAULTS, type AiSettings } from "@/lib/config";
+import { EFFORT } from "@/lib/effort";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -9,10 +10,19 @@ afterEach(() => {
 
 /** 実 API を叩く側の設定。 */
 const SETTINGS: AiSettings = {
-  model: "claude-sonnet-5",
-  maxTokens: 16000,
+  model: AI_DEFAULTS.model,
+  maxTokens: AI_DEFAULTS.maxTokens,
   fake: false,
   apiKey: "test-key",
+};
+
+/**
+ * 渡した値が載ることを見るための上書き。
+ * 既定と違うことだけに意味がある。
+ */
+const OVERRIDE = {
+  model: "claude-opus-5",
+  maxTokens: 2048,
 };
 
 /**
@@ -139,7 +149,7 @@ describe("呼び出しログ", () => {
     expect(logged).toHaveBeenCalledTimes(1);
     expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
       event: "claude_call",
-      model: "claude-sonnet-5",
+      model: AI_DEFAULTS.model,
       persona: "ai_b",
       stop_reason: "end_turn",
       input_tokens: 1200,
@@ -198,9 +208,13 @@ describe("リクエストの組み立て", () => {
   it("effort を渡すと output_config に載る", async () => {
     const fetchMock = stubOkResponse();
 
-    await callPersona(personaCall({ effort: "medium" }), { body: "q" }, []);
+    const call = personaCall({ effort: EFFORT.medium });
 
-    expect(sentBody(fetchMock).output_config).toEqual({ effort: "medium" });
+    await callPersona(call, { body: "q" }, []);
+
+    expect(sentBody(fetchMock).output_config).toEqual({
+      effort: EFFORT.medium,
+    });
   });
 
   it("effort を省くと output_config を送らない（API の既定に任せる）", async () => {
@@ -213,15 +227,11 @@ describe("リクエストの組み立て", () => {
 
   it("モデルとトークン上限は渡された設定から載る", async () => {
     const fetchMock = stubOkResponse();
-    const settings: AiSettings = {
-      ...SETTINGS,
-      model: "claude-opus-5",
-      maxTokens: 2048,
-    };
+    const settings: AiSettings = { ...SETTINGS, ...OVERRIDE };
 
     await callPersona(personaCall({ settings }), { body: "q" }, []);
 
-    expect(sentBody(fetchMock).model).toBe("claude-opus-5");
-    expect(sentBody(fetchMock).max_tokens).toBe(2048);
+    expect(sentBody(fetchMock).model).toBe(OVERRIDE.model);
+    expect(sentBody(fetchMock).max_tokens).toBe(OVERRIDE.maxTokens);
   });
 });

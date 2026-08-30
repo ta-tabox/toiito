@@ -6,14 +6,14 @@
 
 import { afterAll, describe, expect, it } from "vitest";
 import { callPersona } from "@/lib/claude";
-import type { AiSettings } from "@/lib/config";
+import { AI_DEFAULTS, type AiSettings } from "@/lib/config";
 import * as db from "@/lib/db";
 import { loadPersona, type PersonaId } from "@/lib/personas";
 
 /** 実 API を叩かないための設定（HARNESS.md「実 API を自動テストで叩かない」）。 */
 const FAKE_SETTINGS: AiSettings = {
-  model: "claude-sonnet-5",
-  maxTokens: 16000,
+  model: AI_DEFAULTS.model,
+  maxTokens: AI_DEFAULTS.maxTokens,
   fake: true,
 };
 
