@@ -194,6 +194,12 @@ export function InputProbe({ messageCount }: { messageCount: number }) {
   const readingsRef = useRef<Readings | null>(null);
   const resetRef = useRef<HTMLButtonElement>(null);
   const copyRef = useRef<HTMLButtonElement>(null);
+  const messageCountRef = useRef(messageCount);
+
+  // 発話が増えても計測は張り直さないので、表示に要る数だけを渡す。
+  useEffect(() => {
+    messageCountRef.current = messageCount;
+  }, [messageCount]);
 
   useEffect(() => {
     readingsRef.current ??= emptyReadings();
@@ -207,7 +213,7 @@ export function InputProbe({ messageCount }: { messageCount: number }) {
       const node = outputRef.current;
 
       if (node) {
-        node.textContent = report(readings, messageCount);
+        node.textContent = report(readings, messageCountRef.current);
       }
     }, REPAINT_MS);
 
@@ -217,7 +223,7 @@ export function InputProbe({ messageCount }: { messageCount: number }) {
       stopObservers();
       stopCounters();
     };
-  }, [messageCount]);
+  }, []);
 
   return (
     <div className="fixed inset-x-0 top-0 z-50 border-b border-neutral-400 bg-white/95 p-2 font-mono text-[10px] leading-tight text-neutral-900">
@@ -370,7 +376,12 @@ function keepWorst(events: ObservedEvent[], seen: ObservedEvent): void {
   events.length = Math.min(events.length, EVENT_SAMPLES);
 }
 
-/** 50ms を超えたタスクを数える（報告するのは Chromium 系だけ）。 */
+/**
+ * 50ms を超えたタスクを数える（報告するのは Chromium 系だけ）。
+ *
+ * buffered は付けない。
+ * 溜まっている分を配り直させると、観測を始める前＝読み込みと hydration の重さが、打鍵の計測へ混ざる。
+ */
 function longTaskObserver(readings: Readings): PerformanceObserver {
   const observer = new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
@@ -379,7 +390,7 @@ function longTaskObserver(readings: Readings): PerformanceObserver {
     }
   });
 
-  observer.observe({ type: "longtask", buffered: true });
+  observer.observe({ type: "longtask" });
 
   return observer;
 }
@@ -471,6 +482,9 @@ function max(values: number[]): number {
 /**
  * 中央値。
  * 空なら 0。
+ *
+ * 偶数件は中央二値の平均を返す。
+ * 上側をそのまま返すと、フレーム間隔を実際より遅く見せる。
  */
 function median(values: number[]): number {
   if (values.length === 0) {
@@ -478,6 +492,11 @@ function median(values: number[]): number {
   }
 
   const sorted = [...values].sort((a, b) => a - b);
+  const upper = Math.floor(sorted.length / 2);
 
-  return sorted[Math.floor(sorted.length / 2)];
+  if (sorted.length % 2 === 1) {
+    return sorted[upper];
+  }
+
+  return (sorted[upper - 1] + sorted[upper]) / 2;
 }
