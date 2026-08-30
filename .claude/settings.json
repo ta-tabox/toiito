@@ -49,12 +49,14 @@
       "Bash(git push --delete:*)",
       "Bash(git push --mirror:*)",
       "Bash(gh pr merge:*)",
+      "Bash(gh release:*)",
+      "Bash(gh api:*)"
+    ],
+    "deny": [
       "Bash(gh repo delete:*)",
       "Bash(gh repo edit:*)",
-      "Bash(gh release:*)",
       "Bash(gh secret:*)",
-      "Bash(gh auth:*)",
-      "Bash(gh api:*)"
+      "Bash(gh auth:*)"
     ]
   },
   "hooks": {

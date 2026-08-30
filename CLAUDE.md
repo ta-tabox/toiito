@@ -88,7 +88,9 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 - **issue と PR の起票・コメント・close は Claude が叩いてよい**（閲覧・`gh run` の確認も同じ）。
   どれも reopen で戻るので、他人の作業を消さない側に入る。
   **マージだけは、その都度人間に諾否を訊く**——main への push が本番デプロイと migration を起こす（ADR-0008）ので、reopen で戻る操作と同じには扱えない。
-  public 化（`gh repo edit`）・secret・`gh auth`・`gh api` も人間の側で、いずれも `permissions.ask` に並べてある。
+  repo の削除・public 化（`gh repo edit`）・secret・`gh auth` は `permissions.deny` で落としてある——承認を挟めば通る類ではなく、判じる場面がそもそも来ない。
+  ただし deny が効くのは綴りにだけで、`gh api -X PATCH repos/…` は `gh repo edit` を経由せず同じ操作へ届く（受け止めるのは ask に残した `gh api`）。
+  `ask` の前方一致と同じ型の限界で、機械は保険、正はこの規約。
 - **PR も author は人間**（そもそも author は名乗る欄でなく叩いたアカウント。bot 名義は「第三者が出したものを承認した」という嘘の外形を作る）。
   Claude の関与は author でなく**本文の「判断したこと」節**へ。
   残すのは判断の中身だけで、誰が判断したかには触れない。
