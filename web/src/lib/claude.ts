@@ -19,11 +19,33 @@ const MODEL = process.env.TOIITO_MODEL ?? "claude-sonnet-5";
  */
 const MAX_TOKENS = Number(process.env.TOIITO_MAX_TOKENS) || 16000;
 
+/**
+ * transcript の発話者見出し。
+ *
+ * モデルはこの文字列をそのまま呼称として使うので、対話に出したくない語を置かない。
+ * 内部 ID（ai_a / ai_b）を置くと、AI 同士がその ID で呼び合う。
+ */
 const SPEAKER_TAG: Record<Speaker, string> = {
-  human: "人間",
-  ai_a: "ai_a（具体派）",
-  ai_b: "ai_b（抽象派）",
+  human: "あなた",
+  ai_a: "具体さん",
+  ai_b: "抽象さん",
 };
+
+/**
+ * 思考にどれだけ費やすか。
+ * 値域は Claude API の `output_config.effort`。
+ */
+export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+
+export type Effort = (typeof EFFORTS)[number];
+
+/**
+ * 外から来た文字列を Effort へ絞り込む。
+ * API へ渡す前の関門。
+ */
+export function isEffort(value: string): value is Effort {
+  return (EFFORTS as readonly string[]).includes(value);
+}
 
 /**
  * システムプロンプト冒頭の見出しから、どのペルソナかを表す一行を取り出す。
@@ -80,11 +102,13 @@ export type QuestionRef = { body: string; current_form?: string | null };
  * TOIITO_FAKE_AI=1 のときはネットワークに出ない。
  * transcript はここまでの全発話で、呼ぶ側が順序を保証する。
  * 応答が打ち切られたときと本文が空のときは例外を投げる（欠けた本文を返さない）。
+ * effort を省くと API の既定（high）で走る。
  */
 export async function callPersona(
   systemPrompt: string,
   question: QuestionRef,
   transcript: { speaker: Speaker; body: string }[],
+  effort?: Effort,
 ): Promise<string> {
   if (process.env.TOIITO_FAKE_AI === "1") {
     return fakeResponse(systemPrompt, transcript);
@@ -122,6 +146,7 @@ export async function callPersona(
     body: JSON.stringify({
       model: MODEL,
       max_tokens: MAX_TOKENS,
+      ...(effort ? { output_config: { effort } } : {}),
       system: systemPrompt,
       messages: [{ role: "user", content: userContent }],
     }),

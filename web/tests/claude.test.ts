@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { callPersona } from "@/lib/claude";
+import { callPersona, isEffort } from "@/lib/claude";
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -13,14 +13,35 @@ afterEach(() => {
  * Claude API の応答一件を返す fetch に差し替える。
  * 実モードの分岐へ入れるため、フェイクモードを解いて API キーも置く。
  */
-function stubApiResponse(payload: unknown): void {
+function stubApiResponse(payload: unknown) {
   delete process.env.TOIITO_FAKE_AI;
   process.env.ANTHROPIC_API_KEY = "test-key";
 
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })),
-  );
+  const fetchMock = vi.fn<
+    (url: string, init: RequestInit) => Promise<Response>
+  >(async () => new Response(JSON.stringify(payload), { status: 200 }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  return fetchMock;
+}
+
+/**
+ * 完結した応答を一件返す fetch に差し替える。
+ * 中身を問わないテスト向け。
+ */
+function stubOkResponse() {
+  return stubApiResponse({
+    content: [{ type: "text", text: "応答" }],
+    stop_reason: "end_turn",
+  });
+}
+
+/** モックした fetch が送ったリクエストボディを読む。 */
+function sentBody(fetchMock: ReturnType<typeof stubApiResponse>) {
+  return JSON.parse(String(fetchMock.mock.calls[0][1].body)) as {
+    output_config?: { effort: string };
+    messages: { content: string }[];
+  };
 }
 
 describe("フェイクモード (TOIITO_FAKE_AI=1)", () => {
@@ -140,5 +161,46 @@ describe("呼び出しログ", () => {
     expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
       stop_reason: "max_tokens",
     });
+  });
+});
+
+describe("リクエストの組み立て", () => {
+  it("発話者の見出しに内部 ID を出さない", async () => {
+    const fetchMock = stubOkResponse();
+
+    await callPersona("# ai_b — 抽象派", { body: "q" }, [
+      { speaker: "human", body: "問いを投げた" },
+      { speaker: "ai_a", body: "具体で問い返した" },
+    ]);
+
+    const content = sentBody(fetchMock).messages[0].content;
+    expect(content).toContain("【あなた】");
+    expect(content).toContain("【具体さん】");
+    expect(content).not.toContain("ai_a");
+  });
+
+  it("effort を渡すと output_config に載る", async () => {
+    const fetchMock = stubOkResponse();
+
+    await callPersona("# ai_b", { body: "q" }, [], "medium");
+
+    expect(sentBody(fetchMock).output_config).toEqual({ effort: "medium" });
+  });
+
+  it("effort を省くと output_config を送らない（API の既定に任せる）", async () => {
+    const fetchMock = stubOkResponse();
+
+    await callPersona("# ai_a", { body: "q" }, []);
+
+    expect(sentBody(fetchMock).output_config).toBeUndefined();
+  });
+});
+
+describe("effort の値域", () => {
+  it("API の値域だけを通す", () => {
+    expect(isEffort("medium")).toBe(true);
+    expect(isEffort("xhigh")).toBe(true);
+    expect(isEffort("middle")).toBe(false);
+    expect(isEffort("")).toBe(false);
   });
 });
