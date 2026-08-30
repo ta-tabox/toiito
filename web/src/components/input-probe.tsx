@@ -10,6 +10,12 @@
  * 計器が再レンダリングを起こすと、測りたい対象を計器自身が汚す。
  * 数え上げは ref の中で行い、画面へは一定間隔で DOM へ直接書く。
  *
+ * ボタンも state を持たず DOM へ直接書く。
+ * この component はマウント後に一度も再レンダリングしないので、`pre` へ書いた計測値が React に上書きされない。
+ *
+ * 観測値は差し替えずにその場で書き換える。
+ * effect が掴んだ object を捨てて新しくすると、カウンタも observer も表示も古い方を読み続ける。
+ *
  * キー入力とポインタは分けて出す。
  * iOS はタップ一回から mouseover / mousedown / mouseup / click を合成するので、混ぜると打鍵の数字がタップに埋もれる。
  *
@@ -21,6 +27,9 @@ import { useEffect, useRef } from "react";
 
 /** 画面を書き換える間隔。 */
 const REPAINT_MS = 250;
+
+/** ボタンへ結果を出しておく長さ。 */
+const FLASH_MS = 1200;
 
 /** フレーム間隔を保つ本数（60fps で 10 秒ぶん）。 */
 const FRAME_SAMPLES = 600;
@@ -111,6 +120,70 @@ function emptyReadings(): Readings {
 }
 
 /**
+ * 観測値をその場で 0 に戻す。
+ *
+ * 新しい object を作って差し替えない。
+ * effect が掴んでいるのはこの object なので、差し替えると誰も新しい方を読まない。
+ * 端末が何に対応しているかは測り直しても変わらないので、そのまま残す。
+ */
+function resetReadings(readings: Readings): void {
+  readings.keydowns = 0;
+  readings.compositions = 0;
+  readings.frameGaps.length = 0;
+  readings.keyEvents.length = 0;
+  readings.pointerEvents.length = 0;
+  readings.feltKeys = 0;
+  readings.feltPointers = 0;
+  readings.longTasks = 0;
+  readings.longTaskMs = 0;
+}
+
+/**
+ * ボタンの文字を一瞬だけ結果へ差し替える。
+ *
+ * 元の文字は dataset へ預ける。
+ * textContent から読み戻すと、続けて押したときに差し替え後の文字を元と見なして焼き付く。
+ */
+function flash(button: HTMLButtonElement | null, message: string): void {
+  if (!button) {
+    return;
+  }
+
+  const original = button.dataset.label ?? button.textContent ?? "";
+  button.dataset.label = original;
+  button.textContent = message;
+
+  window.setTimeout(() => {
+    button.textContent = original;
+  }, FLASH_MS);
+}
+
+/**
+ * 計測値をクリップボードへ写し、成否をボタンへ出す。
+ *
+ * 成否を出すのは、写せたかどうかが画面のどこにも出ないため。
+ * iOS は保護された文脈でないと clipboard を持たないので、無いこと自体も伝える。
+ */
+function copyReport(
+  output: HTMLPreElement | null,
+  button: HTMLButtonElement | null,
+): void {
+  if (!navigator.clipboard) {
+    flash(button, "コピー不可");
+    return;
+  }
+
+  void navigator.clipboard.writeText(output?.textContent ?? "").then(
+    () => {
+      flash(button, "コピーした");
+    },
+    () => {
+      flash(button, "コピー失敗");
+    },
+  );
+}
+
+/**
  * 実機で入力の重さを読むための計器。
  *
  * `?probe=1` が付いた対話画面にだけ出る。
@@ -119,6 +192,8 @@ function emptyReadings(): Readings {
 export function InputProbe({ messageCount }: { messageCount: number }) {
   const outputRef = useRef<HTMLPreElement>(null);
   const readingsRef = useRef<Readings | null>(null);
+  const resetRef = useRef<HTMLButtonElement>(null);
+  const copyRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     readingsRef.current ??= emptyReadings();
@@ -151,20 +226,27 @@ export function InputProbe({ messageCount }: { messageCount: number }) {
       </pre>
       <div className="mt-1 flex gap-2">
         <button
+          ref={resetRef}
           type="button"
           onClick={() => {
-            readingsRef.current = emptyReadings();
+            const readings = readingsRef.current;
+
+            if (readings) {
+              resetReadings(readings);
+            }
+
+            // フレーム間隔は 250ms で埋まり直すので、数字を見ても押せたか分からない。
+            flash(resetRef.current, "0 に戻した");
           }}
           className="rounded border border-neutral-400 px-2 py-1"
         >
           リセット
         </button>
         <button
+          ref={copyRef}
           type="button"
           onClick={() => {
-            void navigator.clipboard?.writeText(
-              outputRef.current?.textContent ?? "",
-            );
+            copyReport(outputRef.current, copyRef.current);
           }}
           className="rounded border border-neutral-400 px-2 py-1"
         >
