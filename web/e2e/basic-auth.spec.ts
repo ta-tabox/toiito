@@ -21,7 +21,7 @@ const UNROUTED = "/no-such-page";
 
 /**
  * Playwright へ渡す形の資格情報。
- * 綴りが `username` なので、環境変数側の `user` から詰め替える。
+ * プロパティ名が `username` なので、環境変数側の `user` から詰め替える。
  */
 const HTTP_CREDENTIALS = {
   username: BASIC_AUTH.user,

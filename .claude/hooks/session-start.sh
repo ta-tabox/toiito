@@ -52,7 +52,7 @@ require_git_author() {
   exit 1
 }
 
-# nodejs.org のアーカイブ名に使う表記。uname の綴りとは違う。
+# nodejs.org のアーカイブ名に使う表記。uname の表記とは違う。
 node_arch() {
   case "$(uname -m)" in
     x86_64) echo "x64" ;;
