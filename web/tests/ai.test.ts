@@ -6,7 +6,11 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { callPersona, type PersonaCall } from "@/lib/ai";
-import { ANTHROPIC_DEFAULTS, type AnthropicSettings } from "@/lib/ai/anthropic";
+import {
+  ANTHROPIC_DEFAULTS,
+  AnthropicProvider,
+  type AnthropicSettings,
+} from "@/lib/ai/anthropic";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -15,7 +19,6 @@ afterEach(() => {
 
 /** 実 API を叩く側の設定。 */
 const SETTINGS: AnthropicSettings = {
-  provider: "anthropic",
   model: ANTHROPIC_DEFAULTS.model,
   maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
   fake: false,
@@ -23,16 +26,25 @@ const SETTINGS: AnthropicSettings = {
 };
 
 /**
+ * 唯一の実装。
+ * 規約の検査は、この一つを通して辿る。
+ */
+const PROVIDER = new AnthropicProvider(SETTINGS);
+
+/**
  * ペルソナ呼び出しの指定を組み立てる。
  * 既定は実モードの ai_b で、そのケースが見たい一点だけ上書きする。
  */
 function personaCall(overrides: Partial<PersonaCall> = {}): PersonaCall {
-  return { id: "ai_b", prompt: "# 抽象派", settings: SETTINGS, ...overrides };
+  return { id: "ai_b", prompt: "# 抽象派", provider: PROVIDER, ...overrides };
 }
 
 /** フェイクモードの指定を組み立てる。 */
 function fakeCall(id: PersonaCall["id"]): PersonaCall {
-  return personaCall({ id, settings: { ...SETTINGS, fake: true } });
+  return personaCall({
+    id,
+    provider: new AnthropicProvider({ ...SETTINGS, fake: true }),
+  });
 }
 
 /** Claude API の応答一件を返す fetch に差し替える。 */

@@ -8,11 +8,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ANTHROPIC_DEFAULTS,
+  ANTHROPIC_EFFORT,
+  AnthropicProvider,
   type AnthropicSettings,
-  EFFORT,
-  isEffort,
+  readAnthropicProviders,
   readAnthropicSettings,
-  sendToAnthropic,
 } from "@/lib/ai/anthropic";
 
 afterEach(() => {
@@ -22,7 +22,6 @@ afterEach(() => {
 
 /** 実 API を叩く側の設定。 */
 const SETTINGS: AnthropicSettings = {
-  provider: "anthropic",
   model: ANTHROPIC_DEFAULTS.model,
   maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
   fake: false,
@@ -36,7 +35,7 @@ const SETTINGS: AnthropicSettings = {
 const OVERRIDE = {
   model: "claude-opus-5",
   maxTokens: 2048,
-  effort: EFFORT.xhigh,
+  effort: ANTHROPIC_EFFORT.xhigh,
 };
 
 /** Claude API の応答一件を返す fetch に差し替える。 */
@@ -72,17 +71,8 @@ function sentBody(fetchMock: ReturnType<typeof stubApiResponse>) {
 
 /** 組み立て済みの本文を渡して一回叩く。 */
 function send(settings: AnthropicSettings = SETTINGS) {
-  return sendToAnthropic(settings, "# 抽象派", "組み立て済みの本文");
+  return new AnthropicProvider(settings).send("# 抽象派", "組み立て済みの本文");
 }
-
-describe("思考の深さの値域", () => {
-  it("API の値域だけを通す", () => {
-    expect(isEffort("medium")).toBe(true);
-    expect(isEffort("xhigh")).toBe(true);
-    expect(isEffort("middle")).toBe(false);
-    expect(isEffort("")).toBe(false);
-  });
-});
 
 describe("既定値", () => {
   it("web/README.md の表と一致する", () => {
@@ -97,7 +87,6 @@ describe("readAnthropicSettings", () => {
   it("未設定なら既定へ倒す", () => {
     expect(readAnthropicSettings({})).toEqual({
       concrete: {
-        provider: "anthropic",
         model: ANTHROPIC_DEFAULTS.model,
         maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
         effort: ANTHROPIC_DEFAULTS.effort.concrete,
@@ -105,7 +94,6 @@ describe("readAnthropicSettings", () => {
         apiKey: undefined,
       },
       abstract: {
-        provider: "anthropic",
         model: ANTHROPIC_DEFAULTS.model,
         maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
         effort: ANTHROPIC_DEFAULTS.effort.abstract,
@@ -169,6 +157,20 @@ describe("readAnthropicSettings", () => {
   });
 });
 
+describe("readAnthropicProviders", () => {
+  it("系統ごとに、その系統の設定を抱えたプロバイダを返す", () => {
+    const providers = readAnthropicProviders({
+      TOIITO_ANTHROPIC_EFFORT_ABSTRACT: ANTHROPIC_EFFORT.xhigh,
+    });
+
+    expect(providers.concrete.name).toBe("anthropic");
+    expect(providers.concrete.settings.effort).toBe(
+      ANTHROPIC_DEFAULTS.effort.concrete,
+    );
+    expect(providers.abstract.settings.effort).toBe(ANTHROPIC_EFFORT.xhigh);
+  });
+});
+
 describe("リクエストの組み立て", () => {
   it("API キー未設定なら呼び出し前に明示的に失敗する", async () => {
     await expect(send({ ...SETTINGS, apiKey: undefined })).rejects.toThrow(
@@ -192,10 +194,10 @@ describe("リクエストの組み立て", () => {
   it("設定に深さがあると output_config に載る", async () => {
     const fetchMock = stubOkResponse();
 
-    await send({ ...SETTINGS, effort: EFFORT.medium });
+    await send({ ...SETTINGS, effort: ANTHROPIC_EFFORT.medium });
 
     expect(sentBody(fetchMock).output_config).toEqual({
-      effort: EFFORT.medium,
+      effort: ANTHROPIC_EFFORT.medium,
     });
   });
 

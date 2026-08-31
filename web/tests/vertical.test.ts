@@ -5,18 +5,17 @@
  */
 
 import { afterAll, describe, expect, it } from "vitest";
-import { type AiSettings, callPersona } from "@/lib/ai";
-import { ANTHROPIC_DEFAULTS } from "@/lib/ai/anthropic";
+import { callPersona } from "@/lib/ai";
+import { ANTHROPIC_DEFAULTS, AnthropicProvider } from "@/lib/ai/anthropic";
 import * as db from "@/lib/db";
 import { loadPersona, type PersonaId } from "@/lib/personas";
 
-/** 実 API を叩かないための設定（HARNESS.md「実 API を自動テストで叩かない」）。 */
-const FAKE_SETTINGS: AiSettings = {
-  provider: "anthropic",
+/** 実 API を叩かないためのプロバイダ（HARNESS.md「実 API を自動テストで叩かない」）。 */
+const FAKE_PROVIDER = new AnthropicProvider({
   model: ANTHROPIC_DEFAULTS.model,
   maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
   fake: true,
-};
+});
 
 afterAll(async () => {
   await db.disconnect();
@@ -24,7 +23,7 @@ afterAll(async () => {
 
 /** ペルソナ一体分の呼び出し指定を、定義ファイルごと組み立てる。 */
 function personaCall(id: PersonaId) {
-  return { id, prompt: loadPersona(id), settings: FAKE_SETTINGS };
+  return { id, prompt: loadPersona(id), provider: FAKE_PROVIDER };
 }
 
 describe("縦一本", () => {

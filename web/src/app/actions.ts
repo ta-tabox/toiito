@@ -12,7 +12,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { callPersona } from "@/lib/ai";
-import { AI_SETTINGS } from "@/lib/config";
+import { AI_PROVIDERS } from "@/lib/config";
 import {
   addMemo,
   addMessage,
@@ -67,7 +67,7 @@ export async function speakAction(
     {
       id: "ai_a",
       prompt: loadPersona("ai_a"),
-      settings: AI_SETTINGS.concrete,
+      provider: AI_PROVIDERS.concrete,
     },
     question,
     await listMessages(sessionId),
@@ -78,7 +78,7 @@ export async function speakAction(
     {
       id: "ai_b",
       prompt: loadPersona("ai_b"),
-      settings: AI_SETTINGS.abstract,
+      provider: AI_PROVIDERS.abstract,
     },
     question,
     await listMessages(sessionId),
