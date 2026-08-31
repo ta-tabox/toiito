@@ -1,16 +1,16 @@
 /**
- * Anthropic（Claude API）の実装（サーバー側のみ）。
- * 思考の深さの値域・設定・env からの読み・API 呼び出しの一切をここへ閉じる。
+ * Anthropic（Claude API）固有の一切（サーバー側のみ）。
+ * 思考の深さの値域・設定・env からの読み・HTTP の作法をここへ閉じる。
  *
  * `effort` は Claude API の `output_config.effort` そのもので、他のプロバイダには無いか別の綴りになるので外へ出さない。
+ * 何をどう見せるか（プロンプトの組み立て）と、応答をどう扱うか（記録・打ち切りの拒否）は呼び出し規約の側の決め事なので持たない。
  *
  * `process.env` は読まない。
  * env を模した object を受ける純関数だけを出し、`process.env` を渡すのは config.ts（HARNESS.md「テスト可能性の設計制約」2）。
  */
 
-import type { PersonaCall, QuestionRef } from "@/lib/ai";
-import type { PersonaId, PersonaRole } from "@/lib/personas";
-import type { Speaker } from "@/lib/types";
+import type { CommonSettings, ProviderResponse } from "@/lib/ai";
+import type { PersonaRole } from "@/lib/personas";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 
@@ -63,20 +63,9 @@ type AnthropicEnv = {
 };
 
 /** Claude API を一回叩くときの設定。 */
-export type AnthropicSettings = {
+export type AnthropicSettings = CommonSettings & {
   /** 設定のユニオンを絞る判別子。 */
   readonly provider: "anthropic";
-
-  readonly model: string;
-
-  /**
-   * 一回の応答に許すトークン数。
-   *
-   * thinking のトークンもここから引かれるので、本文の想定長で見積もると足りない。
-   * 足りなければ本文が途中で切れるか、text ブロックごと出てこない。
-   * ストリーミングを使っていないため、上限は HTTP のタイムアウトに収まる範囲で選ぶ。
-   */
-  readonly maxTokens: number;
 
   /**
    * 思考の深さ。
@@ -84,15 +73,9 @@ export type AnthropicSettings = {
    */
   readonly effort?: Effort;
 
-  /** ネットワークに出ず決定的な応答を返すか（HARNESS.md 参照）。 */
-  readonly fake: boolean;
-
   /** Claude API のキー。 */
   readonly apiKey?: string;
 };
-
-/** 設定の絞り込みが済んだ呼び出し指定。 */
-type AnthropicCall = PersonaCall & { readonly settings: AnthropicSettings };
 
 /**
  * 系統ごとの思考の深さの既定。
@@ -153,89 +136,19 @@ export function readAnthropicSettings(
 }
 
 /**
- * transcript の発話者見出し。
- *
- * モデルはこの文字列をそのまま呼称として使うので、対話に出したくない語を置かない。
- * 内部 ID（ai_a / ai_b）を置くと、AI 同士がその ID で呼び合う。
+ * 組み立て済みの本文を Claude API へ送り、応答を規約の形で返す。
+ * キーが無ければ叩く前に落とす。
+ * 打ち切りと空本文をどう扱うかは呼び出し規約の側が決めるので、ここでは判定だけ済ませて通す。
  */
-const SPEAKER_TAG: Record<Speaker, string> = {
-  human: "あなた",
-  ai_a: "具体さん",
-  ai_b: "抽象さん",
-};
-
-/**
- * 一回の API 呼び出しの結果を 1 行の JSON で残す。
- *
- * 発話本文は出さない。
- * 投入される問いは機微な出自を含みうるので、外へ渡すのは打ち切りの検出に足りる長さだけにする。
- * 応答をパースした直後に呼ぶので、この後で例外になった呼び出しも 1 行残る。
- */
-function logCall(fields: {
-  model: string;
-  persona: PersonaId;
-  stop_reason: string | null;
-  input_tokens: number | null;
-  output_tokens: number | null;
-  duration_ms: number;
-  body_length: number;
-}): void {
-  console.log(JSON.stringify({ event: "claude_call", ...fields }));
-}
-
-/**
- * ハーネス用フェイクモード（HARNESS.md 参照）。
- * ネットワークに出ず決定的応答を返す。
- * ペルソナ ID と直近の人間発話を含めることで、E2E 側から「どの体が・何を受けて」応答したかをアサート可能にする。
- */
-function fakeResponse(
-  id: PersonaId,
-  transcript: { speaker: Speaker; body: string }[],
-): string {
-  const lastHuman = [...transcript]
-    .reverse()
-    .find((m) => m.speaker === "human");
-  return `[fake:${id}] 「${lastHuman?.body ?? "(発話なし)"}」への応答`;
-}
-
-/**
- * ペルソナ一体を Claude API で呼んで発話本文を返す。
- * settings.fake が立っているときはネットワークに出ない。
- * transcript はここまでの全発話で、呼ぶ側が順序を保証する。
- * 応答が打ち切られたときと本文が空のときは例外を投げる（欠けた本文を返さない）。
- */
-export async function callAnthropic(
-  call: AnthropicCall,
-  question: QuestionRef,
-  transcript: { speaker: Speaker; body: string }[],
-): Promise<string> {
-  const { settings } = call;
-
-  if (settings.fake) {
-    return fakeResponse(call.id, transcript);
-  }
-
+export async function sendToAnthropic(
+  settings: AnthropicSettings,
+  system: string,
+  userContent: string,
+): Promise<ProviderResponse> {
   if (!settings.apiKey) {
     throw new Error("ANTHROPIC_API_KEY が未設定（web/.env.local を確認）");
   }
 
-  const dialogue = transcript
-    .map((m) => `【${SPEAKER_TAG[m.speaker]}】\n${m.body}`)
-    .join("\n\n");
-
-  const userContent = [
-    `# 投入された問い（原型・不変）\n${question.body}`,
-    ...(question.current_form
-      ? [
-          `# 現在の形（対話の中で言い直された焦点）\n${question.current_form}\n\n` +
-            `※ 原型からずれていると見えたら、それ自体を突いてよい。`,
-        ]
-      : []),
-    `# ここまでの対話\n${dialogue || "（まだ発話なし。問いへの最初の応答をする）"}`,
-    `あなたの役割定義に従い、次の一手を発話せよ。発話本文のみを出力すること。`,
-  ].join("\n\n");
-
-  const startedAt = Date.now();
   const res = await fetch(API_URL, {
     method: "POST",
     headers: {
@@ -249,7 +162,7 @@ export async function callAnthropic(
       ...(settings.effort
         ? { output_config: { effort: settings.effort } }
         : {}),
-      system: call.prompt,
+      system,
       messages: [{ role: "user", content: userContent }],
     }),
   });
@@ -265,32 +178,17 @@ export async function callAnthropic(
     usage?: { input_tokens: number; output_tokens: number };
   };
 
+  // thinking だけで応答が終わると text ブロックが一つも来ない。
   const body = data.content
     .filter((b) => b.type === "text")
     .map((b) => b.text ?? "")
     .join("");
 
-  logCall({
-    model: settings.model,
-    persona: call.id,
-    stop_reason: data.stop_reason,
-    input_tokens: data.usage?.input_tokens ?? null,
-    output_tokens: data.usage?.output_tokens ?? null,
-    duration_ms: Date.now() - startedAt,
-    body_length: body.length,
-  });
-
-  // 切れた本文を messages へ入れると、immutable なので後から直せない。
-  if (data.stop_reason === "max_tokens") {
-    throw new Error(
-      `Claude API の応答が max_tokens (${settings.maxTokens}) で打ち切られた`,
-    );
-  }
-
-  // thinking だけで応答が終わると text ブロックが一つも来ない。
-  if (!body) {
-    throw new Error("Claude API の応答に text ブロックが無い");
-  }
-
-  return body;
+  return {
+    body,
+    stopReason: data.stop_reason,
+    inputTokens: data.usage?.input_tokens ?? null,
+    outputTokens: data.usage?.output_tokens ?? null,
+    truncated: data.stop_reason === "max_tokens",
+  };
 }

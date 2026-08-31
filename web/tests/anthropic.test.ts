@@ -1,16 +1,18 @@
 /**
- * Anthropic 実装の検査。
- * env から設定を作る写像は process.env を触らず、env を模した object を渡す（HARNESS.md「テスト可能性の設計制約」2）。
+ * Anthropic 固有の検査。
+ * 深さの値域・env から設定を作る写像・Claude API へ送るリクエストの綴りを守る。
+ *
+ * env は process.env を触らず、env を模した object を渡す（HARNESS.md「テスト可能性の設計制約」2）。
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { callPersona, type PersonaCall } from "@/lib/ai";
 import {
   ANTHROPIC_DEFAULTS,
   type AnthropicSettings,
   EFFORT,
   isEffort,
   readAnthropicSettings,
+  sendToAnthropic,
 } from "@/lib/ai/anthropic";
 
 afterEach(() => {
@@ -36,19 +38,6 @@ const OVERRIDE = {
   maxTokens: 2048,
   effort: EFFORT.xhigh,
 };
-
-/**
- * ペルソナ呼び出しの指定を組み立てる。
- * 既定は実モードの ai_b で、そのケースが見たい一点だけ上書きする。
- */
-function personaCall(overrides: Partial<PersonaCall> = {}): PersonaCall {
-  return { id: "ai_b", prompt: "# 抽象派", settings: SETTINGS, ...overrides };
-}
-
-/** フェイクモードの指定を組み立てる。 */
-function fakeCall(id: PersonaCall["id"]): PersonaCall {
-  return personaCall({ id, settings: { ...SETTINGS, fake: true } });
-}
 
 /** Claude API の応答一件を返す fetch に差し替える。 */
 function stubApiResponse(payload: unknown) {
@@ -77,8 +66,13 @@ function sentBody(fetchMock: ReturnType<typeof stubApiResponse>) {
     model: string;
     max_tokens: number;
     output_config?: { effort: string };
-    messages: { content: string }[];
+    system: string;
   };
+}
+
+/** 組み立て済みの本文を渡して一回叩く。 */
+function send(settings: AnthropicSettings = SETTINGS) {
+  return sendToAnthropic(settings, "# 抽象派", "組み立て済みの本文");
 }
 
 describe("思考の深さの値域", () => {
@@ -175,150 +169,30 @@ describe("readAnthropicSettings", () => {
   });
 });
 
-describe("フェイクモード", () => {
-  it("ネットワークに出ず、ペルソナ ID と直近の人間発話を含む決定的応答を返す", async () => {
-    const res = await callPersona(fakeCall("ai_a"), { body: "問い本文" }, [
-      { speaker: "human", body: "最初の発話" },
-    ]);
-
-    expect(res).toContain("ai_a");
-    expect(res).toContain("最初の発話");
-  });
-
-  it("同じ入力には同じ応答（決定性）", async () => {
-    const t = [{ speaker: "human" as const, body: "同じ入力" }];
-    expect(await callPersona(fakeCall("ai_b"), { body: "q" }, t)).toBe(
-      await callPersona(fakeCall("ai_b"), { body: "q" }, t),
-    );
-  });
-});
-
-describe("実モード", () => {
+describe("リクエストの組み立て", () => {
   it("API キー未設定なら呼び出し前に明示的に失敗する", async () => {
-    const call = personaCall({ settings: { ...SETTINGS, apiKey: undefined } });
-
-    await expect(callPersona(call, { body: "q" }, [])).rejects.toThrow(
+    await expect(send({ ...SETTINGS, apiKey: undefined })).rejects.toThrow(
       /ANTHROPIC_API_KEY/,
     );
   });
 
-  it("完結した応答の本文を返す", async () => {
-    stubApiResponse({
-      content: [{ type: "text", text: "最後まで出た発話" }],
-      stop_reason: "end_turn",
-    });
-
-    await expect(callPersona(personaCall(), { body: "q" }, [])).resolves.toBe(
-      "最後まで出た発話",
-    );
-  });
-
-  it("max_tokens で打ち切られた応答は、途中までの本文を返さず失敗する", async () => {
-    stubApiResponse({
-      content: [{ type: "text", text: "途中で切れた発" }],
-      stop_reason: "max_tokens",
-    });
-
-    await expect(callPersona(personaCall(), { body: "q" }, [])).rejects.toThrow(
-      /max_tokens/,
-    );
-  });
-
-  it("text ブロックの無い応答は、空文字列を返さず失敗する", async () => {
-    stubApiResponse({
-      content: [{ type: "thinking", thinking: "" }],
-      stop_reason: "end_turn",
-    });
-
-    await expect(callPersona(personaCall(), { body: "q" }, [])).rejects.toThrow(
-      /text ブロック/,
-    );
-  });
-});
-
-describe("呼び出しログ", () => {
-  /** console.log を捕まえて、残った行を JSON として読めるようにする。 */
-  function captureLog() {
-    return vi.spyOn(console, "log").mockImplementation(() => {});
-  }
-
-  it("応答をパースした時点で 1 行の JSON を残す", async () => {
-    const logged = captureLog();
-    stubApiResponse({
-      content: [{ type: "text", text: "十文字ちょうどの本文" }],
-      stop_reason: "end_turn",
-      usage: { input_tokens: 1200, output_tokens: 340 },
-    });
-
-    await callPersona(personaCall({ id: "ai_b" }), { body: "q" }, []);
-
-    expect(logged).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
-      event: "claude_call",
-      model: ANTHROPIC_DEFAULTS.model,
-      persona: "ai_b",
-      stop_reason: "end_turn",
-      input_tokens: 1200,
-      output_tokens: 340,
-      body_length: 10,
-    });
-  });
-
-  it("発話本文そのものは残さない", async () => {
-    const logged = captureLog();
-    stubApiResponse({
-      content: [{ type: "text", text: "外へ出してはいけない問いの中身" }],
-      stop_reason: "end_turn",
-    });
-
-    await callPersona(personaCall({ id: "ai_a" }), { body: "q" }, []);
-
-    expect(String(logged.mock.calls[0][0])).not.toContain(
-      "外へ出してはいけない問いの中身",
-    );
-  });
-
-  it("打ち切られた呼び出しも、例外を投げる前に残す", async () => {
-    const logged = captureLog();
-    stubApiResponse({
-      content: [{ type: "text", text: "途中で切れた発" }],
-      stop_reason: "max_tokens",
-    });
-
-    await expect(
-      callPersona(personaCall(), { body: "q" }, []),
-    ).rejects.toThrow();
-
-    expect(logged).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
-      stop_reason: "max_tokens",
-    });
-  });
-});
-
-describe("リクエストの組み立て", () => {
-  it("発話者の見出しに内部 ID を出さない", async () => {
+  it("モデルとトークン上限は渡された設定から載る", async () => {
     const fetchMock = stubOkResponse();
 
-    await callPersona(personaCall(), { body: "q" }, [
-      { speaker: "human", body: "問いを投げた" },
-      { speaker: "ai_a", body: "具体で問い返した" },
-    ]);
+    await send({
+      ...SETTINGS,
+      model: OVERRIDE.model,
+      maxTokens: OVERRIDE.maxTokens,
+    });
 
-    const content = sentBody(fetchMock).messages[0].content;
-    expect(content).toContain("【あなた】");
-    expect(content).toContain("【具体さん】");
-    expect(content).not.toContain("ai_a");
+    expect(sentBody(fetchMock).model).toBe(OVERRIDE.model);
+    expect(sentBody(fetchMock).max_tokens).toBe(OVERRIDE.maxTokens);
   });
 
   it("設定に深さがあると output_config に載る", async () => {
     const fetchMock = stubOkResponse();
 
-    const call = personaCall({
-      settings: { ...SETTINGS, effort: EFFORT.medium },
-    });
-
-    await callPersona(call, { body: "q" }, []);
+    await send({ ...SETTINGS, effort: EFFORT.medium });
 
     expect(sentBody(fetchMock).output_config).toEqual({
       effort: EFFORT.medium,
@@ -328,22 +202,68 @@ describe("リクエストの組み立て", () => {
   it("設定に深さが無いと output_config を送らない（API の既定に任せる）", async () => {
     const fetchMock = stubOkResponse();
 
-    await callPersona(personaCall(), { body: "q" }, []);
+    await send();
 
     expect(sentBody(fetchMock).output_config).toBeUndefined();
   });
 
-  it("モデルとトークン上限は渡された設定から載る", async () => {
+  it("役割定義は system へ載せる", async () => {
     const fetchMock = stubOkResponse();
-    const settings: AnthropicSettings = {
-      ...SETTINGS,
-      model: OVERRIDE.model,
-      maxTokens: OVERRIDE.maxTokens,
-    };
 
-    await callPersona(personaCall({ settings }), { body: "q" }, []);
+    await send();
 
-    expect(sentBody(fetchMock).model).toBe(OVERRIDE.model);
-    expect(sentBody(fetchMock).max_tokens).toBe(OVERRIDE.maxTokens);
+    expect(sentBody(fetchMock).system).toBe("# 抽象派");
+  });
+});
+
+describe("応答の読み取り", () => {
+  it("text ブロックだけを繋いで本文にする", async () => {
+    stubApiResponse({
+      content: [
+        { type: "thinking", thinking: "外へ出さない" },
+        { type: "text", text: "前半" },
+        { type: "text", text: "後半" },
+      ],
+      stop_reason: "end_turn",
+      usage: { input_tokens: 1200, output_tokens: 340 },
+    });
+
+    await expect(send()).resolves.toMatchObject({
+      body: "前半後半",
+      stopReason: "end_turn",
+      inputTokens: 1200,
+      outputTokens: 340,
+      truncated: false,
+    });
+  });
+
+  it("max_tokens で終わった応答を打ち切りとして通す", async () => {
+    stubApiResponse({
+      content: [{ type: "text", text: "途中で切れた発" }],
+      stop_reason: "max_tokens",
+    });
+
+    await expect(send()).resolves.toMatchObject({ truncated: true });
+  });
+
+  it("usage が無い応答はトークン数を欠落として通す", async () => {
+    stubApiResponse({
+      content: [{ type: "text", text: "応答" }],
+      stop_reason: "end_turn",
+    });
+
+    await expect(send()).resolves.toMatchObject({
+      inputTokens: null,
+      outputTokens: null,
+    });
+  });
+
+  it("HTTP が失敗したら状態と本文の頭を添えて落とす", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("overloaded", { status: 529 })),
+    );
+
+    await expect(send()).rejects.toThrow(/529: overloaded/);
   });
 });
