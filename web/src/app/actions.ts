@@ -11,7 +11,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { callPersona } from "@/lib/claude";
+import { callPersona } from "@/lib/ai";
+import { AI_PROVIDERS } from "@/lib/ai/providers";
 import {
   addMemo,
   addMessage,
@@ -20,7 +21,7 @@ import {
   getQuestion,
   listMessages,
 } from "@/lib/db";
-import { loadPersona, PERSONA_EFFORT } from "@/lib/personas";
+import { loadPersona } from "@/lib/personas";
 
 /** 問いを投入し、その対話画面へ送る。 */
 export async function createQuestionAction(formData: FormData) {
@@ -63,18 +64,24 @@ export async function speakAction(
   await addMessage(sessionId, "human", body);
 
   const aiA = await callPersona(
-    loadPersona("ai_a"),
+    {
+      id: "ai_a",
+      prompt: loadPersona("ai_a"),
+      provider: AI_PROVIDERS.concrete,
+    },
     question,
     await listMessages(sessionId),
-    PERSONA_EFFORT.concrete,
   );
   await addMessage(sessionId, "ai_a", aiA);
 
   const aiB = await callPersona(
-    loadPersona("ai_b"),
+    {
+      id: "ai_b",
+      prompt: loadPersona("ai_b"),
+      provider: AI_PROVIDERS.abstract,
+    },
     question,
     await listMessages(sessionId),
-    PERSONA_EFFORT.abstract,
   );
   await addMessage(sessionId, "ai_b", aiB);
 

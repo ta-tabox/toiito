@@ -13,6 +13,8 @@
     "start": "next start",
     "lint": "biome check && node scripts/lint-comments.ts",
     "seed": "node --env-file-if-exists=.env.local scripts/seed/index.ts",
+    "migrate:prod": "node --env-file-if-exists=.env.local scripts/migrate.ts prod",
+    "migrate:preview": "node --env-file-if-exists=.env.local scripts/migrate.ts preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
