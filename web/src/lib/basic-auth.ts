@@ -59,7 +59,7 @@ export function readBasicAuthCredentials(
 /**
  * Authorization ヘッダが資格情報と一致するかを判定する。
  *
- * 綴りが Basic でない・base64 が壊れている・区切りの `:` が無い、のいずれもすべて不一致として扱う。
+ * スキーム名が Basic でない・base64 が壊れている・区切りの `:` が無い、のいずれもすべて不一致として扱う。
  * 不一致の理由は呼び出し側へ返さない。
  */
 export function isAuthorized(
@@ -89,7 +89,7 @@ function decodeBasic(header: string | null): BasicAuthCredentials | null {
   }
 
   // RFC 7235 のスキーム名は大文字小文字を区別しない。
-  // ブラウザは Basic と綴るが、綴りの違いで弾く理由は無い。
+  // ブラウザは Basic と綴るが、大文字小文字の違いで弾く理由は無い。
   const schemeEnd = header.indexOf(" ");
 
   if (

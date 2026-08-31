@@ -3,7 +3,7 @@
  * ネットワークに出ず決定的なテキストを返す。
  *
  * ペルソナ ID と直近の人間発話を含むのは、E2E から「どの体が・何を受けて」応答したかをアサートするため。
- * 綴りを変えると `e2e/dialogue.spec.ts` と `e2e/memo.spec.ts` が応答を拾えなくなる。
+ * この書式を変えると `e2e/dialogue.spec.ts` と `e2e/memo.spec.ts` が応答を拾えなくなる。
  */
 
 import type { Transcript } from "@/lib/ai/prompt";

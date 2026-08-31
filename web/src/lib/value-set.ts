@@ -7,7 +7,7 @@
 
 /**
  * 値域を渡して関門を作る。
- * `includes` は型を絞る判定で、`from` は値域の外（未設定・綴り違い）を undefined へ倒す変換。
+ * `includes` は型を絞る判定で、`from` は値域の外（未設定・想定外の値）を undefined へ倒す変換。
  */
 export function valueSet<T extends string>(
   values: readonly T[],
