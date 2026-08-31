@@ -28,15 +28,17 @@
 - `rememberMe`（セッションを覚えないという口）は `/sign-in/email` のリクエストボディにしかなく、OAuth の経路からは届かない。
   文書のどこにもその限定は書かれていない
 
-**判断が要るところは配布物の `dist/` を読んで裏を取った。** 下の理由節に挙げる行番号はすべて 1.7.2 のものである。
+**判断が要るところは配布物の `dist/` を読んで裏を取った。**
+下の理由節に挙げる行番号はすべて 1.7.2 のものである。
 
 ## 決定
 
-1. **cookie の属性を明示する。**
-   `advanced.defaultCookieAttributes` に `httpOnly` / `secure` / `sameSite` の三つを書く。
-   値は 1.7.2 の既定と同じ `true` / `true` / `lax` から始める。
+1. **cookie の属性のうち、環境で値が変わらない二つを明示する。**
+   `advanced.defaultCookieAttributes` に `httpOnly: true` と `sameSite: "lax"` を書く。
+   `secure` は環境で値が変わるので**書かない**。
 2. **属性が実際の応答に乗っていることを検査する。**
    決定 4 と同じ層に置く。
+   `secure` は明示しない分、本番の応答で立っていることをここが見る。
 3. **セッションの寿命を `expiresIn` 1 日（86400 秒）にし、`disableSessionRefresh: true` を立てる。**
    使い続けても期限は延びない。
    ログインから 1 日で必ず切れる。
@@ -45,7 +47,7 @@
 5. **ログインをまたぐ自前の識別子を作らない**（禁止則）。
    匿名セッション・未ログインの下書きの引き継ぎ・自前の「戻り先」cookie に識別子を載せる綴りを入れない。
 6. **`session.cookieCache` を有効にしない**（禁止則）。
-   根拠は要件——失効の即時性を要求しているから。
+   失効の即時性を要求しているので、根拠は要件の側にある。
 7. **`session.deferSessionRefresh` を有効にしない**（禁止則）。
    根拠は構成と副作用で、決定 6 とは別である。
    **一行にまとめず、二行で書く。**
@@ -55,7 +57,7 @@
    **これは暫定措置で、有効期限がある**（下の帰結「移行の順序」）。
 9. **セッションを読む経路を、いま一本に絞る。**
    RSC と Server Actions が必ず通る `getSession` ラッパを一つ置き、`React.cache()` で包む。
-   **述語（誰を通すか）の中身は空でよい**——決定 8 のとおり、いま照合はサインイン時が持つ。
+   決定 8 のとおり照合はサインイン時が持つので、**述語（誰を通すか）の中身は空でよい**。
    戻り値に branded type を付け、データ層の関数はその型しか受け取らない。
    ラッパのファイル以外から `auth` / `auth.api.getSession` を import することを `no-restricted-imports` で禁じる。
 10. **Preview の露出を引き受ける。**
@@ -81,9 +83,13 @@ CSRF はコードの中にあるので設定そのものは diff に残るが、
 版が上がって既定が動いたとき、何に依拠していたかを誰も言えない。
 対価は、上流が既定を強める方向へ動いたとき（`sameSite: "strict"` が既定になるなど）にこちらが取り残されることだが、それは決定 2 の検査が属性を読み上げる形で残るので、気付ける側に倒れる。
 
-**`useSecureCookies: true`（`secure` を常に立てる）を採らなかった条件**: 手元の `pnpm dev` は http なので、立てるとログインできなくなる。
-1.7.2 は `baseURL` のプロトコルと `isProduction` から `secure` を導き、真なら cookie 名に `__Secure-` を付ける（`dist/cookies/index.mjs`）ので、本番では明示しなくても立つ。
+**`secure` だけ明示しなかった条件は、`defaultCookieAttributes` が既定を上書きすることにある。**
+`dist/cookies/index.mjs` の `createCookieGetter` は、算出した属性の**後ろ**に `defaultCookieAttributes` を展開する。
+だから `secure: true` と書けば手元の `pnpm dev`（http）でも立ち、ログインできなくなる——`useSecureCookies: true`（`secure` を常に立てる）を採らないのと同じ理由が、そのまま明示の側へ効く。
+1.7.2 は `baseURL` のプロトコルと `isProduction` から `secure` を導き、真なら cookie 名に `__Secure-` を付けるので、本番では明示しなくても立つ。
+そして `defaultCookieAttributes` は名前の側には効かないので、`secure` だけ手で書くと**属性と `__Secure-` の有無が食い違う**というずれも生む。
 明示するのは値を版から切り離すためで、条件を変えるためではない。
+**環境で値が変わるものは、明示ではなく検査で押さえる**（決定 2）。
 
 **`expiresIn` を既定の 7 日のままにしなかった条件**: 既定は「最後に使ってから 7 日」であって「ログインしてから 7 日」ではない。
 上流は「whenever the session is used and the `updateAge` is reached, the session expiration is updated to the current time plus the `expiresIn` value」と書いており、常用する器では実質的に無期限になる。
@@ -166,7 +172,7 @@ Better Auth 内部の `getSessionFromCtx` は同一 auth コンテキスト内�
 
 **ただし規律の器だけは今作る**（決定 9）。
 高いのは照合そのものではなく「経路を一本に絞る」規律の方で、**コードが小さい今なら安く、大きくなってからは高い**。
-そして述語が `env` の配列から DB のフラグ（`user.banned` 等）へ移っても、器は同じものが要る——停止の即時性という要件は移行で消えないからである。
+そして停止の即時性という要件は移行で消えないので、述語が `env` の配列から DB のフラグ（`user.banned` 等）へ移っても器は同じものが要る。
 だから述語の中身は空でよく、器だけ先に建てる。
 
 **`databaseHooks.user.create.before` にも同じ照合を置く案を、いまは採らなかった条件**: 置かないと汚れが出る。
@@ -210,7 +216,7 @@ Google の redirect URI は事前登録が要りワイルドカードを受け�
 ## 帰結
 
 - `ARCHITECTURE.md` に「セッションについて今も効く禁止則」が入る。
-  **決定 6 と決定 7 は別の行で書く**（理由が違うので、片方の前提が動いたときにもう片方まで緩まないため）
+  理由が違うものを括ると片方の前提が動いた日にもう片方まで緩むので、**決定 6 と決定 7 は別の行で書く**
 - **#111 は、この ADR の決定 10 で閉じる。**
   #111 の三候補（引き受ける / 明示のオプトアウト / cookie 形へ差し替え）はいずれも Basic 認証の話で、#68 が入れば 0013 の覆る条件が発火して対象ごと消える。
   つまり #111 は #68 の到着で自動的に閉じる issue だった
@@ -226,7 +232,7 @@ Google の redirect URI は事前登録が要りワイルドカードを受け�
   資格情報を持つサーバーを別に立てる形は `web/e2e/basic-auth.spec.ts` が先例を持っている
 - **#150（器の外周の守りを決める）の決定 5 が形を変える。**
   決定 6 で `cookieCache` を禁じたので、セッションを消せば次のリクエストで即時に効く（cookie を消すのは `signOut` だけで、`revoke*` 系は DB 行を消すだけだが、行が無ければ次の照会で落ちる）。
-  ただし **`revokeSession` / `revokeSessions` / `revokeOtherSessions` は管理者の道具ではない**——三つとも `ctx.context.session.user.id` を基準にし、`revokeSession` は他人のトークンを渡されても何も消さずに `{status: true}` を返す（`dist/api/routes/session.mjs` 370-474 行）。
+  ただし三つとも `ctx.context.session.user.id` を基準にし、`revokeSession` は他人のトークンを渡されても何も消さずに `{status: true}` を返すので（`dist/api/routes/session.mjs` 370-474 行）、**`revokeSession` / `revokeSessions` / `revokeOtherSessions` は管理者の道具にならない**。
   「特定の人のセッションを管理者として切る」が要るなら、admin プラグインを入れるか直接 SQL の手順書を用意することになる
 
 ### 移行の順序（決定 8 の有効期限）
@@ -268,7 +274,7 @@ DB のフラグへ移ると `maxAge` の分だけ遅れるようになる。
   セッションを切る口（admin プラグインか、直接 SQL の手順書）を先に用意する
 - **`React.cache()` の重複除去を入れた上でなお DB 往復が実測で効くと分かったら。**
   `cookieCache` の単純な有効化ではなく、重い決定の経路だけ authoritative read にする二層化を検討する。
-  **段数や勘で遅いと決めない**——0020 が同じ規律を書いている
+  0020 が同じ規律を書いているとおり、**段数や勘で遅いと決めない**
 - **Better Auth の既定が動いて、決定 1 で明示した値と食い違ったら。**
   明示している以上こちらの値が勝つが、上流が既定を強めたのなら追随を検討する
 - **Better Auth が 1.8 系へ上がったら。**
