@@ -8,6 +8,7 @@
  */
 
 import { readAnthropicProviders } from "@/lib/ai/anthropic";
+import { readFakeMode } from "@/lib/ai/provider";
 
 /**
  * アプリからの接続先。
@@ -21,4 +22,7 @@ export const DATABASE_URL = process.env.DATABASE_URL;
  * 解決済みの、系統ごとの AI プロバイダ。
  * プロバイダはアプリ全体で一つで、系統で分かれるのは思考の深さだけ（ADR-0021）。
  */
-export const AI_PROVIDERS = readAnthropicProviders(process.env);
+export const AI_PROVIDERS = readAnthropicProviders(
+  process.env,
+  readFakeMode(process.env),
+);

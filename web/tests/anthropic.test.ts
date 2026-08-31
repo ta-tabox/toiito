@@ -85,7 +85,7 @@ describe("既定値", () => {
 
 describe("readAnthropicSettings", () => {
   it("未設定なら既定へ倒す", () => {
-    expect(readAnthropicSettings({})).toEqual({
+    expect(readAnthropicSettings({}, false)).toEqual({
       concrete: {
         model: ANTHROPIC_DEFAULTS.model,
         maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
@@ -108,7 +108,7 @@ describe("readAnthropicSettings", () => {
       TOIITO_ANTHROPIC_MODEL: OVERRIDE.model,
       TOIITO_ANTHROPIC_MAX_TOKENS: String(OVERRIDE.maxTokens),
     };
-    const settings = readAnthropicSettings(env);
+    const settings = readAnthropicSettings(env, false);
 
     expect(settings.concrete.model).toBe(OVERRIDE.model);
     expect(settings.abstract.model).toBe(OVERRIDE.model);
@@ -118,31 +118,28 @@ describe("readAnthropicSettings", () => {
 
   it("数として読めない TOIITO_ANTHROPIC_MAX_TOKENS は既定へ倒す", () => {
     expect(
-      readAnthropicSettings({ TOIITO_ANTHROPIC_MAX_TOKENS: "" }).concrete
+      readAnthropicSettings({ TOIITO_ANTHROPIC_MAX_TOKENS: "" }, false).concrete
         .maxTokens,
     ).toBe(ANTHROPIC_DEFAULTS.maxTokens);
     expect(
-      readAnthropicSettings({ TOIITO_ANTHROPIC_MAX_TOKENS: "たくさん" })
+      readAnthropicSettings({ TOIITO_ANTHROPIC_MAX_TOKENS: "たくさん" }, false)
         .concrete.maxTokens,
     ).toBe(ANTHROPIC_DEFAULTS.maxTokens);
   });
 
-  it("フェイクモードが立つのは 1 のときだけ", () => {
-    expect(readAnthropicSettings({ TOIITO_FAKE_AI: "1" }).concrete.fake).toBe(
-      true,
-    );
-    expect(readAnthropicSettings({ TOIITO_FAKE_AI: "0" }).concrete.fake).toBe(
-      false,
-    );
-    expect(
-      readAnthropicSettings({ TOIITO_FAKE_AI: "true" }).concrete.fake,
-    ).toBe(false);
+  it("渡されたフェイクモードが全系統に載る", () => {
+    const settings = readAnthropicSettings({}, true);
+
+    expect(settings.concrete.fake).toBe(true);
+    expect(settings.abstract.fake).toBe(true);
   });
 
   it("TOIITO_ANTHROPIC_EFFORT_ABSTRACT の上書きが効く", () => {
     const env = { TOIITO_ANTHROPIC_EFFORT_ABSTRACT: OVERRIDE.effort };
 
-    expect(readAnthropicSettings(env).abstract.effort).toBe(OVERRIDE.effort);
+    expect(readAnthropicSettings(env, false).abstract.effort).toBe(
+      OVERRIDE.effort,
+    );
   });
 
   it("深さの値域の外は既定へ倒す", () => {
@@ -150,7 +147,7 @@ describe("readAnthropicSettings", () => {
       TOIITO_ANTHROPIC_EFFORT_CONCRETE: "middle",
       TOIITO_ANTHROPIC_EFFORT_ABSTRACT: "middle",
     };
-    const settings = readAnthropicSettings(env);
+    const settings = readAnthropicSettings(env, false);
 
     expect(settings.concrete.effort).toBe(ANTHROPIC_DEFAULTS.effort.concrete);
     expect(settings.abstract.effort).toBe(ANTHROPIC_DEFAULTS.effort.abstract);
@@ -159,9 +156,10 @@ describe("readAnthropicSettings", () => {
 
 describe("readAnthropicProviders", () => {
   it("系統ごとに、その系統の設定を抱えたプロバイダを返す", () => {
-    const providers = readAnthropicProviders({
-      TOIITO_ANTHROPIC_EFFORT_ABSTRACT: ANTHROPIC_EFFORT.xhigh,
-    });
+    const providers = readAnthropicProviders(
+      { TOIITO_ANTHROPIC_EFFORT_ABSTRACT: ANTHROPIC_EFFORT.xhigh },
+      false,
+    );
 
     expect(providers.concrete.name).toBe("anthropic");
     expect(providers.concrete.settings.effort).toBe(

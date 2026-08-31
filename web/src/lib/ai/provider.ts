@@ -8,6 +8,20 @@
  * 呼び出しごとに変わるのは本文だけで、設定は env から作った時点で決まっている。
  */
 
+/** フェイクモードに効く環境変数。 */
+type FakeEnv = {
+  readonly TOIITO_FAKE_AI?: string;
+  readonly [key: string]: string | undefined;
+};
+
+/**
+ * env からフェイクモードを読む。
+ * どのプロバイダを叩くかに依らない指定なので、綴りの正をここが持ち、実装には解決済みの真偽値を渡す。
+ */
+export function readFakeMode(env: FakeEnv): boolean {
+  return env.TOIITO_FAKE_AI === "1";
+}
+
 /**
  * どのプロバイダの設定も持つ欄。
  * ここに挙げた三つは、実装を選ぶ前に規約の側が読む。

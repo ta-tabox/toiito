@@ -48,7 +48,6 @@ const EFFORTS = valueSet<AnthropicEffort>(Object.values(ANTHROPIC_EFFORT));
 type AnthropicEnv = {
   readonly TOIITO_ANTHROPIC_MODEL?: string;
   readonly TOIITO_ANTHROPIC_MAX_TOKENS?: string;
-  readonly TOIITO_FAKE_AI?: string;
   readonly ANTHROPIC_API_KEY?: string;
   readonly TOIITO_ANTHROPIC_EFFORT_CONCRETE?: string;
   readonly TOIITO_ANTHROPIC_EFFORT_ABSTRACT?: string;
@@ -96,15 +95,17 @@ export const ANTHROPIC_DEFAULTS = {
  *
  * 深さだけが系統で分かれ、残りは全系統で同じ値になる。
  * 数として読めない値（未設定・空・非数）と、深さの値域の外はどちらも既定へ倒す。
+ * フェイクモードは env に依らずプロバイダを叩くかどうかの指定なので、解決済みの値を受け取る。
  */
 export function readAnthropicSettings(
   env: AnthropicEnv,
+  fake: boolean,
 ): Record<PersonaRole, AnthropicSettings> {
   const shared = {
     model: env.TOIITO_ANTHROPIC_MODEL ?? ANTHROPIC_DEFAULTS.model,
     maxTokens:
       Number(env.TOIITO_ANTHROPIC_MAX_TOKENS) || ANTHROPIC_DEFAULTS.maxTokens,
-    fake: env.TOIITO_FAKE_AI === "1",
+    fake,
     apiKey: env.ANTHROPIC_API_KEY,
   } as const;
 
@@ -197,8 +198,9 @@ export class AnthropicProvider extends AiProvider {
  */
 export function readAnthropicProviders(
   env: AnthropicEnv,
+  fake: boolean,
 ): Record<PersonaRole, AnthropicProvider> {
-  const settings = readAnthropicSettings(env);
+  const settings = readAnthropicSettings(env, fake);
 
   return {
     concrete: new AnthropicProvider(settings.concrete),

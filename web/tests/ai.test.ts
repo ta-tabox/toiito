@@ -11,6 +11,7 @@ import {
   AnthropicProvider,
   type AnthropicSettings,
 } from "@/lib/ai/anthropic";
+import { readFakeMode } from "@/lib/ai/provider";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -74,6 +75,15 @@ function sentBody(fetchMock: ReturnType<typeof stubApiResponse>) {
     messages: { content: string }[];
   };
 }
+
+describe("readFakeMode", () => {
+  it("立つのは 1 のときだけ", () => {
+    expect(readFakeMode({ TOIITO_FAKE_AI: "1" })).toBe(true);
+    expect(readFakeMode({ TOIITO_FAKE_AI: "0" })).toBe(false);
+    expect(readFakeMode({ TOIITO_FAKE_AI: "true" })).toBe(false);
+    expect(readFakeMode({})).toBe(false);
+  });
+});
 
 describe("フェイクモード", () => {
   it("ネットワークに出ず、ペルソナ ID と直近の人間発話を含む決定的応答を返す", async () => {
