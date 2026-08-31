@@ -12,7 +12,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { callPersona } from "@/lib/ai";
-import { AI_PROVIDERS } from "@/lib/config";
+import { AI_PROVIDERS } from "@/lib/ai/providers";
 import {
   addMemo,
   addMessage,

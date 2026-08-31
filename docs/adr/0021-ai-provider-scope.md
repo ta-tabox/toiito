@@ -17,12 +17,13 @@ AI に関する語彙が三つのモジュールへ散っている。
 
 ## 決定
 
-`src/lib/ai/` を作り、次の五枚へ切り直す。
+`src/lib/ai/` を作り、次の六枚へ切り直す。
 
 - `ai/index.ts` — 呼び出しの規約と、一回の呼び出しの手順（フェイクモードへの分岐・呼び出しの記録・欠けた本文を返さないこと）
 - `ai/provider.ts` — プロバイダ一つ分の契約（`AiProvider`・`CommonSettings`・`ProviderResponse`）
 - `ai/prompt.ts` — モデルへ渡す本文の組み立てと、その材料の型（`QuestionRef`・`Transcript`）
 - `ai/fake.ts` — フェイクモードの応答（E2E がアサートする綴り）
+- `ai/providers.ts` — `process.env` を渡して解決済みのプロバイダを作る一枚
 - `ai/anthropic.ts` — Anthropic 固有の一切（深さの値域・設定型・env からの読み・HTTP の作法）
 
 依存は一方向に揃える。
@@ -65,8 +66,9 @@ AI に関する語彙が三つのモジュールへ散っている。
 綴りを読むのも規約の側（`ai/provider.ts`）で、プロバイダへは解決済みの真偽値を渡す。
 名乗らせない値をプロバイダ側が読んでいると、二つ目を足したときに同じ綴りが二箇所へ増える。
 
-**`process.env` を読むのは `config.ts` のままとする。**
-`ai/anthropic.ts` が持つのは env を模した object を受ける純関数で、`process.env` を渡すのは `config.ts` である（HARNESS.md「テスト可能性の設計制約」2 は変わらない）。
+**`process.env` を渡すのは、その値を使う層の入口とする。**
+AI プロバイダは `ai/providers.ts` が解決し、`config.ts` に残るのは DB への接続先だけになる。
+`ai/anthropic.ts` が持つのは env を模した object を受ける純関数なので、env の読み方を純関数として検査できるという HARNESS.md「テスト可能性の設計制約」2 の眼目は変わらない。
 
 ## 理由
 
@@ -88,14 +90,18 @@ AI に関する語彙が三つのモジュールへ散っている。
 二つ目が実在しない段階で選択の口を作っても、正しさを確かめる相手がいない。
 プロバイダは系統ごとに解決されているので、広げるときに要るのは env と、どのクラスを構築するかの配線だけである。
 
+解決済みのプロバイダを `config.ts` でなく `ai/providers.ts` へ置くのは、プロバイダを探す読み手が `lib/ai` を見るからである。
+config は設定の定義を置く場所で、AI はこのアプリの機能そのものなので、そこから実体を取り出す形は辿れない。
+Basic 認証の資格情報を `proxy.ts` が自分で解決しているのと同じ形になる。
+
 env の改名をいま行うのは、二つ目が来てから直すより安いからである。
 対象は 4 本で、触るのは手元の `.env.local` と Vercel の Production / Preview に限られる。
 据え置くと `TOIITO_MODEL` が「どちらのモデルか」を答えられないまま残る。
 
 ## 帰結
 
-- `AI_SETTINGS` と `PERSONA_EFFORT` は無くなり、系統ごとのプロバイダ（`AI_PROVIDERS`）に置き換わる
-- `config.ts` に残るのは `DATABASE_URL` と `AI_PROVIDERS` の解決だけになる
+- `AI_SETTINGS` と `PERSONA_EFFORT` は無くなり、系統ごとのプロバイダ（`ai/providers.ts` の `AI_PROVIDERS`）に置き換わる
+- `config.ts` に残るのは `DATABASE_URL` だけになる
 - `ARCHITECTURE.md` の「Claude API」を、プロバイダの一つとして書き直す
 - env の改名に、手元の `.env.local` と Vercel の環境変数の書き換えが要る。
   旧名のまま残った変数は既定へ倒れるので、落ちずに設定だけが効かなくなる

@@ -6,7 +6,7 @@
  * 何をどう見せるか（本文の組み立て）と、応答をどう扱うか（記録・打ち切りの拒否）は規約の側の決め事なので持たない。
  *
  * `process.env` は読まない。
- * env を模した object を受ける純関数だけを出し、`process.env` を渡すのは config.ts（HARNESS.md「テスト可能性の設計制約」2）。
+ * env を模した object を受ける純関数だけを出し、`process.env` を渡すのは providers.ts（HARNESS.md「テスト可能性の設計制約」2）。
  */
 
 import {

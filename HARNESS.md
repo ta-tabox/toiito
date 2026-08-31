@@ -186,7 +186,8 @@ Playwright のドラッグでは文字の途中で始まる範囲を安定して
 1. **ロジックは lib 層へ寄せる**。
    UI コンポーネントや Server Actions にロジックを埋めない。
    actions.ts は「lib を呼ぶ配線」に留める
-2. **`process.env` を読むのは `web/src/lib/config.ts` と `web/src/proxy.ts` だけ**（前者が DB 接続先と AI の設定、後者が Basic 認証）。
+2. **`process.env` を読むのは、その値を使う層の入口だけ**（`lib/config.ts` が DB 接続先、`lib/ai/providers.ts` が AI プロバイダ、`proxy.ts` が Basic 認証）。
+   探す側が使う場所から辿れるよう、解決済みの値は使う層に置く。
    env から値への写像と既定値は、その値を使う側のモジュールが純関数として持つ（`lib/ai/anthropic.ts` の `readAnthropicSettings` と `ANTHROPIC_DEFAULTS`、`lib/basic-auth.ts` の `readBasicAuthCredentials`）。
    他のモジュールは解決済みの値を参照する。
    呼び出しごとに変わりうる値は引数で受け取る。
