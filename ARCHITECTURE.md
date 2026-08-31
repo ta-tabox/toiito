@@ -94,7 +94,7 @@ memo_links     （将来）メモ間・問い間のリンキング辺
 
 **絞り込みは `db.ts` の repo 関数が行う**。
 UI 側でやらない。
-入口の `proxy.ts` は cookie の有無しか見ない楽観的な判定なので、他人のリソースを弾く最後の層はここになる。
+入口の `proxy.ts` は cookie の有無しか見ない楽観的な判定なので、**他人のリソースを弾く最後の層は repo 関数になる**。
 
 認証まわりの四表（`user` / `session` / `account` / `verification`）は Better Auth が持ち、綴りは生成されたままにする（`db.ts` から読まないので、snake_case へ揃える利益が発生しない）。
 **Better Auth の `session` は対話の `sessions` と別物である**——前者はログイン、後者は問いへの再訪。
