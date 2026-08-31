@@ -6,6 +6,7 @@
  */
 
 import { selectPruneTargets } from "@scripts/prune-test-databases.ts";
+import { toDatabaseSlug } from "@tests/setup/test-database-url";
 import { describe, expect, it } from "vitest";
 
 describe("selectPruneTargets", () => {
@@ -50,6 +51,12 @@ describe("selectPruneTargets", () => {
       "toiito_129_e2e",
       "toiito_129_perf",
     ]);
+  });
+
+  it("英数字を持たない worktree 名から派生した DB も拾う", () => {
+    const derived = `toiito_wt_${toDatabaseSlug("問い設計")}_test`;
+
+    expect(selectPruneTargets([derived], []).orphans).toEqual([derived]);
   });
 
   it("他のプロジェクトのデータベースには触れない", () => {

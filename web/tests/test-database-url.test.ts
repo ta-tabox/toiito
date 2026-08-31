@@ -68,6 +68,14 @@ describe("toDatabaseSlug", () => {
       false,
     );
   });
+
+  it("英数字を一つも持たない名前でも空を返さない", () => {
+    expect(toDatabaseSlug("問い設計")).toMatch(/^[a-z0-9]+$/);
+  });
+
+  it("英数字を一つも持たない名前どうしを、同じスラグへ潰さない", () => {
+    expect(toDatabaseSlug("問い設計")).not.toBe(toDatabaseSlug("設計の検討"));
+  });
 });
 
 describe("testDatabaseName", () => {

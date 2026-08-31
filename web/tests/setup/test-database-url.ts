@@ -7,6 +7,7 @@
  * 足してよいのは node の組み込みだけ。
  */
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -30,6 +31,16 @@ const MAX_SLUG_LENGTH = 48;
 const repositoryRoot = path.resolve(import.meta.dirname, "../../..");
 
 /**
+ * 英数字を一つも持たない名前の代わりに使う短縮ハッシュ。
+ *
+ * 日本語だけのディレクトリ名は潰すと何も残らず、どれも同じ名前の DB を指してしまう。
+ * 読める名前を諦めてでも別々の DB を向ける方を採るのは、隔離が消えると汚染が黙って戻るため。
+ */
+function hashedSlug(name: string): string {
+  return crypto.createHash("sha256").update(name).digest("hex").slice(0, 8);
+}
+
+/**
  * ディレクトリ名をデータベース名の部品へ均す。
  *
  * 英数字以外をすべて `_` へ潰す。
@@ -37,12 +48,19 @@ const repositoryRoot = path.resolve(import.meta.dirname, "../../..");
  *
  * 上限を超えたときに落とすのは先頭側。
  * worktree 名は末尾に一意の接尾辞を持つので、頭を残して尻を切ると別の worktree と同じ名前になる。
+ *
+ * 空は返さない。
+ * 呼ぶ側は前後に `toiito_wt_` と `_test` を繋いだ名前を作るので、空を返すと掃除の側が派生名として見分けられなくなる。
  */
 export function toDatabaseSlug(name: string): string {
   const normalized = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+
+  if (normalized === "") {
+    return hashedSlug(name);
+  }
 
   return normalized.slice(-MAX_SLUG_LENGTH).replace(/^_+/, "");
 }
