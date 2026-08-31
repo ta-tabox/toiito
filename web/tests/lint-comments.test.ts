@@ -98,7 +98,7 @@ describe("テストファイルの免除", () => {
     expect(rulesOf(source, "src/app/page.test.tsx")).toEqual([]);
   });
 
-  it("spec の綴りも同じに扱う", () => {
+  it("spec という名前も同じに扱う", () => {
     const source = 'import { it } from "vitest";\n';
 
     expect(rulesOf(source, "src/lib/range.spec.ts")).toEqual([]);
