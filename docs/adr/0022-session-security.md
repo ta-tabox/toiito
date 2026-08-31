@@ -18,14 +18,17 @@
 だから下の判断は、上流の文書と、npm の配布物（`better-auth@1.7.2` の `dist/`）を読んで確かめた。
 版は 0019 が固定した 1.7.2 のままである（2026-09-01 に npm の `latest` で確認。2026-08-26 公開・MIT）。
 
-**確かめる過程で、上流の文書だけに依拠できないことが分かった。**
-三つ出ている。
+**確かめる過程で、上流の文書だけに依拠できないことが三度出た。**
 
 - Cookies ページは「All cookies are `httpOnly` and `secure` when the server is running in production mode.」と書いており、`httpOnly` まで production 条件のように読める。
   実装（`dist/cookies/index.mjs` の `createCookieGetter`）は `httpOnly: true` を無条件で立てており、条件が掛かっているのは `secure` だけである
-- Session Management ページは `cookieCache` について、隣り合う段落で逆のことを書いている（下の「決めなかったこと」）
+- Session Management ページは、`cookieCache` について隣り合う段落で逆に読める二文を並べている——「If a session is revoked or expires, the cookie will be invalidated automatically.」と「revoked sessions may remain active on other devices until the cookie cache expires (`maxAge`)」。
+  読み解くと矛盾ではなく、**前者は時間失効**（期限が cookie に焼けているので勝手に切れる）、**後者は取り消し**（焼けないのでサーバーが他端末の cookie に触れない）を指している。
+  ただし前者の文面は "revoked or expires" と両方を含んで書かれているので、**文書だけを読んで安全側だと判断すると間違える**
 - `rememberMe`（セッションを覚えないという口）は `/sign-in/email` のリクエストボディにしかなく、OAuth の経路からは届かない。
   文書のどこにもその限定は書かれていない
+
+**判断が要るところは配布物の `dist/` を読んで裏を取った。** 下の理由節に挙げる行番号はすべて 1.7.2 のものである。
 
 ## 決定
 
@@ -41,33 +44,27 @@
    `web/e2e/`（退行を機械が捕まえる）と `DEPLOY.md` の curl（本番の実体を見る）。
 5. **ログインをまたぐ自前の識別子を作らない**（禁止則）。
    匿名セッション・未ログインの下書きの引き継ぎ・自前の「戻り先」cookie に識別子を載せる綴りを入れない。
-6. **Preview の露出を引き受ける。**
-   0019 決定 7 のフェイク認証だけにし、Basic 認証は #68 で予定どおり外す。
-   **引き受ける条件は「Preview に本番のデータが無いこと」**で、条件が崩れればこの決定も崩れる。
-
-### 決めなかったこと
-
-**`cookieCache` と `deferSessionRefresh` の扱い**、および**許可リストの判定頻度**は、ここでは決めない。
-#149 に残す（規約 5——未決の論点は issue が持つ）。
-
-材料だけ置いておく。
-
-- `cookieCache` を有効にすると、**0019 決定 4 の理由が黙って消える**。
-  0019 が JWT を採らなかった条件は「発行済みを取り消せないので、#69（管理機能）の停止が次の期限切れまで効かない」だった。
-  `cookieCache` は同じ性質を DB セッションへ持ち込む——上流の注意書きは「When `cookieCache` is enabled, revoked sessions may remain active on other devices until the cookie cache expires (`maxAge`).」と書き、理由に「The server cannot directly delete cookies from other devices」を挙げている。
-  **同じページの二段落上には「If a session is revoked or expires, the cookie will be invalidated automatically.」と逆のことが書いてある。**
-  上流の記述が割れている以上、「上流がそう書いているから安全」という形の根拠はここでは立たない
-- `deferSessionRefresh` は**性質が違う**。
-  DB は毎回引くので失効の即時性は落ちず、落ちるのは期限延長のタイミングだけである。
-  同じ理由では禁じられない。
-  別の理由（この器の DB は Neon 一本でリードレプリカを持たないので、有効化する理由がそもそも無い）なら立つ
-- 許可リスト（0018 決定 3）は**いつ照合するかが決まっていない**。
-  サインイン時だけなら `databaseHooks.session.create.before` が使え（上流は「If the hook returns `false`, the operation will be aborted.」と書く）、毎リクエストならアプリ側の `getSession` ラッパに置く。
-  後者は `proxy.ts` を触らないので、**0019 決定 5（入口は cookie の有無だけを見る）とは噛まない**
+6. **`session.cookieCache` を有効にしない**（禁止則）。
+   根拠は要件——失効の即時性を要求しているから。
+7. **`session.deferSessionRefresh` を有効にしない**（禁止則）。
+   根拠は構成と副作用で、決定 6 とは別である。
+   **一行にまとめず、二行で書く。**
+8. **許可リストの照合はサインイン時だけにする。**
+   `databaseHooks.session.create.before` で環境変数の一覧と照合し、載っていなければ `false` を返す。
+   毎リクエスト照合はしない。
+   **これは暫定措置で、有効期限がある**（下の帰結「移行の順序」）。
+9. **セッションを読む経路を、いま一本に絞る。**
+   RSC と Server Actions が必ず通る `getSession` ラッパを一つ置き、`React.cache()` で包む。
+   **述語（誰を通すか）の中身は空でよい**——決定 8 のとおり、いま照合はサインイン時が持つ。
+   戻り値に branded type を付け、データ層の関数はその型しか受け取らない。
+   ラッパのファイル以外から `auth` / `auth.api.getSession` を import することを `no-restricted-imports` で禁じる。
+10. **Preview の露出を引き受ける。**
+    0019 決定 7 のフェイク認証だけにし、Basic 認証は #68 で予定どおり外す。
+    **引き受ける条件は「Preview に本番のデータが無いこと」**で、条件が崩れればこの決定も崩れる。
 
 ## 理由
 
-**決め手は、この器で同じ型の失敗が二度出ていることだった。**
+**決め手は、この器で同じ型の失敗が二度出ていることだった**（決定 1・2・4）。
 
 一度目は 0013（2026-08-29）である。
 本番の Vercel Authentication（Standard Protection）が production の domain を守っておらず、同じ ADR がもう一つ拾っている——旧 `middleware` 規約の Edge ランタイムでは `process.env` が空になり、**素通しへ倒す分岐だけが生き残る**形になっていた。
@@ -93,8 +90,13 @@ CSRF はコードの中にあるので設定そのものは diff に残るが、
 問いは私的なので、共有端末に開きっぱなしのブラウザがある状態を無期限では引き受けない。
 `ARCHITECTURE.md`「快適さの最適化をしない」の切り分けに照らすと、一日一回のログインは**妨害ではなく摩擦**の側にある。
 
+**1 日の天井が硬いことは配布物で確かめた**（決定 8 がこれに寄り掛かるので、程度でなく確実さが要る）。
+`disableSessionRefresh` は `dist/api/routes/session.mjs` の一箇所にしか現れず、`needsRefresh` を常に false にする（173-175 行）。
+`expiresAt` へ書くのは同 192 行の延長と作成時だけで、`dist/api/routes/update-session.mjs` は additionalFields しか通さず `token` / `userId` / `expiresAt` / `createdAt` / `updatedAt` を弾く。
+**発行時に一度書かれてそれきりになる。**
+
 **`rememberMe` で窓を縮める案を採らなかった条件**: 採れないことが分かった。
-`rememberMe` は `/sign-in/email` のリクエストボディにしかなく（`dist/api/routes/sign-in.mjs`）、OAuth の経路は `createSession(user.id, void 0, ...)` と第二引数を渡さない（`dist/oauth2/link-account.mjs`）。
+`rememberMe` は `/sign-in/email` のリクエストボディにしかなく（`dist/api/routes/sign-in.mjs`）、OAuth の経路は `createSession(user.id, void 0, ...)` と第二引数を渡さない（`dist/oauth2/link-account.mjs` 268 行）。
 callback 側も `setSessionCookie(c, { session, user })` で `dontRememberMe` を渡さないので、cookie は `maxAge = expiresIn` の永続 cookie になる。
 **0019 決定 3 が Google OAuth 一本と決めた以上、窓を縮めるレバーは `expiresIn` だけである。**
 
@@ -109,16 +111,81 @@ OAuth の callback も同じ `createSession` を通る。
 決定として書けるのは、その性質をこちらが壊さないという禁止則の側だけである（決定 5）。
 0018 が anonymous を採らなかった条件（招待は宛先を要求し、anonymous は識別子を持たない）に、これで理由が一本増える——Better Auth の `anonymous` プラグインは匿名セッションをログイン後の利用者へ引き継ぐことが役目なので、決定 5 と正面から噛む。
 
-**CSRF の検査を `web/tests/`（単体）に置かなかった条件**: 置く対象が無い。
-判定を持っているのは Next と Better Auth であって、この器のコードではない。
-守っているのは二つの別の機構である——Better Auth の口（`/api/auth/*`）は Origin 検証・`SameSite=Lax`・Fetch Metadata が守り、Server Actions は Next が守る（16.3.3 の文書は「Next.js compares the origin of a Server Action request with the host domain, ensuring they match to prevent CSRF attacks.」と書く）。
-どちらも純関数として切り出せないので、**実際のリクエストでしか見えない**。
+### 決定 6 — `cookieCache` を有効にしない
 
-**`web/e2e/` だけに置かなかった条件**: 0013 が同じ判断を Basic 認証で通っている。
-e2e は退行を捕まえるが、**Vercel のランタイム差を再現しない**——0013 の一度目（Edge の `process.env`）はまさにそこから見えない場所にあった。
-本番の URL を直接叩く curl だけがそれを捕まえられるので、デプロイの手順に組み込む。
+根拠は**要件**である。
+0019 決定 4 が JWT を採らなかった条件は「発行済みを取り消せないので、#69（管理機能）の停止が次の期限切れまで効かない」だった。
+`cookieCache` を有効にすると、セッションを取り消しても `maxAge` の間はキャッシュ経路で通る。
+**DB が権威であることが、その区間だけ成り立たなくなる。**
 
-**Preview の露出を引き受けなかった側に倒さなかった条件**: 露出の中身が、Preview に本番のデータが無いという構造で既に限定されている。
+**`maxAge` の上限だけ決める案（60 秒など）を採らなかった条件**: 短くしても性質は戻らない。
+問題は区間の長さではなく**区間が存在するかどうか**で、「停止したら即座に止まる」を要件文に書けるかがそこで変わる。
+60 秒でも書けなくなる。
+
+**障害時の倒れ方も逆になる。**
+キャッシュ無しなら DB へ届かない＝誰も通らない（fail-closed）。
+有りなら DB へ届かなくても窓の間は通る（fail-open）。
+守りの設定が壊れたときに素通しへ倒れる形は、0013 が Edge の `process.env` で一度踏んでいる。
+
+**速度が問題になったときに先に手を付けるのは `cookieCache` ではない。**
+決定 9 のラッパを `React.cache()` で包めば、1 HTTP リクエスト内で何度呼んでも DB は 1 回になる。
+これは取り消しの窓を一切作らない。
+Better Auth 内部の `getSessionFromCtx` は同一 auth コンテキスト内でしかキャッシュしないので、RSC 間では効かない——だからアプリ側で包む必要がある。
+
+**`cookieCache.refreshCache` は、この器では発火しない**（`dist/context/create-context.mjs` 149-158 行）。
+`database` か `secondaryStorage` があると強制的に false へ落とし、warn を出す。
+有効だと DB を引かずに cookie から cookie を焼き直すので、取り消しの窓がセッション寿命まで伸びる。
+
+### 決定 7 — `deferSessionRefresh` を有効にしない
+
+根拠は**構成と副作用**で、三つある。
+**うち二つはリードレプリカを入れても消えない。**
+
+1. この器の DB は Neon 一本でリードレプリカを持たない（0012）ので、解こうとしている問題が存在しない
+2. `needsRefresh` を見て POST を撃つのは**クライアントの JS** である。
+   RSC / Server Action からサーバー側で呼ぶ経路には、延命を実行する主体がいない
+3. **決定 3 の `disableSessionRefresh: true` と組み合わせると、期限切れのセッション行が DB から一度も掃除されなくなる。**
+   `dist/api/routes/session.mjs` 155 行の掃除は `if (!deferSessionRefresh || isPostRequest)` で守られており、`deferSessionRefresh` が有効なら POST でしか走らない。
+   その POST を撃つ合図が `needsRefresh` だが、`disableSessionRefresh: true` だとこれは常に false になる（173-175 行）。
+   **条件が永久に成立しない。**
+   cookie は消えるので認証は正しく落ちる。溜まるのはゴミ行だけである
+
+**決定 6 と一行にまとめなかった条件**: 理由が違うものを同じ根拠で括ると、片方の前提が変わった日にもう片方まで一緒に緩む。
+リードレプリカを入れれば理由 1 は消えるが、決定 6 の根拠（失効の即時性）は動かない。
+逆に停止の要件が消えても、理由 2 と 3 は残る。
+
+### 決定 8 — 許可リストの照合はサインイン時だけ（暫定）
+
+**毎リクエスト照合をいま採らなかった条件は、決定 3 の天井が硬いことである。**
+許可リストから外しても既存セッションは生き続けるが、`expiresIn` 1 日 + `disableSessionRefresh: true` なので**窓は最大 1 日で頭打ち**になり、使用による延長も起きない（上で配布物を読んで確かめたとおり）。
+現段階の想定場面は「気が変わった / 関係が終わった」であって、数名・信頼関係が前提の器では 1 日の遅れを許容できる。
+
+**そして許可リストそのものが足場である。**
+0018 決定 3 は構成が固まるまでの持ち方として環境変数を選んだもので、本格運用ではアカウント登録制へ移り、明示的な許可リストは廃止する。
+いま毎リクエスト照合を書くと、廃止する述語のために規律を敷くことになる。
+
+**ただし規律の器だけは今作る**（決定 9）。
+高いのは照合そのものではなく「経路を一本に絞る」規律の方で、**コードが小さい今なら安く、大きくなってからは高い**。
+そして述語が `env` の配列から DB のフラグ（`user.banned` 等）へ移っても、器は同じものが要る——停止の即時性という要件は移行で消えないからである。
+だから述語の中身は空でよく、器だけ先に建てる。
+
+**`databaseHooks.user.create.before` にも同じ照合を置く案を、いまは採らなかった条件**: 置かないと汚れが出る。
+`dist/oauth2/link-account.mjs` は 220-234 行で `createUser` と `createAccount` を一つの transaction で作り、`createSession` はその後の 268 行にある。
+つまり許可リストに無い人が Google で入ろうとすると、**`user` 行と `account` 行が作られてからセッションだけ拒否される**（`dist/db/with-hooks.mjs` 17 行の `if (result === false) return null` が発火し、268 行の null チェックが `{ error: "unable to create session" }` を返す）。
+帰結は三つ——`user` テーブルが利用者一覧として読めなくなる、拒否した相手の email を保持し続ける、後からその人を招待したとき既存ユーザーとして扱われる。
+**どれも汚れの実害であって、認可そのものは効いている。**
+一方で置く側にすると、`false` を返した瞬間に `link-account.mjs` 内の `createdUser.id` の参照が TypeError になり、外側の try/catch が `logger.error("Unable to create OAuth user", e)` を出す。
+動作は正しいが、ログの上で「意図した拒否」と「本当の障害」が見分けられなくなる。
+暫定期間の許容範囲だと判断した。
+**採る条件**: `user` テーブルの汚れが実際に読みにくさを生んだとき。
+そのときはフック側で先に自前のログを出して、見分けが付く形にしてから置く。
+
+**`user.create.before` は毎リクエスト照合の代わりにならない。**
+既存ユーザーには二度と走らないので、「後から許可リストを外された既存ユーザー」には効かない。
+
+### 決定 10 — Preview の露出を引き受ける
+
+**引き受けなかった側に倒さなかった条件**: 露出の中身が、Preview に本番のデータが無いという構造で既に限定されている。
 #111（Preview の Basic 認証がブランチごとに手入力を要求する）の実測（2026-08-29）はこうである——Preview は二重に守られており、外側の Vercel Authentication は `?_vercel_share=<トークン>` 付きの共有リンク一本で抜ける（有効 23 時間）。
 実際にこの経路で外側を抜け、内側の Basic 認証が 401 を返すことまで確かめてある。
 だから内側を外すと、漏れた共有リンクがそのままアプリの中身に届く。
@@ -138,42 +205,79 @@ Google の redirect URI は事前登録が要りワイルドカードを受け�
 **共有リンクを発行しない運用にする案を採らなかった条件**: 発行しなければ漏れないが、これは運用の約束であって機械が守らない。
 0013 が学んだのは、設定でなく約束に頼った状態が「掛けたつもり」を作ることだった。
 単独では採らない。
-決定 6 に足す注意としてなら成り立つので、`DEPLOY.md` の側で扱う。
+決定 10 に足す注意としてなら成り立つので、`DEPLOY.md` の側で扱う。
 
 ## 帰結
 
-- `ARCHITECTURE.md` に「セッションについて今も効く禁止則」が入る（決定 5）
-- **#111 は、この ADR の決定 6 で閉じる。**
+- `ARCHITECTURE.md` に「セッションについて今も効く禁止則」が入る。
+  **決定 6 と決定 7 は別の行で書く**（理由が違うので、片方の前提が動いたときにもう片方まで緩まないため）
+- **#111 は、この ADR の決定 10 で閉じる。**
   #111 の三候補（引き受ける / 明示のオプトアウト / cookie 形へ差し替え）はいずれも Basic 認証の話で、#68 が入れば 0013 の覆る条件が発火して対象ごと消える。
   つまり #111 は #68 の到着で自動的に閉じる issue だった
 - **0013 は覆らない。**
-  覆る条件の一つ目（#68 が入ったら外す）が変わっておらず、決定 6 はその予定を Preview にも適用すると確認しただけである
+  覆る条件の一つ目（#68 が入ったら外す）が変わっておらず、決定 10 はその予定を Preview にも適用すると確認しただけである
 - **0019 は supersede しない。**
   決定 7（Preview と E2E はフェイク認証）は動いておらず、書かれていなかった引き受けの条件をこの ADR が足している
+- **0018 決定 3（許可リストは環境変数）に、照合の時点と有効期限が付く。**
+  0018 は持ち方だけを決めていて、いつ照合するかを決めていなかった
 - **#68 の「作るもの」が増える。**
-  cookie 属性の明示（決定 1）・`expiresIn` と `disableSessionRefresh`（決定 3）・`web/e2e/` の検査（決定 2・4）・`DEPLOY.md` の curl（決定 4）
+  cookie 属性の明示・`expiresIn` と `disableSessionRefresh`・`session.create.before` の照合・`getSession` ラッパと `no-restricted-imports`・`web/e2e/` の検査・`DEPLOY.md` の curl
 - `web/e2e/` に認証の検査が入る。
   資格情報を持つサーバーを別に立てる形は `web/e2e/basic-auth.spec.ts` が先例を持っている
-- **#150（器の外周の守りを決める）の決定 5（`revokeOtherSessions`）は、#149 に残した `cookieCache` の扱いに従属する。**
-  有効なまま切る口だけ出しても、`maxAge` の間は切れない
-- **#149 は開いたまま残る。**
-  `cookieCache` / `deferSessionRefresh` の扱いと、許可リストの判定頻度がまだ決まっていない
+- **#150（器の外周の守りを決める）の決定 5 が形を変える。**
+  決定 6 で `cookieCache` を禁じたので、セッションを消せば次のリクエストで即時に効く（cookie を消すのは `signOut` だけで、`revoke*` 系は DB 行を消すだけだが、行が無ければ次の照会で落ちる）。
+  ただし **`revokeSession` / `revokeSessions` / `revokeOtherSessions` は管理者の道具ではない**——三つとも `ctx.context.session.user.id` を基準にし、`revokeSession` は他人のトークンを渡されても何も消さずに `{status: true}` を返す（`dist/api/routes/session.mjs` 370-474 行）。
+  「特定の人のセッションを管理者として切る」が要るなら、admin プラグインを入れるか直接 SQL の手順書を用意することになる
+
+### 移行の順序（決定 8 の有効期限）
+
+本格運用でアカウント登録制へ移すとき、**停止の即時性という要件は消えない**。
+述語が `env` の配列から DB のフラグへ移るだけである。
+**順序を間違えると、Google アカウントを持つ全員が入れる期間ができる。**
+
+1. `user` に停止フラグを足す
+2. 決定 9 のラッパの述語スロットに「停止フラグを見る」を埋める（**ここで毎リクエスト照合になる**）
+3. 動作を確認する
+4. **その後で**許可リストと `session.create.before` のフックを外す
+
+また、述語の材料が DB へ移った時点で、**決定 6 の禁止は「認可の即時性」という根拠を追加で獲得する**。
+`setCookieCache` は `session` だけでなく `user` も写しに焼き込む（`dist/cookies/index.mjs` 76-100 行の `user: filteredUser`）ので、いまの述語（`env` の配列に `session.user.email` があるか）はキャッシュ経路でも遅れない。
+DB のフラグへ移ると `maxAge` の分だけ遅れるようになる。
+`ARCHITECTURE.md` の該当行に理由を追記すること。
 
 ## 覆る条件
 
 - **Preview に本番のデータが載ったら。**
-  決定 6 の引き受ける条件がそこで崩れる。
+  決定 10 の引き受ける条件がそこで崩れる。
   0015 の `Branch schema only` を変える判断は、この決定を同時に動かす
 - **`expiresIn` 1 日の摩擦が常用を妨げたら。**
   判断は L5 の官能で、実際に一日一回入り直してから決める。
   そのとき伸ばす側へ戻すが、無期限（`disableSessionRefresh` を外す）へは戻さない
-- Better Auth の既定が動いて、決定 1 で明示した値と食い違ったら。
+- **`disableSessionRefresh` を外したか、`expiresIn` を伸ばしたら。**
+  決定 8 が寄り掛かっている「1 日の天井」が消えるので、毎リクエスト照合の必要性が上がる
+- **リードレプリカを入れたら。**
+  決定 7 の理由 1 だけが消える。
+  理由 2（延命を実行する主体がいない）と理由 3（掃除が止まる）は残るので、**自動的な解禁にはならない**
+- **許可リストを廃止してアカウント登録制へ移行するとき。**
+  決定 8 の有効期限がそこで来る。
+  上の移行の順序に従う
+- **二値でない認可が入ったら**（ロール・課金状態など）。
+  決定 9 のラッパ一箇所では収まらなくなるので、認可の設計そのものを議題にする
+- **乗っ取りへの対応が要るようになったら。**
+  許可リストはその道具ではない。
+  セッションを切る口（admin プラグインか、直接 SQL の手順書）を先に用意する
+- **`React.cache()` の重複除去を入れた上でなお DB 往復が実測で効くと分かったら。**
+  `cookieCache` の単純な有効化ではなく、重い決定の経路だけ authoritative read にする二層化を検討する。
+  **段数や勘で遅いと決めない**——0020 が同じ規律を書いている
+- **Better Auth の既定が動いて、決定 1 で明示した値と食い違ったら。**
   明示している以上こちらの値が勝つが、上流が既定を強めたのなら追随を検討する
+- **Better Auth が 1.8 系へ上がったら。**
+  上の理由節が引いている行はすべて 1.7.2 の `dist/` である。
+  特に `session.mjs` 155 行の掃除条件と `link-account.mjs` の生成順序を読み直す
 - **未ログインの状態で何かを書けるようにしたくなったら。**
   決定 5 の禁止則がそこで代償になる。
   そのとき禁止則を外すのではなく、ログインをまたがない形（下書きをサーバーへ持たない）で解けるかを先に見る
+- **DB を外す構成（`secondaryStorage` も持たない）へ動かしたら。**
+  `cookieCache.refreshCache` の強制無効化が発火しなくなり、取り消しの窓がセッション寿命まで伸びる
 - CSRF の検査が、実装してみて Next と Better Auth のどちらの機構も再現できないと分かったら。
   決定 4 の層をどこへ動かすかを決め直す
-- **#149 に残した二つが決まったら。**
-  `cookieCache` を禁じるなら禁止則が一本増え、許可リストを毎リクエスト見るなら `getSession` の経路を一本に絞る規律が要る。
-  どちらもこの ADR の決定を覆さないが、`ARCHITECTURE.md` の禁止則は増える
