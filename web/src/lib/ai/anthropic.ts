@@ -48,6 +48,7 @@ const EFFORTS = valueSet<AnthropicEffort>(Object.values(ANTHROPIC_EFFORT));
 type AnthropicEnv = {
   readonly TOIITO_ANTHROPIC_MODEL?: string;
   readonly TOIITO_ANTHROPIC_MAX_TOKENS?: string;
+  readonly TOIITO_ANTHROPIC_TIMEOUT_MS?: string;
   readonly ANTHROPIC_API_KEY?: string;
   readonly TOIITO_ANTHROPIC_EFFORT_CONCRETE?: string;
   readonly TOIITO_ANTHROPIC_EFFORT_ABSTRACT?: string;
@@ -92,6 +93,14 @@ const EFFORT_ENV_KEY: Record<PersonaRole, string> = {
 export const ANTHROPIC_DEFAULTS = {
   model: "claude-sonnet-5",
   maxTokens: 16000,
+
+  /**
+   * 一回の呼び出しを待つ上限（ミリ秒）。
+   *
+   * 実測の一往復は 15〜27 秒（DEPLOY.md「引き受けている非対称」）なので、一体あたり 120 秒なら正常な生成を切らない。
+   * 二体を逐次に待っても立ち上がりの約 10 秒と合わせて Vercel Hobby の 300 秒に収まり、実行環境に殺される前にこちらが切れる。
+   */
+  timeoutMs: 120_000,
   effort: DEFAULT_EFFORT,
 } as const;
 
@@ -110,6 +119,8 @@ export function readAnthropicSettings(
     model: env.TOIITO_ANTHROPIC_MODEL ?? ANTHROPIC_DEFAULTS.model,
     maxTokens:
       Number(env.TOIITO_ANTHROPIC_MAX_TOKENS) || ANTHROPIC_DEFAULTS.maxTokens,
+    timeoutMs:
+      Number(env.TOIITO_ANTHROPIC_TIMEOUT_MS) || ANTHROPIC_DEFAULTS.timeoutMs,
     fake,
     apiKey: env.ANTHROPIC_API_KEY,
   };
@@ -125,10 +136,16 @@ export class AnthropicProvider extends AiProvider {
 
   /**
    * 組み立て済みの本文を Claude API へ送る。
+   *
    * キーが無ければ叩く前に落とす。
    * 打ち切りは `stop_reason` で判定して通すだけで、拒むかどうかは規約の側が決める。
+   * `signal` が切れると fetch が投げるので、上限を超えた呼び出しはここを素通りして規約の側へ届く。
    */
-  async send(system: string, userContent: string): Promise<ProviderResponse> {
+  async send(
+    system: string,
+    userContent: string,
+    signal: AbortSignal,
+  ): Promise<ProviderResponse> {
     const { settings } = this;
 
     if (!settings.apiKey) {
@@ -137,6 +154,7 @@ export class AnthropicProvider extends AiProvider {
 
     const res = await fetch(API_URL, {
       method: "POST",
+      signal,
       headers: {
         "content-type": "application/json",
         "x-api-key": settings.apiKey,

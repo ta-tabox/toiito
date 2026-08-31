@@ -24,6 +24,7 @@ afterEach(() => {
 const SETTINGS: AnthropicSettings = {
   model: ANTHROPIC_DEFAULTS.model,
   maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
+  timeoutMs: ANTHROPIC_DEFAULTS.timeoutMs,
   fake: false,
   apiKey: "test-key",
 };
@@ -35,6 +36,7 @@ const SETTINGS: AnthropicSettings = {
 const OVERRIDE = {
   model: "claude-opus-5",
   maxTokens: 2048,
+  timeoutMs: 5000,
   effort: ANTHROPIC_EFFORT.xhigh,
 };
 
@@ -71,7 +73,11 @@ function sentBody(fetchMock: ReturnType<typeof stubApiResponse>) {
 
 /** 組み立て済みの本文を渡して一回叩く。 */
 function send(settings: AnthropicSettings = SETTINGS) {
-  return new AnthropicProvider(settings).send("# 抽象派", "組み立て済みの本文");
+  return new AnthropicProvider(settings).send(
+    "# 抽象派",
+    "組み立て済みの本文",
+    AbortSignal.timeout(settings.timeoutMs),
+  );
 }
 
 describe("既定値", () => {
@@ -88,6 +94,7 @@ describe("readAnthropicSettings", () => {
     expect(readAnthropicSettings({}, false)).toEqual({
       model: ANTHROPIC_DEFAULTS.model,
       maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
+      timeoutMs: ANTHROPIC_DEFAULTS.timeoutMs,
       fake: false,
       apiKey: undefined,
     });
@@ -108,6 +115,25 @@ describe("readAnthropicSettings", () => {
       readAnthropicSettings({ TOIITO_ANTHROPIC_MAX_TOKENS: "たくさん" }, false)
         .maxTokens,
     ).toBe(ANTHROPIC_DEFAULTS.maxTokens);
+  });
+
+  it("上限の上書きが効く", () => {
+    const env = { TOIITO_ANTHROPIC_TIMEOUT_MS: String(OVERRIDE.timeoutMs) };
+
+    expect(readAnthropicSettings(env, false).timeoutMs).toBe(
+      OVERRIDE.timeoutMs,
+    );
+  });
+
+  it("数として読めない TOIITO_ANTHROPIC_TIMEOUT_MS は既定へ倒す", () => {
+    expect(
+      readAnthropicSettings({ TOIITO_ANTHROPIC_TIMEOUT_MS: "" }, false)
+        .timeoutMs,
+    ).toBe(ANTHROPIC_DEFAULTS.timeoutMs);
+    expect(
+      readAnthropicSettings({ TOIITO_ANTHROPIC_TIMEOUT_MS: "すぐ" }, false)
+        .timeoutMs,
+    ).toBe(ANTHROPIC_DEFAULTS.timeoutMs);
   });
 
   it("渡されたフェイクモードが載る", () => {
@@ -202,6 +228,15 @@ describe("リクエストの組み立て", () => {
     await send();
 
     expect(sentBody(fetchMock).output_config).toBeUndefined();
+  });
+
+  it("受け取った signal をそのまま fetch へ渡す", async () => {
+    const fetchMock = stubOkResponse();
+    const signal = AbortSignal.timeout(SETTINGS.timeoutMs);
+
+    await new AnthropicProvider(SETTINGS).send("# 抽象派", "本文", signal);
+
+    expect(fetchMock.mock.calls[0][1].signal).toBe(signal);
   });
 
   it("役割定義は system へ載せる", async () => {

@@ -24,7 +24,7 @@ export function readFakeMode(env: FakeEnv): boolean {
 
 /**
  * どのプロバイダの設定も持つ欄。
- * ここに挙げた三つは、実装を選ぶ前に規約の側が読む。
+ * ここに挙げた欄は、実装を選ぶ前に規約の側が読む。
  */
 export type CommonSettings = {
   readonly model: string;
@@ -37,6 +37,14 @@ export type CommonSettings = {
    * ストリーミングを使っていないため、上限は HTTP のタイムアウトに収まる範囲で選ぶ。
    */
   readonly maxTokens: number;
+
+  /**
+   * 一回の呼び出しを待つ上限（ミリ秒）。
+   *
+   * 実行環境が先に関数を殺すと、打ち切りとも空本文とも付かない不透明な失敗になるので、上限はその手前に置く。
+   * 一往復は二体を逐次に待つので、実行環境の上限に収まるかは二回分で見る。
+   */
+  readonly timeoutMs: number;
 
   /** ネットワークに出ず決定的な応答を返すか（HARNESS.md 参照）。 */
   readonly fake: boolean;
@@ -69,7 +77,13 @@ export abstract class AiProvider {
 
   /**
    * 組み立て済みの本文を送る。
+   *
    * 叩けないと分かっている状態（キーの欠落など）は、送る前に例外で落とす。
+   * 上限を決めるのは規約の側なので、`signal` は作らずに受け取り、待ちに入る操作へそのまま渡す。
    */
-  abstract send(system: string, userContent: string): Promise<ProviderResponse>;
+  abstract send(
+    system: string,
+    userContent: string,
+    signal: AbortSignal,
+  ): Promise<ProviderResponse>;
 }

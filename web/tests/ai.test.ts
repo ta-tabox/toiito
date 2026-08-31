@@ -22,6 +22,7 @@ afterEach(() => {
 const SETTINGS: AnthropicSettings = {
   model: ANTHROPIC_DEFAULTS.model,
   maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
+  timeoutMs: ANTHROPIC_DEFAULTS.timeoutMs,
   fake: false,
   apiKey: "test-key",
 };
@@ -134,6 +135,37 @@ describe("応答の受け取り", () => {
 
     await expect(callPersona(personaCall(), { body: "q" }, [])).rejects.toThrow(
       /本文が無い/,
+    );
+  });
+});
+
+describe("待つ上限", () => {
+  /**
+   * signal が切れるまで返らない fetch に差し替える。
+   * 上限を掛けていなければ、このテストは応答を待ち続けてタイムアウトで落ちる。
+   */
+  function stubHangingResponse() {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener("abort", () => {
+              reject(init.signal?.reason);
+            });
+          }),
+      ),
+    );
+  }
+
+  it("上限を超えて返らない呼び出しは、上限を添えて失敗する", async () => {
+    stubHangingResponse();
+    const call = personaCall({
+      provider: new AnthropicProvider({ ...SETTINGS, timeoutMs: 10 }),
+    });
+
+    await expect(callPersona(call, { body: "q" }, [])).rejects.toThrow(
+      /上限 \(10ms\) を超えた/,
     );
   });
 });
