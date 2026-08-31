@@ -80,8 +80,7 @@ writes+='|(^|[[:space:]])(-f|-F|--field|--raw-field|--input)([[:space:]]|=)'
 # コメントと返信だけは戻せる側に置く（`gh issue comment` が allow なのと同じ層）。
 #
 # 見るのはエンドポイントの位置だけで、コマンド全体を探さない。
-# 全体を探すと、フィールドの値がたまたま `/comments` を含むだけで別の書き込みが素通りする
-# （`gh api repos/o/r/issues -f title="see /comments"` は issue の作成である）。
+# 全体を探すと、フィールドの値がたまたま `/comments` を含むだけで別の書き込みが素通りする（`gh api repos/o/r/issues -f title="see /comments"` は issue の作成である）。
 # エンドポイントは `gh api` の直後か、メソッド指定を挟んだ直後にしか来ない。
 comment_endpoint='(^|[[:space:]])gh[[:space:]]+api[[:space:]]+'
 comment_endpoint+='((-X|--method)[[:space:]]+[A-Za-z]+[[:space:]]+)?'
