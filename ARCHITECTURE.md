@@ -15,6 +15,9 @@ VISION の設計原理が上位。
   ローカルは `compose.yaml` の Postgres、本番は Neon（手順は `DEPLOY.md`）
 - **Claude API** — 二体 AI の対話生成。
   Server Actions（サーバー側）からのみ叩く
+- **Better Auth（自前ホスト）** — 認証。
+  Google OAuth 一本で、パスワードは持たない。
+  入れるのは許可リストに載ったメールアドレスだけ（選定の経緯は `docs/adr/0019-auth-better-auth.md`、開き方は `docs/adr/0018-invite-only-multi-user.md`）
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
 
 永続化について今も効く禁止則（経緯は `docs/adr/0003-persistence-prisma-postgres.md`）。
@@ -44,7 +47,7 @@ VISION の設計原理が上位。
 Next.js サーバー層 ──── Claude API（二体のシステムプロンプトを切替えて逐次呼出）
    │
    ▼
-Postgres（questions / sessions / messages / memos / memo_links）
+Postgres（questions / sessions / messages / memos / memo_links ＋ Better Auth の四表）
 ```
 
 単一 Web アプリ。
@@ -68,7 +71,7 @@ VISION の「対話は堆積して振り返れるもの」をそのままスキ�
 
 ```
 questions      問い。発酵槽への仕込み単位
-  id, body(原型・不変), current_form(現在の形・可変), status, created_at
+  id, user_id, body(原型・不変), current_form(現在の形・可変), status, created_at
 
 sessions       一つの問いに対する対話セッション（複数回ありうる＝再訪）
   id, question_id, started_at
@@ -82,6 +85,19 @@ memos          キーワードメモ。文字選択で残す
 memo_links     （将来）メモ間・問い間のリンキング辺
   id, from_memo_id, to_memo_id, kind
 ```
+
+### 所有権（2026-08-30 決定）
+
+`user_id` を持つのは**所有のルートだけ**で、いまは `questions` 一つである（#64（ペルソナをテーブルへ）が入れば二つ目のルートになる）。
+`sessions` / `messages` / `memos` は持たず、所有者は親から辿る。
+下位にも持たせない理由と、却下した案は `docs/adr/0020-ownership-granularity.md`。
+
+**絞り込みは `db.ts` の repo 関数が行う**。
+UI 側でやらない。
+入口の `proxy.ts` は cookie の有無しか見ない楽観的な判定なので、**他人のリソースを弾く最後の層は repo 関数になる**。
+
+認証まわりの四表（`user` / `session` / `account` / `verification`）は Better Auth が持ち、綴りは生成されたままにする（`db.ts` から読まないので、snake_case へ揃える利益が発生しない）。
+**Better Auth の `session` は対話の `sessions` と別物である**——前者はログイン、後者は問いへの再訪。
 
 ### 原型と現在の形（2026-07-19 追加）
 
@@ -202,7 +218,12 @@ toiito/
   待ち時間・手数・沈黙はこの文脈では必ずしも欠陥ではない（詳細は `extensions/fermentation-and-outlets.md`）
 - KPI・利用統計・ゲーミフィケーション（速度を最適化しない）
 - 問いの「解決済み」クローズフロー（チケットではない）
-- マルチユーザー対応の作り込み（自分専用。Auth は門としてのみ）
+- **公開登録**（2026-08-30 改定）。
+  他人にも使わせる器へ改めたが、入れるのは許可リストに載ったメールアドレスだけで、誰でも登録できる形は開けない。
+  費用を止める手（#69）と自分のキーへ逃がす手（#70）が揃うまで、AI の課金が誰にでも走る状態を作らない（経緯は `docs/adr/0018-invite-only-multi-user.md`）
+- **パスワード認証**。
+  パスワードハッシュは漏れたら他サービスまで巻き添えにするので、守るのではなく資産ごと持たない。
+  入口は Google OAuth 一本（`docs/adr/0019-auth-better-auth.md`）
 
 ## 持ち越した開いた問い
 
