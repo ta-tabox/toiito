@@ -17,7 +17,7 @@ AI に関する語彙が三つのモジュールへ散っている。
 
 ## 決定
 
-`src/lib/ai/` を作り、次の三枚へ切り直す。
+`src/lib/ai/` を作り、次の五枚へ切り直す。
 
 - `ai/index.ts` — 呼び出しの規約と、一回の呼び出しの手順（フェイクモードへの分岐・呼び出しの記録・欠けた本文を返さないこと）
 - `ai/provider.ts` — プロバイダ一つ分の契約（`AiProvider`・`CommonSettings`・`ProviderResponse`）
