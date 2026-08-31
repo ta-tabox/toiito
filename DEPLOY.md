@@ -97,6 +97,15 @@ Vercel のビルドとは競走するが、`migrate deploy` は秒・`next build
 
 決定の経緯と、この規律が守れなかったときの倒し先は `docs/adr/0008-production-migration-path.md`。
 
+**手元から流す口もある**（切り戻しの後の再実行や、自動経路が落ちたとき）。
+
+```bash
+pnpm migrate:prod
+```
+
+接続先は `.env.local` の `DIRECT_URL_PROD`（`web/README.md` の表）。
+流す前に接続先のホストとデータベース名を表示するので、本番と Preview の取り違えはそこで見る。
+
 ## Preview
 
 PR ごとの Preview デプロイにも環境変数を 5 本入れる（Vercel の Environment Variables で環境に **Preview** を選ぶ）。
@@ -147,7 +156,13 @@ DATABASE_URL='<preview のプーラー>' pnpm seed
 ### migration を含む PR
 
 **Preview の DB へ migration を自動で流す経路は無い**。
-新しい列を足す PR の画面を Preview で見るなら、`preview` ブランチの直結を `DIRECT_URL` に置いて手元から一度流す。
+新しい列を足す PR の画面を Preview で見るなら、手元から一度流す。
+
+```bash
+pnpm migrate:preview
+```
+
+接続先は `.env.local` の `DIRECT_URL_PREVIEW`（`web/README.md` の表）。
 
 流さないまま開くと、DB が新しい列を持たないので画面が落ちる。
 
