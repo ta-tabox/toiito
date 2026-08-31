@@ -31,7 +31,6 @@ const MARKED_STYLE =
  * 選択を読み直す発話の登録簿。
  *
  * document へのリスナを画面に 1 本だけ張るために、React の外へ置く。
- * 発話ごとに張ると選択のたびに載っている発話の数だけ走り、当たる 1 本以外は捨てるためだけに回る（issue #129）。
  * 鍵が本文の要素そのものなので、開発時に effect が二度走っても同じ発話が二重に載らない。
  */
 const readers = new Map<Element, () => void>();
@@ -218,9 +217,10 @@ function MemoForm({
  * 発話を登録簿へ載せ、外し方を返す。
  *
  * document のリスナは登録簿が空でなくなったときに張り、空に戻ったときに外す。
- * 下へ払って選ぶと手を離す位置が本文の外になるので、リスナは document に置く。
- * 本文の div に付けると払った分の選択を落とすうえ、静的な要素へ対話を持たせることになる（biome の a11y）。
- * keyup も見るのは shift + 矢印による選択を落とさないため。
+ * 本文の途中から下へドラッグして選ぶとボタンを離す位置が本文の枠の外になるので、リスナは document に置く。
+ * 本文の div へ onMouseUp を付けると、React のハンドラは自分の部分木の外で起きた mouseup を受け取らないので、枠の外で離した選択が丸ごと取れない。
+ * 静的な div へマウスのハンドラを付けること自体も biome が止める（a11y/noStaticElementInteractions）。
+ * keyup も見るのは、shift + 矢印で伸ばした選択を落とさないため。
  */
 function subscribeSelection(container: Element, read: () => void): () => void {
   if (readers.size === 0) {
@@ -241,11 +241,11 @@ function subscribeSelection(container: Element, read: () => void): () => void {
 }
 
 /**
- * 選択の始点が居る発話にだけ、読み直しを伝える。
+ * 選択の始点が入っている発話の read だけを呼ぶ。
  *
- * 始点で引くので、発話を跨いだ選択は始点側の発話へ届く。
- * 捨てる判断は受け取った側が引き続き両端を見て行う（draftFromSelection）。
- * 潰れた選択でここを抜けるのは、打鍵のたびに登録簿を引かないため。
+ * 始点のノードから closest で本文の div まで遡り、その div を鍵に登録簿を引く。
+ * 発話を跨ぐ選択でも呼ぶのは始点側の 1 本で、終点が自分の本文の外にあることは呼ばれた側の draftFromSelection が見て、下書きを立てずに終わる。
+ * 潰れた選択をここで返すのは、キャレットが動いただけの keyup で登録簿まで引かないため。
  */
 function notifySelectedMessage(): void {
   const selection = window.getSelection();
@@ -340,8 +340,10 @@ function segmentIndexOf(container: Node): number | undefined {
 }
 
 /**
- * ノードを、印を辿れる要素へ読み替える。
- * closest は text node に無いので、text node なら親を返す。
+ * ノードに対応する要素を返す。
+ *
+ * Range の端点は text node で来ることがあり、closest は Element のメソッドなので直接は呼べない。
+ * text node のときは親の要素を返す。
  */
 function elementOf(node: Node): Element | null {
   return node instanceof Element ? node : node.parentElement;
