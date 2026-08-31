@@ -123,8 +123,8 @@ describe("readAnthropicSettings", () => {
 
   it("深さ以外は全系統に同じ値が載る", () => {
     const env = {
-      TOIITO_MODEL: OVERRIDE.model,
-      TOIITO_MAX_TOKENS: String(OVERRIDE.maxTokens),
+      TOIITO_ANTHROPIC_MODEL: OVERRIDE.model,
+      TOIITO_ANTHROPIC_MAX_TOKENS: String(OVERRIDE.maxTokens),
     };
     const settings = readAnthropicSettings(env);
 
@@ -134,13 +134,14 @@ describe("readAnthropicSettings", () => {
     expect(settings.abstract.maxTokens).toBe(OVERRIDE.maxTokens);
   });
 
-  it("数として読めない TOIITO_MAX_TOKENS は既定へ倒す", () => {
+  it("数として読めない TOIITO_ANTHROPIC_MAX_TOKENS は既定へ倒す", () => {
     expect(
-      readAnthropicSettings({ TOIITO_MAX_TOKENS: "" }).concrete.maxTokens,
+      readAnthropicSettings({ TOIITO_ANTHROPIC_MAX_TOKENS: "" }).concrete
+        .maxTokens,
     ).toBe(ANTHROPIC_DEFAULTS.maxTokens);
     expect(
-      readAnthropicSettings({ TOIITO_MAX_TOKENS: "たくさん" }).concrete
-        .maxTokens,
+      readAnthropicSettings({ TOIITO_ANTHROPIC_MAX_TOKENS: "たくさん" })
+        .concrete.maxTokens,
     ).toBe(ANTHROPIC_DEFAULTS.maxTokens);
   });
 
@@ -156,16 +157,16 @@ describe("readAnthropicSettings", () => {
     ).toBe(false);
   });
 
-  it("TOIITO_EFFORT_ABSTRACT の上書きが効く", () => {
-    const env = { TOIITO_EFFORT_ABSTRACT: OVERRIDE.effort };
+  it("TOIITO_ANTHROPIC_EFFORT_ABSTRACT の上書きが効く", () => {
+    const env = { TOIITO_ANTHROPIC_EFFORT_ABSTRACT: OVERRIDE.effort };
 
     expect(readAnthropicSettings(env).abstract.effort).toBe(OVERRIDE.effort);
   });
 
   it("深さの値域の外は既定へ倒す", () => {
     const env = {
-      TOIITO_EFFORT_CONCRETE: "middle",
-      TOIITO_EFFORT_ABSTRACT: "middle",
+      TOIITO_ANTHROPIC_EFFORT_CONCRETE: "middle",
+      TOIITO_ANTHROPIC_EFFORT_ABSTRACT: "middle",
     };
     const settings = readAnthropicSettings(env);
 

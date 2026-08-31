@@ -53,12 +53,12 @@ function toEffort(value: string | undefined): Effort | undefined {
  * `process.env` をそのまま渡せるよう、宣言した以外のキーも通す。
  */
 type AnthropicEnv = {
-  readonly TOIITO_MODEL?: string;
-  readonly TOIITO_MAX_TOKENS?: string;
+  readonly TOIITO_ANTHROPIC_MODEL?: string;
+  readonly TOIITO_ANTHROPIC_MAX_TOKENS?: string;
   readonly TOIITO_FAKE_AI?: string;
   readonly ANTHROPIC_API_KEY?: string;
-  readonly TOIITO_EFFORT_CONCRETE?: string;
-  readonly TOIITO_EFFORT_ABSTRACT?: string;
+  readonly TOIITO_ANTHROPIC_EFFORT_CONCRETE?: string;
+  readonly TOIITO_ANTHROPIC_EFFORT_ABSTRACT?: string;
   readonly [key: string]: string | undefined;
 };
 
@@ -129,8 +129,9 @@ export function readAnthropicSettings(
 ): Record<PersonaRole, AnthropicSettings> {
   const shared = {
     provider: "anthropic",
-    model: env.TOIITO_MODEL ?? ANTHROPIC_DEFAULTS.model,
-    maxTokens: Number(env.TOIITO_MAX_TOKENS) || ANTHROPIC_DEFAULTS.maxTokens,
+    model: env.TOIITO_ANTHROPIC_MODEL ?? ANTHROPIC_DEFAULTS.model,
+    maxTokens:
+      Number(env.TOIITO_ANTHROPIC_MAX_TOKENS) || ANTHROPIC_DEFAULTS.maxTokens,
     fake: env.TOIITO_FAKE_AI === "1",
     apiKey: env.ANTHROPIC_API_KEY,
   } as const;
@@ -139,13 +140,13 @@ export function readAnthropicSettings(
     concrete: {
       ...shared,
       effort:
-        toEffort(env.TOIITO_EFFORT_CONCRETE) ??
+        toEffort(env.TOIITO_ANTHROPIC_EFFORT_CONCRETE) ??
         ANTHROPIC_DEFAULTS.effort.concrete,
     },
     abstract: {
       ...shared,
       effort:
-        toEffort(env.TOIITO_EFFORT_ABSTRACT) ??
+        toEffort(env.TOIITO_ANTHROPIC_EFFORT_ABSTRACT) ??
         ANTHROPIC_DEFAULTS.effort.abstract,
     },
   };
