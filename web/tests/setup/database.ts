@@ -16,7 +16,11 @@
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { assertIsTestDatabase, TEST_DATABASE_URL } from "./test-database-url";
+import {
+  adminUrl,
+  assertIsTestDatabase,
+  TEST_DATABASE_URL,
+} from "./test-database-url";
 
 const webRoot = path.resolve(import.meta.dirname, "../..");
 
@@ -25,18 +29,6 @@ const prismaCli = createRequire(import.meta.url).resolve(
 );
 
 const databaseName = path.basename(new URL(TEST_DATABASE_URL).pathname);
-
-/**
- * 作り直しを指示するための接続先。
- *
- * データベースは自分自身へ繋いだまま落とせないので、同じサーバーの `postgres` を経由する。
- */
-function adminUrl(): string {
-  const url = new URL(TEST_DATABASE_URL);
-  url.pathname = "/postgres";
-
-  return url.toString();
-}
 
 /**
  * Prisma CLI を接続先を明示して叩く。
@@ -59,7 +51,7 @@ function runPrisma(args: string[], url: string, input?: string): void {
  * drop / create はトランザクションの内側で走れないので、二文をまとめて渡さない。
  */
 function recreateDatabase(): void {
-  const admin = adminUrl();
+  const admin = adminUrl(TEST_DATABASE_URL);
 
   runPrisma(
     ["db", "execute", "--stdin"],

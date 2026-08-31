@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  adminUrl,
   testDatabaseName,
   toDatabaseSlug,
 } from "@tests/setup/test-database-url";
@@ -75,6 +76,14 @@ describe("toDatabaseSlug", () => {
 
   it("英数字を一つも持たない名前どうしを、同じスラグへ潰さない", () => {
     expect(toDatabaseSlug("問い設計")).not.toBe(toDatabaseSlug("設計の検討"));
+  });
+});
+
+describe("adminUrl", () => {
+  it("同じサーバーの postgres を指す", () => {
+    expect(
+      adminUrl("postgresql://toiito:toiito@localhost:5433/toiito_wt_x_test"),
+    ).toBe("postgresql://toiito:toiito@localhost:5433/postgres");
   });
 });
 

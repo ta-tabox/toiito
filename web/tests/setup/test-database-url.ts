@@ -104,6 +104,18 @@ export const TEST_DATABASE_URL =
   `postgresql://toiito:toiito@localhost:5433/${testDatabaseName(repositoryRoot)}`;
 
 /**
+ * データベースを落とすときに経由する接続先。
+ *
+ * データベースは自分自身へ繋いだまま落とせないので、同じサーバーの `postgres` を指す。
+ */
+export function adminUrl(url: string): string {
+  const admin = new URL(url);
+  admin.pathname = "/postgres";
+
+  return admin.toString();
+}
+
+/**
  * テストの準備は接続先を問答無用で作り替える。
  * 開発用 DB を指したまま走らせたら手元の対話が消えるので、名前で足を止める。
  *

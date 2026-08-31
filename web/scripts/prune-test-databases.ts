@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client.ts";
 import {
+  adminUrl,
   TEST_DATABASE_URL,
   testDatabaseName,
 } from "../tests/setup/test-database-url.ts";
@@ -79,18 +80,6 @@ export function liveDatabaseNames(porcelain: string): string[] {
     .split("\n")
     .filter((line) => line.startsWith(prefix))
     .map((line) => testDatabaseName(line.slice(prefix.length)));
-}
-
-/**
- * 作り直しと同じ経路で管理用の接続先を組む。
- *
- * データベースは自分自身へ繋いだまま落とせないので、同じサーバーの `postgres` を経由する。
- */
-function adminUrl(url: string): string {
-  const admin = new URL(url);
-  admin.pathname = "/postgres";
-
-  return admin.toString();
 }
 
 /** 孤児を数え上げて落とす。 */
