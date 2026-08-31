@@ -90,8 +90,11 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   どれも reopen で戻るので、他人の作業を消さない側に入る。
   **マージだけは、その都度人間に諾否を訊く**——main への push が本番デプロイと migration を起こす（ADR-0008）ので、reopen で戻る操作と同じには扱えない。
   repo の削除・public 化（`gh repo edit`）・secret・`gh auth` は `permissions.deny` で落としてある——承認を挟めば通る類ではなく、判じる場面がそもそも来ない。
-  ただし deny が効くのは綴りにだけで、`gh api -X PATCH repos/…` は `gh repo edit` を経由せず同じ操作へ届く（受け止めるのは ask に残した `gh api`）。
-  `ask` の前方一致と同じ型の限界で、機械は保険、正はこの規約。
+  ただし deny が効くのは綴りにだけで、`gh api -X PATCH repos/…` は `gh repo edit` を経由せず同じ操作へ届く。
+  `gh api` は綴りが一つしか無く前方一致では層を分けられないので、受け止めるのは `.claude/hooks/guard-gh-api.sh` がコマンド全文を見る側にある。
+  素通しは読み取りと、`/comments` `/replies` への投稿と、レビュースレッドの resolve / unresolve の三つだけで、どれも編集や取り消しで戻るので `gh issue comment` が allow なのと同じ層に当たる。
+  `ask` に `gh api -X DELETE` を二綴り残したのはフックを切ったときの下限で、語順に依存しない判定はフックが持つ（`guard-force-push.sh` と同じ型の限界）。
+  機械は保険、正はこの規約。
 - **PR も author は人間**（そもそも author は名乗る欄でなく叩いたアカウント。bot 名義は「第三者が出したものを承認した」という嘘の外形を作る）。
   Claude の関与は author でなく**本文の「判断したこと」節**へ。
   残すのは判断の中身だけで、誰が判断したかには触れない。
