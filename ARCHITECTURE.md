@@ -18,7 +18,8 @@ VISION の設計原理が上位。
   呼び出し規約は `lib/ai/` がプロバイダ非依存の形で持ち、固有の値域と API の作法は `lib/ai/anthropic.ts` に閉じる（`docs/adr/0021-ai-provider-scope.md`）
 - **Better Auth（自前ホスト）** — 認証。
   Google OAuth 一本で、パスワードは持たない。
-  入れるのは許可リストに載ったメールアドレスだけ（選定の経緯は `docs/adr/0019-auth-better-auth.md`、開き方は `docs/adr/0018-invite-only-multi-user.md`）
+  入れるのは許可リストに載ったメールアドレスだけ（選定の経緯は `docs/adr/0019-auth-better-auth.md`、開き方は `docs/adr/0018-invite-only-multi-user.md`）。
+  セッションはログインから 1 日で必ず切れる（使っても延ばさない。cookie の属性と併せて `docs/adr/0022-session-security.md`）
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
 
 永続化について今も効く禁止則（経緯は `docs/adr/0003-persistence-prisma-postgres.md`）。
@@ -38,6 +39,13 @@ VISION の設計原理が上位。
   移植性を決めるのは実行環境の選択ではなくアプリが何に触っているかなので、`@vercel/*` の import・ISR のオンデマンド再検証・Edge Config・Cron Jobs を入れない。
   ホスティング側の設定だけで閉じるもの（暫定の門に使う Vercel Authentication など）はアプリのコードに現れないので、この禁止則の対象ではない。
   入れたくなったら、それは実行環境を決め直す合図として一度戻る
+
+セッションについて今も効く禁止則（経緯は `docs/adr/0022-session-security.md`）。
+
+- **ログインをまたぐ自前の識別子を作らない**。
+  Better Auth はログインのたびにセッションのトークンを新規発行し、既存の cookie の値を引き継ぐ経路を持たないので、仕込める識別子がそもそも存在しない。
+  匿名セッション・未ログインの下書きの引き継ぎ・自前の「戻り先」cookie に識別子を載せる綴りは、この性質を壊してセッション固定の経路を開ける。
+  未ログインで何かを書かせたくなったら、ログインをまたがない形（下書きをサーバーへ持たない）で解けるかを先に見る
 
 ## システム全体像
 
