@@ -1,14 +1,18 @@
 /**
- * 開発用データベースがスキーマと食い違っていないか見る。
+ * 繋ぎ先のデータベースが、スキーマと食い違っていないか見て警告する。
  *
- * 別のブランチで積んだ migration は、そのブランチを離れても剥がれない。
- * テスト用は走るたびに作り直して防ぐ（`tests/setup/database.ts`）が、開発用は手で入れた対話が載りうるので作り直せない。
- * 落とさず警告だけに留めるのはそのためで、作り直すかどうかの判断は人間が持つ。
+ * 繋ぎ先を決めるのはここではない。
+ * `prisma.config.ts` が `.env.local` の `DIRECT_URL` から読むので、どの DB を守るかは呼ぶ側の配線が決める。
+ *
+ * 見つけても落とさない。
+ * 別のブランチで積んだ migration はそのブランチを離れても剥がれないが、作り直してよいかは中身の持ち主にしか判断できない。
+ * 走るたびに作り直せる相手（`tests/setup/database.ts` のテスト用 DB）は、そもそもここを通らない。
  *
  * `prisma migrate status` は使わない。
  * ローカルに無い migration が DB へ積まれていても「up to date」を返すので、この食い違いを検出できない。
  *
- * 入口は CLI（`pnpm dev` の前段）。
+ * 入口は CLI。
+ * いまの配線は `pnpm dev` の前段一つで、そこでの繋ぎ先は開発用 DB になる。
  */
 
 import { spawnSync } from "node:child_process";
@@ -23,8 +27,8 @@ const DIFF_FOUND = 2;
 /**
  * スキーマとデータベースの食い違いを見る。
  *
- * 接続先は prisma.config.ts が `.env.local` の DIRECT_URL から読む。
- * 繋がらないときは終了コードが 1 になるが、そちらは `next dev` 自身が同じ相手で落ちるので、ここでは黙って通す。
+ * 繋がらないときは終了コードが 1 になるが、そちらは黙って通す。
+ * 相手が立っていないことは、この後に続くコマンドが同じ相手で落ちて言う。
  */
 function findsDrift(): boolean {
   const prismaCli = createRequire(import.meta.url).resolve(
@@ -50,7 +54,7 @@ function findsDrift(): boolean {
 if (findsDrift()) {
   console.warn(
     [
-      "開発用データベースがスキーマと食い違っている。",
+      "繋ぎ先のデータベースがスキーマと食い違っている。",
       "別のブランチの migration が積まれたまま残っている可能性がある。",
       "pnpm exec prisma migrate deploy で追いつくか、中身を捨ててよければ docker compose down -v で作り直す。",
     ].join("\n"),
