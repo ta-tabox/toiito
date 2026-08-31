@@ -48,6 +48,8 @@ pnpm dev
 | `TOIITO_FAKE_AI` | 任意 | 未設定 | `1` でネットワークに出ず決定的な応答を返す。API キー無しで縦一本を通すためのハーネス |
 | `TOIITO_TEST_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_test` | テストの接続先。CI で差し替える口 |
 | `TOIITO_E2E_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_e2e` | E2E の接続先。テストと同じ DB を向けると互いの行を踏むので分ける |
+| `DIRECT_URL_PROD` | `pnpm migrate:prod` を叩くなら必須 | — | 本番 Neon の直結。手元から migration を流す先 |
+| `DIRECT_URL_PREVIEW` | `pnpm migrate:preview` を叩くなら必須 | — | Neon の `preview` ブランチの直結。同上 |
 
 ローカルの二本はどちらも同じ Postgres を指す。
 
@@ -65,6 +67,11 @@ DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
 
 `TOIITO_FAKE_AI=1` は AI 呼び出しを伴う動作確認で使う。
 実 API を自動テストで叩かない（遅い・非決定的・金がかかる）。
+
+`DIRECT_URL_PROD` と `DIRECT_URL_PREVIEW` は、手元から本番と Preview へ migration を流す口（`pnpm migrate:prod` / `pnpm migrate:preview`）。
+`DIRECT_URL` を書き換えて使い回さないのは、直前に何を入れたかで流し先が変わるため。
+本番へは main への push で `.github/workflows/migrate.yml` が流すので、こちらを叩くのは切り戻しと再実行の場面になる。
+Preview には自動経路が無いので、migration を含む PR の画面を見るには毎回叩く（`DEPLOY.md`「Preview」）。
 
 ## E2E を走らせる
 
