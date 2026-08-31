@@ -5,7 +5,7 @@
  * どのプロバイダを叩くかは呼び出し側が解決済みの実装（`AiProvider`）で渡すので、ここに分岐は無い。
  *
  * env を読まない。
- * プロバイダは config.ts が env から作る。
+ * プロバイダは providers.ts が env から作る。
  */
 
 import { fakeResponse } from "@/lib/ai/fake";
