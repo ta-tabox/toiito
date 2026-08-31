@@ -90,7 +90,11 @@ export default function setup(): void {
         : String(cause);
 
     throw new Error(
-      `テスト用 Postgres の準備に失敗した。docker compose up -d で立ててから再実行する（HARNESS.md「ローカル Postgres」）\n${detail}`,
+      [
+        `テスト用 Postgres（${databaseName}）の準備に失敗した。`,
+        "立っていなければ docker compose up -d、同じ DB を別の走りが同時に作り直しているなら TOIITO_TEST_DATABASE_URL で分ける（HARNESS.md「ローカル Postgres」）",
+        detail,
+      ].join("\n"),
     );
   }
 }
