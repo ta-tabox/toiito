@@ -1,7 +1,17 @@
+/**
+ * 呼び出し規約の検査。
+ * プロバイダに依らない決め事——フェイクモード・記録・欠けた本文を返さないこと・本文の組み立て——を守る。
+ * 唯一の実装が Anthropic なので、実モードは Claude API を模した fetch 越しに辿る。
+ */
+
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { callPersona, type PersonaCall } from "@/lib/claude";
-import { AI_DEFAULTS, type AiSettings } from "@/lib/config";
-import { EFFORT } from "@/lib/effort";
+import { callPersona, type PersonaCall } from "@/lib/ai";
+import {
+  ANTHROPIC_DEFAULTS,
+  AnthropicProvider,
+  type AnthropicSettings,
+} from "@/lib/ai/anthropic";
+import { readFakeMode } from "@/lib/ai/provider";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -9,33 +19,33 @@ afterEach(() => {
 });
 
 /** 実 API を叩く側の設定。 */
-const SETTINGS: AiSettings = {
-  model: AI_DEFAULTS.model,
-  maxTokens: AI_DEFAULTS.maxTokens,
+const SETTINGS: AnthropicSettings = {
+  model: ANTHROPIC_DEFAULTS.model,
+  maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
   fake: false,
   apiKey: "test-key",
 };
 
 /**
- * 渡した値が載ることを見るための上書き。
- * 既定と違うことだけに意味がある。
+ * 唯一の実装。
+ * 規約の検査は、この一つを通して辿る。
  */
-const OVERRIDE = {
-  model: "claude-opus-5",
-  maxTokens: 2048,
-};
+const PROVIDER = new AnthropicProvider(SETTINGS);
 
 /**
  * ペルソナ呼び出しの指定を組み立てる。
  * 既定は実モードの ai_b で、そのケースが見たい一点だけ上書きする。
  */
 function personaCall(overrides: Partial<PersonaCall> = {}): PersonaCall {
-  return { id: "ai_b", prompt: "# 抽象派", settings: SETTINGS, ...overrides };
+  return { id: "ai_b", prompt: "# 抽象派", provider: PROVIDER, ...overrides };
 }
 
 /** フェイクモードの指定を組み立てる。 */
 function fakeCall(id: PersonaCall["id"]): PersonaCall {
-  return personaCall({ id, settings: { ...SETTINGS, fake: true } });
+  return personaCall({
+    id,
+    provider: new AnthropicProvider({ ...SETTINGS, fake: true }),
+  });
 }
 
 /** Claude API の応答一件を返す fetch に差し替える。 */
@@ -62,12 +72,18 @@ function stubOkResponse() {
 /** モックした fetch が送ったリクエストボディを読む。 */
 function sentBody(fetchMock: ReturnType<typeof stubApiResponse>) {
   return JSON.parse(String(fetchMock.mock.calls[0][1].body)) as {
-    model: string;
-    max_tokens: number;
-    output_config?: { effort: string };
     messages: { content: string }[];
   };
 }
+
+describe("readFakeMode", () => {
+  it("立つのは 1 のときだけ", () => {
+    expect(readFakeMode({ TOIITO_FAKE_AI: "1" })).toBe(true);
+    expect(readFakeMode({ TOIITO_FAKE_AI: "0" })).toBe(false);
+    expect(readFakeMode({ TOIITO_FAKE_AI: "true" })).toBe(false);
+    expect(readFakeMode({})).toBe(false);
+  });
+});
 
 describe("フェイクモード", () => {
   it("ネットワークに出ず、ペルソナ ID と直近の人間発話を含む決定的応答を返す", async () => {
@@ -87,15 +103,7 @@ describe("フェイクモード", () => {
   });
 });
 
-describe("実モード", () => {
-  it("API キー未設定なら呼び出し前に明示的に失敗する", async () => {
-    const call = personaCall({ settings: { ...SETTINGS, apiKey: undefined } });
-
-    await expect(callPersona(call, { body: "q" }, [])).rejects.toThrow(
-      /ANTHROPIC_API_KEY/,
-    );
-  });
-
+describe("応答の受け取り", () => {
   it("完結した応答の本文を返す", async () => {
     stubApiResponse({
       content: [{ type: "text", text: "最後まで出た発話" }],
@@ -107,25 +115,25 @@ describe("実モード", () => {
     );
   });
 
-  it("max_tokens で打ち切られた応答は、途中までの本文を返さず失敗する", async () => {
+  it("上限で打ち切られた応答は、途中までの本文を返さず失敗する", async () => {
     stubApiResponse({
       content: [{ type: "text", text: "途中で切れた発" }],
       stop_reason: "max_tokens",
     });
 
     await expect(callPersona(personaCall(), { body: "q" }, [])).rejects.toThrow(
-      /max_tokens/,
+      /maxTokens/,
     );
   });
 
-  it("text ブロックの無い応答は、空文字列を返さず失敗する", async () => {
+  it("本文の無い応答は、空文字列を返さず失敗する", async () => {
     stubApiResponse({
       content: [{ type: "thinking", thinking: "" }],
       stop_reason: "end_turn",
     });
 
     await expect(callPersona(personaCall(), { body: "q" }, [])).rejects.toThrow(
-      /text ブロック/,
+      /本文が無い/,
     );
   });
 });
@@ -136,7 +144,7 @@ describe("呼び出しログ", () => {
     return vi.spyOn(console, "log").mockImplementation(() => {});
   }
 
-  it("応答をパースした時点で 1 行の JSON を残す", async () => {
+  it("応答を受け取った時点で 1 行の JSON を残す", async () => {
     const logged = captureLog();
     stubApiResponse({
       content: [{ type: "text", text: "十文字ちょうどの本文" }],
@@ -148,8 +156,9 @@ describe("呼び出しログ", () => {
 
     expect(logged).toHaveBeenCalledTimes(1);
     expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
-      event: "claude_call",
-      model: AI_DEFAULTS.model,
+      event: "ai_call",
+      provider: "anthropic",
+      model: ANTHROPIC_DEFAULTS.model,
       persona: "ai_b",
       stop_reason: "end_turn",
       input_tokens: 1200,
@@ -190,7 +199,7 @@ describe("呼び出しログ", () => {
   });
 });
 
-describe("リクエストの組み立て", () => {
+describe("本文の組み立て", () => {
   it("発話者の見出しに内部 ID を出さない", async () => {
     const fetchMock = stubOkResponse();
 
@@ -205,33 +214,17 @@ describe("リクエストの組み立て", () => {
     expect(content).not.toContain("ai_a");
   });
 
-  it("effort を渡すと output_config に載る", async () => {
+  it("現在の形があれば、原型と併せて渡す", async () => {
     const fetchMock = stubOkResponse();
 
-    const call = personaCall({ effort: EFFORT.medium });
+    await callPersona(
+      personaCall(),
+      { body: "原型の問い", current_form: "言い直された焦点" },
+      [],
+    );
 
-    await callPersona(call, { body: "q" }, []);
-
-    expect(sentBody(fetchMock).output_config).toEqual({
-      effort: EFFORT.medium,
-    });
-  });
-
-  it("effort を省くと output_config を送らない（API の既定に任せる）", async () => {
-    const fetchMock = stubOkResponse();
-
-    await callPersona(personaCall(), { body: "q" }, []);
-
-    expect(sentBody(fetchMock).output_config).toBeUndefined();
-  });
-
-  it("モデルとトークン上限は渡された設定から載る", async () => {
-    const fetchMock = stubOkResponse();
-    const settings: AiSettings = { ...SETTINGS, ...OVERRIDE };
-
-    await callPersona(personaCall({ settings }), { body: "q" }, []);
-
-    expect(sentBody(fetchMock).model).toBe(OVERRIDE.model);
-    expect(sentBody(fetchMock).max_tokens).toBe(OVERRIDE.maxTokens);
+    const content = sentBody(fetchMock).messages[0].content;
+    expect(content).toContain("原型の問い");
+    expect(content).toContain("言い直された焦点");
   });
 });

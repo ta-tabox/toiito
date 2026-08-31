@@ -31,7 +31,7 @@ ADR を立てていない理由は `docs/adr/README.md`「ADR にしないもの
 
 ローカルと CI の接続文字列はこの綴りを持たない（`localhost` へ TLS を張っていないので関係が無い）。
 
-`TOIITO_MODEL` は任意（既定 `claude-sonnet-5`）。
+`TOIITO_ANTHROPIC_MODEL` は任意（既定 `claude-sonnet-5`）。
 `TOIITO_FAKE_AI` は**本番に入れない**。
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
 

@@ -13,8 +13,9 @@ VISION の設計原理が上位。
 - **Postgres + Prisma** — 永続化。
   開発も本番も同じ方言に揃える。
   ローカルは `compose.yaml` の Postgres、本番は Neon（手順は `DEPLOY.md`）
-- **Claude API** — 二体 AI の対話生成。
-  Server Actions（サーバー側）からのみ叩く
+- **Claude API（Anthropic）** — 二体 AI の対話生成。
+  Server Actions（サーバー側）からのみ叩く。
+  呼び出し規約は `lib/ai/` がプロバイダ非依存の形で持ち、固有の値域と API の作法は `lib/ai/anthropic.ts` に閉じる（`docs/adr/0021-ai-provider-scope.md`）
 - **Better Auth（自前ホスト）** — 認証。
   Google OAuth 一本で、パスワードは持たない。
   入れるのは許可リストに載ったメールアドレスだけ（選定の経緯は `docs/adr/0019-auth-better-auth.md`、開き方は `docs/adr/0018-invite-only-multi-user.md`）
@@ -202,7 +203,7 @@ toiito/
     ├── src/
     │   ├── app/           ルーティング（問い一覧 / 対話 / メモ逆引き）
     │   ├── components/    UI 部品（メモのアンダーライン表示など）
-    │   ├── lib/           db.ts（Prisma repo 層）・claude.ts・personas.ts・anchors.ts
+    │   ├── lib/           db.ts（Prisma repo 層）・ai/（AI 呼び出し）・personas.ts・anchors.ts
     │   ├── personas/      二体のシステムプロンプト（.md で管理）
     │   └── generated/     Prisma クライアント（生成物・gitignore）
     ├── scripts/           node が直接読む開発用スクリプト（pnpm seed・コメント検査）
