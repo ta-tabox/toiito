@@ -28,7 +28,7 @@ type MessageSeed = {
   memos?: MemoSeed[];
 };
 
-/** currentForm と status は、既定（原型のまま・composting）から動かすときだけ書く。 */
+/** currentForm と status は、既定（原型のまま・new）から動かすときだけ書く。 */
 type QuestionSeed = {
   body: string;
   currentForm?: string;
@@ -40,13 +40,13 @@ type QuestionSeed = {
  * 入れる値の宣言。
  *
  * 三者対話の手触りを再現するため、人間 → ai_a（具体）→ ai_b（抽象）の順で数往復を置く。
- * 一件は言い直し済み（currentForm）、一件は composting 以外の状態にして、一覧と対話画面が既定以外の見た目でも確かめられるようにする。
+ * 一件は言い直し済み（currentForm）、一件は new 以外の状態にして、一覧と対話画面が既定以外の見た目でも確かめられるようにする。
  */
 const SEED_QUESTIONS: QuestionSeed[] = [
   {
     body: "速さを求めることは、何を失うことなのか",
     currentForm: "急ぐとき、私は問いのどこを削っているのか",
-    status: "fermented",
+    status: "stocked",
     messages: [
       {
         speaker: "human",
@@ -117,7 +117,7 @@ const SEED_QUESTIONS: QuestionSeed[] = [
   },
   {
     body: "毎日書くことは、なぜ続かないのか",
-    status: "open",
+    status: "holding",
     messages: [
       {
         speaker: "human",

@@ -1,5 +1,5 @@
 /**
- * コンポスターの入口画面。
+ * 発酵槽の入口画面。
  * 問いの投入フォームと、投入済みの問いの一覧。
  *
  * 表示に要る整形だけを持ち、状態遷移や絞り込みは lib 側へ置く。
@@ -15,18 +15,24 @@ import type { QuestionStatus } from "@/lib/question";
 
 export const dynamic = "force-dynamic";
 
-/** 意味の正は ARCHITECTURE.md「問いの状態機械」 */
+/**
+ * 状態の表示名。
+ * 意味の正は ARCHITECTURE.md「問いの状態機械」、語の正は VISION.md「語彙」節。
+ *
+ * 比喩を持つのはこのラベルだけで、値の側は一般語のまま動かない（`docs/adr/0017-status-value-set.md`）。
+ */
 const STATUS_LABEL: Record<QuestionStatus, string> = {
-  composting: "堆肥化中",
-  fermented: "発酵",
-  promoted: "結晶した",
-  open: "持ち続ける",
-  perennial: "閉じない問い",
+  new: "仕込み中",
+  stocked: "発酵",
+  resolved: "一旦閉じた",
+  exported: "結晶した",
+  holding: "持ち続ける",
+  permanent: "閉じない問い",
   discarded: "棄却",
 };
 
 /**
- * コンポスターの入口。
+ * 発酵槽の入口。
  * 投入フォームと問いの一覧。
  */
 export default async function Home() {
@@ -37,7 +43,7 @@ export default async function Home() {
       <h1 className="text-2xl font-bold tracking-wide">
         toiito{" "}
         <span className="text-sm font-normal text-neutral-500">
-          問いのコンポスター
+          問いの発酵槽
         </span>
       </h1>
 

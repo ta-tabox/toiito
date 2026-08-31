@@ -26,17 +26,21 @@ datasource db {
   provider = "postgresql"
 }
 
-/// 問いの状態。6 値である理由と各値の意味は ARCHITECTURE.md「問いの状態機械」。
+/// 問いの状態。7 値である理由と各値の意味は ARCHITECTURE.md「問いの状態機械」。
+///
+/// 値は比喩を持たない一般語で持ち、比喩は UI のラベルだけが持つ（`docs/adr/0017-status-value-set.md`）。
+/// 比喩は選び直しうるが enum の変更は本番の DB を動かすので、値の側へ比喩を持ち込まない。
 ///
 /// TS 側の対応は `src/lib/question.ts` の `QUESTION_STATUSES`（型 `QuestionStatus` と UI ラベルがそこから派生する）。
 /// 二箇所に書くのは冗長に見えるが、ずれると repo 関数の戻り値がドメイン型へ代入できなくなり `tsc` が落ちる。
 /// ここに値を足したら向こうにも足す。
 enum QuestionStatus {
-  composting
-  fermented
-  promoted
-  open
-  perennial
+  new
+  stocked
+  resolved
+  exported
+  holding
+  permanent
   discarded
 
   @@map("question_status")
@@ -59,7 +63,7 @@ model Question {
   id           String         @id @default(uuid(4)) @db.Uuid
   body         String
   current_form String?
-  status       QuestionStatus @default(composting)
+  status       QuestionStatus @default(new)
   created_at   DateTime       @default(now()) @db.Timestamptz(6)
   /// 挿入順の通し番号。同着を割るための列（意図は Message.seq）。
   seq          BigInt         @default(autoincrement()) @unique

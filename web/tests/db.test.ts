@@ -16,7 +16,7 @@ describe("questions / sessions", () => {
     );
 
     expect(question.body).toBe("なぜ速さを求めるのか");
-    expect(question.status).toBe("composting");
+    expect(question.status).toBe("new");
     expect(question.current_form).toBeNull();
     expect(session.question_id).toBe(question.id);
     expect((await db.latestSession(question.id))?.id).toBe(session.id);
@@ -127,7 +127,7 @@ describe("原型と現在の形", () => {
 });
 
 describe("問いの状態機械", () => {
-  it("6状態すべてに遷移できる", async () => {
+  it("7状態すべてに遷移できる", async () => {
     const { question } = await db.createQuestion("状態の問い");
 
     for (const s of QUESTION_STATUSES) {
@@ -135,12 +135,12 @@ describe("問いの状態機械", () => {
     }
   });
 
-  it("perennial（閉じないことが正しい問い）が open と別状態として存在する", () => {
-    expect(QUESTION_STATUSES).toContain("open");
-    expect(QUESTION_STATUSES).toContain("perennial");
+  it("permanent（閉じないことが正しい問い）が holding と別状態として存在する", () => {
+    expect(QUESTION_STATUSES).toContain("holding");
+    expect(QUESTION_STATUSES).toContain("permanent");
   });
 
-  it("closed は廃止されている（promoted と discarded に割れた）", async () => {
+  it("closed は廃止されている（exported と resolved と discarded に割れた）", async () => {
     expect(QUESTION_STATUSES).not.toContain("closed");
 
     const { question } = await db.createQuestion("旧状態の問い");
@@ -157,7 +157,7 @@ describe("問いの状態機械", () => {
       // @ts-expect-error 値域は型でもスキーマでも表明している
       db.setQuestionStatus(question.id, "fermenting"),
     ).rejects.toThrow(/unknown question status/);
-    expect((await db.getQuestion(question.id))?.status).toBe("composting");
+    expect((await db.getQuestion(question.id))?.status).toBe("new");
   });
 });
 

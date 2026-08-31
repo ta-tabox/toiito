@@ -77,8 +77,6 @@ AI はもっぱらスピードアップ（速く答えに到達する）の文�
 | `permanent` | 閉じない問い | 閉じないことが正しいので、閉じ候補として催促しない |
 | `discarded` | 棄却 | — |
 
-現行の値は `composting` / `fermented` / `promoted` / `open` / `perennial` / `discarded` の 6 つで、#125（`status` を一般語へ組み直し、`resolved` を足す migration）が移す。
-
 ## AI の役割 — 否定形で定義する（最重要の設計制約）
 
 AI がやらないことが、このアプリのアイデンティティ:
