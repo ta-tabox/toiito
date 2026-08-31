@@ -21,7 +21,7 @@ describe("from", () => {
     expect(SIZES.from("large")).toBe("large");
   });
 
-  it("未設定と綴り違いはどちらも undefined へ倒す", () => {
+  it("未設定と想定外の値はどちらも undefined へ倒す", () => {
     expect(SIZES.from(undefined)).toBeUndefined();
     expect(SIZES.from("Large")).toBeUndefined();
     expect(SIZES.from("")).toBeUndefined();
