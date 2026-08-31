@@ -69,13 +69,18 @@ export type AnthropicSettings = CommonSettings & {
 /**
  * 系統ごとの思考の深さの既定。
  *
- * 深さは個体でなく系統の性質なので、キーは `PersonaId` でなく `PersonaRole`。
  * 抽象系は構造を取り出して材料を添える役で thinking が膨らみやすいので、一段落とす。
  * undefined は API の既定（high）で走らせるという指定。
  */
 const DEFAULT_EFFORT: Record<PersonaRole, AnthropicEffort | undefined> = {
   concrete: undefined,
   abstract: ANTHROPIC_EFFORT.medium,
+};
+
+/** 系統ごとの深さを指定する環境変数。 */
+const EFFORT_ENV_KEY: Record<PersonaRole, string> = {
+  concrete: "TOIITO_ANTHROPIC_EFFORT_CONCRETE",
+  abstract: "TOIITO_ANTHROPIC_EFFORT_ABSTRACT",
 };
 
 /**
@@ -91,37 +96,22 @@ export const ANTHROPIC_DEFAULTS = {
 } as const;
 
 /**
- * env から系統ごとの設定を読む。
+ * env から設定を読む。
  *
- * 深さだけが系統で分かれ、残りは全系統で同じ値になる。
- * 数として読めない値（未設定・空・非数）と、深さの値域の外はどちらも既定へ倒す。
- * フェイクモードは env に依らずプロバイダを叩くかどうかの指定なので、解決済みの値を受け取る。
+ * 深さは系統ごとに違うので、ここでは読まない（`readAnthropicProviders` が足す）。
+ * 数として読めない値（未設定・空・非数）は既定へ倒す。
+ * フェイクモードはプロバイダを叩くかどうかの指定で env に依らないので、解決済みの値を受け取る。
  */
 export function readAnthropicSettings(
   env: AnthropicEnv,
   fake: boolean,
-): Record<PersonaRole, AnthropicSettings> {
-  const shared = {
+): AnthropicSettings {
+  return {
     model: env.TOIITO_ANTHROPIC_MODEL ?? ANTHROPIC_DEFAULTS.model,
     maxTokens:
       Number(env.TOIITO_ANTHROPIC_MAX_TOKENS) || ANTHROPIC_DEFAULTS.maxTokens,
     fake,
     apiKey: env.ANTHROPIC_API_KEY,
-  } as const;
-
-  return {
-    concrete: {
-      ...shared,
-      effort:
-        EFFORTS.from(env.TOIITO_ANTHROPIC_EFFORT_CONCRETE) ??
-        ANTHROPIC_DEFAULTS.effort.concrete,
-    },
-    abstract: {
-      ...shared,
-      effort:
-        EFFORTS.from(env.TOIITO_ANTHROPIC_EFFORT_ABSTRACT) ??
-        ANTHROPIC_DEFAULTS.effort.abstract,
-    },
   };
 }
 
@@ -193,8 +183,23 @@ export class AnthropicProvider extends AiProvider {
 }
 
 /**
+ * env から系統ごとの深さを読む。
+ * 値域の外（未設定・綴り違い）は既定へ倒す。
+ */
+function readEffort(
+  env: AnthropicEnv,
+  role: PersonaRole,
+): AnthropicEffort | undefined {
+  return (
+    EFFORTS.from(env[EFFORT_ENV_KEY[role]]) ?? ANTHROPIC_DEFAULTS.effort[role]
+  );
+}
+
+/**
  * env から系統ごとのプロバイダを作る。
- * 設定を作ってから包むところまでを一箇所に置き、呼び出し側は解決済みのプロバイダだけを見る。
+ *
+ * 深さは個体でなく系統の性質なので、キーは `PersonaId` でなく `PersonaRole`。
+ * 系統で分かれるのは深さだけで、残りは全系統が同じ設定を持つ。
  */
 export function readAnthropicProviders(
   env: AnthropicEnv,
@@ -203,7 +208,13 @@ export function readAnthropicProviders(
   const settings = readAnthropicSettings(env, fake);
 
   return {
-    concrete: new AnthropicProvider(settings.concrete),
-    abstract: new AnthropicProvider(settings.abstract),
+    concrete: new AnthropicProvider({
+      ...settings,
+      effort: readEffort(env, "concrete"),
+    }),
+    abstract: new AnthropicProvider({
+      ...settings,
+      effort: readEffort(env, "abstract"),
+    }),
   };
 }
