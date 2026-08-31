@@ -189,7 +189,7 @@ Playwright のドラッグでは文字の途中で始まる範囲を安定して
 2. **env を読むのは `web/src/lib/config.ts` と `web/src/proxy.ts` だけ**（前者が DB 接続先・AI フェイク・モデル名・トークン上限・思考の深さ、後者が Basic 認証）。
    既定値もそこで決め、他のモジュールは解決済みの値を参照する。
    呼び出しごとに変わりうる値は引数で受け取る。
-   env の読み方そのものは、env を模した object を渡す純関数として検査する（`readAiSettings` / `readBasicAuthCredentials`）。
+   env の読み方そのものは、env を模した object を渡す純関数として検査する（`readAnthropicSettings` / `readBasicAuthCredentials`）。
    テストは `process.env` を書き換えない。
    別プロセスで起動する `web/scripts/` と `web/e2e/setup/` は、env が入口なのでこの限りでない。
    プロセス自身の挙動を切り替える `TZ` も設定ではないので同じく外れる
