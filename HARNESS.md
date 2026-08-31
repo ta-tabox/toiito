@@ -107,6 +107,9 @@ worktree 間は DB の名前で分かれる。
 `toiito_wt_` の印を付けるのは、掃除が手で指した DB を巻き込まないため。
 上書きの口は `TOIITO_TEST_DATABASE_URL` で、指定が派生に勝つ。
 
+worktree を消しても DB は残るので、`pnpm db:prune` で落とす。
+落とすのは派生した名前のうち現存の worktree に対応しないものだけで、手で付けた名前は一覧に出して人間へ渡す。
+
 `prisma migrate reset` は使わない。
 Prisma 7 はこれを破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求するので、無人で回る check のゲートには置けない。
 
