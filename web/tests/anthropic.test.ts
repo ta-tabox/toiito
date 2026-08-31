@@ -1,7 +1,17 @@
+/**
+ * Anthropic 実装の検査。
+ * env から設定を作る写像は process.env を触らず、env を模した object を渡す（HARNESS.md「テスト可能性の設計制約」2）。
+ */
+
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { callPersona, type PersonaCall } from "@/lib/claude";
-import { AI_DEFAULTS, type AiSettings } from "@/lib/config";
-import { EFFORT } from "@/lib/effort";
+import { callPersona, type PersonaCall } from "@/lib/ai";
+import {
+  ANTHROPIC_DEFAULTS,
+  type AnthropicSettings,
+  EFFORT,
+  isEffort,
+  readAnthropicSettings,
+} from "@/lib/ai/anthropic";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -9,9 +19,10 @@ afterEach(() => {
 });
 
 /** 実 API を叩く側の設定。 */
-const SETTINGS: AiSettings = {
-  model: AI_DEFAULTS.model,
-  maxTokens: AI_DEFAULTS.maxTokens,
+const SETTINGS: AnthropicSettings = {
+  provider: "anthropic",
+  model: ANTHROPIC_DEFAULTS.model,
+  maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
   fake: false,
   apiKey: "test-key",
 };
@@ -23,6 +34,7 @@ const SETTINGS: AiSettings = {
 const OVERRIDE = {
   model: "claude-opus-5",
   maxTokens: 2048,
+  effort: EFFORT.xhigh,
 };
 
 /**
@@ -68,6 +80,99 @@ function sentBody(fetchMock: ReturnType<typeof stubApiResponse>) {
     messages: { content: string }[];
   };
 }
+
+describe("思考の深さの値域", () => {
+  it("API の値域だけを通す", () => {
+    expect(isEffort("medium")).toBe(true);
+    expect(isEffort("xhigh")).toBe(true);
+    expect(isEffort("middle")).toBe(false);
+    expect(isEffort("")).toBe(false);
+  });
+});
+
+describe("既定値", () => {
+  it("web/README.md の表と一致する", () => {
+    expect(ANTHROPIC_DEFAULTS.model).toBe("claude-sonnet-5");
+    expect(ANTHROPIC_DEFAULTS.maxTokens).toBe(16000);
+    expect(ANTHROPIC_DEFAULTS.effort.concrete).toBeUndefined();
+    expect(ANTHROPIC_DEFAULTS.effort.abstract).toBe("medium");
+  });
+});
+
+describe("readAnthropicSettings", () => {
+  it("未設定なら既定へ倒す", () => {
+    expect(readAnthropicSettings({})).toEqual({
+      concrete: {
+        provider: "anthropic",
+        model: ANTHROPIC_DEFAULTS.model,
+        maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
+        effort: ANTHROPIC_DEFAULTS.effort.concrete,
+        fake: false,
+        apiKey: undefined,
+      },
+      abstract: {
+        provider: "anthropic",
+        model: ANTHROPIC_DEFAULTS.model,
+        maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
+        effort: ANTHROPIC_DEFAULTS.effort.abstract,
+        fake: false,
+        apiKey: undefined,
+      },
+    });
+  });
+
+  it("深さ以外は全系統に同じ値が載る", () => {
+    const env = {
+      TOIITO_MODEL: OVERRIDE.model,
+      TOIITO_MAX_TOKENS: String(OVERRIDE.maxTokens),
+    };
+    const settings = readAnthropicSettings(env);
+
+    expect(settings.concrete.model).toBe(OVERRIDE.model);
+    expect(settings.abstract.model).toBe(OVERRIDE.model);
+    expect(settings.concrete.maxTokens).toBe(OVERRIDE.maxTokens);
+    expect(settings.abstract.maxTokens).toBe(OVERRIDE.maxTokens);
+  });
+
+  it("数として読めない TOIITO_MAX_TOKENS は既定へ倒す", () => {
+    expect(
+      readAnthropicSettings({ TOIITO_MAX_TOKENS: "" }).concrete.maxTokens,
+    ).toBe(ANTHROPIC_DEFAULTS.maxTokens);
+    expect(
+      readAnthropicSettings({ TOIITO_MAX_TOKENS: "たくさん" }).concrete
+        .maxTokens,
+    ).toBe(ANTHROPIC_DEFAULTS.maxTokens);
+  });
+
+  it("フェイクモードが立つのは 1 のときだけ", () => {
+    expect(readAnthropicSettings({ TOIITO_FAKE_AI: "1" }).concrete.fake).toBe(
+      true,
+    );
+    expect(readAnthropicSettings({ TOIITO_FAKE_AI: "0" }).concrete.fake).toBe(
+      false,
+    );
+    expect(
+      readAnthropicSettings({ TOIITO_FAKE_AI: "true" }).concrete.fake,
+    ).toBe(false);
+  });
+
+  it("TOIITO_EFFORT_ABSTRACT の上書きが効く", () => {
+    const env = { TOIITO_EFFORT_ABSTRACT: OVERRIDE.effort };
+
+    expect(readAnthropicSettings(env).abstract.effort).toBe(OVERRIDE.effort);
+  });
+
+  it("深さの値域の外は既定へ倒す", () => {
+    const env = {
+      TOIITO_EFFORT_CONCRETE: "middle",
+      TOIITO_EFFORT_ABSTRACT: "middle",
+    };
+    const settings = readAnthropicSettings(env);
+
+    expect(settings.concrete.effort).toBe(ANTHROPIC_DEFAULTS.effort.concrete);
+    expect(settings.abstract.effort).toBe(ANTHROPIC_DEFAULTS.effort.abstract);
+  });
+});
 
 describe("フェイクモード", () => {
   it("ネットワークに出ず、ペルソナ ID と直近の人間発話を含む決定的応答を返す", async () => {
@@ -149,7 +254,7 @@ describe("呼び出しログ", () => {
     expect(logged).toHaveBeenCalledTimes(1);
     expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
       event: "claude_call",
-      model: AI_DEFAULTS.model,
+      model: ANTHROPIC_DEFAULTS.model,
       persona: "ai_b",
       stop_reason: "end_turn",
       input_tokens: 1200,
@@ -205,10 +310,12 @@ describe("リクエストの組み立て", () => {
     expect(content).not.toContain("ai_a");
   });
 
-  it("effort を渡すと output_config に載る", async () => {
+  it("設定に深さがあると output_config に載る", async () => {
     const fetchMock = stubOkResponse();
 
-    const call = personaCall({ effort: EFFORT.medium });
+    const call = personaCall({
+      settings: { ...SETTINGS, effort: EFFORT.medium },
+    });
 
     await callPersona(call, { body: "q" }, []);
 
@@ -217,7 +324,7 @@ describe("リクエストの組み立て", () => {
     });
   });
 
-  it("effort を省くと output_config を送らない（API の既定に任せる）", async () => {
+  it("設定に深さが無いと output_config を送らない（API の既定に任せる）", async () => {
     const fetchMock = stubOkResponse();
 
     await callPersona(personaCall(), { body: "q" }, []);
@@ -227,7 +334,11 @@ describe("リクエストの組み立て", () => {
 
   it("モデルとトークン上限は渡された設定から載る", async () => {
     const fetchMock = stubOkResponse();
-    const settings: AiSettings = { ...SETTINGS, ...OVERRIDE };
+    const settings: AnthropicSettings = {
+      ...SETTINGS,
+      model: OVERRIDE.model,
+      maxTokens: OVERRIDE.maxTokens,
+    };
 
     await callPersona(personaCall({ settings }), { body: "q" }, []);
 

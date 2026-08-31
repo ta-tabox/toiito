@@ -5,15 +5,16 @@
  */
 
 import { afterAll, describe, expect, it } from "vitest";
-import { callPersona } from "@/lib/claude";
-import { AI_DEFAULTS, type AiSettings } from "@/lib/config";
+import { type AiSettings, callPersona } from "@/lib/ai";
+import { ANTHROPIC_DEFAULTS } from "@/lib/ai/anthropic";
 import * as db from "@/lib/db";
 import { loadPersona, type PersonaId } from "@/lib/personas";
 
 /** 実 API を叩かないための設定（HARNESS.md「実 API を自動テストで叩かない」）。 */
 const FAKE_SETTINGS: AiSettings = {
-  model: AI_DEFAULTS.model,
-  maxTokens: AI_DEFAULTS.maxTokens,
+  provider: "anthropic",
+  model: ANTHROPIC_DEFAULTS.model,
+  maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
   fake: true,
 };
 

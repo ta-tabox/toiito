@@ -11,8 +11,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { callPersona } from "@/lib/claude";
-import { AI_SETTINGS, PERSONA_EFFORT } from "@/lib/config";
+import { callPersona } from "@/lib/ai";
+import { AI_SETTINGS } from "@/lib/config";
 import {
   addMemo,
   addMessage,
@@ -67,8 +67,7 @@ export async function speakAction(
     {
       id: "ai_a",
       prompt: loadPersona("ai_a"),
-      effort: PERSONA_EFFORT.concrete,
-      settings: AI_SETTINGS,
+      settings: AI_SETTINGS.concrete,
     },
     question,
     await listMessages(sessionId),
@@ -79,8 +78,7 @@ export async function speakAction(
     {
       id: "ai_b",
       prompt: loadPersona("ai_b"),
-      effort: PERSONA_EFFORT.abstract,
-      settings: AI_SETTINGS,
+      settings: AI_SETTINGS.abstract,
     },
     question,
     await listMessages(sessionId),
