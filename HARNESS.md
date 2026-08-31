@@ -186,10 +186,11 @@ Playwright のドラッグでは文字の途中で始まる範囲を安定して
 1. **ロジックは lib 層へ寄せる**。
    UI コンポーネントや Server Actions にロジックを埋めない。
    actions.ts は「lib を呼ぶ配線」に留める
-2. **env を読むのは `web/src/lib/config.ts` と `web/src/proxy.ts` だけ**（前者が DB 接続先・AI フェイク・モデル名・トークン上限・思考の深さ、後者が Basic 認証）。
-   既定値もそこで決め、他のモジュールは解決済みの値を参照する。
+2. **`process.env` を読むのは `web/src/lib/config.ts` と `web/src/proxy.ts` だけ**（前者が DB 接続先と AI の設定、後者が Basic 認証）。
+   env から値への写像と既定値は、その値を使う側のモジュールが純関数として持つ（`lib/ai/anthropic.ts` の `readAnthropicSettings` と `ANTHROPIC_DEFAULTS`、`lib/basic-auth.ts` の `readBasicAuthCredentials`）。
+   他のモジュールは解決済みの値を参照する。
    呼び出しごとに変わりうる値は引数で受け取る。
-   env の読み方そのものは、env を模した object を渡す純関数として検査する（`readAnthropicSettings` / `readBasicAuthCredentials`）。
+   env の読み方そのものは、その純関数へ env を模した object を渡して検査する。
    テストは `process.env` を書き換えない。
    別プロセスで起動する `web/scripts/` と `web/e2e/setup/` は、env が入口なのでこの限りでない。
    プロセス自身の挙動を切り替える `TZ` も設定ではないので同じく外れる
