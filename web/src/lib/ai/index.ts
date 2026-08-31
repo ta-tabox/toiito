@@ -8,13 +8,14 @@
  * プロバイダは config.ts が env から作る。
  */
 
-import { buildUserContent } from "@/lib/ai/prompt";
+import { fakeResponse } from "@/lib/ai/fake";
+import {
+  buildUserContent,
+  type QuestionRef,
+  type Transcript,
+} from "@/lib/ai/prompt";
 import type { AiProvider } from "@/lib/ai/provider";
 import type { PersonaId } from "@/lib/personas";
-import type { Speaker } from "@/lib/types";
-
-/** ここまでの全発話。 */
-export type Transcript = { speaker: Speaker; body: string }[];
 
 /**
  * ペルソナ一体を呼ぶときの指定。
@@ -28,12 +29,6 @@ export type PersonaCall = {
   readonly prompt: string;
   readonly provider: AiProvider;
 };
-
-/**
- * 原型と現在の形を両方渡す。
- * 片方だけでは、問いが移った先を見失うか、原型からのずれを検出できないかのどちらかになる（ARCHITECTURE.md「原型と現在の形」）。
- */
-export type QuestionRef = { body: string; current_form?: string | null };
 
 /**
  * 一回の呼び出しの結果を 1 行の JSON で残す。
@@ -53,18 +48,6 @@ function logCall(fields: {
   body_length: number;
 }): void {
   console.log(JSON.stringify({ event: "ai_call", ...fields }));
-}
-
-/**
- * ハーネス用フェイクモード（HARNESS.md 参照）。
- * ネットワークに出ず決定的応答を返す。
- * ペルソナ ID と直近の人間発話を含めることで、E2E 側から「どの体が・何を受けて」応答したかをアサート可能にする。
- */
-function fakeResponse(id: PersonaId, transcript: Transcript): string {
-  const lastHuman = [...transcript]
-    .reverse()
-    .find((m) => m.speaker === "human");
-  return `[fake:${id}] 「${lastHuman?.body ?? "(発話なし)"}」への応答`;
 }
 
 /**

@@ -1,13 +1,21 @@
 /**
- * モデルへ渡す本文の組み立て（toiito の決め事）。
+ * モデルへ渡す本文の組み立てと、その材料の型（toiito の決め事）。
  * 何をどの順で見せるかはプロバイダに依らないので、API の作法とは別に置く。
  *
  * 出来上がるのは一本のユーザーメッセージで、三者対話の transcript をそこへ畳む。
  * ai_b の呼び出し時には直前の ai_a の発話も含まれている前提（二体は並列でなく逐次——ai_b は ai_a への応答であることに意味がある）。
  */
 
-import type { QuestionRef, Transcript } from "@/lib/ai";
 import type { Speaker } from "@/lib/types";
+
+/** ここまでの全発話。 */
+export type Transcript = { speaker: Speaker; body: string }[];
+
+/**
+ * 原型と現在の形を両方渡す。
+ * 片方だけでは、問いが移った先を見失うか、原型からのずれを検出できないかのどちらかになる（ARCHITECTURE.md「原型と現在の形」）。
+ */
+export type QuestionRef = { body: string; current_form?: string | null };
 
 /**
  * transcript の発話者見出し。

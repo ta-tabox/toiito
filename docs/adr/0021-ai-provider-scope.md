@@ -19,10 +19,14 @@ AI に関する語彙が三つのモジュールへ散っている。
 
 `src/lib/ai/` を作り、次の三枚へ切り直す。
 
-- `ai/index.ts` — 呼び出しの規約と、一回の呼び出しの手順（フェイクモード・呼び出しの記録・欠けた本文を返さないこと）
+- `ai/index.ts` — 呼び出しの規約と、一回の呼び出しの手順（フェイクモードへの分岐・呼び出しの記録・欠けた本文を返さないこと）
 - `ai/provider.ts` — プロバイダ一つ分の契約（`AiProvider`・`CommonSettings`・`ProviderResponse`）
-- `ai/prompt.ts` — モデルへ渡す本文の組み立て（発話者見出しと transcript の畳み方）
+- `ai/prompt.ts` — モデルへ渡す本文の組み立てと、その材料の型（`QuestionRef`・`Transcript`）
+- `ai/fake.ts` — フェイクモードの応答（E2E がアサートする綴り）
 - `ai/anthropic.ts` — Anthropic 固有の一切（深さの値域・設定型・env からの読み・HTTP の作法）
+
+依存は一方向に揃える。
+`ai/provider.ts` は何も import しない葉で、規約の側から Anthropic への参照は無い（プロバイダを構築するのは `config.ts` の役目）。
 
 `effort.ts` と `claude.ts` は無くなる。
 値域を絞り込む手順そのものは概念に依らないので、`lib/value-set.ts` へ切り出して値域を持つ側が使う。
