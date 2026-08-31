@@ -22,7 +22,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@e2e/*": ["./e2e/*"],
-      "@scripts/*": ["./scripts/*"]
+      "@scripts/*": ["./scripts/*"],
+      "@tests/*": ["./tests/*"]
     }
   },
   "include": [
