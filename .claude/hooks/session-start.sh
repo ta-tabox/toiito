@@ -230,9 +230,9 @@ main() {
   install_dependencies
   apply_migrations
 
-  # 手元との連携に使うファイル（CLAUDE.local.md・NEXT.md）は追跡しないので、この環境には存在しない。
+  # 手元との連携に使うファイル（CLAUDE.local.md）は追跡しないので、この環境には存在しない。
   # 無いのが既定だと宣言しておくと、探しに行って止まる形を防げる。
-  log "手元専用のファイル（CLAUDE.local.md / NEXT.md）はこの環境に無い（既定）"
+  log "手元専用のファイル（CLAUDE.local.md）はこの環境に無い（既定）"
   log "準備完了。web/ で pnpm check が走る"
 }
 

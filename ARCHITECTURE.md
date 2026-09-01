@@ -217,7 +217,6 @@ toiito/
 ├── CLAUDE.md          プロジェクト規約（既存）
 ├── VISION.md          なぜ作るか（既存・正）
 ├── ARCHITECTURE.md    本文書
-├── NEXT.md            セッション跨ぎ handoff（既存）
 └── web/               Next.js アプリ本体
     ├── src/
     │   ├── app/           ルーティング（問い一覧 / 対話 / メモ逆引き）

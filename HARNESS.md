@@ -26,7 +26,7 @@ check が赤のままコミットしない（コミットゲート）。
 
 - **Require a pull request before merging** — 有効、承認は 0 件。
   main への直 push を塞ぐ。
-  `NEXT.md` の申し送り更新のような一行の変更も PR を通る（先例: cd10a6f は main へ直接入っている）。
+  文書の一行だけを直す変更も PR を通る（先例: cd10a6f は main へ直接入っている）。
   例外は下の bypass の一点だけで、通常の経路には作らない。
   承認を 1 件以上にすると GitHub は自分の PR を自分で承認させないので、全ての PR が bypass 頼みになる
 - **Require status checks to pass before merging** — 有効。
