@@ -9,6 +9,9 @@
 
 import { expect, type Page, test } from "@playwright/test";
 
+/** 画面の座標で見たフォームの矩形。 */
+type FormRect = { top: number; bottom: number; left: number; right: number };
+
 /** シードの行とも互いとも混ざらないよう、シナリオごとに違う文言を使う。 */
 const UNDERLINE_QUESTION = "E2E: 選択した語に印は残るのか";
 
@@ -49,6 +52,9 @@ const POSITION_KEYWORD_LENGTH = 12;
 
 /** スマホと同じ狭さ。画面の下端へ寄せるのは、狭い画面で視界の外に出さないための形。 */
 const NARROW_VIEWPORT = { width: 375, height: 812 };
+
+/** 出したまま広げる先。画面を基準に置いているなら、幅が変わっても画面の中に居る。 */
+const WIDE_VIEWPORT = { width: 1280, height: 800 };
 
 /**
  * 画面の下端とフォームの隙間の上限（px）。
@@ -96,7 +102,7 @@ test("選択を touchend で終えてもメモの小フォームが立つ", asyn
   await expect(page.getByRole("blockquote")).toHaveText(TOUCH_UTTERANCE);
 });
 
-test("メモの小フォームは画面の下端の少し上に浮き、選んだ位置でもスクロールでも動かない", async ({
+test("メモの小フォームは、選んだ位置でもスクロールでも画面幅でも、画面の下端の少し上に居る", async ({
   page,
 }) => {
   await page.setViewportSize(NARROW_VIEWPORT);
@@ -114,11 +120,7 @@ test("メモの小フォームは画面の下端の少し上に浮き、選ん�
   );
   const atHead = await formRect(page);
 
-  // 下端へ寄っていることと、縁に貼り付いていないことの両方を見る。
-  const bottomGap = NARROW_VIEWPORT.height - atHead.bottom;
-
-  expect(bottomGap).toBeGreaterThan(0);
-  expect(bottomGap).toBeLessThanOrEqual(BOTTOM_GAP_LIMIT);
+  expectNearBottom(atHead, NARROW_VIEWPORT);
 
   await selectTextIn(
     page,
@@ -134,6 +136,15 @@ test("メモの小フォームは画面の下端の少し上に浮き、選ん�
     .toBeGreaterThan(0);
 
   expect(await formRect(page)).toEqual(atHead);
+
+  // 出したまま画面を広げても、基準は画面のまま。
+  await page.setViewportSize(WIDE_VIEWPORT);
+
+  const widened = await formRect(page);
+
+  expectNearBottom(widened, WIDE_VIEWPORT);
+  expect(widened.left).toBeGreaterThanOrEqual(0);
+  expect(widened.right).toBeLessThanOrEqual(WIDE_VIEWPORT.width);
 });
 
 test("作ったメモは /memos に並び、そこから出所の発話へ着地する", async ({
@@ -312,20 +323,28 @@ async function idOf(message: ReturnType<Page["locator"]>): Promise<string> {
 }
 
 /**
- * メモの小フォームの縦の位置を、画面の座標で読む。
+ * メモの小フォームの位置を、画面の座標で読む。
  *
  * ページの座標では、スクロールで動かないことを見られない。
  * 引くのは「メモする」を持つ form で、発話の口の form と混ざらない。
  */
-async function formRect(page: Page): Promise<{ top: number; bottom: number }> {
+async function formRect(page: Page): Promise<FormRect> {
   return page
     .locator("form")
     .filter({ has: page.getByRole("button", { name: "メモする" }) })
     .evaluate((form) => {
-      const { top, bottom } = form.getBoundingClientRect();
+      const { top, bottom, left, right } = form.getBoundingClientRect();
 
-      return { top, bottom };
+      return { top, bottom, left, right };
     });
+}
+
+/** フォームが画面の下端へ寄っており、かつ縁に貼り付いていないこと。 */
+function expectNearBottom(rect: FormRect, viewport: { height: number }): void {
+  const bottomGap = viewport.height - rect.bottom;
+
+  expect(bottomGap).toBeGreaterThan(0);
+  expect(bottomGap).toBeLessThanOrEqual(BOTTOM_GAP_LIMIT);
 }
 
 /**

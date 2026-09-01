@@ -16,6 +16,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   clampToGraphemeBoundary,
   type Segment,
@@ -102,15 +103,18 @@ export function MessageBody({
         ))}
       </div>
 
-      {draft && (
-        <MemoForm
-          key={`${draft.anchorStart}-${draft.anchorEnd}`}
-          messageId={message.id}
-          draft={draft}
-          action={action}
-          onClose={() => setDraft(null)}
-        />
-      )}
+      {/* body へ移すのは、祖先が containing block を作ると fixed の基準が画面でなくその祖先へ移るため。 */}
+      {draft &&
+        createPortal(
+          <MemoForm
+            key={`${draft.anchorStart}-${draft.anchorEnd}`}
+            messageId={message.id}
+            draft={draft}
+            action={action}
+            onClose={() => setDraft(null)}
+          />,
+          document.body,
+        )}
     </>
   );
 }
@@ -162,6 +166,7 @@ function SegmentText({
  * iOS Safari は 16px 未満の入力欄へフォーカスすると自動でズームして書き手が選んだ倍率を捨てるので、ノートの入力欄だけ周りの 14px（`text-sm`）へ揃えず 16px（`text-base`）を敷く。
  *
  * 置き場は画面の下端の少し上で、選んだ位置によらず動かない。
+ * 画面を基準に置くので、描く先は発話の枠の中でなく body（呼び出し側が portal で移す）。
  * 本文の後ろへ流し込む形にすると、発話が長いときに選んだ位置とフォームが画面一枚分ほど離れ、メモを作れること自体に気付けない。
  * 選択のたびに位置が変わる形も採らない（毎回どこに出るかを探すことになるうえ、親指の届く先が定まらない）。
  *
