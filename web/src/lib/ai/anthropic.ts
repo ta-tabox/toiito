@@ -139,7 +139,8 @@ export class AnthropicProvider extends AiProvider {
    *
    * キーが無ければ叩く前に落とす。
    * 打ち切りは `stop_reason` で判定して通すだけで、拒むかどうかは規約の側が決める。
-   * `signal` が切れると fetch が投げるので、上限を超えた呼び出しはここを素通りして規約の側へ届く。
+   * 上限を超えると `signal` が切れ、走っている fetch は例外を投げて中断する。
+   * その例外はここで捕まえないので、呼び出し元の `callPersona` へそのまま伝わり、あちらが上限超過として投げ直す。
    */
   async send(
     system: string,
