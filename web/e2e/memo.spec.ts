@@ -7,7 +7,7 @@
  * E2E のデータベースは走り単位でしか作り直されないので、前のシナリオが残した行に寄りかかると順序に縛られる。
  */
 
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 
 /** 画面の座標で見たフォームの矩形。 */
 type FormRect = { top: number; bottom: number; left: number; right: number };
@@ -55,6 +55,17 @@ const NARROW_VIEWPORT = { width: 375, height: 812 };
 
 /** 出したまま広げる先。画面を基準に置いているなら、幅が変わっても画面の中に居る。 */
 const WIDE_VIEWPORT = { width: 1280, height: 800 };
+
+const SINGLE_QUESTION = "E2E: 下書きは画面に一つだけか";
+
+const SINGLE_UTTERANCE =
+  "E2E: 二つの発話を続けて選んでも入力欄は一つに保たれる。やめれば何も残らない。";
+
+/** 一つ目の発話で選ぶ語。 */
+const SINGLE_FIRST = "二つの発話を続けて";
+
+/** 二つ目の発話で選ぶ語。一つ目と違う語でないと、下書きが移ったことを見られない。 */
+const SINGLE_SECOND = "やめれば何も残らない";
 
 /**
  * 画面の下端とフォームの隙間の上限（px）。
@@ -145,6 +156,31 @@ test("メモの小フォームは、選んだ位置でもスクロールでも�
   expectNearBottom(widened, WIDE_VIEWPORT);
   expect(widened.left).toBeGreaterThanOrEqual(0);
   expect(widened.right).toBeLessThanOrEqual(WIDE_VIEWPORT.width);
+});
+
+test("別の発話を選ぶと下書きはそちらへ移り、やめれば選択の色ごと残らない", async ({
+  page,
+}) => {
+  const aiA = await postQuestionAndSpeak(
+    page,
+    SINGLE_QUESTION,
+    SINGLE_UTTERANCE,
+  );
+  const aiB = page.locator('[id^="msg-"]').filter({ hasText: "[fake:ai_b" });
+
+  await selectTextIn(page, await idOf(aiA), SINGLE_FIRST);
+  await expect(page.getByRole("blockquote")).toHaveText(SINGLE_FIRST);
+
+  await selectTextIn(page, await idOf(aiB), SINGLE_SECOND);
+
+  // 前の発話の下書きが残っていると、やめた拍子にそれが出てくる。
+  await expect(memoForm(page)).toHaveCount(1);
+  await expect(page.getByRole("blockquote")).toHaveText(SINGLE_SECOND);
+
+  await page.getByRole("button", { name: "やめる" }).click();
+
+  await expect(memoForm(page)).toHaveCount(0);
+  expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("");
 });
 
 test("作ったメモは /memos に並び、そこから出所の発話へ着地する", async ({
@@ -326,17 +362,20 @@ async function idOf(message: ReturnType<Page["locator"]>): Promise<string> {
  * メモの小フォームの位置を、画面の座標で読む。
  *
  * ページの座標では、スクロールで動かないことを見られない。
- * 引くのは「メモする」を持つ form で、発話の口の form と混ざらない。
  */
 async function formRect(page: Page): Promise<FormRect> {
+  return memoForm(page).evaluate((form) => {
+    const { top, bottom, left, right } = form.getBoundingClientRect();
+
+    return { top, bottom, left, right };
+  });
+}
+
+/** メモの小フォーム。発話の口の form と混ざらないよう、「メモする」を持つ側で引く。 */
+function memoForm(page: Page): Locator {
   return page
     .locator("form")
-    .filter({ has: page.getByRole("button", { name: "メモする" }) })
-    .evaluate((form) => {
-      const { top, bottom, left, right } = form.getBoundingClientRect();
-
-      return { top, bottom, left, right };
-    });
+    .filter({ has: page.getByRole("button", { name: "メモする" }) });
 }
 
 /** フォームが画面の下端へ寄っており、かつ縁に貼り付いていないこと。 */

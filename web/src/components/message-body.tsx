@@ -29,12 +29,23 @@ const MARKED_STYLE =
   "underline decoration-2 decoration-amber-500 underline-offset-4";
 
 /**
+ * 発話一件ぶんの口。
+ *
+ * read は自分宛ての選択から下書きを立て直す。
+ * clear は他の発話が下書きを立てたときに自分の下書きを畳む。
+ */
+type SelectionReader = {
+  read: () => void;
+  clear: () => void;
+};
+
+/**
  * 選択を読み直す発話の登録簿。
  *
  * document へのリスナを画面に 1 本だけ張るために、React の外へ置く。
  * 鍵が本文の要素そのものなので、開発時に effect が二度走っても同じ発話が二重に載らない。
  */
-const readers = new Map<Element, () => void>();
+const readers = new Map<Element, SelectionReader>();
 
 /** 選択が確定してから、メモとして送られるまでの下書き。 */
 type MemoDraft = {
@@ -77,14 +88,27 @@ export function MessageBody({
       return;
     }
 
-    return subscribeSelection(container, () => {
-      const selected = draftFromSelection(message.body, segments, container);
+    return subscribeSelection(container, {
+      read: () => {
+        const selected = draftFromSelection(message.body, segments, container);
 
-      if (selected) {
-        setDraft(selected);
-      }
+        if (selected) {
+          setDraft(selected);
+        }
+      },
+      clear: () => setDraft(null),
     });
   }, [message.body, segments]);
+
+  /**
+   * 下書きを畳み、選んだ範囲の色も消す。
+   *
+   * メモを作るのをやめた（あるいは作り終えた）後まで色が残ると、まだ何かが掛かっているように見える。
+   */
+  const closeDraft = () => {
+    setDraft(null);
+    window.getSelection()?.removeAllRanges();
+  };
 
   return (
     <>
@@ -111,7 +135,7 @@ export function MessageBody({
             messageId={message.id}
             draft={draft}
             action={action}
-            onClose={() => setDraft(null)}
+            onClose={closeDraft}
           />,
           document.body,
         )}
@@ -230,7 +254,7 @@ function MemoForm({
 }
 
 /**
- * 発話を登録簿へ載せ、外し方を返す。
+ * 発話の口を登録簿へ載せ、外し方を返す。
  *
  * document のリスナは登録簿が空でなくなったときに張り、空に戻ったときに外す。
  * 本文の途中から下へドラッグして選ぶとボタンを離す位置が本文の枠の外になるので、リスナは document に置く。
@@ -243,14 +267,17 @@ function MemoForm({
  * mouseup が来るのはただのタップのときだけで、その時点では選択が既に潰れている。
  * pointerup を採らないのは、同じ実機で touchend が来た回のうち半分ほどしか来なかったため。
  */
-function subscribeSelection(container: Element, read: () => void): () => void {
+function subscribeSelection(
+  container: Element,
+  reader: SelectionReader,
+): () => void {
   if (readers.size === 0) {
     document.addEventListener("mouseup", notifySelectedMessage);
     document.addEventListener("touchend", notifySelectedMessage);
     document.addEventListener("keyup", notifySelectedMessage);
   }
 
-  readers.set(container, read);
+  readers.set(container, reader);
 
   return () => {
     readers.delete(container);
@@ -264,11 +291,14 @@ function subscribeSelection(container: Element, read: () => void): () => void {
 }
 
 /**
- * 選択の始点が入っている発話の read だけを呼ぶ。
+ * 選択の始点が入っている発話に読み直させ、他の発話の下書きを畳む。
  *
  * 始点のノードから closest で本文の div まで遡り、その div を鍵に登録簿を引く。
- * 発話を跨ぐ選択でも呼ぶのは始点側の 1 本で、終点が自分の本文の外にあることは呼ばれた側の draftFromSelection が見て、下書きを立てずに終わる。
+ * 発話を跨ぐ選択でも読み直すのは始点側の 1 本で、終点が自分の本文の外にあることは呼ばれた側の draftFromSelection が見て、下書きを立てずに終わる。
  * 潰れた選択をここで返すのは、キャレットが動いただけの keyup で登録簿まで引かないため。
+ *
+ * 下書きは画面に一つに保つ。
+ * 発話ごとに残せるようにすると、別の発話を選んだ拍子に前の下書きが裏へ回り、やめたときに出てくる。
  */
 function notifySelectedMessage(): void {
   const selection = window.getSelection();
@@ -280,8 +310,16 @@ function notifySelectedMessage(): void {
     "[data-message-body]",
   );
 
-  if (container) {
-    readers.get(container)?.();
+  if (!container) {
+    return;
+  }
+
+  for (const [body, reader] of readers) {
+    if (body === container) {
+      reader.read();
+    } else {
+      reader.clear();
+    }
   }
 }
 
