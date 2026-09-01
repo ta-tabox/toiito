@@ -84,6 +84,7 @@ describe("既定値", () => {
   it("web/README.md の表と一致する", () => {
     expect(ANTHROPIC_DEFAULTS.model).toBe("claude-sonnet-5");
     expect(ANTHROPIC_DEFAULTS.maxTokens).toBe(16000);
+    expect(ANTHROPIC_DEFAULTS.timeoutMs).toBe(120000);
     expect(ANTHROPIC_DEFAULTS.effort.concrete).toBeUndefined();
     expect(ANTHROPIC_DEFAULTS.effort.abstract).toBe("medium");
   });
