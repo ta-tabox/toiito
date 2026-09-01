@@ -94,7 +94,7 @@ describe("isAuthorized", () => {
     expect(isAuthorized(`BASIC ${encoded}`, credentials)).toBe(true);
   });
 
-  it("Basic 以外の綴りは通さない", () => {
+  it("Basic 以外のスキーム名は通さない", () => {
     expect(isAuthorized("Bearer token", credentials)).toBe(false);
   });
 

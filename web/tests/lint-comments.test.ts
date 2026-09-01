@@ -98,7 +98,7 @@ describe("テストファイルの免除", () => {
     expect(rulesOf(source, "src/app/page.test.tsx")).toEqual([]);
   });
 
-  it("spec の綴りも同じに扱う", () => {
+  it("spec という名前も同じに扱う", () => {
     const source = 'import { it } from "vitest";\n';
 
     expect(rulesOf(source, "src/lib/range.spec.ts")).toEqual([]);
@@ -352,9 +352,9 @@ export const a = 1;
   });
 
   it("行末コメントは上下の行と繋げない", () => {
-    const source = `${header}export const QUESTION_STATUSES = [
-  "new", // 仕込んだが、まだ材料が付いていない
-  "stocked", // 材料が付き、蒸留に入れる
+    const source = `${header}export const LOG_LEVELS = [
+  "warn", // 続行はするが、記録は残す
+  "error", // その場で処理を止める
 ] as const;
 `;
 

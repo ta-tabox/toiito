@@ -15,7 +15,7 @@
  * 原因が確定したら、この分岐と input-probe.tsx ごと消す。
  *
  * 各発話に付ける id="msg-<message_id>" は逆引き（/memos）の着地点。
- * 綴りは /memos が組み立てるリンクと、着地の印を出す landing-mark.tsx / globals.css が共有しているので、変えるならその三箇所とも直す。
+ * 書式は /memos が組み立てるリンクと、着地の印を出す landing-mark.tsx / globals.css が共有しているので、変えるならその三箇所とも直す。
  */
 
 import Link from "next/link";

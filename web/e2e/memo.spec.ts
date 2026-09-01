@@ -90,7 +90,7 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
   await expect(dialog).toBeVisible();
   await dialog.getByRole("link", { name: "この発話へ" }).click();
 
-  // 着地の印は三箇所が同じ綴りを共有して初めて出る。
+  // 着地の印は三箇所が同じ書式を共有して初めて出る。
   // /memos が組み立てるリンク、発話へ付けた id、globals.css の [id^="msg-"]:target。
   await expect(page).toHaveURL(new RegExp(`/q/[^#]+#${messageId}$`));
 

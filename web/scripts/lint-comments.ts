@@ -46,7 +46,7 @@ type CommentRange = {
   text: string;
 };
 
-/** コメントから綴りの装飾を剥がした 1 行と、それが元のファイルで居た行番号。 */
+/** コメントの記号を剥がした 1 行と、それが元のファイルで居た行番号。 */
 type CommentLine = {
   line: number;
   text: string;
@@ -67,7 +67,7 @@ const DEFAULT_TARGETS = ["src", "scripts", "tests"];
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
 
 /**
- * テストファイルの綴り。
+ * テストファイルの命名。
  * `foo.test.ts` や `foo.spec.tsx` のように、拡張子の手前へ test / spec を挟む形を指す。
  *
  * 判定をディレクトリでなくファイル名に置いている。
@@ -220,7 +220,7 @@ function checkModuleHeader(
  * JSDoc の中に TS の型と重複する型注釈が無いかを見る。
  *
  * 対象を JSDoc に絞っている。
- * 行コメントの中の同じ綴りは型注釈として読まれないので、重複が起きない。
+ * 行コメントの中の同じ書き方は型注釈として読まれないので、重複が起きない。
  */
 function checkJsDocTypeAnnotations(
   source: ts.SourceFile,
@@ -416,7 +416,7 @@ function maskFencedRegions(lines: CommentLine[]): CommentLine[] {
   });
 }
 
-/** コメントの綴り（`//`・`/*`・行頭の `*`・閉じ）を落として本文だけにする。 */
+/** コメントの記号（`//`・`/*`・行頭の `*`・閉じ）を落として本文だけにする。 */
 function stripDecoration(line: string): string {
   return line
     .replace(/^\s*(?:\/\*\*?|\/\/)/, "")
@@ -503,7 +503,7 @@ function isFollowedByBlankLine(text: string, end: number): boolean {
 
 /**
  * 文字位置を 1 始まりの行番号へ直す。
- * パーサが返す行番号は 0 始まりだが、エディタと `file:line` の綴りは 1 始まり。
+ * パーサが返す行番号は 0 始まりだが、エディタと `file:line` の表記は 1 始まり。
  */
 function lineOf(source: ts.SourceFile, position: number): number {
   return source.getLineAndCharacterOfPosition(position).line + 1;

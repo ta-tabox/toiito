@@ -2,7 +2,7 @@
  * Anthropic（Claude API）固有の一切（サーバー側のみ）。
  * 思考の深さの値域・設定・env からの読み・HTTP の作法をここへ閉じる。
  *
- * `effort` は Claude API の `output_config.effort` そのもので、他のプロバイダには無いか別の綴りになるので外へ出さない。
+ * `effort` は Claude API の `output_config.effort` そのもので、他のプロバイダには無いか別の名前になるので外へ出さない。
  * 何をどう見せるか（本文の組み立て）と、応答をどう扱うか（記録・打ち切りの拒否）は規約の側の決め事なので持たない。
  *
  * `process.env` は読まない。
@@ -21,7 +21,7 @@ const API_URL = "https://api.anthropic.com/v1/messages";
 
 /**
  * 思考にどれだけ費やすか。
- * 値域は Claude API の `output_config.effort` で、他社の同種の指定とは値も綴りも違うので名前でスコープを切る。
+ * 値域は Claude API の `output_config.effort` で、他社の同種の指定とは値も表記も違うので名前でスコープを切る。
  * 既定値を書く側が名前で引けるよう、並びでなく名前付きで持つ。
  */
 export const ANTHROPIC_EFFORT = {
@@ -37,7 +37,7 @@ export type AnthropicEffort =
 
 /**
  * 値域の関門。
- * API へ渡す前に、値域の外（未設定・綴り違い）をここで落とす。
+ * API へ渡す前に、値域の外（未設定・想定外の値）をここで落とす。
  */
 const EFFORTS = valueSet<AnthropicEffort>(Object.values(ANTHROPIC_EFFORT));
 
@@ -86,7 +86,7 @@ const EFFORT_ENV_KEY: Record<PersonaRole, string> = {
 /**
  * env が欠けているときに倒れる先。
  *
- * 既定値の綴りをここ一箇所に集める。
+ * 既定値の文字列をここ一箇所に集める。
  * モデルを変えるたびに散らばった文字列を追う形にしないためで、テストもここを引く。
  */
 export const ANTHROPIC_DEFAULTS = {
@@ -184,7 +184,7 @@ export class AnthropicProvider extends AiProvider {
 
 /**
  * env から系統ごとの深さを読む。
- * 値域の外（未設定・綴り違い）は既定へ倒す。
+ * 値域の外（未設定・想定外の値）は既定へ倒す。
  */
 function readEffort(
   env: AnthropicEnv,

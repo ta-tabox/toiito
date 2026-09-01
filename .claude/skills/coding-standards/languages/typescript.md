@@ -62,7 +62,7 @@ toolchain（pnpm / Biome / mise）の設定はここでは扱わない。
 
 ## Prisma スキーマ（`.prisma`）のコメント
 
-TS と同じ「宣言に付く説明は doc コメント」を守るが、**綴りは `///`**。
+TS と同じ「宣言に付く説明は doc コメント」を守るが、**記号は `///`**。
 
 - **model / enum / field / datasource に付ける説明は `///`**。
   これが Prisma の doc コメントで、生成される TS に JSDoc として出力される（`/// 問い。…` → `* 問い。…`）
