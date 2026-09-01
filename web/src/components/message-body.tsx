@@ -161,13 +161,14 @@ function SegmentText({
  *
  * iOS Safari は 16px 未満の入力欄へフォーカスすると自動でズームして書き手が選んだ倍率を捨てるので、ノートの入力欄だけ周りの 14px（`text-sm`）へ揃えず 16px（`text-base`）を敷く。
  *
- * 置き場は画面の下端で、選んだ位置によらず動かない。
+ * 置き場は画面の下端の少し上で、選んだ位置によらず動かない。
  * 本文の後ろへ流し込む形にすると、発話が長いときに選んだ位置とフォームが画面一枚分ほど離れ、メモを作れること自体に気付けない。
  * 選択のたびに位置が変わる形も採らない（毎回どこに出るかを探すことになるうえ、親指の届く先が定まらない）。
  *
- * 対話の上に貼るだけで、下を止めない。
+ * 対話の上に浮かべるだけで、下を止めない。
  * 書いている途中に発話を読み返せるよう、背面の暗幕もスクロールの固定も置かない。
- * 影を上へ向けるのは、下端に貼るので下向きの影が画面の外へ落ちるため。
+ * 画面の縁から離して四方に影を回すのは、面が層として浮いていることを見せるため。
+ * 縁へ貼り付けると背面と地続きに見え、送ろうとした指がここで止まる。
  */
 function MemoForm({
   messageId,
@@ -186,7 +187,7 @@ function MemoForm({
         await action(formData);
         onClose();
       }}
-      className="fixed inset-x-0 bottom-0 z-10 mx-auto flex w-full max-w-2xl flex-col gap-2 rounded-t border border-neutral-300 bg-white p-3 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]"
+      className="fixed inset-x-4 bottom-4 z-10 mx-auto flex max-w-2xl flex-col gap-2 rounded border border-neutral-300 bg-white p-3 shadow-[0_0_16px_rgba(0,0,0,0.12)]"
     >
       <input type="hidden" name="message_id" value={messageId} />
       <input type="hidden" name="anchor_start" value={draft.anchorStart} />

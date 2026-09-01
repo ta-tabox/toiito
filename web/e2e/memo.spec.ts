@@ -47,8 +47,16 @@ const POSITION_UTTERANCE =
 /** 選ぶのは発話の先頭と末尾の数文字で、離れた二箇所で位置が動かないことを見る。 */
 const POSITION_KEYWORD_LENGTH = 12;
 
-/** スマホと同じ狭さ。下端へ貼るのは、狭い画面で視界の外に出さないための形。 */
+/** スマホと同じ狭さ。画面の下端へ寄せるのは、狭い画面で視界の外に出さないための形。 */
 const NARROW_VIEWPORT = { width: 375, height: 812 };
+
+/**
+ * 画面の下端とフォームの隙間の上限（px）。
+ *
+ * 実装の刻み（16px）をそのまま写すと、余白を一段変えただけで落ちる。
+ * 見たいのは縁から浮いていることと、下端から離れていないことの二つ。
+ */
+const BOTTOM_GAP_LIMIT = 40;
 
 test("発話の一部を選ぶとメモを作れ、その区間にアンダーラインが出る", async ({
   page,
@@ -88,7 +96,7 @@ test("選択を touchend で終えてもメモの小フォームが立つ", asyn
   await expect(page.getByRole("blockquote")).toHaveText(TOUCH_UTTERANCE);
 });
 
-test("メモの小フォームは画面の下端に貼り付き、選んだ位置でもスクロールでも動かない", async ({
+test("メモの小フォームは画面の下端の少し上に浮き、選んだ位置でもスクロールでも動かない", async ({
   page,
 }) => {
   await page.setViewportSize(NARROW_VIEWPORT);
@@ -106,8 +114,11 @@ test("メモの小フォームは画面の下端に貼り付き、選んだ位�
   );
   const atHead = await formRect(page);
 
-  // 貼り付いていることは、フォームの下辺が画面の下辺と重なることで見る。
-  expect(atHead.bottom).toBeCloseTo(NARROW_VIEWPORT.height, 0);
+  // 下端へ寄っていることと、縁に貼り付いていないことの両方を見る。
+  const bottomGap = NARROW_VIEWPORT.height - atHead.bottom;
+
+  expect(bottomGap).toBeGreaterThan(0);
+  expect(bottomGap).toBeLessThanOrEqual(BOTTOM_GAP_LIMIT);
 
   await selectTextIn(
     page,
