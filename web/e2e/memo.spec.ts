@@ -38,22 +38,17 @@ const TOUCH_QUESTION = "E2E: 指で選んでもメモは作れるのか";
 
 const TOUCH_UTTERANCE = "E2E: 画面を指でなぞって語を掴む";
 
-const POSITION_QUESTION = "E2E: 入力欄は選んだ語の近くに出るのか";
+const POSITION_QUESTION = "E2E: 入力欄はいつも同じ場所に出るのか";
 
-/** 本文の後ろへ流し込む形との差が出るよう、数行に折り返す長さにする。 */
+/** 先頭と末尾が数行離れるよう、折り返す長さにする。 */
 const POSITION_UTTERANCE =
-  "E2E: 選んだ語のすぐ近くに入力欄が出ないと、メモを作れること自体に気付けない。画面が狭いほど、本文の後ろへ流し込む形では選んだ位置と入力欄が離れる。だから選択の矩形から置き場を決める。";
+  "E2E: 選んだ語の近くでなくてよいが、入力欄がどこに出るかは決まっていてほしい。画面が狭いほど、本文の後ろへ流し込む形では選んだ位置と入力欄が離れる。だから画面の下端へ貼る。";
 
-/** 選ぶのは発話の先頭の数文字で、そこから下に本文が続く。 */
+/** 選ぶのは発話の先頭と末尾の数文字で、離れた二箇所で位置が動かないことを見る。 */
 const POSITION_KEYWORD_LENGTH = 12;
 
-/**
- * 選択とフォームの隙間の上限（px）。
- *
- * 実装の隙間（8px）をそのまま写すと、余白の刻みを一段変えただけで落ちる。
- * 見たいのは一画面分ほど離れていないことなので、数行に足りない値で足りる。
- */
-const NEAR_ENOUGH = 40;
+/** スマホと同じ狭さ。下端へ貼るのは、狭い画面で視界の外に出さないための形。 */
+const NARROW_VIEWPORT = { width: 375, height: 812 };
 
 test("発話の一部を選ぶとメモを作れ、その区間にアンダーラインが出る", async ({
   page,
@@ -93,35 +88,41 @@ test("選択を touchend で終えてもメモの小フォームが立つ", asyn
   await expect(page.getByRole("blockquote")).toHaveText(TOUCH_UTTERANCE);
 });
 
-test("メモの小フォームは、選んだ語を覆わずにその近くへ出る", async ({
+test("メモの小フォームは画面の下端に貼り付き、選んだ位置でもスクロールでも動かない", async ({
   page,
 }) => {
+  await page.setViewportSize(NARROW_VIEWPORT);
   const aiA = await postQuestionAndSpeak(
     page,
     POSITION_QUESTION,
     POSITION_UTTERANCE,
   );
+  const messageId = await idOf(aiA);
+
   await selectTextIn(
     page,
-    await idOf(aiA),
+    messageId,
     POSITION_UTTERANCE.slice(0, POSITION_KEYWORD_LENGTH),
   );
+  const atHead = await formRect(page);
 
-  const selected = await selectedRect(page);
-  const form = await page
-    .locator("form")
-    .filter({ has: page.getByRole("button", { name: "メモする" }) })
-    .boundingBox();
+  // 貼り付いていることは、フォームの下辺が画面の下辺と重なることで見る。
+  expect(atHead.bottom).toBeCloseTo(NARROW_VIEWPORT.height, 0);
 
-  if (!form) {
-    throw new Error("メモの小フォームが出ていない");
-  }
+  await selectTextIn(
+    page,
+    messageId,
+    POSITION_UTTERANCE.slice(-POSITION_KEYWORD_LENGTH),
+  );
+  expect(await formRect(page)).toEqual(atHead);
 
-  // 語を覆っていれば負、本文の後ろへ流し込まれていれば上限を超える。
-  const gap = gapBetween(selected, form);
+  // 書いている途中に発話を読み返せる（背面を止めない）。
+  await page.mouse.wheel(0, 300);
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(0);
 
-  expect(gap).toBeGreaterThanOrEqual(0);
-  expect(gap).toBeLessThanOrEqual(NEAR_ENOUGH);
+  expect(await formRect(page)).toEqual(atHead);
 });
 
 test("作ったメモは /memos に並び、そこから出所の発話へ着地する", async ({
@@ -300,44 +301,20 @@ async function idOf(message: ReturnType<Page["locator"]>): Promise<string> {
 }
 
 /**
- * いまの選択範囲の矩形を読む。
- * 選択が残っていなければ落とす（位置を見る表明の前提が崩れている）。
+ * メモの小フォームの縦の位置を、画面の座標で読む。
+ *
+ * ページの座標では、スクロールで動かないことを見られない。
+ * 引くのは「メモする」を持つ form で、発話の口の form と混ざらない。
  */
-async function selectedRect(
-  page: Page,
-): Promise<{ top: number; bottom: number }> {
-  const rect = await page.evaluate(() => {
-    const selection = window.getSelection();
+async function formRect(page: Page): Promise<{ top: number; bottom: number }> {
+  return page
+    .locator("form")
+    .filter({ has: page.getByRole("button", { name: "メモする" }) })
+    .evaluate((form) => {
+      const { top, bottom } = form.getBoundingClientRect();
 
-    if (!selection || selection.rangeCount === 0) {
-      return undefined;
-    }
-
-    const { top, bottom } = selection.getRangeAt(0).getBoundingClientRect();
-
-    return { top, bottom };
-  });
-
-  if (!rect) {
-    throw new Error("選択が残っていない");
-  }
-
-  return rect;
-}
-
-/**
- * 選択の矩形とフォームの縦の隙間（px）。
- * 重なっていれば負を返す。
- */
-function gapBetween(
-  selected: { top: number; bottom: number },
-  form: { y: number; height: number },
-): number {
-  if (form.y >= selected.bottom) {
-    return form.y - selected.bottom;
-  }
-
-  return selected.top - (form.y + form.height);
+      return { top, bottom };
+    });
 }
 
 /**
