@@ -100,7 +100,7 @@ export const ANTHROPIC_DEFAULTS = {
    * 実測の一往復は 15〜27 秒（DEPLOY.md「引き受けている非対称」）なので、一体あたり 120 秒なら正常な生成を切らない。
    * 二体を逐次に待っても立ち上がりの約 10 秒と合わせて Vercel Hobby の 300 秒に収まり、実行環境に殺される前にこちらが切れる。
    */
-  timeoutMs: 120_000,
+  timeoutMs: 120000,
   effort: DEFAULT_EFFORT,
 } as const;
 
