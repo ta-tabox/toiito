@@ -28,12 +28,7 @@ import type { Memo, Message } from "@/lib/types";
 const MARKED_STYLE =
   "underline decoration-2 decoration-amber-500 underline-offset-4";
 
-/**
- * 発話一件ぶんの口。
- *
- * read は自分宛ての選択から下書きを立て直す。
- * clear は他の発話が下書きを立てたときに自分の下書きを畳む。
- */
+/** 選択を読み直す側と、下書きを畳む側からなる、発話一件ぶんの口。 */
 type SelectionReader = {
   read: () => void;
   clear: () => void;
@@ -281,12 +276,7 @@ function subscribeSelection(
 /**
  * 選択の始点が入っている発話に読み直させ、他の発話の下書きを畳む。
  *
- * 始点のノードから closest で本文の div まで遡り、その div を鍵に登録簿を引く。
- * 発話を跨ぐ選択でも読み直すのは始点側の 1 本で、終点が自分の本文の外にあることは呼ばれた側の draftFromSelection が見て、下書きを立てずに終わる。
  * 潰れた選択をここで返すのは、キャレットが動いただけの keyup で登録簿まで引かないため。
- *
- * 下書きは画面に一つに保つ。
- * 発話ごとに残せるようにすると、別の発話を選んだ拍子に前の下書きが裏へ回り、やめたときに出てくる。
  */
 function notifySelectedMessage(): void {
   const selection = window.getSelection();
@@ -306,6 +296,7 @@ function notifySelectedMessage(): void {
     if (body === container) {
       reader.read();
     } else {
+      // 下書きを画面に一つへ保つため、選んでいない発話のものは畳む。
       reader.clear();
     }
   }
