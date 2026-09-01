@@ -94,10 +94,29 @@ DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
 スキーマを変えたら `pnpm exec prisma migrate dev --name <変更の名前>`。
 check 制約は Prisma スキーマで表現できないので、生成された migration の SQL へ直接書き足す。
 
-テストの隔離はケース単位。
-テスト用 DB へ一走の初めに migration を積み（`migrate deploy`）、ケースごとに全テーブルを空にする（`web/tests/setup/truncate.ts`）。
+テストの隔離は三層。
+走り間はテスト用 DB を落として作り直し（`web/tests/setup/database.ts`）、ケース間は全テーブルを空にする（`web/tests/setup/truncate.ts`）。
+走るたびに作り直すのは、別のブランチで積んだ migration が剥がれずに残るため。
+型を変える migration を持つブランチを行き来すると、古い側のコードが新しい enum や列に当たって落ちる。
 空にするだけでは同じ DB を同時に踏む相手を防げないので、テストファイルは直列に走らせる（`fileParallelism: false`）。
 裏返しに、同時アクセスの競合はこのハーネスでは再現しない。
+
+worktree 間は DB の名前で分かれる。
+作り直しが防ぐのはブランチを跨ぐ汚染までで、同時に走る別の worktree とは名前が分かれていないと互いのテーブルを空にし合う。
+名前は worktree のディレクトリ名から派生し（`toiito_wt_<ディレクトリ名>_test`）、リポジトリ本体は既定の `toiito_test` を使う。
+`toiito_wt_` の印を付けるのは、掃除が手で指した DB を巻き込まないため。
+上書きの口は `TOIITO_TEST_DATABASE_URL` で、指定が派生に勝つ。
+
+worktree を消しても DB は残るので、`pnpm db:prune` で落とす。
+落とすのは派生した名前のうち現存の worktree に対応しないものだけで、手で付けた名前は一覧に出して人間へ渡す。
+
+開発用 `toiito` は作り直さない。
+手で入れた対話が載りうるので、`pnpm dev` の前に食い違いを見て警告するだけに留める（`web/scripts/check-database-drift.ts`）。
+そのスクリプト自身は繋ぎ先が開発用かどうかを知らない。
+見る先は `prisma.config.ts` が `.env.local` から読むので、どの DB を守るかは呼ぶ側の配線が決める。
+検出に `prisma migrate status` は使えない。
+ローカルに無い migration が DB へ積まれていても「up to date」を返すので、`prisma migrate diff --exit-code` の側を見る。
+
 `prisma migrate reset` は使わない。
 Prisma 7 はこれを破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求するので、無人で回る check のゲートには置けない。
 
@@ -139,6 +158,8 @@ vitest の `toiito_test` とは分ける。
 どちらも走る前に中身を作り直すので、同じ DB を向けると互いの行を踏む。
 名前が `_e2e` で終わらなければ作り直しは止まる。
 上書きの口は `TOIITO_E2E_DATABASE_URL`。
+worktree ごとに名前を派生させるのは vitest 側だけで、E2E は一本を共有する。
+二つの worktree で同時に走らせるときは、この環境変数で分ける。
 
 作り直しは globalSetup でなく webServer の command に置く。
 Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、逆にすると dev サーバーが接続を張った後で足元の DB を落とすことになる。
