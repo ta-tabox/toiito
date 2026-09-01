@@ -43,6 +43,7 @@ pnpm dev
 | `TOIITO_BASIC_AUTH_PASSWORD` | 本番では必須 | — | 同じ Basic 認証のパスワード。片方だけ設定すると起動時に落ちる |
 | `TOIITO_ANTHROPIC_MODEL` | 任意 | `claude-sonnet-5` | 二体 AI が使うモデルの上書き |
 | `TOIITO_ANTHROPIC_MAX_TOKENS` | 任意 | `16000` | 一回の応答に許すトークン数の上書き。thinking のトークンもここから引かれるので、下げすぎると本文が途中で切れる |
+| `TOIITO_ANTHROPIC_TIMEOUT_MS` | 任意 | `120000` | 一回の呼び出しを待つ上限（ミリ秒）。超えたら打ち切り・空本文と同じく例外にする。実行環境（Vercel Hobby）が関数を殺す 300 秒より手前に置く |
 | `TOIITO_ANTHROPIC_EFFORT_CONCRETE` | 任意 | 未設定（API の既定） | 具体さんの思考の深さ。`low` / `medium` / `high` / `xhigh` / `max`。値域の外は既定へ倒す |
 | `TOIITO_ANTHROPIC_EFFORT_ABSTRACT` | 任意 | `medium` | 抽象さんの思考の深さ。値域は同上 |
 | `TOIITO_FAKE_AI` | 任意 | 未設定 | `1` でネットワークに出ず決定的な応答を返す。API キー無しで縦一本を通すためのハーネス |

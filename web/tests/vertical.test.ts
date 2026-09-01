@@ -14,6 +14,7 @@ import { loadPersona, type PersonaId } from "@/lib/personas";
 const FAKE_PROVIDER = new AnthropicProvider({
   model: ANTHROPIC_DEFAULTS.model,
   maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
+  timeoutMs: ANTHROPIC_DEFAULTS.timeoutMs,
   fake: true,
 });
 
