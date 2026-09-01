@@ -23,11 +23,13 @@ check が赤のままコミットしない（コミットゲート）。
 コミットゲートは規律なので、破っても機械は止めない。
 止める力は main の ruleset に置く（GitHub の Settings → Rules → Rulesets、名前は `main: via PR + check green`）。
 設定は GitHub 側の状態で diff に残らないので、何をどういう理由で有効にしたかの記録はここが正。
+**`enforcement` は `active`、bypass list は空**（最終確認 2026-09-01）。
+設定の内容だけを書いても掛かっているかどうかは書けないので、実際の値と確かめた日付をここへ置く（8/22 から 8/31 まで `disabled` のまま誰も気付かなかったのが #152（main の ruleset が誰にも効いていない）である）。
 
 - **Require a pull request before merging** — 有効、承認は 0 件。
   main への直 push を塞ぐ。
   文書の一行だけを直す変更も PR を通る（先例: cd10a6f は main へ直接入っている）。
-  例外は下の bypass の一点だけで、通常の経路には作らない。
+  bypass が空なので、例外は誰も持たない。
   承認を 1 件以上にすると GitHub は自分の PR を自分で承認させないので、全ての PR が bypass 頼みになる
 - **Require status checks to pass before merging** — 有効。
   必須は `check` 一本（`.github/workflows/check.yml` の job 名）。
@@ -35,10 +37,9 @@ check が赤のままコミットしない（コミットゲート）。
 - **Require branches to be up to date before merging** — 有効。
   main の差分を取り込んだ状態で CI を通さないと、緑の PR がマージ後に初めて壊れる組み合わせを取り逃がす。
   main が進むたび PR 側の取り込みが要るが、Update branch 一つで済むので手間として引き受ける
-- **Bypass list** — Repository admin を Always で入れる。
-  CI 自体が壊れて緑にできないときに ruleset を一時的に外して回らずに済むよう、管理者（人間）の逃げ道を残す。
-  管理者は赤い PR のマージも main への直 push も通るので、そこだけは機械の拒否でなく規律に戻る。
-  既定の For pull requests only はマージだけを抜けさせて直 push は塞いだままなので、逃げ道としては足りない
+- **Bypass list** — 空。
+  手元の Claude も人間と同じアカウントで叩くため名義で逃げ道を分けられず、管理者を入れると全ての push とマージが常時そこを通ってしまうので、誰も入れない（2026-09-01・#152。それまでは Repository admin を Always で入れていた）。
+  CI 自体が壊れて緑にできないときは ruleset を一時的に `disabled` へ倒して回すが、**戻すところまでを一続きにする**——倒したまま忘れたのが #152 の事故である
 
 ruleset が enforce されるのは public であることが前提。
 Free プランの private では保存はできても止まらない（GitHub Pro 以上なら private でも効く）。
