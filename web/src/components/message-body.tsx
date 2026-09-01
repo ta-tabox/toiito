@@ -16,6 +16,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   clampToGraphemeBoundary,
   type Segment,
@@ -27,13 +28,19 @@ import type { Memo, Message } from "@/lib/types";
 const MARKED_STYLE =
   "underline decoration-2 decoration-amber-500 underline-offset-4";
 
+/** 選択を読み直す側と、下書きを畳む側からなる、発話一件ぶんの口。 */
+type SelectionReader = {
+  read: () => void;
+  clear: () => void;
+};
+
 /**
  * 選択を読み直す発話の登録簿。
  *
  * document へのリスナを画面に 1 本だけ張るために、React の外へ置く。
  * 鍵が本文の要素そのものなので、開発時に effect が二度走っても同じ発話が二重に載らない。
  */
-const readers = new Map<Element, () => void>();
+const readers = new Map<Element, SelectionReader>();
 
 /** 選択が確定してから、メモとして送られるまでの下書き。 */
 type MemoDraft = {
@@ -76,14 +83,27 @@ export function MessageBody({
       return;
     }
 
-    return subscribeSelection(container, () => {
-      const selected = draftFromSelection(message.body, segments, container);
+    return subscribeSelection(container, {
+      read: () => {
+        const selected = draftFromSelection(message.body, segments, container);
 
-      if (selected) {
-        setDraft(selected);
-      }
+        if (selected) {
+          setDraft(selected);
+        }
+      },
+      clear: () => setDraft(null),
     });
   }, [message.body, segments]);
+
+  /**
+   * 下書きを畳み、選んだ範囲の色も消す。
+   *
+   * 色だけが残ると、まだ何かが掛かっているように見える。
+   */
+  const closeDraft = () => {
+    setDraft(null);
+    window.getSelection()?.removeAllRanges();
+  };
 
   return (
     <>
@@ -102,15 +122,18 @@ export function MessageBody({
         ))}
       </div>
 
-      {draft && (
-        <MemoForm
-          key={`${draft.anchorStart}-${draft.anchorEnd}`}
-          messageId={message.id}
-          draft={draft}
-          action={action}
-          onClose={() => setDraft(null)}
-        />
-      )}
+      {/* body へ移すのは、祖先が containing block を作ると fixed の基準が画面でなくその祖先へ移るため。 */}
+      {draft &&
+        createPortal(
+          <MemoForm
+            key={`${draft.anchorStart}-${draft.anchorEnd}`}
+            messageId={message.id}
+            draft={draft}
+            action={action}
+            onClose={closeDraft}
+          />,
+          document.body,
+        )}
     </>
   );
 }
@@ -155,11 +178,9 @@ function SegmentText({
 /**
  * メモの小フォーム。
  *
- * キーワードは選択した文字列そのものなので、引用として見せるだけで入力欄にしない。
- * 触れる形にすると、下線の位置と語が食い違ったメモを作れてしまう。
- * 送るのは hidden で、書き手が埋めるのはノートだけ。
- *
  * iOS Safari は 16px 未満の入力欄へフォーカスすると自動でズームして書き手が選んだ倍率を捨てるので、ノートの入力欄だけ周りの 14px（`text-sm`）へ揃えず 16px（`text-base`）を敷く。
+ *
+ * 背面へ暗幕もスクロールの固定も置かないのは、書いている途中に発話を読み返せる方を採るため。
  */
 function MemoForm({
   messageId,
@@ -178,7 +199,7 @@ function MemoForm({
         await action(formData);
         onClose();
       }}
-      className="mt-3 flex flex-col gap-2 rounded border border-neutral-300 bg-white p-3"
+      className="fixed inset-x-4 bottom-4 z-10 mx-auto flex max-w-2xl flex-col gap-2 rounded border border-neutral-300 bg-white p-3 shadow-[0_0_16px_rgba(0,0,0,0.12)]"
     >
       <input type="hidden" name="message_id" value={messageId} />
       <input type="hidden" name="anchor_start" value={draft.anchorStart} />
@@ -216,7 +237,7 @@ function MemoForm({
 }
 
 /**
- * 発話を登録簿へ載せ、外し方を返す。
+ * 発話の口を登録簿へ載せ、外し方を返す。
  *
  * document のリスナは登録簿が空でなくなったときに張り、空に戻ったときに外す。
  * 本文の途中から下へドラッグして選ぶとボタンを離す位置が本文の枠の外になるので、リスナは document に置く。
@@ -229,14 +250,17 @@ function MemoForm({
  * mouseup が来るのはただのタップのときだけで、その時点では選択が既に潰れている。
  * pointerup を採らないのは、同じ実機で touchend が来た回のうち半分ほどしか来なかったため。
  */
-function subscribeSelection(container: Element, read: () => void): () => void {
+function subscribeSelection(
+  container: Element,
+  reader: SelectionReader,
+): () => void {
   if (readers.size === 0) {
     document.addEventListener("mouseup", notifySelectedMessage);
     document.addEventListener("touchend", notifySelectedMessage);
     document.addEventListener("keyup", notifySelectedMessage);
   }
 
-  readers.set(container, read);
+  readers.set(container, reader);
 
   return () => {
     readers.delete(container);
@@ -250,10 +274,8 @@ function subscribeSelection(container: Element, read: () => void): () => void {
 }
 
 /**
- * 選択の始点が入っている発話の read だけを呼ぶ。
+ * 選択の始点が入っている発話に読み直させ、他の発話の下書きを畳む。
  *
- * 始点のノードから closest で本文の div まで遡り、その div を鍵に登録簿を引く。
- * 発話を跨ぐ選択でも呼ぶのは始点側の 1 本で、終点が自分の本文の外にあることは呼ばれた側の draftFromSelection が見て、下書きを立てずに終わる。
  * 潰れた選択をここで返すのは、キャレットが動いただけの keyup で登録簿まで引かないため。
  */
 function notifySelectedMessage(): void {
@@ -266,8 +288,17 @@ function notifySelectedMessage(): void {
     "[data-message-body]",
   );
 
-  if (container) {
-    readers.get(container)?.();
+  if (!container) {
+    return;
+  }
+
+  for (const [body, reader] of readers) {
+    if (body === container) {
+      reader.read();
+    } else {
+      // 下書きを画面に一つへ保つため、選んでいない発話のものは畳む。
+      reader.clear();
+    }
   }
 }
 

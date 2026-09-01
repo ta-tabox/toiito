@@ -7,49 +7,87 @@
  * E2E のデータベースは走り単位でしか作り直されないので、前のシナリオが残した行に寄りかかると順序に縛られる。
  */
 
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 
-/** シードの行とも互いとも混ざらないよう、シナリオごとに違う文言を使う。 */
-const UNDERLINE_QUESTION = "E2E: 選択した語に印は残るのか";
+/** シナリオ一つ分の文言。 */
+type Scenario = { question: string; utterance: string };
 
-const UNDERLINE_UTTERANCE = "E2E: 引っかかった語だけが後に残る";
+/** 画面の座標で見たフォームの矩形。 */
+type FormRect = { top: number; bottom: number; left: number; right: number };
 
-const LOOKUP_QUESTION = "E2E: メモから対話へ戻れるのか";
+/**
+ * シナリオごとの問いと発話。
+ *
+ * シードの行とも互いとも混ざらないよう、シナリオごとに違う文言を使う。
+ * words は本文から選ぶ語で、並びがそのまま選ぶ順になる。
+ */
+const SCENARIOS = {
+  underline: {
+    question: "E2E: 選択した語に印は残るのか",
+    utterance: "E2E: 引っかかった語だけが後に残る",
+  },
+  touch: {
+    question: "E2E: 指で選んでもメモは作れるのか",
+    utterance: "E2E: 画面を指でなぞって語を掴む",
+  },
+  position: {
+    question: "E2E: 入力欄はいつも同じ場所に出るのか",
+    utterance:
+      "E2E: 選んだ語の近くでなくてよいが、入力欄がどこに出るかは決まっていてほしい。画面が狭いほど、本文の後ろへ流し込む形では選んだ位置と入力欄が離れる。だから画面の下端へ貼る。",
+    // 数行離れた二語を選ぶので、折り返す長さの発話にする。
+    words: ["選んだ語の近く", "画面の下端へ貼る"],
+  },
+  single: {
+    question: "E2E: 下書きは画面に一つだけか",
+    utterance:
+      "E2E: 二つの発話を続けて選んでも入力欄は一つに保たれる。やめれば何も残らない。",
+    words: ["二つの発話を続けて", "やめれば何も残らない"],
+  },
+  lookup: {
+    question: "E2E: メモから対話へ戻れるのか",
+    utterance: "E2E: 語から場面を思い出せるか試す",
+  },
+  forward: {
+    question: "E2E: 下線からメモへ戻れるのか",
+    utterance: "E2E: 印から中身へ辿れるか試す",
+  },
+  mark: {
+    question: "E2E: 着地の印は出るのか",
+    utterance: "E2E: 飛んだ先で目印が要る",
+  },
+  revisit: {
+    question: "E2E: 再訪しても当時の発話へ戻れるのか",
+    utterance: "E2E: 日を空けてまた話す前に印を付ける",
+  },
+  switch: {
+    question: "E2E: 過去セッションを画面から辿れるのか",
+    utterance: "E2E: 一度目の対話がここにある",
+  },
+} as const;
 
-const LOOKUP_UTTERANCE = "E2E: 語から場面を思い出せるか試す";
+/** スマホと同じ狭さ。画面の下端へ寄せるのは、狭い画面で視界の外に出さないための形。 */
+const NARROW_VIEWPORT = { width: 375, height: 812 };
 
-const MARK_QUESTION = "E2E: 着地の印は出るのか";
+/** 出したまま広げる先。画面を基準に置いているなら、幅が変わっても画面の中に居る。 */
+const WIDE_VIEWPORT = { width: 1280, height: 800 };
 
-const MARK_UTTERANCE = "E2E: 飛んだ先で目印が要る";
-
-const FORWARD_QUESTION = "E2E: 下線からメモへ戻れるのか";
-
-const FORWARD_UTTERANCE = "E2E: 印から中身へ辿れるか試す";
-
-const REVISIT_QUESTION = "E2E: 再訪しても当時の発話へ戻れるのか";
-
-const REVISIT_UTTERANCE = "E2E: 日を空けてまた話す前に印を付ける";
-
-const SWITCH_QUESTION = "E2E: 過去セッションを画面から辿れるのか";
-
-const SWITCH_UTTERANCE = "E2E: 一度目の対話がここにある";
-
-const TOUCH_QUESTION = "E2E: 指で選んでもメモは作れるのか";
-
-const TOUCH_UTTERANCE = "E2E: 画面を指でなぞって語を掴む";
+/**
+ * 画面の下端とフォームの隙間の上限（px）。
+ *
+ * 実装の刻み（16px）をそのまま写すと、余白を一段変えただけで落ちる。
+ * 見たいのは縁から浮いていることと、下端から離れていないことの二つ。
+ */
+const BOTTOM_GAP_LIMIT = 40;
 
 test("発話の一部を選ぶとメモを作れ、その区間にアンダーラインが出る", async ({
   page,
 }) => {
-  const aiA = await postQuestionAndSpeak(
-    page,
-    UNDERLINE_QUESTION,
-    UNDERLINE_UTTERANCE,
-  );
-  await selectTextIn(page, await idOf(aiA), UNDERLINE_UTTERANCE);
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.underline);
+  const { utterance } = SCENARIOS.underline;
+  await selectTextIn(page, aiA, utterance);
 
   // 選択した語は引用として見せるだけで、触れる入力欄にしない。
-  await expect(page.getByRole("blockquote")).toHaveText(UNDERLINE_UTTERANCE);
+  await expect(page.getByRole("blockquote")).toHaveText(utterance);
   await expect(page.getByLabel("キーワード")).toHaveCount(0);
 
   await page.getByLabel("メモ").fill("この言い換えが効いた");
@@ -59,41 +97,94 @@ test("発話の一部を選ぶとメモを作れ、その区間にアンダー�
   // 同じ文字列は人間の発話にも ai_b の引用にも出るので枠で絞り、
   // 選択直後はフォームの引用にも出るので role で絞る。
   const marked = aiA.getByRole("link", {
-    name: UNDERLINE_UTTERANCE,
+    name: utterance,
     exact: true,
   });
   await expect(marked).toHaveCSS("text-decoration-line", "underline");
   await expect(marked).toHaveAttribute(
     "title",
-    `${UNDERLINE_UTTERANCE}: この言い換えが効いた`,
+    `${utterance}: この言い換えが効いた`,
   );
 });
 
 test("選択を touchend で終えてもメモの小フォームが立つ", async ({ page }) => {
-  const aiA = await postQuestionAndSpeak(page, TOUCH_QUESTION, TOUCH_UTTERANCE);
-  await selectTextInByTouch(page, await idOf(aiA), TOUCH_UTTERANCE);
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.touch);
+  const { utterance } = SCENARIOS.touch;
+  await selectTextInByTouch(page, aiA, utterance);
 
-  await expect(page.getByRole("blockquote")).toHaveText(TOUCH_UTTERANCE);
+  await expect(page.getByRole("blockquote")).toHaveText(utterance);
+});
+
+test("メモの小フォームは、選んだ位置でもスクロールでも画面幅でも、画面の下端の少し上に居る", async ({
+  page,
+}) => {
+  await page.setViewportSize(NARROW_VIEWPORT);
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.position);
+  const [head, tail] = SCENARIOS.position.words;
+
+  await selectTextIn(page, aiA, head);
+  const atHead = await formRect(page);
+
+  expectNearBottom(atHead, NARROW_VIEWPORT);
+
+  await selectTextIn(page, aiA, tail);
+  expect(await formRect(page)).toEqual(atHead);
+
+  // 書いている途中に発話を読み返せる（背面を止めない）。
+  await page.mouse.wheel(0, 300);
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(0);
+
+  expect(await formRect(page)).toEqual(atHead);
+
+  // 出したまま画面を広げても、基準は画面のまま。
+  await page.setViewportSize(WIDE_VIEWPORT);
+
+  const widened = await formRect(page);
+
+  expectNearBottom(widened, WIDE_VIEWPORT);
+  expect(widened.left).toBeGreaterThanOrEqual(0);
+  expect(widened.right).toBeLessThanOrEqual(WIDE_VIEWPORT.width);
+});
+
+test("別の発話を選ぶと下書きはそちらへ移り、やめれば選択の色ごと残らない", async ({
+  page,
+}) => {
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.single);
+  const aiB = page.locator('[id^="msg-"]').filter({ hasText: "[fake:ai_b" });
+  const [first, second] = SCENARIOS.single.words;
+
+  await selectTextIn(page, aiA, first);
+  await expect(page.getByRole("blockquote")).toHaveText(first);
+
+  await selectTextIn(page, aiB, second);
+
+  // 前の発話の下書きが残っていると、やめた拍子にそれが出てくる。
+  await expect(memoForm(page)).toHaveCount(1);
+  await expect(page.getByRole("blockquote")).toHaveText(second);
+
+  await page.getByRole("button", { name: "やめる" }).click();
+
+  await expect(memoForm(page)).toHaveCount(0);
+  expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("");
 });
 
 test("作ったメモは /memos に並び、そこから出所の発話へ着地する", async ({
   page,
 }) => {
-  const aiA = await postQuestionAndSpeak(
-    page,
-    LOOKUP_QUESTION,
-    LOOKUP_UTTERANCE,
-  );
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.lookup);
+  const { utterance } = SCENARIOS.lookup;
   const messageId = await idOf(aiA);
-  await selectTextIn(page, messageId, LOOKUP_UTTERANCE);
+  await selectTextIn(page, aiA, utterance);
 
   await page.getByRole("button", { name: "メモする" }).click();
   await expect(
-    aiA.getByRole("link", { name: LOOKUP_UTTERANCE, exact: true }),
+    aiA.getByRole("link", { name: utterance, exact: true }),
   ).toHaveCSS("text-decoration-line", "underline");
 
   await page.goto("/memos");
-  await page.getByRole("link", { name: LOOKUP_UTTERANCE }).click();
+  await page.getByRole("link", { name: utterance }).click();
 
   // 行を押すと拡大表示が開く。
   // 出所の発話への逆引きはその中にある。
@@ -109,37 +200,35 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
 });
 
 test("下線を押すと、その語のメモが一覧で開く", async ({ page }) => {
-  const aiA = await postQuestionAndSpeak(
-    page,
-    FORWARD_QUESTION,
-    FORWARD_UTTERANCE,
-  );
-  await selectTextIn(page, await idOf(aiA), FORWARD_UTTERANCE);
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.forward);
+  const { utterance } = SCENARIOS.forward;
+  await selectTextIn(page, aiA, utterance);
   await page.getByRole("button", { name: "メモする" }).click();
 
-  await aiA.getByRole("link", { name: FORWARD_UTTERANCE, exact: true }).click();
+  await aiA.getByRole("link", { name: utterance, exact: true }).click();
 
   // 開くのは押した下線に紐づくメモ一件で、一覧を出すだけでは足りない。
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("heading")).toHaveText(FORWARD_UTTERANCE);
+  await expect(dialog.getByRole("heading")).toHaveText(utterance);
 });
 
 test("着地した発話に印が付く", async ({ page }) => {
-  const aiA = await postQuestionAndSpeak(page, MARK_QUESTION, MARK_UTTERANCE);
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.mark);
+  const { utterance } = SCENARIOS.mark;
   const messageId = await idOf(aiA);
-  await selectTextIn(page, messageId, MARK_UTTERANCE);
+  await selectTextIn(page, aiA, utterance);
 
   await page.getByRole("button", { name: "メモする" }).click();
 
   // 下線が出るまでは、メモがまだ出来ていない。
   // 待たずに移ると、そのメモが並んでいない一覧を相手にすることになる。
   await expect(
-    aiA.getByRole("link", { name: MARK_UTTERANCE, exact: true }),
+    aiA.getByRole("link", { name: utterance, exact: true }),
   ).toBeVisible();
 
   await page.goto("/memos");
-  await page.getByRole("link", { name: MARK_UTTERANCE }).click();
+  await page.getByRole("link", { name: utterance }).click();
   await page
     .getByRole("dialog")
     .getByRole("link", { name: "この発話へ" })
@@ -156,13 +245,10 @@ test("着地した発話に印が付く", async ({ page }) => {
 test("再訪したあとでも、メモからそのメモを付けた当時の発話へ着地する", async ({
   page,
 }) => {
-  const aiA = await postQuestionAndSpeak(
-    page,
-    REVISIT_QUESTION,
-    REVISIT_UTTERANCE,
-  );
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.revisit);
+  const { utterance } = SCENARIOS.revisit;
   const messageId = await idOf(aiA);
-  await selectTextIn(page, messageId, REVISIT_UTTERANCE);
+  await selectTextIn(page, aiA, utterance);
   await page.getByRole("button", { name: "メモする" }).click();
 
   await page.getByRole("button", { name: "新しいセッションで再訪" }).click();
@@ -172,7 +258,7 @@ test("再訪したあとでも、メモからそのメモを付けた当時の�
   await expect(page.locator(`#${messageId}`)).toHaveCount(0);
 
   await page.goto("/memos");
-  await page.getByRole("link", { name: REVISIT_UTTERANCE }).click();
+  await page.getByRole("link", { name: utterance }).click();
   await page
     .getByRole("dialog")
     .getByRole("link", { name: "この発話へ" })
@@ -180,17 +266,13 @@ test("再訪したあとでも、メモからそのメモを付けた当時の�
 
   // 着地の条件は、飛べたことではなく、当時の発話がそこに描かれていること。
   await expect(page.locator(`#${messageId}`)).toBeInViewport();
-  await expect(page.locator(`#${messageId}`)).toContainText(REVISIT_UTTERANCE);
+  await expect(page.locator(`#${messageId}`)).toContainText(utterance);
 });
 
 test("再訪すると切り替え口が出て、過去セッションを読み返せる", async ({
   page,
 }) => {
-  const aiA = await postQuestionAndSpeak(
-    page,
-    SWITCH_QUESTION,
-    SWITCH_UTTERANCE,
-  );
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.switch);
   const messageId = await idOf(aiA);
 
   // セッションが一つのうちは切り替え口を出さない（選ぶ先が無い）。
@@ -218,11 +300,9 @@ test("再訪すると切り替え口が出て、過去セッションを読み�
  * どの体かの判定は `[fake:` の行に寄せる。
  * 見出しの言い回しはペルソナ文書の改稿で動くが、この印は動かない。
  */
-async function postQuestionAndSpeak(
-  page: Page,
-  question: string,
-  utterance: string,
-) {
+async function postQuestionAndSpeak(page: Page, scenario: Scenario) {
+  const { question, utterance } = scenario;
+
   await page.goto("/");
   await page.getByPlaceholder("問いをポイっと投げ入れる").fill(question);
   await page.getByRole("button", { name: "投入" }).click();
@@ -252,14 +332,44 @@ async function idOf(message: ReturnType<Page["locator"]>): Promise<string> {
 }
 
 /**
+ * メモの小フォームの位置を、画面の座標で読む。
+ *
+ * ページの座標では、スクロールで動かないことを見られない。
+ */
+async function formRect(page: Page): Promise<FormRect> {
+  return memoForm(page).evaluate((form) => {
+    const { top, bottom, left, right } = form.getBoundingClientRect();
+
+    return { top, bottom, left, right };
+  });
+}
+
+/** メモの小フォーム。発話の口の form と混ざらないよう、「メモする」を持つ側で引く。 */
+function memoForm(page: Page): Locator {
+  return page
+    .locator("form")
+    .filter({ has: page.getByRole("button", { name: "メモする" }) });
+}
+
+/** フォームが画面の下端へ寄っており、かつ縁に貼り付いていないこと。 */
+function expectNearBottom(rect: FormRect, viewport: { height: number }): void {
+  const bottomGap = viewport.height - rect.bottom;
+
+  expect(bottomGap).toBeGreaterThan(0);
+  expect(bottomGap).toBeLessThanOrEqual(BOTTOM_GAP_LIMIT);
+}
+
+/**
  * 枠の中の文字列を、デスクトップで人が引いたのと同じ形で選択する。
  * 選択を閉じるのは mouseup。
  */
 async function selectTextIn(
   page: Page,
-  messageId: string,
+  message: Locator,
   text: string,
 ): Promise<void> {
+  const messageId = await idOf(message);
+
   await selectTextInEndingWith(page, { messageId, text, endWith: "mouseup" });
 }
 
@@ -271,9 +381,11 @@ async function selectTextIn(
  */
 async function selectTextInByTouch(
   page: Page,
-  messageId: string,
+  message: Locator,
   text: string,
 ): Promise<void> {
+  const messageId = await idOf(message);
+
   await selectTextInEndingWith(page, { messageId, text, endWith: "touchend" });
 }
 
