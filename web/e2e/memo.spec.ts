@@ -38,6 +38,23 @@ const TOUCH_QUESTION = "E2E: 指で選んでもメモは作れるのか";
 
 const TOUCH_UTTERANCE = "E2E: 画面を指でなぞって語を掴む";
 
+const POSITION_QUESTION = "E2E: 入力欄は選んだ語の近くに出るのか";
+
+/** 本文の後ろへ流し込む形との差が出るよう、数行に折り返す長さにする。 */
+const POSITION_UTTERANCE =
+  "E2E: 選んだ語のすぐ近くに入力欄が出ないと、メモを作れること自体に気付けない。画面が狭いほど、本文の後ろへ流し込む形では選んだ位置と入力欄が離れる。だから選択の矩形から置き場を決める。";
+
+/** 選ぶのは発話の先頭の数文字で、そこから下に本文が続く。 */
+const POSITION_KEYWORD_LENGTH = 12;
+
+/**
+ * 選択とフォームの隙間の上限（px）。
+ *
+ * 実装の隙間（8px）をそのまま写すと、余白の刻みを一段変えただけで落ちる。
+ * 見たいのは一画面分ほど離れていないことなので、数行に足りない値で足りる。
+ */
+const NEAR_ENOUGH = 40;
+
 test("発話の一部を選ぶとメモを作れ、その区間にアンダーラインが出る", async ({
   page,
 }) => {
@@ -74,6 +91,37 @@ test("選択を touchend で終えてもメモの小フォームが立つ", asyn
   await selectTextInByTouch(page, await idOf(aiA), TOUCH_UTTERANCE);
 
   await expect(page.getByRole("blockquote")).toHaveText(TOUCH_UTTERANCE);
+});
+
+test("メモの小フォームは、選んだ語を覆わずにその近くへ出る", async ({
+  page,
+}) => {
+  const aiA = await postQuestionAndSpeak(
+    page,
+    POSITION_QUESTION,
+    POSITION_UTTERANCE,
+  );
+  await selectTextIn(
+    page,
+    await idOf(aiA),
+    POSITION_UTTERANCE.slice(0, POSITION_KEYWORD_LENGTH),
+  );
+
+  const selected = await selectedRect(page);
+  const form = await page
+    .locator("form")
+    .filter({ has: page.getByRole("button", { name: "メモする" }) })
+    .boundingBox();
+
+  if (!form) {
+    throw new Error("メモの小フォームが出ていない");
+  }
+
+  // 語を覆っていれば負、本文の後ろへ流し込まれていれば上限を超える。
+  const gap = gapBetween(selected, form);
+
+  expect(gap).toBeGreaterThanOrEqual(0);
+  expect(gap).toBeLessThanOrEqual(NEAR_ENOUGH);
 });
 
 test("作ったメモは /memos に並び、そこから出所の発話へ着地する", async ({
@@ -249,6 +297,47 @@ async function idOf(message: ReturnType<Page["locator"]>): Promise<string> {
   }
 
   return id;
+}
+
+/**
+ * いまの選択範囲の矩形を読む。
+ * 選択が残っていなければ落とす（位置を見る表明の前提が崩れている）。
+ */
+async function selectedRect(
+  page: Page,
+): Promise<{ top: number; bottom: number }> {
+  const rect = await page.evaluate(() => {
+    const selection = window.getSelection();
+
+    if (!selection || selection.rangeCount === 0) {
+      return undefined;
+    }
+
+    const { top, bottom } = selection.getRangeAt(0).getBoundingClientRect();
+
+    return { top, bottom };
+  });
+
+  if (!rect) {
+    throw new Error("選択が残っていない");
+  }
+
+  return rect;
+}
+
+/**
+ * 選択の矩形とフォームの縦の隙間（px）。
+ * 重なっていれば負を返す。
+ */
+function gapBetween(
+  selected: { top: number; bottom: number },
+  form: { y: number; height: number },
+): number {
+  if (form.y >= selected.bottom) {
+    return form.y - selected.bottom;
+  }
+
+  return selected.top - (form.y + form.height);
 }
 
 /**

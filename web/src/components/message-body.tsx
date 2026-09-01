@@ -27,6 +27,9 @@ import type { Memo, Message } from "@/lib/types";
 const MARKED_STYLE =
   "underline decoration-2 decoration-amber-500 underline-offset-4";
 
+/** 選択した範囲とメモの小フォームの間に置く隙間（px）。 */
+const FORM_GAP = 8;
+
 /**
  * 選択を読み直す発話の登録簿。
  *
@@ -35,11 +38,19 @@ const MARKED_STYLE =
  */
 const readers = new Map<Element, () => void>();
 
+/**
+ * メモの小フォームを出す位置。
+ *
+ * 本文の枠を基準にした絶対配置の指定で、選択の下へ出すときは上辺を、上へ出すときは下辺を押さえる。
+ */
+type DraftPlacement = { top: number } | { bottom: number };
+
 /** 選択が確定してから、メモとして送られるまでの下書き。 */
 type MemoDraft = {
   anchorStart: number;
   anchorEnd: number;
   keyword: string;
+  placement: DraftPlacement;
 };
 
 /**
@@ -85,8 +96,9 @@ export function MessageBody({
     });
   }, [message.body, segments]);
 
+  // 枠を relative にするのは、フォームを選択の近くへ絶対配置する基準がここになるため。
   return (
-    <>
+    <div className="relative">
       <div
         ref={bodyRef}
         data-message-body=""
@@ -111,7 +123,7 @@ export function MessageBody({
           onClose={() => setDraft(null)}
         />
       )}
-    </>
+    </div>
   );
 }
 
@@ -160,6 +172,10 @@ function SegmentText({
  * 送るのは hidden で、書き手が埋めるのはノートだけ。
  *
  * iOS Safari は 16px 未満の入力欄へフォーカスすると自動でズームして書き手が選んだ倍率を捨てるので、ノートの入力欄だけ周りの 14px（`text-sm`）へ揃えず 16px（`text-base`）を敷く。
+ *
+ * 置き場は選んだ語の近くで、本文の枠を基準に絶対配置する。
+ * 本文の後ろへ流し込む形にすると、発話が長いときに選んだ位置とフォームが画面一枚分ほど離れ、メモを作れること自体に気付けない。
+ * 左右を枠いっぱいに広げるのは、横位置を計算せずに画面端の溢れを避けるため。
  */
 function MemoForm({
   messageId,
@@ -178,7 +194,8 @@ function MemoForm({
         await action(formData);
         onClose();
       }}
-      className="mt-3 flex flex-col gap-2 rounded border border-neutral-300 bg-white p-3"
+      style={draft.placement}
+      className="absolute inset-x-0 z-10 flex flex-col gap-2 rounded border border-neutral-300 bg-white p-3 shadow-lg"
     >
       <input type="hidden" name="message_id" value={messageId} />
       <input type="hidden" name="anchor_start" value={draft.anchorStart} />
@@ -315,7 +332,28 @@ function draftFromSelection(
     anchorStart,
     anchorEnd,
     keyword: body.slice(anchorStart, anchorEnd),
+    placement: placementOf(
+      range.getBoundingClientRect(),
+      container.getBoundingClientRect(),
+    ),
   };
+}
+
+/**
+ * 選択の矩形から、フォームを出す辺と本文の枠のその辺からの距離を決める。
+ *
+ * 選んだ語そのものを覆うと何に対するメモか見えなくなるので、返すのは矩形の外側へ隙間を足した位置。
+ * 下の余白が上より狭いときに上側へ出すのは、画面の下端に近いところで選ぶとフォームが視界の外へ落ちるため。
+ * 上側へ出すときに上辺でなく下辺を押さえるのは、まだ描いていないフォームの高さを測れないため。
+ */
+function placementOf(selected: DOMRect, container: DOMRect): DraftPlacement {
+  const spaceBelow = window.innerHeight - selected.bottom;
+
+  if (spaceBelow < selected.top) {
+    return { bottom: container.bottom - selected.top + FORM_GAP };
+  }
+
+  return { top: selected.bottom - container.top + FORM_GAP };
 }
 
 /**
