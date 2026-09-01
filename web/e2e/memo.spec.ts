@@ -34,6 +34,10 @@ const SWITCH_QUESTION = "E2E: 過去セッションを画面から辿れるの�
 
 const SWITCH_UTTERANCE = "E2E: 一度目の対話がここにある";
 
+const TOUCH_QUESTION = "E2E: 指で選んでもメモは作れるのか";
+
+const TOUCH_UTTERANCE = "E2E: 画面を指でなぞって語を掴む";
+
 test("発話の一部を選ぶとメモを作れ、その区間にアンダーラインが出る", async ({
   page,
 }) => {
@@ -63,6 +67,13 @@ test("発話の一部を選ぶとメモを作れ、その区間にアンダー�
     "title",
     `${UNDERLINE_UTTERANCE}: この言い換えが効いた`,
   );
+});
+
+test("選択を touchend で終えてもメモの小フォームが立つ", async ({ page }) => {
+  const aiA = await postQuestionAndSpeak(page, TOUCH_QUESTION, TOUCH_UTTERANCE);
+  await selectTextInByTouch(page, await idOf(aiA), TOUCH_UTTERANCE);
+
+  await expect(page.getByRole("blockquote")).toHaveText(TOUCH_UTTERANCE);
 });
 
 test("作ったメモは /memos に並び、そこから出所の発話へ着地する", async ({
@@ -241,44 +252,72 @@ async function idOf(message: ReturnType<Page["locator"]>): Promise<string> {
 }
 
 /**
- * 枠の中の文字列を、人が引いたのと同じ形で選択する。
- *
- * Range を組んでから document へ mouseup を投げる。
- * Playwright のドラッグでは文字の途中で始まる範囲を安定して作れず、選択を拾う側は document の mouseup を見ている。
+ * 枠の中の文字列を、デスクトップで人が引いたのと同じ形で選択する。
+ * 選択を閉じるのは mouseup。
  */
 async function selectTextIn(
   page: Page,
   messageId: string,
   text: string,
 ): Promise<void> {
-  await page.evaluate(
-    ({ messageId, text }) => {
-      const spans = document.querySelectorAll(
-        `#${CSS.escape(messageId)} [data-segment-index]`,
-      );
+  await selectTextInEndingWith(page, { messageId, text, endWith: "mouseup" });
+}
 
-      for (const span of spans) {
-        const node = span.firstChild;
-        const start = node?.textContent?.indexOf(text) ?? -1;
-        const selection = window.getSelection();
+/**
+ * 同じ選択を、iOS がジェスチャを終えるのと同じ touchend で閉じる。
+ *
+ * iOS は選択のジェスチャの終わりに mouseup を撃たないので、mouseup だけを見ていると下書きが立たない（issue #147）。
+ * この層はデスクトップの Chromium で走って実機の口そのものは再現しないので、守れるのは touchend のリスナが張られていることまで。
+ */
+async function selectTextInByTouch(
+  page: Page,
+  messageId: string,
+  text: string,
+): Promise<void> {
+  await selectTextInEndingWith(page, { messageId, text, endWith: "touchend" });
+}
 
-        if (!node || start < 0 || !selection) {
-          continue;
-        }
+/**
+ * 枠の中の文字列を選び、指定した口で選択を終える。
+ *
+ * Range を組んでから document へイベントを投げる。
+ * Playwright のドラッグでは文字の途中で始まる範囲を安定して作れない。
+ * touchend を素の Event で作るのは、TouchEvent の構築が実行環境のタッチ対応に依存するため。
+ * 受ける側はイベントの中身を見ずに選択を読み直すだけなので、型名が合っていれば足りる。
+ */
+async function selectTextInEndingWith(
+  page: Page,
+  target: { messageId: string; text: string; endWith: "mouseup" | "touchend" },
+): Promise<void> {
+  await page.evaluate(({ messageId, text, endWith }) => {
+    const spans = document.querySelectorAll(
+      `#${CSS.escape(messageId)} [data-segment-index]`,
+    );
 
-        const range = document.createRange();
-        range.setStart(node, start);
-        range.setEnd(node, start + text.length);
+    for (const span of spans) {
+      const node = span.firstChild;
+      const start = node?.textContent?.indexOf(text) ?? -1;
+      const selection = window.getSelection();
 
-        selection.removeAllRanges();
-        selection.addRange(range);
-        document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
-
-        return;
+      if (!node || start < 0 || !selection) {
+        continue;
       }
 
-      throw new Error(`選択する文字列が本文に無い: ${text}`);
-    },
-    { messageId, text },
-  );
+      const range = document.createRange();
+      range.setStart(node, start);
+      range.setEnd(node, start + text.length);
+
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(
+        endWith === "mouseup"
+          ? new MouseEvent("mouseup", { bubbles: true })
+          : new Event("touchend", { bubbles: true }),
+      );
+
+      return;
+    }
+
+    throw new Error(`選択する文字列が本文に無い: ${text}`);
+  }, target);
 }

@@ -221,10 +221,16 @@ function MemoForm({
  * 本文の div へ onMouseUp を付けると、React のハンドラは自分の部分木の外で起きた mouseup を受け取らないので、枠の外で離した選択が丸ごと取れない。
  * 静的な div へマウスのハンドラを付けること自体も biome が止める（a11y/noStaticElementInteractions）。
  * keyup も見るのは、shift + 矢印で伸ばした選択を落とさないため。
+ *
+ * iOS は選択のジェスチャの終わりに mouseup を撃たないので、touchend も見る。
+ * 長押しから選択ハンドルを動かして離す一連は touchend で終わり、mouseup はそこに来ない。
+ * mouseup が来るのはただのタップのときだけで、その時点では選択が既に潰れている。
+ * pointerup を採らないのは、同じ実機で touchend が来た回のうち半分ほどしか来なかったため。
  */
 function subscribeSelection(container: Element, read: () => void): () => void {
   if (readers.size === 0) {
     document.addEventListener("mouseup", notifySelectedMessage);
+    document.addEventListener("touchend", notifySelectedMessage);
     document.addEventListener("keyup", notifySelectedMessage);
   }
 
@@ -235,6 +241,7 @@ function subscribeSelection(container: Element, read: () => void): () => void {
 
     if (readers.size === 0) {
       document.removeEventListener("mouseup", notifySelectedMessage);
+      document.removeEventListener("touchend", notifySelectedMessage);
       document.removeEventListener("keyup", notifySelectedMessage);
     }
   };
