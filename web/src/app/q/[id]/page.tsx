@@ -11,9 +11,6 @@
  * 本文の描画と選択からのメモ作成は MessageBody の領分。
  * ここは並べて描くところまで。
  *
- * `?probe=1` は選択の口を実機で読むための一時的な計器（issue #147）。
- * 原因が確定したら、この分岐と selection-probe.tsx ごと消す。
- *
  * 各発話に付ける id="msg-<message_id>" は逆引き（/memos）の着地点。
  * 書式は /memos が組み立てるリンクと、着地の印を出す landing-mark.tsx / globals.css が共有しているので、変えるならその三箇所とも直す。
  */
@@ -23,7 +20,6 @@ import { notFound } from "next/navigation";
 import { createMemoAction, newSessionAction, speakAction } from "@/app/actions";
 import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
-import { SelectionProbe } from "@/components/selection-probe";
 import { SpeakForm } from "@/components/speak-form";
 import {
   getQuestion,
@@ -59,10 +55,10 @@ export default async function QuestionPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ s?: string; probe?: string }>;
+  searchParams: Promise<{ s?: string }>;
 }) {
   const { id } = await params;
-  const { s: selectedId, probe } = await searchParams;
+  const { s: selectedId } = await searchParams;
   const question = await getQuestion(id);
   if (!question) {
     notFound();
@@ -180,7 +176,6 @@ export default async function QuestionPage({
           読み返しているのは過去のセッション。ここへは発話を足せない。
         </p>
       )}
-      {probe === "1" && <SelectionProbe />}
       <LandingMark />
     </main>
   );
