@@ -84,7 +84,7 @@ test("発話の一部を選ぶとメモを作れ、その区間にアンダー�
 }) => {
   const aiA = await postQuestionAndSpeak(page, SCENARIOS.underline);
   const { utterance } = SCENARIOS.underline;
-  await selectTextIn(page, await idOf(aiA), utterance);
+  await selectTextIn(page, aiA, utterance);
 
   // 選択した語は引用として見せるだけで、触れる入力欄にしない。
   await expect(page.getByRole("blockquote")).toHaveText(utterance);
@@ -110,7 +110,7 @@ test("発話の一部を選ぶとメモを作れ、その区間にアンダー�
 test("選択を touchend で終えてもメモの小フォームが立つ", async ({ page }) => {
   const aiA = await postQuestionAndSpeak(page, SCENARIOS.touch);
   const { utterance } = SCENARIOS.touch;
-  await selectTextInByTouch(page, await idOf(aiA), utterance);
+  await selectTextInByTouch(page, aiA, utterance);
 
   await expect(page.getByRole("blockquote")).toHaveText(utterance);
 });
@@ -120,16 +120,14 @@ test("メモの小フォームは、選んだ位置でもスクロールでも�
 }) => {
   await page.setViewportSize(NARROW_VIEWPORT);
   const aiA = await postQuestionAndSpeak(page, SCENARIOS.position);
-  const messageId = await idOf(aiA);
-
   const [head, tail] = SCENARIOS.position.words;
 
-  await selectTextIn(page, messageId, head);
+  await selectTextIn(page, aiA, head);
   const atHead = await formRect(page);
 
   expectNearBottom(atHead, NARROW_VIEWPORT);
 
-  await selectTextIn(page, messageId, tail);
+  await selectTextIn(page, aiA, tail);
   expect(await formRect(page)).toEqual(atHead);
 
   // 書いている途中に発話を読み返せる（背面を止めない）。
@@ -157,10 +155,10 @@ test("別の発話を選ぶと下書きはそちらへ移り、やめれば選�
   const aiB = page.locator('[id^="msg-"]').filter({ hasText: "[fake:ai_b" });
   const [first, second] = SCENARIOS.single.words;
 
-  await selectTextIn(page, await idOf(aiA), first);
+  await selectTextIn(page, aiA, first);
   await expect(page.getByRole("blockquote")).toHaveText(first);
 
-  await selectTextIn(page, await idOf(aiB), second);
+  await selectTextIn(page, aiB, second);
 
   // 前の発話の下書きが残っていると、やめた拍子にそれが出てくる。
   await expect(memoForm(page)).toHaveCount(1);
@@ -178,7 +176,7 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
   const aiA = await postQuestionAndSpeak(page, SCENARIOS.lookup);
   const { utterance } = SCENARIOS.lookup;
   const messageId = await idOf(aiA);
-  await selectTextIn(page, messageId, utterance);
+  await selectTextIn(page, aiA, utterance);
 
   await page.getByRole("button", { name: "メモする" }).click();
   await expect(
@@ -204,7 +202,7 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
 test("下線を押すと、その語のメモが一覧で開く", async ({ page }) => {
   const aiA = await postQuestionAndSpeak(page, SCENARIOS.forward);
   const { utterance } = SCENARIOS.forward;
-  await selectTextIn(page, await idOf(aiA), utterance);
+  await selectTextIn(page, aiA, utterance);
   await page.getByRole("button", { name: "メモする" }).click();
 
   await aiA.getByRole("link", { name: utterance, exact: true }).click();
@@ -219,7 +217,7 @@ test("着地した発話に印が付く", async ({ page }) => {
   const aiA = await postQuestionAndSpeak(page, SCENARIOS.mark);
   const { utterance } = SCENARIOS.mark;
   const messageId = await idOf(aiA);
-  await selectTextIn(page, messageId, utterance);
+  await selectTextIn(page, aiA, utterance);
 
   await page.getByRole("button", { name: "メモする" }).click();
 
@@ -250,7 +248,7 @@ test("再訪したあとでも、メモからそのメモを付けた当時の�
   const aiA = await postQuestionAndSpeak(page, SCENARIOS.revisit);
   const { utterance } = SCENARIOS.revisit;
   const messageId = await idOf(aiA);
-  await selectTextIn(page, messageId, utterance);
+  await selectTextIn(page, aiA, utterance);
   await page.getByRole("button", { name: "メモする" }).click();
 
   await page.getByRole("button", { name: "新しいセッションで再訪" }).click();
@@ -367,9 +365,11 @@ function expectNearBottom(rect: FormRect, viewport: { height: number }): void {
  */
 async function selectTextIn(
   page: Page,
-  messageId: string,
+  message: Locator,
   text: string,
 ): Promise<void> {
+  const messageId = await idOf(message);
+
   await selectTextInEndingWith(page, { messageId, text, endWith: "mouseup" });
 }
 
@@ -381,9 +381,11 @@ async function selectTextIn(
  */
 async function selectTextInByTouch(
   page: Page,
-  messageId: string,
+  message: Locator,
   text: string,
 ): Promise<void> {
+  const messageId = await idOf(message);
+
   await selectTextInEndingWith(page, { messageId, text, endWith: "touchend" });
 }
 
