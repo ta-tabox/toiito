@@ -158,6 +158,8 @@ function SegmentText({
  * キーワードは選択した文字列そのものなので、引用として見せるだけで入力欄にしない。
  * 触れる形にすると、下線の位置と語が食い違ったメモを作れてしまう。
  * 送るのは hidden で、書き手が埋めるのはノートだけ。
+ *
+ * iOS Safari は 16px 未満の入力欄へフォーカスすると自動でズームして書き手が選んだ倍率を捨てるので、ノートの入力欄だけ周りの 14px（`text-sm`）へ揃えず 16px（`text-base`）を敷く。
  */
 function MemoForm({
   messageId,
@@ -191,7 +193,7 @@ function MemoForm({
         name="note"
         aria-label="メモ"
         placeholder="なぜ引っかかったか（任意）"
-        className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+        className="w-full rounded border border-neutral-300 px-2 py-1 text-base"
       />
 
       <div className="flex justify-end gap-2">
