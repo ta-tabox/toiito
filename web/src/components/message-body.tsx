@@ -186,6 +186,7 @@ function SegmentText({
  * メモの小フォーム。
  *
  * 背面へ暗幕もスクロールの固定も置かないのは、書いている途中に発話を読み返せる方を採るため。
+ * 同じ理由で、この面は body へ portal されて画面の main の外に居るので、書きの間の減光（globals.css）も掛からない。
  */
 function MemoForm({
   messageId,

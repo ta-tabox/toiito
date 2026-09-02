@@ -167,7 +167,7 @@ export default async function QuestionPage({
         </nav>
       )}
 
-      <div className="mt-8 space-y-4">
+      <div data-recedes-while-writing="" className="mt-8 space-y-4">
         {messages.map((m) => (
           <div
             key={m.id}

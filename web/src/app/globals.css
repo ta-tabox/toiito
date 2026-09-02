@@ -98,6 +98,17 @@ body {
   font-family: var(--font-gothic);
 }
 
+/* 書きの間（DESIGN.md「重心」）。
+   入力へ触れているあいだだけ読みの側が退き、入力が主役になる。
+   退かせる対象を data 属性で名指すのは、退いてよいのが読み返す本文だけで、同じ画面にある戻り導線やセッションの切り替え口まで薄くすると迷子になるため。 */
+[data-recedes-while-writing] {
+  transition: opacity 0.4s ease-out;
+}
+
+main:has(:is(input, textarea):focus) [data-recedes-while-writing] {
+  opacity: 0.28;
+}
+
 /* 逆引き（/memos の拡大表示 → /q/<id>#msg-<message_id>）で着地した発話の印。
    対象を id="msg-…" の要素に絞るのは、これから足すどの id もフラグメントで指せてしまい、
    発話以外にまで枠が付くため。id の書式の正は q/[id]/page.tsx。
@@ -117,5 +128,14 @@ body {
 @keyframes landed {
   from {
     outline-color: var(--color-mark);
+  }
+}
+
+/* 動きを切っている人には、落差も遅延も無しで出す（DESIGN.md「動き」）。
+   着地の印はここで消さない。
+   一度だけ光って消える形が逆引きの着地点そのものを指しており、落とすと飛んだ先で何が起きたか分からなくなる。 */
+@media (prefers-reduced-motion: reduce) {
+  [data-recedes-while-writing] {
+    transition: none;
   }
 }
