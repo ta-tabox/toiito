@@ -6,6 +6,7 @@
  */
 
 import { expect, test } from "@playwright/test";
+import { OTHER_USER_INPUT } from "@scripts/seed/questions";
 
 /** シードの行と混ざらないよう、この spec にしか出ない文言を使う。 */
 const QUESTION = "E2E: 速さを求めることは何を削ることなのか";
@@ -16,6 +17,10 @@ test("問いを投入して発話すると、ai_a → ai_b の順にフェイク
   page,
 }) => {
   await page.goto("/");
+
+  // シードは二人分入るので、一覧に出るのは現在の利用者の分だけであることを先に見る。
+  // 絞り込みが repo 層から抜けると、ここに二人目の問いが並ぶ。
+  await expect(page.getByText(OTHER_USER_INPUT.body)).toHaveCount(0);
 
   await page.getByPlaceholder("問いをポイっと投げ入れる").fill(QUESTION);
   await page.getByRole("button", { name: "投入" }).click();

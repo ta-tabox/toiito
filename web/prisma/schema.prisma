@@ -5,6 +5,8 @@
  *
  * フィールド名は snake_case。
  * 列名・ドメイン型（src/lib/types.ts）と三者の名前が揃い、repo 層の詰め替えが要らなくなる。
+ * 例外は Better Auth の四表（User / Session / Account / Verification）で、生成された綴りのまま置く。
+ * 揃えると版が上がるたびに手で直すことになり、そこまでして揃える利益がこの四表には無い（docs/adr/0019-auth-better-auth.md）。
  *
  * check 制約は Prisma スキーマで表現できないため migration の SQL が唯一の置き場になる。
  * どのモデルに何が効いているかは各モデルのコメントに書く。
@@ -59,8 +61,12 @@ enum Speaker {
 /// 問い。コンポスターへの投入単位。
 /// body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、
 /// current_form は対話の中で言い直された焦点。
+///
+/// `user_id` を持つのは所有のルートだけで、いまはこのモデル一つ（`docs/adr/0020-ownership-granularity.md`）。
+/// 型が UUID でなく String なのは、Better Auth の `user.id` に合わせるため。
 model Question {
   id           String         @id @default(uuid(4)) @db.Uuid
+  user_id      String
   body         String
   current_form String?
   status       QuestionStatus @default(new)
@@ -68,8 +74,10 @@ model Question {
   /// 挿入順の通し番号。同着を割るための列（意図は Message.seq）。
   seq          BigInt         @default(autoincrement()) @unique
 
-  sessions Session[]
+  user     User              @relation(fields: [user_id], references: [id])
+  sessions DialogueSession[]
 
+  @@index([user_id])
   @@map("questions")
 }
 
@@ -78,7 +86,11 @@ model Question {
 /// 最初の一つは問いの投入時に作られる。
 /// 二つ目以降は、同じ問いを対話画面から「新しいセッションで再訪」したときに増える（`createSession`）。
 /// 問いに何度戻ったかが読み返せるように、過去のセッションは畳まれず、堆積したまま残る。
-model Session {
+///
+/// モデル名だけが `Dialogue` を冠する。
+/// Better Auth のログインセッションが `Session` を名乗り、Prisma のモデル名は一意でなければならないため（`docs/adr/0024-ownership-before-auth.md`）。
+/// 表・列・ドメイン型（`types.ts` の `Session`）はどれも動いていない。
+model DialogueSession {
   id          String   @id @default(uuid(4)) @db.Uuid
   question_id String   @db.Uuid
   started_at  DateTime @default(now()) @db.Timestamptz(6)
@@ -106,7 +118,7 @@ model Message {
   /// 並べ替え専用の列で、表示にも意味の判断にも使わないので、ドメイン型には出さない（db.ts が omit する）。
   seq        BigInt   @default(autoincrement()) @unique
 
-  session Session @relation(fields: [session_id], references: [id])
+  session DialogueSession @relation(fields: [session_id], references: [id])
   memos   Memo[]
 
   @@index([session_id])
@@ -133,7 +145,7 @@ model Memo {
   /// 挿入順の通し番号。同着を割るための列（意図は Message.seq）。
   seq          BigInt   @default(autoincrement()) @unique
 
-  message   Message    @relation(fields: [message_id], references: [id])
+  message    Message    @relation(fields: [message_id], references: [id])
   links_from MemoLink[] @relation("MemoLinkFrom")
   links_to   MemoLink[] @relation("MemoLinkTo")
 
@@ -155,4 +167,88 @@ model MemoLink {
   to_memo   Memo @relation("MemoLinkTo", fields: [to_memo_id], references: [id])
 
   @@map("memo_links")
+}
+
+/// 利用者。Better Auth が持つ四表の一つ。
+///
+/// 綴りは Better Auth 1.7.2 が要求するまま（camelCase・型は既定）で、snake_case へ揃えない（`docs/adr/0019-auth-better-auth.md`）。
+/// 揃えると版が上がるたびに手で直すことになる。
+/// この四表を読むのは `db.ts` の二つの用途だけで、詰め替えが増えないことが据え置きの条件（`docs/adr/0024-ownership-before-auth.md`）。
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions  Session[]
+  accounts  Account[]
+  questions Question[]
+
+  @@map("user")
+}
+
+/// ログインのセッション。Better Auth が持つ四表の一つ。
+///
+/// **対話の `sessions` とは別物**——こちらはログイン、あちらは問いへの再訪（`DialogueSession`）。
+/// 綴りの規約は User と同じ。
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+/// 外部 IdP のアカウント。Better Auth が持つ四表の一つ。
+///
+/// プロバイダと IdP 側の識別子を持つのは `user` でなくこちら（`docs/adr/0019-auth-better-auth.md`）。
+/// OAuth のトークンは保存しない方針だが、列は Better Auth の要求どおり置く（保存しないのは実行時の設定で、#68 が入れる）。
+/// 綴りの規約は User と同じ。
+model Account {
+  id                    String    @id
+  issuer                String
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+/// 検証トークン。Better Auth が持つ四表の一つ。
+///
+/// パスワードを実装しないのでこの器では使わないが、Better Auth が四表を前提に動くので置く。
+/// 綴りの規約は User と同じ。
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
 }

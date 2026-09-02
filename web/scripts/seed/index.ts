@@ -1,12 +1,12 @@
 /**
  * 開発用データの投入。
  *
- * 問い・対話・メモを一式入れて、UI を手触りで確かめられる状態にする。
- * このファイルが持つのは投入のステップだけで、入れる値は同じディレクトリの questions.ts、書き込みの手順は db.ts の createQuestionWithTranscript が持つ。
+ * 利用者二人と、その持ち物としての問い・対話・メモを一式入れて、UI を手触りで確かめられる状態にする。
+ * このファイルが持つのは投入のステップと誰が何を持つかだけで、入れる値は同じディレクトリの users.ts と questions.ts、書き込みの手順は db.ts の createQuestionWithTranscript が持つ。
  * アプリと同じ経路を通らない投入口を増やさない（ARCHITECTURE.md「DB への書き込み経路」）。
  * 接続先は DATABASE_URL 一点で、db.ts が読む。
  * 投入先を選ぶ引数はここに作らない——渡し口を二つ持つと、env は開発用・引数はテスト用という食い違いが起こる。
- * 動くのは問いが一件も無い DB に対してだけで、既に入っている DB へは何も入れずに終わる。
+ * 動くのは利用者が一人も居ない DB に対してだけで、既に入っている DB へは何も入れずに終わる。
  * 本番（NODE_ENV=production）では、空でも投入しない。
  *
  * 入口は seed。
@@ -16,7 +16,8 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { registerSrcAlias } from "../node-alias.ts";
-import { SEED_INPUTS } from "./questions.ts";
+import { OTHER_USER_INPUT, SEED_INPUTS } from "./questions.ts";
+import { SEED_USERS } from "./users.ts";
 
 /**
  * db.ts の repo 関数一式。
@@ -32,6 +33,7 @@ type Repo = typeof import("@/lib/db");
  * 同じ DB を他の書き手（並行するテスト）と共有していても、これがあれば取り違えない。
  */
 export type SeedSummary = {
+  users: number;
   questionIds: string[];
   messages: number;
   memos: number;
@@ -40,7 +42,7 @@ export type SeedSummary = {
 /**
  * 本番の DB への投入を止める。
  *
- * 問いの有無で止める関門（seed）は、行が在る DB にしか効かない。
+ * 利用者の有無で止める関門（seed）は、行が在る DB にしか効かない。
  * 立ち上げ直後の空の本番 DB は素通りするので、環境変数でも止める。
  * 意図して流すときだけ ALLOW_PROD_SEED を渡す。
  */
@@ -56,7 +58,10 @@ function assertNotProduction(): void {
  * シードを投入する。
  * 接続先は DATABASE_URL。
  *
- * 問いが既にある DB へは何も入れずに戻る。
+ * 一人目が問いの大半を持ち、二人目は一件だけ持つ。
+ * 二人目の一件は、一人目の画面のどこにも出てはいけない側として在る（絞り込みが抜けたら、それがそこに出る）。
+ *
+ * 一人目が既に居る DB へは何も入れずに戻る。
  * 投入先の取り違えを、行が増えてから気付く形にしないため。
  * 接続は閉じない。
  * 呼び出し側（CLI・テスト）が自分の都合で閉じる。
@@ -65,21 +70,35 @@ export async function seed(): Promise<SeedSummary> {
   assertNotProduction();
 
   const repo: Repo = await import("@/lib/db");
-  const summary: SeedSummary = { questionIds: [], messages: 0, memos: 0 };
+  const summary: SeedSummary = {
+    users: 0,
+    questionIds: [],
+    messages: 0,
+    memos: 0,
+  };
 
   try {
-    const existing = await repo.listQuestions();
+    const [first, second] = SEED_USERS;
 
-    if (existing.length > 0) {
+    if (await repo.getUserByEmail(first.email)) {
       console.warn(
-        `既に問いが ${existing.length} 件ある DB なので、何も入れずに終わる。空の DB へ入れるか、投入先（DATABASE_URL）を確かめる`,
+        `既に ${first.email} が居る DB なので、何も入れずに終わる。空の DB へ入れるか、投入先（DATABASE_URL）を確かめる`,
       );
 
       return summary;
     }
 
-    for (const input of SEED_INPUTS) {
-      const created = await repo.createQuestionWithTranscript(input);
+    const owner = await repo.createUser(first.email, first.name);
+    const other = await repo.createUser(second.email, second.name);
+    summary.users = 2;
+
+    const plan = [
+      ...SEED_INPUTS.map((input) => ({ ownerId: owner.id, input })),
+      { ownerId: other.id, input: OTHER_USER_INPUT },
+    ];
+
+    for (const { ownerId, input } of plan) {
+      const created = await repo.createQuestionWithTranscript(ownerId, input);
 
       summary.questionIds.push(created.question.id);
       summary.messages += created.messages.length;
@@ -120,7 +139,7 @@ async function main(): Promise<void> {
   // 件数ゼロを重ねて報告しない。
   if (summary.questionIds.length > 0) {
     console.log(
-      `投入した: 問い ${summary.questionIds.length} 件 / 発話 ${summary.messages} 件 / メモ ${summary.memos} 件`,
+      `投入した: 利用者 ${summary.users} 人 / 問い ${summary.questionIds.length} 件 / 発話 ${summary.messages} 件 / メモ ${summary.memos} 件`,
     );
   }
 

@@ -21,6 +21,7 @@ import { createMemoAction, newSessionAction, speakAction } from "@/app/actions";
 import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
 import { SpeakForm } from "@/components/speak-form";
+import { getCurrentUser } from "@/lib/current-user";
 import {
   getQuestion,
   listMemosForSession,
@@ -59,12 +60,13 @@ export default async function QuestionPage({
 }) {
   const { id } = await params;
   const { s: selectedId } = await searchParams;
-  const question = await getQuestion(id);
+  const owner = (await getCurrentUser()).id;
+  const question = await getQuestion(owner, id);
   if (!question) {
     notFound();
   }
 
-  const sessions = await listSessionsWithKeywords(id);
+  const sessions = await listSessionsWithKeywords(owner, id);
   const latest = sessions.at(-1);
 
   // 選ぶ先をこの問いのセッションの中から引くことで、他の問いのセッション ID を ?s に差し込まれても届かない。
@@ -77,8 +79,8 @@ export default async function QuestionPage({
   }
 
   const isLatest = session.id === latest.id;
-  const messages = await listMessages(session.id);
-  const memos = await listMemosForSession(session.id);
+  const messages = await listMessages(owner, session.id);
+  const memos = await listMemosForSession(owner, session.id);
 
   const speak = speakAction.bind(null, question.id, session.id);
   const newSession = newSessionAction.bind(null, question.id);

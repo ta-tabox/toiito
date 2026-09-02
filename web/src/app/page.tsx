@@ -9,6 +9,7 @@
 
 import Link from "next/link";
 import { createQuestionAction } from "@/app/actions";
+import { getCurrentUser } from "@/lib/current-user";
 import { listQuestions, questionText } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
 import type { QuestionStatus } from "@/lib/question";
@@ -36,7 +37,7 @@ const STATUS_LABEL: Record<QuestionStatus, string> = {
  * 投入フォームと問いの一覧。
  */
 export default async function Home() {
-  const questions = await listQuestions();
+  const questions = await listQuestions((await getCurrentUser()).id);
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">

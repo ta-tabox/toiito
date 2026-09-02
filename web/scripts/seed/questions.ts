@@ -4,8 +4,9 @@
  * 投入の手順は持たない（それは db.ts の createQuestionWithTranscript と seed/index.ts のステップ）。
  * ここが答えるのは「何を入れるか」だけで、この形のまま増やしていく。
  *
- * 入口は SEED_INPUTS。
- * 宣言（keyword ベース）から、範囲の埋まった投入の入力へ写したもの。
+ * 入口は SEED_INPUTS（一人目）と OTHER_USER_INPUT（二人目）。
+ * どちらも宣言（keyword ベース）から、範囲の埋まった投入の入力へ写したもの。
+ * 誰が持つかを決めるのは seed/index.ts で、ここは中身だけを言う。
  */
 
 import type { MemoInput, QuestionInput } from "@/lib/db";
@@ -179,9 +180,30 @@ function toQuestionInput(questionSeed: QuestionSeed): QuestionInput {
 }
 
 /**
- * 投入する入力。
+ * 一人目へ投入する入力。
  * 宣言から写した形で、メモの範囲まで埋まっている。
  *
  * 写しを読み込み時に済ませるのは、キーワードの綴り誤りを投入前に落とすため。
  */
 export const SEED_INPUTS: QuestionInput[] = SEED_QUESTIONS.map(toQuestionInput);
+
+/**
+ * 二人目が持つ問いの宣言。
+ *
+ * 所有権の絞り込みが抜けたことを画面から見えるようにするために置く。
+ * 一人目で開いた一覧・逆引き・対話画面のどこにこれが出ても、絞り込みが効いていない。
+ */
+const OTHER_USER_QUESTION: QuestionSeed = {
+  body: "他人の問いは、私の一覧に出てはいけない",
+  messages: [
+    {
+      speaker: "human",
+      body: "この発話は二人目のものなので、一人目の画面には現れない。",
+      memos: [{ keyword: "二人目" }],
+    },
+  ],
+};
+
+/** 二人目へ投入する入力。 */
+export const OTHER_USER_INPUT: QuestionInput =
+  toQuestionInput(OTHER_USER_QUESTION);

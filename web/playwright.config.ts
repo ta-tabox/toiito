@@ -21,6 +21,7 @@
 import { BASIC_AUTH } from "@e2e/setup/basic-auth-credentials";
 import { E2E_DATABASE_URL } from "@e2e/setup/e2e-database-url";
 import { defineConfig, devices } from "@playwright/test";
+import { SEED_USERS } from "@scripts/seed/users";
 
 /** 開発サーバー（3000）と衝突させないための口。 */
 const PORT = 3100;
@@ -46,6 +47,9 @@ const SERVER_ENV = {
   DATABASE_URL: E2E_DATABASE_URL,
   DIRECT_URL: E2E_DATABASE_URL,
   TOIITO_FAKE_AI: "1",
+
+  // 認証はまだ無いので、現在の利用者はシードの一人目に固定する（docs/adr/0019-auth-better-auth.md 決定 7）。
+  TOIITO_FAKE_USER_EMAIL: SEED_USERS[0].email,
 };
 
 export default defineConfig({

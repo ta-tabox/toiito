@@ -4,11 +4,13 @@
  * Server Actions 自体は next/cache・next/navigation を掴むので、配線の検証は L3（next build）に任せる。
  */
 
-import { afterAll, describe, expect, it } from "vitest";
+import { createOwner } from "@tests/setup/owner";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { callPersona } from "@/lib/ai";
 import { ANTHROPIC_DEFAULTS, AnthropicProvider } from "@/lib/ai/anthropic";
 import * as db from "@/lib/db";
 import { loadPersona, type PersonaId } from "@/lib/personas";
+import type { OwnerId } from "@/lib/types";
 
 /** 実 API を叩かないためのプロバイダ（HARNESS.md「実 API を自動テストで叩かない」）。 */
 const FAKE_PROVIDER = new AnthropicProvider({
@@ -22,6 +24,13 @@ afterAll(async () => {
   await db.disconnect();
 });
 
+// repo 関数はどれも所有者を要求するので、空にした後のケースごとに一人作る。
+let owner: OwnerId;
+
+beforeEach(async () => {
+  owner = await createOwner();
+});
+
 /** ペルソナ一体分の呼び出し指定を、定義ファイルごと組み立てる。 */
 function personaCall(id: PersonaId) {
   return { id, prompt: loadPersona(id), provider: FAKE_PROVIDER };
@@ -30,43 +39,55 @@ function personaCall(id: PersonaId) {
 describe("縦一本", () => {
   it("問いを投げると二体が応答し、その語にメモを付けて逆引きできる", async () => {
     const { question, session } = await db.createQuestion(
+      owner,
       "速さを求めることは、何を失うことなのか",
     );
 
     // 人間の口火 → ai_a（具体）→ ai_b（抽象）の逐次。
     // ai_b は ai_a の発話も含む transcript を受け取る（並列にしない理由）。
-    await db.addMessage(session.id, "human", "急ぐほど問いが痩せる気がする");
+    await db.addMessage(
+      owner,
+      session.id,
+      "human",
+      "急ぐほど問いが痩せる気がする",
+    );
 
     const aiA = await callPersona(
       personaCall("ai_a"),
       question,
-      await db.listMessages(session.id),
+      await db.listMessages(owner, session.id),
     );
-    await db.addMessage(session.id, "ai_a", aiA);
+    await db.addMessage(owner, session.id, "ai_a", aiA);
 
-    const transcriptForB = await db.listMessages(session.id);
+    const transcriptForB = await db.listMessages(owner, session.id);
     const aiB = await callPersona(
       personaCall("ai_b"),
       question,
       transcriptForB,
     );
-    await db.addMessage(session.id, "ai_b", aiB);
+    await db.addMessage(owner, session.id, "ai_b", aiB);
 
     expect(transcriptForB.map((m) => m.speaker)).toEqual(["human", "ai_a"]);
 
-    const messages = await db.listMessages(session.id);
+    const messages = await db.listMessages(owner, session.id);
     expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
     expect(aiA).toContain("急ぐほど問いが痩せる気がする");
     expect(aiA).not.toBe(aiB); // 二体が別のペルソナとして応答している
 
     // 応答本文の一部を選択してメモを残す
     const target = messages[1];
-    const memo = await db.addMemo(target.id, 0, 4, target.body.slice(0, 4));
+    const memo = await db.addMemo(
+      owner,
+      target.id,
+      0,
+      4,
+      target.body.slice(0, 4),
+    );
 
-    expect(await db.listMemosForSession(session.id)).toHaveLength(1);
+    expect(await db.listMemosForSession(owner, session.id)).toHaveLength(1);
 
     // メモからセッションと問いへ逆引きできる
-    const [found] = await db.listMemosWithContext();
+    const [found] = await db.listMemosWithContext(owner);
 
     expect(found.id).toBe(memo.id);
     expect(found.session_id).toBe(session.id);

@@ -42,6 +42,10 @@
         "noRestrictedImports": {
           "level": "error",
           "options": {
+            "paths": {
+              "better-auth": "セッションを読む経路は src/lib/current-user.ts の一本に絞る（docs/adr/0022-session-security.md 決定 9）",
+              "@/lib/auth": "セッションを読む経路は src/lib/current-user.ts の一本に絞る（docs/adr/0022-session-security.md 決定 9）"
+            },
             "patterns": [
               {
                 "group": ["./**", "../**", "!./**/*.css", "!../**/*.css"],
@@ -90,6 +94,26 @@
         "rules": {
           "style": {
             "noRestrictedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/lib/current-user.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["./**", "../**", "!./**/*.css", "!../**/*.css"],
+                    "message": "import は @ 起点の絶対パスで書く（CODING.md / skill coding-standards）"
+                  }
+                ]
+              }
+            }
           }
         }
       }
