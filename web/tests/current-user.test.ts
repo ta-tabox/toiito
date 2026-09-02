@@ -28,6 +28,37 @@ describe("assertFakeUserNotInProduction", () => {
     ).not.toThrow();
   });
 
+  it("Vercel の Preview は通す（NODE_ENV では本番と見分けられない）", () => {
+    expect(() =>
+      assertFakeUserNotInProduction({
+        NODE_ENV: "production",
+        VERCEL_ENV: "preview",
+        TOIITO_FAKE_USER_EMAIL: "someone@example.com",
+      }),
+    ).not.toThrow();
+  });
+
+  it("Vercel の Production は投げる", () => {
+    expect(() =>
+      assertFakeUserNotInProduction({
+        NODE_ENV: "production",
+        VERCEL_ENV: "production",
+        TOIITO_FAKE_USER_EMAIL: "someone@example.com",
+      }),
+    ).toThrow(/本番/);
+  });
+
+  it("Preview の印が無ければ投げる（他所のホストで素通しへ落ちない）", () => {
+    // VERCEL_ENV は除外の側にしか使わないので、未定義になれば判定は厳しくなる。
+    expect(() =>
+      assertFakeUserNotInProduction({
+        NODE_ENV: "production",
+        VERCEL_ENV: "development",
+        TOIITO_FAKE_USER_EMAIL: "someone@example.com",
+      }),
+    ).toThrow(/本番/);
+  });
+
   it("production 以外は設定されていても通す", () => {
     expect(() =>
       assertFakeUserNotInProduction({

@@ -20,6 +20,7 @@ import type { User } from "@/lib/types";
 type FakeUserEnv = {
   readonly TOIITO_FAKE_USER_EMAIL?: string;
   readonly NODE_ENV?: string;
+  readonly VERCEL_ENV?: string;
 };
 
 /**
@@ -27,11 +28,20 @@ type FakeUserEnv = {
  *
  * 認証を丸ごと外す口なので、運用上の注意ではなくモジュールの評価時の例外にする（`docs/adr/0019-auth-better-auth.md` 決定 7）。
  * 要求を受けるまで判定を遅らせると、設定の誤りが本番の一枚目の画面まで表に出ない。
+ *
+ * `NODE_ENV` だけでは Preview を本番と見分けられない（`next build` の出力はどちらも production で走る。`docs/adr/0015-preview-neon-branch.md`）ので、Preview だけを `VERCEL_ENV` で除ける。
+ * 引き金は `NODE_ENV` のままなので、他所のホストへ移して `VERCEL_ENV` が未定義になっても判定は素通しへ落ちない（`docs/adr/0013-production-basic-auth.md` が `VERCEL_ENV` を引き金にしない条件として挙げているのはその落ち方である）。
+ *
+ * 手元の `next build` も `NODE_ENV=production` で走るので、この変数は `.env.local` でなく `.env.development.local` へ置く（`web/README.md`「環境変数」）。
  */
 export function assertFakeUserNotInProduction(env: FakeUserEnv): void {
-  if (env.NODE_ENV === "production" && env.TOIITO_FAKE_USER_EMAIL) {
+  if (
+    env.NODE_ENV === "production" &&
+    env.VERCEL_ENV !== "preview" &&
+    env.TOIITO_FAKE_USER_EMAIL
+  ) {
     throw new Error(
-      "本番で TOIITO_FAKE_USER_EMAIL は使えない。これは認証を丸ごと外す口で、Preview と E2E のためだけに在る（docs/adr/0019-auth-better-auth.md 決定 7）",
+      "本番で TOIITO_FAKE_USER_EMAIL は使えない。これは認証を丸ごと外す口で、Preview と E2E のためだけに在る（docs/adr/0019-auth-better-auth.md 決定 7）。手元の next build もここに当たるので、渡すなら .env.development.local へ置く",
     );
   }
 }
