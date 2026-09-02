@@ -57,7 +57,7 @@ export default async function Home() {
       <form action={createQuestionAction} className="mt-8 flex gap-2">
         <input
           name="body"
-          placeholder="問いをポイっと投げ入れる"
+          placeholder="問いをポイっと"
           className="flex-1 rounded border border-neutral-300 px-3 py-2"
           autoComplete="off"
         />
@@ -65,7 +65,7 @@ export default async function Home() {
           type="submit"
           className="rounded bg-neutral-800 px-4 py-2 text-white hover:bg-neutral-700"
         >
-          投入
+          仕込む
         </button>
       </form>
 

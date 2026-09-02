@@ -10,7 +10,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "toiito — 問いのコンポスター",
+  title: "toiito — 問いの発酵槽",
   description:
     "問いを投げ入れて発酵させる。答えではなく問いを深めるための場所。",
 };

@@ -88,7 +88,7 @@ export default async function QuestionPage({
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
       <div className="flex items-baseline justify-between gap-4">
         <Link href="/" className="text-sm text-neutral-500 hover:underline">
-          ← コンポスター
+          ← 問いの発酵槽
         </Link>
         {isLatest ? (
           <form action={newSession}>
