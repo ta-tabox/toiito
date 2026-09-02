@@ -66,7 +66,7 @@ VISION の設計原理が上位。
 Next.js サーバー層 ──── Claude API（二体のシステムプロンプトを切替えて逐次呼出）
    │
    ▼
-Postgres（questions / sessions / messages / memos / memo_links ＋ Better Auth の四表）
+Postgres（questions / sessions / messages / pending_messages / memos / memo_links ＋ Better Auth の四表）
 ```
 
 単一 Web アプリ。
@@ -97,6 +97,9 @@ sessions       一つの問いに対する対話セッション（複数回あ�
 
 messages       発話。人間 + AI二体の三者
   id, session_id, speaker(human/ai_a/ai_b), body, created_at
+
+pending_messages  成立していない人間の発話。セッションにつき一件
+  session_id(主キー), body, created_at
 
 memos          キーワードメモ。文字選択で残す
   id, message_id, anchor_start, anchor_end, keyword, note, created_at
@@ -155,6 +158,23 @@ UI 側でやらない。
 DB 側の正は `prisma/schema.prisma` の enum `QuestionStatus`、アプリ側の正は `web/src/lib/question.ts` の `QUESTION_STATUSES`（型と UI ラベルがここから派生する）。
 二重管理に見えるが、両者がずれると repo 関数の戻り値がドメイン型へ代入できなくなり `tsc` が落ちる。
 **ずれは L0 で捕まる**ので、片方を消して他方へ依存させる必要はない。
+
+### 一往復の成立（2026-09-02 決定）
+
+`messages` へ入るのは**成立した一往復だけ**である。
+human / ai_a / ai_b の三行は、二体が両方返ってから一トランザクションで入る（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+途中で AI 呼び出しが落ちたときに残るのは `pending_messages` が預かっている人間の本文だけで、成功していた ai_a の応答は捨てる。
+
+- **預かりが在ることが「前回の一往復が成立しなかった」という状態そのもの**である。
+  失敗の理由は持たず、画面の文言は一つ（5 つある失敗経路の区別は `turn.ts` が出す `turn_failed` の行が持つ）
+- **再送は預かりの本文からプロンプトを組む**。
+  打ち直させないための預かりなので、新しい入力を受け取らない
+- 預かりはセッションにつき一件で、新しい発話が来れば差し替わる。
+  これが破棄の口を兼ねており、成立しなかった発話を捨てる別の操作は無い
+- **`pending_messages` は可変である**。
+  immutable の不変条件が掛かっているのは `messages` だけで、預かりの本文にメモのアンカーは付かない
+- 発話本文の上限は 4000 字（`web/src/lib/message.ts`）。
+  単位は UTF-16 code unit で、textarea の `maxLength` と同じ数え方になる
 
 ### 再訪と、過去セッションの読み方（2026-08-23 決定）
 
