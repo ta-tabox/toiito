@@ -192,7 +192,8 @@ model User {
 
 /// ログインのセッション。Better Auth が持つ四表の一つ。
 ///
-/// **対話の `sessions` とは別物**——こちらはログイン、あちらは問いへの再訪（`DialogueSession`）。
+/// **対話の `sessions` とは別物**。
+/// こちらはログイン、あちらは問いへの再訪（`DialogueSession`）。
 /// 綴りの規約は User と同じ。
 model Session {
   id        String   @id
