@@ -40,10 +40,32 @@ export const dynamic = "force-dynamic";
  */
 const SWITCHER_KEYWORDS = 3;
 
-const SPEAKER_STYLE: Record<Speaker, { label: string; cls: string }> = {
-  human: { label: "あなた", cls: "border-neutral-300 bg-white" },
-  ai_a: { label: PERSONA_LABEL.ai_a, cls: "border-amber-200 bg-amber-50" },
-  ai_b: { label: PERSONA_LABEL.ai_b, cls: "border-sky-200 bg-sky-50" },
+/**
+ * 話者ごとの吹き出し。
+ *
+ * 三者は同じ幅で並び、分かれるのは面の温度と角の落とし方だけになる（DESIGN.md「話者の描き分け」）。
+ * 二体はどちらも左なので位置では分かれず、暖が具体・寒が抽象で、抽象だけが罫を回す。
+ * 温度差は周辺視で拾う手掛かりであって識別の正ではないので、名前のラベルは消さない。
+ */
+const SPEAKER_STYLE: Record<
+  Speaker,
+  { label: string; bubble: string; name: string }
+> = {
+  human: {
+    label: "あなた",
+    bubble: "rounded-bubble rounded-tr-notch bg-moss-surface",
+    name: "text-right",
+  },
+  ai_a: {
+    label: PERSONA_LABEL.ai_a,
+    bubble: "rounded-bubble rounded-tl-notch bg-surface-warm",
+    name: "",
+  },
+  ai_b: {
+    label: PERSONA_LABEL.ai_b,
+    bubble: "rounded-bubble border border-rule bg-surface-cool",
+    name: "",
+  },
 };
 
 /**
@@ -85,16 +107,16 @@ export default async function QuestionPage({
   const createMemo = createMemoAction.bind(null, question.id);
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
+    <main className="mx-auto w-full max-w-reading flex-1 px-5 py-10">
       <div className="flex items-baseline justify-between gap-4">
-        <Link href="/" className="text-sm text-neutral-500 hover:underline">
+        <Link href="/" className="text-aux text-ink-weak hover:underline">
           ← 問いの発酵槽
         </Link>
         {isLatest ? (
           <form action={newSession}>
             <button
               type="submit"
-              className="text-sm text-neutral-500 hover:underline"
+              className="text-aux text-ink-weak hover:underline"
             >
               新しいセッションで再訪
             </button>
@@ -102,29 +124,29 @@ export default async function QuestionPage({
         ) : (
           <Link
             href={`/q/${question.id}`}
-            className="text-sm text-neutral-500 hover:underline"
+            className="text-aux text-ink-weak hover:underline"
           >
             最新のセッションへ →
           </Link>
         )}
       </div>
 
-      <h1 className="mt-4 text-xl font-bold leading-relaxed">
+      <h1 className="mt-4 font-mincho text-question md:text-question-lg">
         {questionText(question)}
       </h1>
       {question.current_form && (
-        <p className="mt-2 border-l-2 border-neutral-300 pl-3 text-sm text-neutral-500">
+        <p className="mt-2 border-rule border-l-2 pl-3 text-meta text-ink-weak">
           原型（不変）: {question.body}
         </p>
       )}
-      <p className="mt-1 text-xs text-neutral-500">
+      <p className="mt-2 text-meta text-ink-weak tabular-nums">
         セッション開始: {formatTimestamp(session.started_at)}
       </p>
 
       {sessions.length > 1 && (
         <nav
           aria-label="セッション"
-          className="mt-4 flex flex-col items-start gap-1 border-l-2 border-neutral-200 pl-3"
+          className="mt-4 flex flex-col items-start gap-1 border-rule border-l-2 pl-3"
         >
           {sessions.map((candidate, index) => (
             <Link
@@ -135,7 +157,7 @@ export default async function QuestionPage({
                   : `/q/${question.id}?s=${candidate.id}`
               }
               aria-current={candidate.id === session.id ? "page" : undefined}
-              className="text-xs text-neutral-500 hover:underline aria-[current]:font-bold aria-[current]:text-neutral-800"
+              className="text-meta text-ink-weak hover:underline aria-[current]:font-bold aria-[current]:text-ink"
             >
               {index + 1} 回目 · {formatTimestamp(candidate.started_at)}
               {candidate.keywords.length > 0 &&
@@ -150,9 +172,11 @@ export default async function QuestionPage({
           <div
             key={m.id}
             id={`msg-${m.id}`}
-            className={`rounded border p-4 ${SPEAKER_STYLE[m.speaker].cls}`}
+            className={`p-3 md:p-4 ${SPEAKER_STYLE[m.speaker].bubble}`}
           >
-            <div className="mb-1 text-xs font-bold text-neutral-500">
+            <div
+              className={`mb-2 text-meta text-ink-weak ${SPEAKER_STYLE[m.speaker].name}`}
+            >
               {SPEAKER_STYLE[m.speaker].label}
             </div>
             <MessageBody
@@ -163,7 +187,7 @@ export default async function QuestionPage({
           </div>
         ))}
         {messages.length === 0 && (
-          <p className="text-sm text-neutral-500">
+          <p className="text-aux text-ink-weak">
             まだ発話がない。問いについて口火を切ると、二体が応答する。
           </p>
         )}
@@ -172,7 +196,7 @@ export default async function QuestionPage({
       {isLatest ? (
         <SpeakForm action={speak} />
       ) : (
-        <p className="mt-8 text-sm text-neutral-500">
+        <p className="mt-8 text-aux text-ink-weak">
           読み返しているのは過去のセッション。ここへは発話を足せない。
         </p>
       )}

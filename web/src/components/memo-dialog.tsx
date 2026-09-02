@@ -11,10 +11,14 @@
  * 閉じる手段は Esc と閉じるボタンの二つ。
  * 背景を押して閉じる形は入れない。
  * `<dialog>` の背景は擬似要素で単独では押せず、dialog 自身の click を見る形になるので、キーボードから届かない操作が一つ増える。
+ *
+ * 暗幕だけは色のトークンを使わない。
+ * 背後を減光する役なので明暗の二系統を持たず、ダークのトークンを当てると明るい幕が被さる。
  */
 
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
 
 /**
  * メモの拡大表示。
@@ -33,19 +37,14 @@ export function MemoDialog({ children }: { children: ReactNode }) {
     <dialog
       ref={dialogRef}
       onClose={() => router.replace("/memos")}
-      className="m-auto w-full max-w-xl rounded border border-neutral-300 p-0 backdrop:bg-neutral-900/40"
+      className="m-auto w-full max-w-reading rounded border border-rule bg-surface-mid p-0 text-ink backdrop:bg-black/40"
     >
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         {children}
 
         {/* method="dialog" の submit は JS を挟まずに閉じる。 */}
         <form method="dialog" className="mt-6 flex justify-end">
-          <button
-            type="submit"
-            className="rounded px-3 py-1 text-sm text-neutral-500 hover:underline"
-          >
-            閉じる
-          </button>
+          <Button type="submit">閉じる</Button>
         </form>
       </div>
     </dialog>
