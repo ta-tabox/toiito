@@ -7,7 +7,35 @@
  */
 
 import type { Metadata } from "next";
+import { Shippori_Mincho, Zen_Kaku_Gothic_New } from "next/font/google";
 import "./globals.css";
+
+/**
+ * 見出しの明朝。
+ * 問いだけが明朝で立ち、対話はゴシックで読み下せる（DESIGN.md「書体と字組み」）。
+ *
+ * 和文の従属欧文へ日付と数字も預けるので、欧文専用の書体は足さない。
+ * preload を切るのは、和文のサブセットが数十本に分かれており、どれが要るかは本文の文字を見るまで決まらないため。
+ *
+ * ウェイトは実際に画面へ出るものだけを挙げる。
+ * 和文は 1 ウェイトが百本を超えるサブセットに分かれるので、使わない一段が初回のビルドと dev の起動をそのぶん引き延ばす。
+ */
+const mincho = Shippori_Mincho({
+  weight: ["400"],
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-shippori-mincho",
+});
+
+/** 本文と UI のゴシック。 */
+const gothic = Zen_Kaku_Gothic_New({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-zen-kaku-gothic-new",
+});
 
 export const metadata: Metadata = {
   title: "toiito — 問いの発酵槽",
@@ -22,8 +50,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html
+      lang="ja"
+      className={`h-full antialiased ${mincho.variable} ${gothic.variable}`}
+    >
+      <body className="flex min-h-full flex-col font-gothic">{children}</body>
     </html>
   );
 }
