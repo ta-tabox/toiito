@@ -101,5 +101,5 @@ jobs:
           # 連鎖したコマンドは `&&` で分割して一つずつ照合されるので、`cd web && pnpm check` はこの四つで通る。
           # 言語・文体の指定は prompt でなく system prompt へ置く（claude-code-review.yml と同じ理由）。
           # 自動レビュー側にだけ入れると、@claude で手動に呼んだときの応答だけ英語で返る非対称が生まれるので、二本に同じ指定を置く。
-          # 綴りは --allowedTools に揃える（--allowed-tools も通るが、二本で別の綴りを配らない）。
+          # 書き方は --allowedTools に揃える（--allowed-tools も通るが、二本で別の書き方を配らない）。
           claude_args: '--allowedTools "Bash(cd:*),Bash(pnpm check),Bash(pnpm lint),Bash(pnpm test)" --append-system-prompt "応答はすべて日本語で書く。文体は だ・である調。識別子・ルール名・パス・引用したコードは原文のまま残す。"'
