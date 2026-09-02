@@ -34,6 +34,13 @@ ADR を立てていない理由は `docs/adr/README.md`「ADR にしないもの
 `TOIITO_ANTHROPIC_MODEL` は任意（既定 `claude-sonnet-5`）。
 `TOIITO_FAKE_AI` は**本番に入れない**。
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
+`TOIITO_FAKE_USER_EMAIL` も**本番に入れない**。
+こちらは注意ではなく、入っているとモジュールの評価時に投げる（`docs/adr/0019-auth-better-auth.md` 決定 7）。
+
+**#68（ログイン（Google OAuth）とリソースの所有権）が入るまで、本番は動かない。**
+所有者を先にデータ層へ入れた回（`docs/adr/0024-ownership-before-auth.md` 決定 5）から、現在の利用者を決める手段が本番に無い。
+同じ回の migration が持ち主のいない既存の問いを消しているので、動いていたとしても中身は空である。
+引き受けた条件と、止められない事情ができたときの倒し先は 0024 の決定 5。
 
 **5 本とも Production に入れてから最初のビルドを回す**。
 `postinstall` の `prisma generate` は `prisma.config.ts` 経由で `DIRECT_URL` を即時解決するので、無いとインストール段階で exit 1 になる。
@@ -108,7 +115,7 @@ pnpm migrate:prod
 
 ## Preview
 
-PR ごとの Preview デプロイにも環境変数を 5 本入れる（Vercel の Environment Variables で環境に **Preview** を選ぶ）。
+PR ごとの Preview デプロイにも環境変数を 6 本入れる（Vercel の Environment Variables で環境に **Preview** を選ぶ）。
 接続先は Neon の `preview` ブランチで、本番とは別の DB を向く。
 
 | 変数 | 値 |
@@ -116,6 +123,7 @@ PR ごとの Preview デプロイにも環境変数を 5 本入れる（Vercel �
 | `DATABASE_URL` | `preview` ブランチのプーラー経由 |
 | `DIRECT_URL` | 同ブランチの直結 |
 | `TOIITO_FAKE_AI` | `1` |
+| `TOIITO_FAKE_USER_EMAIL` | `pnpm seed` が入れる一人目の email（`web/scripts/seed/users.ts`） |
 | `TOIITO_BASIC_AUTH_USER` | Production と同じ値 |
 | `TOIITO_BASIC_AUTH_PASSWORD` | 同上 |
 
@@ -124,6 +132,10 @@ PR ごとの Preview デプロイにも環境変数を 5 本入れる（Vercel �
 **アクセス制限の 2 本を落とさない**。
 欠けていると `proxy.ts` がモジュールの評価時に投げ、Preview の全リクエストが 500 になる。
 `next build` は proxy を実行しないのでビルドは通るため、**Vercel のチェックは緑のまま中身だけ壊れる**。
+
+`TOIITO_FAKE_USER_EMAIL` も同じ形で壊れる。
+欠けていれば全ページが落ち、指した email の利用者が Preview の DB に居なくても落ちる。
+**本番（Production）には入れない**——認証を丸ごと外す口なので、入っていると起動時に投げる（`docs/adr/0019-auth-better-auth.md` 決定 7）。
 
 決定の経緯と採らなかった案は `docs/adr/0015-preview-neon-branch.md`。
 
@@ -147,6 +159,10 @@ Neon の toiito → Branches → Create branch。
 DIRECT_URL='<preview の直結>' pnpm exec prisma migrate resolve --applied 20260816090000_init
 DATABASE_URL='<preview のプーラー>' pnpm seed
 ```
+
+**所有権の migration（`20260902090000_ownership_foundation`）を流した後は、もう一度 `pnpm seed` を流す**。
+この migration は持ち主のいない既存の問いを消すので（`docs/adr/0020-ownership-granularity.md` 決定 5）、流した後の Preview は空になる。
+シードは利用者二人ごと入れ直す。
 
 接続先はシェルの環境変数が `.env.local` より優先される（`process.loadEnvFile` も `--env-file` も、既に環境にある値を上書きしない）。
 `migrate status` が `Database schema is up to date!` を返せば辻褄が合っている。
