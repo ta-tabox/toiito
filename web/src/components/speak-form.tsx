@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 発話フォーム。
+ * 一往復を起こす二つのフォーム——新しい発話と、成立しなかった発話の再送。
  * 送信中であることを画面に見せるためだけの client component。
  *
  * 持つのは表示だけで、入力の検証も送信先の決定も引き受けない。
@@ -9,6 +9,7 @@
  */
 
 import { useFormStatus } from "react-dom";
+import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 
 /** 対話へ発話を送るフォーム。 */
 export function SpeakForm({
@@ -21,10 +22,25 @@ export function SpeakForm({
       <textarea
         name="body"
         rows={3}
+        maxLength={MESSAGE_BODY_MAX_LENGTH}
         placeholder="問いについて、いま思うことを"
         className="w-full rounded border border-neutral-300 px-3 py-2"
       />
-      <SubmitButton />
+      <SubmitButton label="発話する（二体が応答するまで少し待つ）" />
+    </form>
+  );
+}
+
+/**
+ * 預かってある発話をもう一度送るフォーム。
+ *
+ * 本文は預かりの側が持っているので、送るものを画面から受け取らない。
+ * 打ち直させないことがこのフォームの用件で、入力欄を出すとそれを裏切る。
+ */
+export function RetryForm({ action }: { action: () => Promise<void> }) {
+  return (
+    <form action={action} className="mt-3 flex flex-col">
+      <SubmitButton label="もう一度試す" />
     </form>
   );
 }
@@ -35,7 +51,7 @@ export function SpeakForm({
  * 応答を待つ間は押せなくなり、ラベルが「二体が応答中」の表示へ変わる。
  * useFormStatus は親フォームの状態を読むので、form を描く側と同じコンポーネントには置けない（常に pending: false が返る）。
  */
-function SubmitButton() {
+function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
 
   return (
@@ -44,7 +60,7 @@ function SubmitButton() {
       disabled={pending}
       className="self-end rounded bg-neutral-800 px-4 py-2 text-white hover:bg-neutral-700 disabled:bg-neutral-400 disabled:hover:bg-neutral-400"
     >
-      {pending ? <RespondingLabel /> : "発話する（二体が応答するまで少し待つ）"}
+      {pending ? <RespondingLabel /> : label}
     </button>
   );
 }
