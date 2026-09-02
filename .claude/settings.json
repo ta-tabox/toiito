@@ -55,6 +55,13 @@
       "Bash(gh api --method DELETE:*)"
     ],
     "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
+      "Read(**/.env.development)",
+      "Read(**/.env.production)",
+      "Read(**/.env.test)",
+      "Edit(**/.env*)",
       "Bash(gh repo delete:*)",
       "Bash(gh repo edit:*)",
       "Bash(gh secret:*)",
