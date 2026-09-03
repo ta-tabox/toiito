@@ -162,7 +162,7 @@ vitest の `toiito_test` とは分ける。
 **E2E のデータベースは `toiito_e2e` 一本で、worktree ごとに分けない。**
 名前を派生させるのは vitest 側だけである。
 E2E も分けると走りは互いを踏まなくなるが、worktree が消えた後に誰も落とさないデータベースが残る。
-`pnpm db:prune` が落とせるのは自動で派生した `toiito_wt_*_test` だけなので、E2E の派生名は「規則の外」として一覧に出続ける（#177）。
+`pnpm db:prune` が落とせるのは自動で派生した `toiito_wt_*_test` だけなので、E2E の派生名は「規則の外」として一覧に出続ける（#177 E2E の DB を共有一本に決着させる）。
 
 **上書きの口 `TOIITO_E2E_DATABASE_URL` が変えてよいのはサーバーの側だけ**（CI や別ポートの Postgres へ向ける）。
 データベース名が `toiito_e2e` でない上書きは `web/e2e/setup/e2e-database-url.ts` が止める。
