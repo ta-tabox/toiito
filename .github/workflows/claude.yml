@@ -1,6 +1,6 @@
 name: Claude Code
 
-# issue 本文は仕様書で、そこに手順として「@claude を呼ぶ」と書くと言及と起動を綴りで区別できないので、issues トリガは持たない。
+# issue 本文は仕様書で、そこに手順として「@claude を呼ぶ」と書くと言及と起動を文字列で区別できないので、issues トリガは持たない。
 # 起動はコメント（issue_comment / pull_request_review_comment / pull_request_review）だけ。
 on:
   issue_comment:
@@ -101,7 +101,7 @@ jobs:
             actions: read
 
           # check に要る三つだけを名指しする（`Bash(pnpm *)` のようなワイルドカードでは開けすぎる）。
-          # このアクションはリポジトリルートで走り、そこに package.json は無いので、web へ降りる `cd` も要る（`cd` 単体では何も起きないので、手元の `.claude/settings.json` と同じく綴りは絞らない）。
+          # このアクションはリポジトリルートで走り、そこに package.json は無いので、web へ降りる `cd` も要る（`cd` 単体では何も起きないので、手元の `.claude/settings.json` と同じくパターンは絞らない）。
           # 連鎖したコマンドは `&&` で分割して一つずつ照合されるので、`cd web && pnpm check` はこの四つで通る。
           # 言語・文体の指定は prompt でなく system prompt へ置く（claude-code-review.yml と同じ理由）。
           # 自動レビュー側にだけ入れると、@claude で手動に呼んだときの応答だけ英語で返る非対称が生まれるので、二本に同じ指定を置く。
