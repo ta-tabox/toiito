@@ -19,10 +19,13 @@ import "./globals.css";
  *
  * ウェイトは実際に画面へ出るものだけを挙げる。
  * 和文は 1 ウェイトが百本を超えるサブセットに分かれるので、使わない一段が初回のビルドと dev の起動をそのぶん引き延ばす。
+ *
+ * `subsets` は書かない。
+ * これが決めるのは preload の対象だけで、生成される `@font-face` は Google が返す全 `unicode-range` ぶんになるので、`preload: false` と併記しても生成物が変わらない。
+ * 逆に `["latin"]` と書くと、和文が別サブセットとして漏れるように読めてしまう。
  */
 const mincho = Shippori_Mincho({
   weight: ["400"],
-  subsets: ["latin"],
   display: "swap",
   preload: false,
   variable: "--font-shippori-mincho",
@@ -31,7 +34,6 @@ const mincho = Shippori_Mincho({
 /** 本文と UI のゴシック。 */
 const gothic = Zen_Kaku_Gothic_New({
   weight: ["400", "700"],
-  subsets: ["latin"],
   display: "swap",
   preload: false,
   variable: "--font-zen-kaku-gothic-new",
