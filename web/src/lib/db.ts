@@ -190,9 +190,19 @@ export async function latestSession(
  *
  * 既存のセッションは畳まない。
  * 何度戻ったかが読み返せることが目的。
+ *
+ * この問いの預かりは、同じトランザクションで捨てる。
+ * 預かりを出す口も再送の口も最新のセッションにしか無いので、残したまま再訪すると画面から二度と触れない行になる。
+ * 捨てるのは利用者が明示的に次のセッションへ移ったときだけで、AI が落ちたことを理由に捨てる経路はここにも無い。
  */
 export async function createSession(questionId: string): Promise<Session> {
-  return db().session.create({ data: { question_id: questionId } });
+  return db().$transaction(async (tx) => {
+    await tx.pendingMessage.deleteMany({
+      where: { session: { question_id: questionId } },
+    });
+
+    return tx.session.create({ data: { question_id: questionId } });
+  });
 }
 
 /**
@@ -265,6 +275,10 @@ export async function addMessage(
  * AI 呼び出しはこの外で終わっている（呼び出しを囲むと、外部 API を待つあいだプーラー経由の接続を握る）。
  *
  * 発話の並びは意味そのものなので、三行は human → ai_a → ai_b の順に入れる（seq がその順に振られる）。
+ *
+ * 消すのは、いま成立させた本文を持つ預かりだけ。
+ * 再送の応答を待つあいだに新しい発話が送られると預かりは差し替わるので、`session_id` だけで消すと先に終わった側が後から来た預かりを巻き添えにする。
+ * `delete` でなく `deleteMany` なのは、一致しないときに何もせず通すため（`delete` は行が無いと P2025 を投げ、三行の挿入ごとロールバックする）。
  */
 export async function commitTurn(
   sessionId: string,
@@ -277,7 +291,9 @@ export async function commitTurn(
       });
     }
 
-    await tx.pendingMessage.delete({ where: { session_id: sessionId } });
+    await tx.pendingMessage.deleteMany({
+      where: { session_id: sessionId, body: bodies.human },
+    });
   });
 }
 

@@ -193,4 +193,52 @@ describe("再送", () => {
 
     expect(await db.listMessages(target.sessionId)).toEqual([]);
   });
+
+  it("待つあいだに新しい発話が来ていたら、その預かりは巻き添えにしない", async () => {
+    const target = await newDialogue();
+
+    // 再送の応答を待つあいだに新しい発話が送られた状態。
+    // 二つの Server Action が同時に走ると起きるので、預かりを差し替えてから成立させて再現する。
+    await db.savePendingBody(target.sessionId, "あとから送った発話");
+    await db.commitTurn(target.sessionId, {
+      human: "再送していた発話",
+      ai_a: "具体の応答",
+      ai_b: "抽象の応答",
+    });
+
+    expect(await db.getPendingBody(target.sessionId)).toBe(
+      "あとから送った発話",
+    );
+  });
+
+  it("預かりが無いまま成立させても投げない", async () => {
+    const target = await newDialogue();
+
+    await expect(
+      db.commitTurn(target.sessionId, {
+        human: "預けていない発話",
+        ai_a: "具体の応答",
+        ai_b: "抽象の応答",
+      }),
+    ).resolves.toBeUndefined();
+
+    const messages = await db.listMessages(target.sessionId);
+    expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
+  });
+});
+
+describe("再訪", () => {
+  it("新しいセッションを始めると、預かりは捨てられる", async () => {
+    const target = await newDialogue();
+
+    await runTurn({
+      ...target,
+      body: "急ぐほど問いが痩せる気がする",
+      calls: calls("ai_b"),
+    });
+    await db.createSession(target.questionId);
+
+    // 預かりを出す口も再送の口も最新のセッションにしか無いので、残すと画面から触れない行になる。
+    expect(await db.getPendingBody(target.sessionId)).toBeUndefined();
+  });
 });
