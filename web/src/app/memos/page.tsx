@@ -20,6 +20,7 @@ import Link from "next/link";
 import { MemoDialog } from "@/components/memo-dialog";
 import { Row } from "@/components/ui/row";
 import { excerptParts } from "@/lib/anchors";
+import { getCurrentUser } from "@/lib/current-user";
 import { listMemosWithContext } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +56,7 @@ export default async function MemosPage({
   searchParams: Promise<{ memo?: string }>;
 }) {
   const { memo: openedId } = await searchParams;
-  const memos = await listMemosWithContext();
+  const memos = await listMemosWithContext((await getCurrentUser()).id);
   const opened = memos.find((memo) => memo.id === openedId);
   const openedQuote =
     opened &&

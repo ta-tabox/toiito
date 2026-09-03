@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Pill } from "@/components/ui/pill";
 import { Row } from "@/components/ui/row";
+import { getCurrentUser } from "@/lib/current-user";
 import { listQuestions, questionText } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
 
@@ -22,7 +23,7 @@ export const dynamic = "force-dynamic";
  * 投入フォームと問いの一覧。
  */
 export default async function Home() {
-  const questions = await listQuestions();
+  const questions = await listQuestions((await getCurrentUser()).id);
 
   return (
     <main className="mx-auto w-full max-w-reading flex-1 px-5 py-10">

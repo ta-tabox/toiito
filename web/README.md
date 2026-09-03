@@ -47,6 +47,7 @@ pnpm dev
 | `TOIITO_ANTHROPIC_EFFORT_CONCRETE` | 任意 | 未設定（API の既定） | 具体さんの思考の深さ。`low` / `medium` / `high` / `xhigh` / `max`。値域の外は既定へ倒す |
 | `TOIITO_ANTHROPIC_EFFORT_ABSTRACT` | 任意 | `medium` | 抽象さんの思考の深さ。値域は同上 |
 | `TOIITO_FAKE_AI` | 任意 | 未設定 | `1` でネットワークに出ず決定的な応答を返す。API キー無しで縦一本を通すためのハーネス |
+| `TOIITO_FAKE_USER_EMAIL` | 本物のログインが入るまで必須 | — | 現在の利用者として扱う `user.email`。未設定だと画面が落ちる。**置き場は `.env.local` でなく `.env.development.local`**（下）。**本番では設定するとビルドが落ちる**（認証を丸ごと外す口なので） |
 | `TOIITO_TEST_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_test` | テストの接続先。CI で差し替える口 |
 | `TOIITO_E2E_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_e2e` | E2E の接続先。テストと同じ DB を向けると互いの行を踏むので分ける |
 | `DIRECT_URL_PROD` | `pnpm migrate:prod` を叩くなら必須 | — | 本番 Neon の直結。手元から migration を流す先 |
@@ -68,6 +69,21 @@ DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
 
 `TOIITO_FAKE_AI=1` は AI 呼び出しを伴う動作確認で使う。
 実 API を自動テストで叩かない（遅い・非決定的・金がかかる）。
+
+`TOIITO_FAKE_USER_EMAIL` は、認証が入るまでの「現在の利用者」を指す（`docs/adr/0019-auth-better-auth.md` 決定 7）。
+`pnpm seed` が入れる一人目の email をそのまま書けばよい（`scripts/seed/users.ts`）。
+シードを流す前や、指した email の利用者が居ない DB では落ちる。
+テストと E2E は設定を自分で渡すので、手で書く先は一箇所だけである。
+
+**この一本だけは `.env.local` でなく `.env.development.local` へ置く。**
+
+```
+TOIITO_FAKE_USER_EMAIL=first@example.com
+```
+
+`.env.local` は `next dev` と `next build` の両方が読むが、`.env.development.local` は `next dev` しか読まない（Next 16.3.3 で実測）。
+本番でこの変数が設定されていたらモジュールの評価時に投げる作りなので、`.env.local` へ置くと手元の `next build`（`pnpm check` の最後）まで巻き込まれて落ちる。
+`next build` は `NODE_ENV=production` で走るためで、Preview だけは `VERCEL_ENV` で除けてある（`docs/adr/0027-ownership-before-auth.md` 決定 5）。
 
 `DIRECT_URL_PROD` と `DIRECT_URL_PREVIEW` は、手元から本番と Preview へ migration を流す口（`pnpm migrate:prod` / `pnpm migrate:preview`）。
 `DIRECT_URL` を書き換えて使い回さないのは、直前に何を入れたかで流し先が変わるため。

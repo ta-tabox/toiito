@@ -1,5 +1,6 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
+import { SEED_USERS } from "./scripts/seed/users";
 import { TEST_DATABASE_URL } from "./tests/setup/test-database-url";
 
 export default defineConfig({
@@ -24,6 +25,10 @@ export default defineConfig({
     env: {
       DATABASE_URL: TEST_DATABASE_URL,
       DIRECT_URL: TEST_DATABASE_URL,
+
+      // 現在の利用者はフェイクで、シードの一人目を指す（src/lib/current-user.ts）。
+      // 未設定だと落ちる側に倒してあるので、ページを描くテストのために設定を渡しておく。
+      TOIITO_FAKE_USER_EMAIL: SEED_USERS[0].email,
     },
   },
 });

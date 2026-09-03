@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { callPersona } from "@/lib/ai";
 import { AI_PROVIDERS } from "@/lib/ai/providers";
+import { getCurrentUser } from "@/lib/current-user";
 import {
   addMemo,
   addMessage,
@@ -29,7 +30,8 @@ export async function createQuestionAction(formData: FormData) {
   if (!body) {
     return;
   }
-  const { question } = await createQuestion(body);
+  const owner = (await getCurrentUser()).id;
+  const { question } = await createQuestion(owner, body);
   redirect(`/q/${question.id}`);
 }
 
@@ -38,7 +40,7 @@ export async function createQuestionAction(formData: FormData) {
  * 過去のセッションは残る。
  */
 export async function newSessionAction(questionId: string) {
-  await createSession(questionId);
+  await createSession((await getCurrentUser()).id, questionId);
   revalidatePath(`/q/${questionId}`);
 }
 
@@ -56,12 +58,13 @@ export async function speakAction(
     return;
   }
 
-  const question = await getQuestion(questionId);
+  const owner = (await getCurrentUser()).id;
+  const question = await getQuestion(owner, questionId);
   if (!question) {
     throw new Error("問いが見つからない");
   }
 
-  await addMessage(sessionId, "human", body);
+  await addMessage(owner, sessionId, "human", body);
 
   const aiA = await callPersona(
     {
@@ -70,9 +73,9 @@ export async function speakAction(
       provider: AI_PROVIDERS.concrete,
     },
     question,
-    await listMessages(sessionId),
+    await listMessages(owner, sessionId),
   );
-  await addMessage(sessionId, "ai_a", aiA);
+  await addMessage(owner, sessionId, "ai_a", aiA);
 
   const aiB = await callPersona(
     {
@@ -81,9 +84,9 @@ export async function speakAction(
       provider: AI_PROVIDERS.abstract,
     },
     question,
-    await listMessages(sessionId),
+    await listMessages(owner, sessionId),
   );
-  await addMessage(sessionId, "ai_b", aiB);
+  await addMessage(owner, sessionId, "ai_b", aiB);
 
   revalidatePath(`/q/${questionId}`);
 }
@@ -105,7 +108,14 @@ export async function createMemoAction(questionId: string, formData: FormData) {
   const anchorEnd = Number(formData.get("anchor_end"));
   const note = String(formData.get("note") ?? "").trim();
 
-  await addMemo(messageId, anchorStart, anchorEnd, keyword, note || undefined);
+  await addMemo(
+    (await getCurrentUser()).id,
+    messageId,
+    anchorStart,
+    anchorEnd,
+    keyword,
+    note || undefined,
+  );
 
   revalidatePath(`/q/${questionId}`);
 }
