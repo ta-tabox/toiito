@@ -15,6 +15,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 import { DATABASE_URL } from "@/lib/config";
+import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
 import type {
   Memo,
@@ -189,9 +190,19 @@ export async function latestSession(
  *
  * 既存のセッションは畳まない。
  * 何度戻ったかが読み返せることが目的。
+ *
+ * この問いの預かりは、同じトランザクションで捨てる。
+ * 預かりを出す口も再送の口も最新のセッションにしか無いので、残したまま再訪すると画面から二度と触れない行になる。
+ * 捨てるのは利用者が明示的に次のセッションへ移ったときだけで、AI が落ちたことを理由に捨てる経路はここにも無い。
  */
 export async function createSession(questionId: string): Promise<Session> {
-  return db().session.create({ data: { question_id: questionId } });
+  return db().$transaction(async (tx) => {
+    await tx.pendingMessage.deleteMany({
+      where: { session: { question_id: questionId } },
+    });
+
+    return tx.session.create({ data: { question_id: questionId } });
+  });
 }
 
 /**
@@ -255,6 +266,75 @@ export async function addMessage(
   return db().message.create({
     data: { session_id: sessionId, speaker, body },
   });
+}
+
+/**
+ * 一往復を成立させる。
+ *
+ * 三行の追記と預かりの削除を一トランザクションにするのは、二体のどちらかが欠けた turn を残さないため（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+ * AI 呼び出しはこの外で終わっている（呼び出しを囲むと、外部 API を待つあいだプーラー経由の接続を握る）。
+ *
+ * 発話の並びは意味そのものなので、三行は human → ai_a → ai_b の順に入れる（seq がその順に振られる）。
+ *
+ * 消すのは、いま成立させた本文を持つ預かりだけ。
+ * 再送の応答を待つあいだに新しい発話が送られると預かりは差し替わるので、`session_id` だけで消すと先に終わった側が後から来た預かりを巻き添えにする。
+ * `delete` でなく `deleteMany` なのは、一致しないときに何もせず通すため（`delete` は行が無いと P2025 を投げ、三行の挿入ごとロールバックする）。
+ */
+export async function commitTurn(
+  sessionId: string,
+  bodies: { human: string; ai_a: string; ai_b: string },
+): Promise<void> {
+  await db().$transaction(async (tx) => {
+    for (const speaker of ["human", "ai_a", "ai_b"] as const) {
+      await tx.message.create({
+        data: { session_id: sessionId, speaker, body: bodies[speaker] },
+      });
+    }
+
+    await tx.pendingMessage.deleteMany({
+      where: { session_id: sessionId, body: bodies.human },
+    });
+  });
+}
+
+/**
+ * 人間の発話を預かる。
+ *
+ * セッションにつき一件なので、預かりが在れば差し替える。
+ * 差し替えが破棄の口を兼ねており、成立しなかった発話を捨てる別の操作は置いていない。
+ *
+ * 長さの検査はここの責務になる。
+ * 上限は `messages` へ入る本文にも効くが、預かりを通らずに入る経路が無いので、関門はこの一箇所で足りる。
+ */
+export async function savePendingBody(
+  sessionId: string,
+  body: string,
+): Promise<void> {
+  if (body.length > MESSAGE_BODY_MAX_LENGTH) {
+    throw new Error(
+      `savePendingBody: body length (${body.length}) exceeds limit (${MESSAGE_BODY_MAX_LENGTH}) for session ${sessionId}`,
+    );
+  }
+
+  await db().pendingMessage.upsert({
+    where: { session_id: sessionId },
+    create: { session_id: sessionId, body },
+    update: { body },
+  });
+}
+
+/**
+ * 預かってある発話の本文を返す。
+ * 無ければ undefined（預かりが無いことは、直前の一往復が成立したという正常系）。
+ */
+export async function getPendingBody(
+  sessionId: string,
+): Promise<string | undefined> {
+  const pending = await db().pendingMessage.findUnique({
+    where: { session_id: sessionId },
+  });
+
+  return pending?.body;
 }
 
 /**

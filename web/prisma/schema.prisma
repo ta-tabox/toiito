@@ -87,9 +87,31 @@ model Session {
 
   question Question  @relation(fields: [question_id], references: [id])
   messages Message[]
+  pending  PendingMessage?
 
   @@index([question_id])
   @@map("sessions")
+}
+
+/// 預かってある人間の発話。まだ一往復として成立していない。
+///
+/// 一往復は二体が両方返ってから三行まとめて `messages` へ入るので、途中で失敗すると発話はどこにも残らない（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+/// 人間が打った本文だけは捨てないために、送信された時点でここへ預かる。
+/// **この行が在ることが「前回の一往復が成立しなかった」という状態そのもの**で、失敗の理由は持たない。
+///
+/// `messages` と違って可変である（成立すれば消え、次の発話で差し替わる）。
+/// immutable の不変条件が掛かっているのは `messages` だけで、こちらの本文にメモのアンカーは付かない。
+///
+/// セッションにつき一件なので `session_id` を主キーにする。
+/// 別に id を立てると、一件しか持てないことを表明する場所が制約の側へ逃げる。
+model PendingMessage {
+  session_id String   @id @db.Uuid
+  body       String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  session Session @relation(fields: [session_id], references: [id])
+
+  @@map("pending_messages")
 }
 
 /// 発話。人間 + AI 二体の三者。

@@ -17,11 +17,17 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createMemoAction, newSessionAction, speakAction } from "@/app/actions";
+import {
+  createMemoAction,
+  newSessionAction,
+  retryTurnAction,
+  speakAction,
+} from "@/app/actions";
 import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
-import { SpeakForm } from "@/components/speak-form";
+import { RetryForm, SpeakForm } from "@/components/speak-form";
 import {
+  getPendingBody,
   getQuestion,
   listMemosForSession,
   listMessages,
@@ -101,8 +107,10 @@ export default async function QuestionPage({
   const isLatest = session.id === latest.id;
   const messages = await listMessages(session.id);
   const memos = await listMemosForSession(session.id);
+  const pendingBody = await getPendingBody(session.id);
 
   const speak = speakAction.bind(null, question.id, session.id);
+  const retry = retryTurnAction.bind(null, question.id, session.id);
   const newSession = newSessionAction.bind(null, question.id);
   const createMemo = createMemoAction.bind(null, question.id);
 
@@ -193,6 +201,10 @@ export default async function QuestionPage({
         )}
       </div>
 
+      {isLatest && pendingBody && (
+        <PendingTurn body={pendingBody} action={retry} />
+      )}
+
       {isLatest ? (
         <SpeakForm action={speak} />
       ) : (
@@ -202,5 +214,31 @@ export default async function QuestionPage({
       )}
       <LandingMark />
     </main>
+  );
+}
+
+/**
+ * 成立しなかった一往復の預かり。
+ *
+ * 面を破線で囲って発話と見分ける。
+ * 預かってある本文は対話の一部ではなく、これから送り直されるものなので、発話と同じ面に見えてはいけない。
+ */
+function PendingTurn({
+  body,
+  action,
+}: {
+  body: string;
+  action: () => Promise<void>;
+}) {
+  return (
+    <div className="mt-8 rounded border border-rule border-dashed bg-surface-low p-3 md:p-4">
+      <p className="text-aux text-ink-weak">
+        二体からの応答が得られなかった。あなたの発話は預かってあるので、そのままもう一度送れる。
+      </p>
+      <p className="mt-2 whitespace-pre-wrap text-utterance text-ink md:text-utterance-lg">
+        {body}
+      </p>
+      <RetryForm action={action} />
+    </div>
   );
 }
