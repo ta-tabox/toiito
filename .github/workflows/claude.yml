@@ -86,6 +86,10 @@ jobs:
         working-directory: web
         run: pnpm install --frozen-lockfile
 
+      # claude-code-action の native installer は ~/.local/bin が無いと「missing or broken」と警告しつつ実体を置かないまま success で終わり、後続のアクション実行が ENOENT で落ちる。
+      # ubuntu-latest ランナーにこのディレクトリは既定で無いので、先に作る。
+      - run: mkdir -p "$HOME/.local/bin"
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
