@@ -83,7 +83,7 @@ TOIITO_FAKE_USER_EMAIL=first@example.com
 
 `.env.local` は `next dev` と `next build` の両方が読むが、`.env.development.local` は `next dev` しか読まない（Next 16.3.3 で実測）。
 本番でこの変数が設定されていたらモジュールの評価時に投げる作りなので、`.env.local` へ置くと手元の `next build`（`pnpm check` の最後）まで巻き込まれて落ちる。
-`next build` は `NODE_ENV=production` で走るためで、Preview だけは `VERCEL_ENV` で除けてある（`docs/adr/0024-ownership-before-auth.md` 決定 5）。
+`next build` は `NODE_ENV=production` で走るためで、Preview だけは `VERCEL_ENV` で除けてある（`docs/adr/0027-ownership-before-auth.md` 決定 5）。
 
 `DIRECT_URL_PROD` と `DIRECT_URL_PREVIEW` は、手元から本番と Preview へ migration を流す口（`pnpm migrate:prod` / `pnpm migrate:preview`）。
 `DIRECT_URL` を書き換えて使い回さないのは、直前に何を入れたかで流し先が変わるため。

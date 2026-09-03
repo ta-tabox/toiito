@@ -22,8 +22,8 @@ test("問いを投入して発話すると、ai_a → ai_b の順にフェイク
   // 絞り込みが repo 層から抜けると、ここに二人目の問いが並ぶ。
   await expect(page.getByText(OTHER_USER_INPUT.body)).toHaveCount(0);
 
-  await page.getByPlaceholder("問いをポイっと投げ入れる").fill(QUESTION);
-  await page.getByRole("button", { name: "投入" }).click();
+  await page.getByPlaceholder("問いをポイっと").fill(QUESTION);
+  await page.getByRole("button", { name: "仕込む" }).click();
 
   await expect(page.getByRole("heading", { name: QUESTION })).toBeVisible();
 

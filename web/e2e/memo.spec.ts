@@ -304,8 +304,8 @@ async function postQuestionAndSpeak(page: Page, scenario: Scenario) {
   const { question, utterance } = scenario;
 
   await page.goto("/");
-  await page.getByPlaceholder("問いをポイっと投げ入れる").fill(question);
-  await page.getByRole("button", { name: "投入" }).click();
+  await page.getByPlaceholder("問いをポイっと").fill(question);
+  await page.getByRole("button", { name: "仕込む" }).click();
   await expect(page.getByRole("heading", { name: question })).toBeVisible();
 
   await page.getByPlaceholder("問いについて、いま思うことを").fill(utterance);

@@ -36,10 +36,10 @@ ADR を立てていない理由は `docs/adr/README.md`「ADR にしないもの
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
 `TOIITO_FAKE_USER_EMAIL` も**本番に入れない**。
 こちらは注意ではなく、入っているとモジュールの評価時に投げるので Production のビルドが落ちる（`docs/adr/0019-auth-better-auth.md` 決定 7）。
-Preview だけは `VERCEL_ENV` で除けてあるので、同じ変数を Preview へ入れても落ちない（`docs/adr/0024-ownership-before-auth.md` 決定 5）。
+Preview だけは `VERCEL_ENV` で除けてあるので、同じ変数を Preview へ入れても落ちない（`docs/adr/0027-ownership-before-auth.md` 決定 5）。
 
 **#68（ログイン（Google OAuth）とリソースの所有権）が入るまで、本番は動かない。**
-所有者を先にデータ層へ入れた回（`docs/adr/0024-ownership-before-auth.md` 決定 5）から、現在の利用者を決める手段が本番に無い。
+所有者を先にデータ層へ入れた回（`docs/adr/0027-ownership-before-auth.md` 決定 5）から、現在の利用者を決める手段が本番に無い。
 同じ回の migration が持ち主のいない既存の問いを消しているので、動いていたとしても中身は空である。
 引き受けた条件と、止められない事情ができたときの倒し先は 0024 の決定 5。
 

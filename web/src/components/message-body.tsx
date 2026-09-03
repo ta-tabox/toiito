@@ -17,6 +17,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 import {
   clampToGraphemeBoundary,
   type Segment,
@@ -24,9 +26,14 @@ import {
 } from "@/lib/anchors";
 import type { Memo, Message } from "@/lib/types";
 
-/** メモが掛かっている区間の装飾。 */
+/**
+ * メモが掛かっている区間の装飾。
+ *
+ * 面でなく線で出すのは、彩度を持つ面を人間の発話の一つに留めるため（DESIGN.md「彩度の規律」）。
+ * 画面の中で最も強い色が、自分で置いた印になる。
+ */
 const MARKED_STYLE =
-  "underline decoration-2 decoration-amber-500 underline-offset-4";
+  "underline decoration-mark decoration-2 underline-offset-4";
 
 /** 選択を読み直す側と、下書きを畳む側からなる、発話一件ぶんの口。 */
 type SelectionReader = {
@@ -110,7 +117,7 @@ export function MessageBody({
       <div
         ref={bodyRef}
         data-message-body=""
-        className="whitespace-pre-wrap leading-relaxed"
+        className="whitespace-pre-wrap text-utterance md:text-utterance-lg"
       >
         {segments.map((segment, index) => (
           <SegmentText
@@ -178,9 +185,8 @@ function SegmentText({
 /**
  * メモの小フォーム。
  *
- * iOS Safari は 16px 未満の入力欄へフォーカスすると自動でズームして書き手が選んだ倍率を捨てるので、ノートの入力欄だけ周りの 14px（`text-sm`）へ揃えず 16px（`text-base`）を敷く。
- *
  * 背面へ暗幕もスクロールの固定も置かないのは、書いている途中に発話を読み返せる方を採るため。
+ * 同じ理由で、この面は body へ portal されて画面の main の外に居るので、書きの間の減光（globals.css）も掛からない。
  */
 function MemoForm({
   messageId,
@@ -199,38 +205,30 @@ function MemoForm({
         await action(formData);
         onClose();
       }}
-      className="fixed inset-x-4 bottom-4 z-10 mx-auto flex max-w-2xl flex-col gap-2 rounded border border-neutral-300 bg-white p-3 shadow-[0_0_16px_rgba(0,0,0,0.12)]"
+      className="fixed inset-x-4 bottom-4 z-10 mx-auto flex max-w-reading flex-col gap-2 rounded border border-rule bg-surface-mid p-3 shadow-[0_0_16px_rgba(0,0,0,0.12)]"
     >
       <input type="hidden" name="message_id" value={messageId} />
       <input type="hidden" name="anchor_start" value={draft.anchorStart} />
       <input type="hidden" name="anchor_end" value={draft.anchorEnd} />
       <input type="hidden" name="keyword" value={draft.keyword} />
 
-      <blockquote className="border-l-2 border-neutral-400 pl-3 text-sm text-neutral-600">
+      <blockquote className="border-rule border-l-2 pl-3 text-aux text-ink-weak">
         {draft.keyword}
       </blockquote>
 
-      <input
+      <Field
         name="note"
         aria-label="メモ"
         placeholder="なぜ引っかかったか（任意）"
-        className="w-full rounded border border-neutral-300 px-2 py-1 text-base"
       />
 
       <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded px-3 py-1 text-sm text-neutral-500 hover:underline"
-        >
+        <Button type="button" onClick={onClose}>
           やめる
-        </button>
-        <button
-          type="submit"
-          className="rounded bg-neutral-800 px-3 py-1 text-sm text-white hover:bg-neutral-700"
-        >
+        </Button>
+        <Button type="submit" tone="solid">
           メモする
-        </button>
+        </Button>
       </div>
     </form>
   );

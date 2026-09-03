@@ -121,7 +121,7 @@ UI 側でやらない。
 本番でこの環境変数が設定されていたら、モジュールの評価時に投げる。
 
 認証まわりの四表（`user` / `session` / `account` / `verification`）は Better Auth が持ち、綴りは生成されたままにする。
-`db.ts` が触るのは `user` の `id` / `email` / `name` の三つだけで、どれも詰め替えの要らない綴りなので、snake_case へ揃える利益が発生しない（`docs/adr/0024-ownership-before-auth.md`）。
+`db.ts` が触るのは `user` の `id` / `email` / `name` の三つだけで、どれも詰め替えの要らない綴りなので、snake_case へ揃える利益が発生しない（`docs/adr/0027-ownership-before-auth.md`）。
 **Better Auth の `session` は対話の `sessions` と別物である**——前者はログイン、後者は問いへの再訪。
 Prisma のモデル名が一意でなければならないので、`Session` を名乗るのは Better Auth の側で、対話の側は `DialogueSession` と綴る（表も列もドメイン型も動いていない）。
 

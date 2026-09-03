@@ -88,7 +88,7 @@ model Question {
 /// 問いに何度戻ったかが読み返せるように、過去のセッションは畳まれず、堆積したまま残る。
 ///
 /// モデル名だけが `Dialogue` を冠する。
-/// Better Auth のログインセッションが `Session` を名乗り、Prisma のモデル名は一意でなければならないため（`docs/adr/0024-ownership-before-auth.md`）。
+/// Better Auth のログインセッションが `Session` を名乗り、Prisma のモデル名は一意でなければならないため（`docs/adr/0027-ownership-before-auth.md`）。
 /// 表・列・ドメイン型（`types.ts` の `Session`）はどれも動いていない。
 model DialogueSession {
   id          String   @id @default(uuid(4)) @db.Uuid
@@ -173,7 +173,7 @@ model MemoLink {
 ///
 /// 綴りは Better Auth 1.7.2 が要求するまま（camelCase・型は既定）で、snake_case へ揃えない（`docs/adr/0019-auth-better-auth.md`）。
 /// 揃えると版が上がるたびに手で直すことになる。
-/// この四表を読むのは `db.ts` の二つの用途だけで、詰め替えが増えないことが据え置きの条件（`docs/adr/0024-ownership-before-auth.md`）。
+/// この四表を読むのは `db.ts` の二つの用途だけで、詰め替えが増えないことが据え置きの条件（`docs/adr/0027-ownership-before-auth.md`）。
 model User {
   id            String   @id
   name          String
