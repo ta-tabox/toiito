@@ -149,6 +149,13 @@ Prisma のモデル名はこの器では外へ出ない——`db.ts` の外へ P
 - 開発用シードが二人になる。
   一人目が「現在の利用者」で、二人目の問いはどの画面にも出てはいけない側として在る
 - #64（二体のペルソナをセッション単位で設定できるようにする）が `persona` を二つ目の所有のルートにするとき、`user_id` の指す先が既に在る
+- **#175（一往復は成立してから書き、成立前の発話は預かる）より先に main へ入れる**。
+  あちらが作る `pending_messages` は `sessions` を `ON DELETE RESTRICT` で参照するので、後から流すとこの回の `DELETE FROM "sessions"` が外部キーに止められる（2026-09-02 に実測）。
+  逆順で入れるなら、この回の migration へ `pending_messages` の DELETE を足してから流す。
+  落ちるのは migration であってデータではないので、取り違えても壊れるのは deploy だけである
+- **#175 は `db.ts` の rebase が要る**。
+  追加している `commitTurn` / `savePendingBody` / `getPendingBody` の三本は所有者を受け取らないので、そのままだと預かり中の発話が絞り込みの外に出る。
+  `PendingMessage` が参照する `Session` も、こちらが `DialogueSession` へ改めた側である
 
 ## 覆る条件
 
