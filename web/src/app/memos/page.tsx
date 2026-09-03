@@ -18,6 +18,7 @@
 
 import Link from "next/link";
 import { MemoDialog } from "@/components/memo-dialog";
+import { Row } from "@/components/ui/row";
 import { excerptParts } from "@/lib/anchors";
 import { listMemosWithContext } from "@/lib/db";
 
@@ -34,6 +35,15 @@ const EXCERPT_MARGIN = 40;
  * 一覧より広く取り、前後の流れごと読み返せるようにする。
  */
 const DIALOG_EXCERPT_MARGIN = 200;
+
+/**
+ * 印の付いた区間の装飾。
+ *
+ * 面でなく線で出すのは、彩度を持つ面を人間の発話の一つに留めるため（DESIGN.md「彩度の規律」）。
+ * `<mark>` の既定は黄色い面なので、背景を透かして下線へ置き換える。
+ */
+const MARKED_STYLE =
+  "bg-transparent font-bold text-ink underline decoration-mark decoration-2 underline-offset-4";
 
 /**
  * メモの一覧。
@@ -57,19 +67,19 @@ export default async function MemosPage({
     );
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
-      <Link href="/" className="text-sm text-neutral-500 hover:underline">
-        ← コンポスター
+    <main className="mx-auto w-full max-w-reading flex-1 px-5 py-10">
+      <Link href="/" className="text-aux text-ink-weak hover:underline">
+        ← 問いの発酵槽
       </Link>
 
-      <h1 className="mt-4 text-2xl font-bold tracking-wide">
+      <h1 className="mt-4 font-mincho text-question md:text-question-lg">
         メモ{" "}
-        <span className="text-sm font-normal text-neutral-500">
+        <span className="font-gothic text-aux text-ink-weak">
           引っかかった語から、その対話へ
         </span>
       </h1>
 
-      <ul className="mt-8 space-y-3">
+      <ul className="mt-8 space-y-4">
         {memos.map((memo) => {
           const quote = excerptParts(
             memo.message_body,
@@ -79,33 +89,28 @@ export default async function MemosPage({
           );
 
           return (
-            <li key={memo.id}>
-              <Link
-                href={`/memos?memo=${memo.id}`}
-                className="block rounded border border-neutral-200 p-4 hover:border-neutral-400"
-              >
-                <div className="text-base font-bold">{memo.keyword}</div>
+            <Row key={memo.id} href={`/memos?memo=${memo.id}`}>
+              <div className="font-bold text-utterance">{memo.keyword}</div>
 
-                {memo.note && <div className="mt-1 text-sm">{memo.note}</div>}
+              {memo.note && (
+                <div className="mt-2 text-aux text-ink">{memo.note}</div>
+              )}
 
-                <div className="mt-2 whitespace-pre-wrap border-l-2 border-neutral-300 pl-3 text-sm text-neutral-500">
-                  {quote.before}
-                  <mark className="bg-amber-100 font-bold text-neutral-800">
-                    {quote.anchor}
-                  </mark>
-                  {quote.after}
-                </div>
+              <div className="mt-2 whitespace-pre-wrap border-rule border-l-2 pl-3 text-aux text-ink-weak">
+                {quote.before}
+                <mark className={MARKED_STYLE}>{quote.anchor}</mark>
+                {quote.after}
+              </div>
 
-                <div className="mt-2 text-xs text-neutral-500">
-                  {memo.question_body}
-                </div>
-              </Link>
-            </li>
+              <div className="mt-2 text-meta text-ink-weak">
+                {memo.question_body}
+              </div>
+            </Row>
           );
         })}
 
         {memos.length === 0 && (
-          <li className="text-sm text-neutral-500">
+          <li className="text-aux text-ink-weak">
             まだメモがない。対話の中で引っかかった語に印を付けるところから。
           </li>
         )}
@@ -113,27 +118,23 @@ export default async function MemosPage({
 
       {opened && (
         <MemoDialog>
-          <h2 className="text-xl font-bold leading-relaxed">
-            {opened.keyword}
-          </h2>
+          <h2 className="font-mincho text-question">{opened.keyword}</h2>
 
-          {opened.note && <p className="mt-2 text-sm">{opened.note}</p>}
+          {opened.note && (
+            <p className="mt-2 text-aux text-ink">{opened.note}</p>
+          )}
 
-          <div className="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap border-l-2 border-neutral-300 pl-3 text-sm text-neutral-500">
+          <div className="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap border-rule border-l-2 pl-3 text-aux text-ink-weak">
             {openedQuote?.before}
-            <mark className="bg-amber-100 font-bold text-neutral-800">
-              {openedQuote?.anchor}
-            </mark>
+            <mark className={MARKED_STYLE}>{openedQuote?.anchor}</mark>
             {openedQuote?.after}
           </div>
 
-          <p className="mt-4 text-xs text-neutral-500">
-            {opened.question_body}
-          </p>
+          <p className="mt-4 text-meta text-ink-weak">{opened.question_body}</p>
 
           <Link
             href={`/q/${opened.question_id}?s=${opened.session_id}#msg-${opened.message_id}`}
-            className="mt-2 inline-block text-sm text-neutral-500 hover:underline"
+            className="mt-4 inline-block text-aux text-ink-weak hover:underline"
           >
             この発話へ →
           </Link>
