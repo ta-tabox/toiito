@@ -65,31 +65,54 @@ function adminUrl(): string {
  *
  * 接続先は Prisma CLI が prisma.config.ts 越しに DIRECT_URL から読む。
  * drop / create database はトランザクションの内側で走れないので、複数文をまとめて渡さない。
+ *
+ * stderr は流さずに掴む。
+ * 失敗の理由を語るのは Postgres が返す一行だけなので、呼び出し側の説明へ添える。
  */
 function execute(sql: string, url: string): void {
   execFileSync("pnpm", ["exec", "prisma", "db", "execute", "--stdin"], {
     cwd: webRoot,
     input: sql,
-    stdio: ["pipe", "ignore", "inherit"],
+    stdio: ["pipe", "ignore", "pipe"],
     env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url },
   });
 }
 
 /**
+ * 子プロセスが stderr へ書いた内容を取り出す。
+ *
+ * execFileSync が投げる Error は終了コードまでしか語らないので、Postgres が返した理由はここからしか読めない。
+ */
+function stderrOf(cause: unknown): string {
+  if (cause instanceof Error && "stderr" in cause) {
+    return String(cause.stderr).trim();
+  }
+
+  return String(cause);
+}
+
+/**
  * E2E 用データベースを落として作り直す。
  *
- * force を付けるのは、前の走りが落ちた接続を残していても止まらないようにするため。
- * 残った接続一本で作り直しが失敗すると、次の走りは前回の行を見ることになる。
+ * `with (force)` は付けない。
+ * 付けると相手の接続ごとデータベースを引き抜けてしまい、一本を共有する運用で二つ目の走りが先発を黙って殺す（HARNESS.md「E2E（L4）」）。
+ * 繋いだままの相手が居れば drop が失敗し、抜く側のここが止まる。
  */
 function recreateDatabase(): void {
   const admin = adminUrl();
 
   try {
-    execute(`drop database if exists "${databaseName}" with (force)`, admin);
+    execute(`drop database if exists "${databaseName}"`, admin);
     execute(`create database "${databaseName}"`, admin);
   } catch (cause) {
     throw new Error(
-      `E2E 用 Postgres の準備に失敗した。docker compose up -d で立ててから再実行する（HARNESS.md「ローカル Postgres」）\n${String(cause)}`,
+      [
+        `E2E 用 Postgres（${databaseName}）の準備に失敗した。`,
+        "立っていなければ docker compose up -d で立てる（HARNESS.md「ローカル Postgres」）。",
+        "他の走りが繋いだままなら、終わるのを待ってから叩き直す（E2E は一本を共有するので、二つの worktree で同時には走らせない）。",
+        "誰も走っていないのに止まるなら前の走りが残した接続なので、docker compose restart postgres で落とす。",
+        stderrOf(cause),
+      ].join("\n"),
     );
   }
 }
