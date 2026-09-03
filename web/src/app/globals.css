@@ -1,28 +1,112 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* 色・書体・字組み・幅のトークン。
+   値の正は DESIGN.md（色／書体と字組み／余白と密度）で、変数名は同文書の用途名を英語へ写したもの。
+   ここで足した名前以外の色をコンポーネントへ直書きしない。
+   直書きするとダークの二系統が片方だけ動く。
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+   面は彩度を持たず、暖と寒の傾きだけを持つ（DESIGN.md「彩度の規律」）。
+   彩度を持つのは人間の発話（moss-surface）と自分が付けた印（mark）の二つだけで、三つ目が増えたらそこが破れ目になる。 */
+:root {
+  --ground: #fbf9f4;
+  --surface-low: #f5f3ee;
+  --surface-mid: #f0eee9;
+  --surface-high: #eae8e3;
+  --surface-warm: #f4efe6;
+  --surface-cool: #e8ebe4;
+  --ink: #1b1c19;
+  --ink-weak: #434840;
+  --rule: #c3c8bd;
+  --moss: #334f2b;
+  --moss-surface: #dbe2d2;
+  --moss-solid: #4a6741;
+  --on-moss: #ffffff;
+  --mark: #9a7223;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --ground: #121410;
+    --surface-low: #1a1c18;
+    --surface-mid: #1e201c;
+    --surface-high: #292b26;
+    --surface-warm: #201d17;
+    --surface-cool: #1b201b;
+    --ink: #e3e3dc;
+    --ink-weak: #c3c8bc;
+    --rule: #43483f;
+    --moss: #afd0a1;
+    --moss-surface: #263320;
+    --moss-solid: #324e2a;
+    --on-moss: #e3e3dc;
+    --mark: #c9a557;
   }
 }
 
+@theme inline {
+  --color-ground: var(--ground);
+  --color-surface-low: var(--surface-low);
+  --color-surface-mid: var(--surface-mid);
+  --color-surface-high: var(--surface-high);
+  --color-surface-warm: var(--surface-warm);
+  --color-surface-cool: var(--surface-cool);
+  --color-ink: var(--ink);
+  --color-ink-weak: var(--ink-weak);
+  --color-rule: var(--rule);
+  --color-moss: var(--moss);
+  --color-moss-surface: var(--moss-surface);
+  --color-moss-solid: var(--moss-solid);
+  --color-on-moss: var(--on-moss);
+  --color-mark: var(--mark);
+
+  /* 和文が本体で、欧文と数字は従属欧文で足りる（DESIGN.md「書体と字組み」）。
+     欧文専用の書体を混ぜると、一行の中で字面の大きさとベースラインに段差が出る。
+     変数の実体は layout.tsx が next/font から注ぐ。 */
+  --font-mincho: var(--font-shippori-mincho), serif;
+  --font-gothic: var(--font-zen-kaku-gothic-new), sans-serif;
+
+  /* 役ごとの大きさと行間。
+     `-lg` はデスクトップ側の変種で、DESIGN.md の表の右列に当たる。
+     読み下す文章の行間が 1.9 を下回らないのは密度を上げないため、拾い読みする短い文字列が 1.7 で締まるのは塊として読ませないためで、両者を同じ値へ寄せない。 */
+  --text-question: 20px;
+  --text-question--line-height: 1.75;
+  --text-question-lg: 24px;
+  --text-question-lg--line-height: 1.7;
+  --text-utterance: 16px;
+  --text-utterance--line-height: 1.95;
+  --text-utterance-lg: 17px;
+  --text-utterance-lg--line-height: 1.95;
+  --text-aux: 14px;
+  --text-aux--line-height: 1.7;
+  --text-meta: 12px;
+  --text-meta--line-height: 1.7;
+
+  /* 入力欄は 16px を下回らない。
+     iOS Safari は 16px 未満の入力欄へフォーカスすると自動でズームし、書き手が選んだ倍率を捨てる（issue #160）。
+     補助の文と同じ 14px へ落としたくなる箇所でも、触れる欄ならこれを敷く。 */
+  --text-field: 16px;
+
+  --radius-bubble: 14px;
+  --radius-notch: 4px;
+
+  --container-reading: 640px;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-gothic);
+}
+
+/* 書きの間（DESIGN.md「重心」）。
+   入力へ触れているあいだだけ読みの側が退き、入力が主役になる。
+   退かせる対象を data 属性で名指すのは、退いてよいのが読み返す本文だけで、同じ画面にある戻り導線やセッションの切り替え口まで薄くすると迷子になるため。 */
+[data-recedes-while-writing] {
+  transition: opacity 0.4s ease-out;
+}
+
+main:has(:is(input, textarea):focus) [data-recedes-while-writing] {
+  opacity: 0.28;
 }
 
 /* 逆引き（/memos の拡大表示 → /q/<id>#msg-<message_id>）で着地した発話の印。
@@ -30,7 +114,7 @@ body {
    発話以外にまで枠が付くため。id の書式の正は q/[id]/page.tsx。
    data-landed を付けるのは landing-mark.tsx で、:target は使わない（理由はそちら）。
    一度だけ走って消えるのは、着地は瞬間の出来事なのに、URL のフラグメントは読み進めても残るため。
-   色は明暗どちらの背景でも読めるものを選ぶ（対話画面の吹き出しは地色が固定）。 */
+   着地させたのは自分が付けたメモなので、色は印と同じ琥珀を使う（DESIGN.md「彩度の規律」）。 */
 [id^="msg-"] {
   scroll-margin-top: 1.5rem;
 }
@@ -43,6 +127,15 @@ body {
 
 @keyframes landed {
   from {
-    outline-color: #f59e0b;
+    outline-color: var(--color-mark);
+  }
+}
+
+/* 動きを切っている人には、落差も遅延も無しで出す（DESIGN.md「動き」）。
+   着地の印はここで消さない。
+   一度だけ光って消える形が逆引きの着地点そのものを指しており、落とすと飛んだ先で何が起きたか分からなくなる。 */
+@media (prefers-reduced-motion: reduce) {
+  [data-recedes-while-writing] {
+    transition: none;
   }
 }
