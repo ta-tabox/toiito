@@ -62,9 +62,14 @@
 
 **四つ。仮に入れても、利得が出る保証が無い。**
 利得が出るのは TTFT（発話本文の最初の一文字が出るまでの時間）が短いときだけである。
-このアプリは `claude-sonnet-5` を `output_config.effort` 付きで叩いており（`web/src/lib/ai/anthropic.ts`）、`thinking` を指定していない。
+このアプリは `claude-sonnet-5` を叩いており、`thinking` を指定していない（`web/src/lib/ai/anthropic.ts`）。
 Sonnet 5 は `thinking` を省くと adaptive で走るので、思考は常に有効である。
 そして `thinking.display` の既定は `"omitted"` で、思考ブロックは中身が空のまま流れる。
+
+思考の深さは系統で分かれるが、有無は分かれない。
+`output_config.effort` が付くのは `settings.effort` が truthy のときだけで、`DEFAULT_EFFORT` は `concrete: undefined` なので、既定では抽象側（ai_b）にだけ `medium` が付く。
+具体側（ai_a）は指定を持たず API の既定（high）で走るので、**深いほうが指定の無い側**になる。
+どちらも思考は走るから、この非対称は沈黙の長さを変えるだけで、沈黙の有無は変えない。
 つまり**思考が終わるまで、ストリーミングにしても画面は沈黙したままになる**。
 一往復の 15〜27 秒のうち何割が思考なのかは測っていないので、沈黙がどれだけ縮むかは分からない。
 
