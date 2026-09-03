@@ -39,7 +39,7 @@ export function MemoDialog({ children }: { children: ReactNode }) {
       onClose={() => router.replace("/memos")}
       className="m-auto w-full max-w-reading rounded border border-rule bg-surface-mid p-0 text-ink backdrop:bg-black/40"
     >
-      <div className="p-4 md:p-6">
+      <div className="p-3 md:p-4">
         {children}
 
         {/* method="dialog" の submit は JS を挟まずに閉じる。 */}
