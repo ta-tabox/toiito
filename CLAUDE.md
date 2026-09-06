@@ -24,10 +24,11 @@ lint/format は **Biome 一本**（`biome.json` が正。ESLint/Prettier は使�
 AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自動テストで叩かない）。
 ロジックは lib 層へ寄せ、「lib 関数 + テスト → UI 配線」の順で作る。
 
-コーディング規約: @CODING.md。
+コーディング規約は `.claude/rules/`（`writing.md` は常時、`coding.md` と `languages/typescript.md` は該当ファイルの Read で読み込まれる）。
+隣接ファイルを読まずに新規ファイルを書くときは、先に `.claude/rules/coding.md` と `.claude/rules/languages/typescript.md` を Read する。
 **コードを書く前に**、次の二つを開く（レビューやリファクタに限らない。実装・テスト追加・バグ修正でも同じ）。
 
-- skill `coding-standards` — 言語固有の作法（JSDoc・import・空行）はそこの `languages/` にしかなく、CODING.md には載っていない
+- skill `coding-standards` — 判断基準集。言語固有の作法（JSDoc・import・空行）は `.claude/rules/languages/` にしかなく、skill 本体には載っていない
 - skill `karpathy-guidelines` — 過剰実装と巻き込み変更を防ぐ振る舞いの規律。
   「変更した各行が依頼に辿れるか」で手を止める。
   プラグインとして引くと、コンテナが毎回空から始まるリモートでは初回セッションに間に合わないので、本体は `.claude/skills/` へ同梱してある。
@@ -38,7 +39,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 **1 行 1 文**。
 桁数を理由に折り返さない。
 ビューア側が折り返すので、桁合わせは読みにくさを増やすだけ。
-読点で折りたくなったら、それは折る合図ではなく文を割る合図（コメントの側は `pnpm check` が見る。正は @CODING.md）。
+読点で折りたくなったら、それは折る合図ではなく文を割る合図（コメントの側は `pnpm check` が見る。正は `.claude/rules/writing.md`）。
 **理由は結論の前に置く**。
 「B なので A」と一文で閉じれば、`——` や二文目で継ぎ足す場所そのものが要らなくなる。
 
@@ -60,7 +61,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 ## git
 このリポジトリは**公開する**前提。
 コードの読み手は差分から意図を復元するレビュアーなので、コミットは時間でなく関心で区切る。
-粒度の正は @CODING.md「コミットの粒度」。
+粒度の正は `.claude/rules/writing.md`「コミットの粒度」。
 - **author は人間名義**。
   Claude も `-c` を付けず素の `git commit` を使う（手元は local config に焼いてある。リモートはクラウド環境の `GIT_AUTHOR_*` が渡し、無ければセッション起動フックが止まる。置き場の規則は `HARNESS.md`「設定の置き場」）。
   author が答えるのは責任を誰が担ったかの一点で、それはどこで書いても動かない。

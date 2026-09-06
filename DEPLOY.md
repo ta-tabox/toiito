@@ -35,7 +35,7 @@ ADR を立てていない理由は `docs/adr/README.md`「ADR にしないもの
 `TOIITO_ANTHROPIC_MODEL` は任意（既定 `claude-sonnet-5`）。
 `TOIITO_FAKE_AI` は**本番に入れない**。
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
-`TOIITO_SINGLE_USER_EMAIL` は**本番にも入れる**（`docs/adr/0027-ownership-before-auth.md` 決定 5）。
+`TOIITO_SINGLE_USER_EMAIL` は**本番にも入れる**（`docs/adr/0028-ownership-before-auth.md` 決定 5）。
 ログインが入るまで、本番の利用者はこの変数が名指しする一人に固定される。
 **この間、外周を守っているのは Basic 認証だけである**——外す順序は下の「アクセス制限」。
 
@@ -273,7 +273,7 @@ production の domain（`<project>.vercel.app`）は素通しになる。
 **Vercel Authentication は無効化しない**。
 デプロイ URL と Preview はあちらが守り続ける。
 
-**Basic 認証を外す順序は決めてある**（`docs/adr/0027-ownership-before-auth.md` 決定 5）。
+**Basic 認証を外す順序は決めてある**（`docs/adr/0028-ownership-before-auth.md` 決定 5）。
 
 1. #68 でログインを入れる。この時点では Basic 認証を残したままなので、ログイン画面へ辿り着くのに Basic を一度通る（二重になる）
 2. 本番へ出して、ログインと所有権が実際に動くことを確かめる

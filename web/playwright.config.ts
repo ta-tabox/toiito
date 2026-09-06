@@ -48,7 +48,7 @@ const SERVER_ENV = {
   DIRECT_URL: E2E_DATABASE_URL,
   TOIITO_FAKE_AI: "1",
 
-  // ログインはまだ無いので、現在の利用者はシードの一人目に固定する（docs/adr/0027-ownership-before-auth.md 決定 5）。
+  // ログインはまだ無いので、現在の利用者はシードの一人目に固定する（docs/adr/0028-ownership-before-auth.md 決定 5）。
   TOIITO_SINGLE_USER_EMAIL: SEED_USERS[0].email,
 };
 

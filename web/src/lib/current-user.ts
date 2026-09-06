@@ -5,7 +5,7 @@
  * 経路を一本に絞るのは、誰を通すかの述語を後で一箇所へ入れられるようにするため（`docs/adr/0022-session-security.md` 決定 9）。
  * その述語はまだ空で、いま置いてあるのはラッパだけである。
  *
- * ログインはまだ無く、利用者は環境変数が名指しする一人に固定される（`docs/adr/0027-ownership-before-auth.md` 決定 5）。
+ * ログインはまだ無く、利用者は環境変数が名指しする一人に固定される（`docs/adr/0028-ownership-before-auth.md` 決定 5）。
  * 本番でもそうなので、**外周を守っているのは `proxy.ts` の Basic 認証だけ**である。
  * Basic 認証を外すのは、#68（ログイン（Google OAuth）とリソースの所有権）で本物のログインを入れて本番で動作を確かめた後になる。
  * `better-auth` と将来の `@/lib/auth` を import してよいのはこのファイルだけで、それは biome の `noRestrictedImports` が見ている。

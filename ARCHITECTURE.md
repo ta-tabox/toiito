@@ -121,7 +121,7 @@ UI 側でやらない。
 ログインが入るまで本番の外周を守るのは Basic 認証だけで、外す順序は `DEPLOY.md`「アクセス制限」が持つ。
 
 認証まわりの四表（`user` / `session` / `account` / `verification`）は Better Auth が持ち、モデル名も列名も生成されたままにする。
-`db.ts` が触るのは `user` の `id` / `email` / `name` の三つだけで、どれも詰め替えの要らない列名なので、snake_case へ揃える利益が発生しない（`docs/adr/0027-ownership-before-auth.md`）。
+`db.ts` が触るのは `user` の `id` / `email` / `name` の三つだけで、どれも詰め替えの要らない列名なので、snake_case へ揃える利益が発生しない（`docs/adr/0028-ownership-before-auth.md`）。
 **Better Auth の `session` は対話の `sessions` と別物である**——前者はログイン、後者は問いへの再訪。
 Prisma のモデル名が一意でなければならないので、`Session` を名乗るのは Better Auth の側で、対話の側は `DialogueSession` と綴る（表も列もドメイン型も動いていない）。
 

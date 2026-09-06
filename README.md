@@ -59,7 +59,7 @@ Next.js (App Router) + TypeScript。
 - [HARNESS.md](HARNESS.md) — 何をもって「動いた」と言うか。L0〜L5 の検証層
 - [DEPLOY.md](DEPLOY.md) — 本番へどう出すか。秘密の置き場・セットアップ・切り戻し
 - [docs/adr/](docs/adr/) — なぜそう決めたか。1決定1レコードで追記のみ
-- [CODING.md](CODING.md) — コードと文書の書き方の規約
+- [.claude/rules/](.claude/rules/) — コードと文書の書き方の規約（Claude Code が読み込む規範）
 
 ## 同梱している外部由来のもの
 
