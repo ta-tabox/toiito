@@ -32,11 +32,15 @@ import ts from "@typescript/typescript6";
 /**
  * 違反 1 件。
  * 行番号と規則 ID に加えて、直し方まで含んだ説明を持つ。
+ *
+ * severity が warn の違反は出力するが終了コードには数えない。
+ * 既存のコードに違反が残っている規則を、掃引の前に入れて再流入だけ止めるための欄。
  */
 export type Violation = {
   line: number;
   rule: string;
   message: string;
+  severity: "error" | "warn";
 };
 
 /** 元のテキスト上でのコメントの範囲と、その中身。 */
@@ -163,7 +167,7 @@ function checkModuleHeader(
   // テストの主題は対応する実装のファイル名が既に名指しており、要求すると規約が禁じている「ファイル名の言い換え」を量産することになる。
   // 免れるのは要求であって書式ではないので、書いた場合の /** */ と直後の空行は下でそのまま見る。
   // 残る三規則（JSDoc の型注釈・改行の位置・一文一行）もテストに当たる（.claude/rules/coding.md「テストコードも本体と同じ可読性規約に従う」）。
-  const missing = TEST_FILE.test(source.fileName)
+  const missing: Violation[] = TEST_FILE.test(source.fileName)
     ? []
     : [
         {
@@ -171,6 +175,7 @@ function checkModuleHeader(
           rule: "comments/useModuleHeader",
           message:
             "モジュール冒頭コメントが無い。責務と、引き受けない境界を書く（ファイル名の言い換えにしない）",
+          severity: "error",
         },
       ];
 
@@ -196,6 +201,7 @@ function checkModuleHeader(
         line: lineOf(source, header.start),
         rule: "comments/useJsDocModuleHeader",
         message: "モジュール冒頭コメントは /** */ で書く",
+        severity: "error",
       },
     ];
   }
@@ -209,6 +215,7 @@ function checkModuleHeader(
         rule: "comments/useBlankLineAfterModuleHeader",
         message:
           "モジュール冒頭コメントの後に空行を置く。空行が無いと直下の宣言への JSDoc として読まれる",
+        severity: "error",
       },
     ];
   }
@@ -238,6 +245,7 @@ function checkJsDocTypeAnnotations(
         line: lineOf(source, comment.start + match.index),
         rule: "comments/noJsDocTypeAnnotation",
         message: `@${match[1]} の型注釈は TS の型と重複する。型が語れない制約だけ書く`,
+        severity: "error",
       });
     }
   }
@@ -274,6 +282,7 @@ function checkSentenceEndLineBreaks(
         rule: "comments/useSentenceEndLineBreak",
         message:
           "文の途中で改行している。次の行と繋ぐか、二文に割る。桁で折ると一語足しただけで段落全体の diff になり、日本語は語間に空白が無いので改行が無かった境界を新しく挿入する",
+        severity: "error",
       });
     }
   }
@@ -304,6 +313,7 @@ function checkOneSentencePerLine(
         rule: "comments/useOneSentencePerLine",
         message:
           "1 行に 2 文以上ある。句点で割る。一文一行なら、一文直したときの diff が 1 行で済み、レビューで「この文」を指せる",
+        severity: "error",
       });
     }
   }
@@ -567,32 +577,35 @@ function resolveTargets(argv: string[]): string[] {
 
 /**
  * CLI の本体。
- * 違反を 1 件ずつ標準エラーへ書き、総数を終了コードへ畳む。
+ * 違反を 1 件ずつ標準エラーへ書き、error の件数を終了コードにする。
+ *
+ * warn は同じ形で出すが終了コードには数えない。
  */
 function main(argv: string[]): number {
   const targets = resolveTargets(argv);
   const files = excludeIgnored(targets.flatMap(collectSourceFiles));
-  let total = 0;
+  let errors = 0;
+  let warnings = 0;
 
   for (const file of files) {
-    const violations = lintSource(file, fs.readFileSync(file, "utf8"));
-
-    for (const violation of violations) {
+    for (const violation of lintSource(file, fs.readFileSync(file, "utf8"))) {
       console.error(
         `${file}:${violation.line} ${violation.rule}\n  ${violation.message}`,
       );
-    }
 
-    total += violations.length;
+      if (violation.severity === "warn") {
+        warnings++;
+      } else {
+        errors++;
+      }
+    }
   }
 
   console.error(
-    total === 0
-      ? `Checked ${files.length} files. No comment violations.`
-      : `Checked ${files.length} files. Found ${total} comment violations.`,
+    `Checked ${files.length} files. ${errors} violations, ${warnings} warnings.`,
   );
 
-  return total === 0 ? 0 : 1;
+  return errors === 0 ? 0 : 1;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
