@@ -90,6 +90,7 @@ TS と同じ「宣言に付く説明は doc コメント」を守るが、**記�
 | `@param {string}` のような型注釈の重複 | 同上 |
 | コメントの改行が句点に乗っているか（箇条・例示の行は除く） | 同上 |
 | コメント 1 行に 2 文以上置いていないか（括弧の内側の句点は除く） | 同上 |
+| コメントに規約が禁じた語（比喩・個人語彙）が無いか（warn。掃引が終わるまでゲートは止めない） | 同上 |
 | import は `@` 起点（`.css` と、上の例外の 3 箇所は除外） | biome `style/noRestrictedImports` |
 | 1 行 if を分ける | biome `style/useBlockStatements` |
 | 三項の多重ネスト・複数代入・多重宣言 | biome `noNestedTernary` / `noMultiAssign` / `useSingleVarDeclarator` |
