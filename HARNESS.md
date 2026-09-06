@@ -65,7 +65,7 @@ Biome のリンタはコメントを走査対象に持たず、built-in ルー�
 同じ規約を二箇所に書くといずれ食い違うので、これ以外の作法は biome.json 側に置く。
 判定ロジックは `tests/lint-comments.test.ts` が正。
 
-規約のうち機械が見ている分の一覧は skill `coding-standards` の `languages/typescript.md`。
+規約のうち機械が見ている分の一覧は `.claude/rules/languages/typescript.md`「機械が見ている分（toiito）」節。
 **残りは形しか見ていない**。
 冒頭コメントが責務と境界を語れているか、削除テストに耐えるかは L5 の領分。
 
