@@ -45,7 +45,7 @@
             "patterns": [
               {
                 "group": ["./**", "../**", "!./**/*.css", "!../**/*.css"],
-                "message": "import は @ 起点の絶対パスで書く（CODING.md / skill coding-standards）"
+                "message": "import は @ 起点の絶対パスで書く（.claude/rules/languages/typescript.md「import」節）"
               }
             ]
           }
