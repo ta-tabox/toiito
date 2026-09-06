@@ -1,25 +1,18 @@
 -- 所有者という概念をデータ層へ入れる（docs/adr/0020-ownership-granularity.md）。
 --
--- 先頭の DELETE だけが手で足した分で、以下は prisma migrate diff の出力そのままである。
--- 持ち主のいない行が残っていると user_id を NOT NULL で足す ALTER が通らないので、既存の問いは対話ごと落とす。
--- backfill を書かないのも既存データを移送しないのも ADR 0020 の決定 5 で、本番のレコードは作り直す。
--- 外部キーの向きに沿って子から消す。
+-- **文の並びは prisma migrate diff の出力そのままではない**。
+-- user_id を NOT NULL で足すには、その前に持ち主の行が存在していなければならないので、四表の作成を先へ回し、列は一度 nullable で足してから締める。
+-- 出力に無い文は「唯一の利用者」と「DataMigration」の二つで、残りは出力のままである。
 --
--- **#175（一往復は成立してから書き、成立前の発話は預かる）より後にこれが走ると、下の DELETE は通らない**。
--- あちらが作る pending_messages は sessions を ON DELETE RESTRICT で参照するので、預かり中の発話が一件でも残っていれば外部キーが止める（2026-09-02 に実測）。
--- この migration が先なら双方とも通るので、#175 より先に main へ入れる。
--- 逆順で入れるなら、ここへ pending_messages の DELETE を足してから流す。
--- 落ちるのは migration であってデータではない。
-
--- DeleteData: 持ち主を持たない既存の問いと、その下にぶら下がるもの
-DELETE FROM "memo_links";
-DELETE FROM "memos";
-DELETE FROM "messages";
-DELETE FROM "sessions";
-DELETE FROM "questions";
-
--- AlterTable
-ALTER TABLE "questions" ADD COLUMN     "user_id" TEXT NOT NULL;
+-- 既存の問いは消さずに、唯一の利用者へ寄せる（docs/adr/0027-ownership-before-auth.md 決定 6）。
+-- ADR 0020 の決定 5 は「本番のレコードは作り直す」と決めていたが、その前提は #68（ログイン（Google OAuth）とリソースの所有権）まで本番が止まることだった。
+-- 本番が止まらなくなったので、消す理由の方が消えている。
+--
+-- 受け皿の email は placeholder で、本番では人間が自分のものへ差し替える（DEPLOY.md「唯一の利用者」）。
+-- migration ファイルは公開リポジトリに残るので、実在の宛先を書かない。
+--
+-- **#175（一往復は成立してから書き、成立前の発話は預かる）との順序は、もう問題にならない**。
+-- sessions を空にしなくなったので、あちらの pending_messages が持つ ON DELETE RESTRICT の外部キーに当たらない。
 
 -- CreateTable
 CREATE TABLE "user" (
@@ -80,6 +73,9 @@ CREATE TABLE "verification" (
     CONSTRAINT "verification_pkey" PRIMARY KEY ("id")
 );
 
+-- AlterTable: 先に nullable で足し、下で寄せてから締める
+ALTER TABLE "questions" ADD COLUMN     "user_id" TEXT;
+
 -- CreateIndex
 CREATE UNIQUE INDEX "user_email_key" ON "user"("email");
 
@@ -94,6 +90,20 @@ CREATE INDEX "account_userId_idx" ON "account"("userId");
 
 -- CreateIndex
 CREATE INDEX "verification_identifier_idx" ON "verification"("identifier");
+
+-- InsertData: 持ち主のいない問いがあるときだけ、受け皿の利用者を一人作る
+-- 問いが一件も無い DB（テスト・E2E・立ち上げ直後）では、この文も次の文も何もしない。
+INSERT INTO "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
+SELECT gen_random_uuid()::text, '唯一の利用者', 'owner@toiito.invalid', false, now(), now()
+WHERE EXISTS (SELECT 1 FROM "questions");
+
+-- DataMigration: 既存の問いを、その受け皿へ寄せる
+UPDATE "questions"
+   SET "user_id" = (SELECT "id" FROM "user" WHERE "email" = 'owner@toiito.invalid')
+ WHERE "user_id" IS NULL;
+
+-- AlterTable: 全行が持ち主を持ったので締める
+ALTER TABLE "questions" ALTER COLUMN "user_id" SET NOT NULL;
 
 -- CreateIndex
 CREATE INDEX "questions_user_id_idx" ON "questions"("user_id");

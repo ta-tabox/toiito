@@ -46,7 +46,19 @@ ADR を立てていない理由は `docs/adr/README.md`「ADR にしないもの
 ## 唯一の利用者
 
 `TOIITO_SINGLE_USER_EMAIL` が名指しする行が本番の `user` 表に無いと、全ページが落ちる。
-`pnpm seed` は開発用の問いまで入れるうえ `NODE_ENV=production` で止まるので、本番へは行を一つだけ入れる。
+
+**所有権の migration（`20260902090000_ownership_foundation`）が、既に問いのある DB では受け皿の行を一つ作る**。
+email は `owner@toiito.invalid` の placeholder なので、自分のものへ差し替える。
+
+```bash
+DIRECT_URL='<本番の直結>' pnpm exec prisma db execute --stdin <<'SQL'
+update "user"
+   set email = '<TOIITO_SINGLE_USER_EMAIL と同じ値>', name = '<表示名>', "updatedAt" = now()
+ where email = 'owner@toiito.invalid';
+SQL
+```
+
+問いが一件も無い DB では受け皿が作られないので、そのときは入れる側を叩く。
 
 ```bash
 DIRECT_URL='<本番の直結>' pnpm exec prisma db execute --stdin <<'SQL'
@@ -56,6 +68,7 @@ SQL
 ```
 
 `updatedAt` に既定値が無いので、生の SQL では明示する（`@updatedAt` は Prisma 側の仕組みで、DB の DEFAULT ではない）。
+`pnpm seed` は開発用の問いまで入れるうえ `NODE_ENV=production` で止まるので、本番には使わない。
 
 **email はログインに使う Google アカウントのものにしておく**。
 #68（ログイン（Google OAuth）とリソースの所有権）が入ると Better Auth が利用者の行を作るが、自動リンクは既定で有効にしない決定なので（`docs/adr/0019-auth-better-auth.md` 決定 6）、**email が違うと、いま書いた問いがログイン後の自分から見えなくなる**。
@@ -175,9 +188,9 @@ DIRECT_URL='<preview の直結>' pnpm exec prisma migrate resolve --applied 2026
 DATABASE_URL='<preview のプーラー>' pnpm seed
 ```
 
-**所有権の migration（`20260902090000_ownership_foundation`）を流した後は、もう一度 `pnpm seed` を流す**。
-この migration は持ち主のいない既存の問いを消すので（`docs/adr/0020-ownership-granularity.md` 決定 5）、流した後の Preview は空になる。
-シードは利用者二人ごと入れ直す。
+**所有権の migration（`20260902090000_ownership_foundation`）を流した後、Preview に利用者が居なければ `pnpm seed` を流す**。
+この migration は既存の問いを消さず、受け皿の利用者へ寄せる。
+`TOIITO_SINGLE_USER_EMAIL` が名指しする行だけは要るので、シードの一人目を入れるか、上の「唯一の利用者」と同じ手で差し替える。
 
 接続先はシェルの環境変数が `.env.local` より優先される（`process.loadEnvFile` も `--env-file` も、既に環境にある値を上書きしない）。
 `migrate status` が `Database schema is up to date!` を返せば辻褄が合っている。
