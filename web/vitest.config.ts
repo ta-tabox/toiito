@@ -27,7 +27,7 @@ export default defineConfig({
       DATABASE_URL: TEST_DATABASE_URL,
       DIRECT_URL: TEST_DATABASE_URL,
 
-      // 現在の利用者はシードの一人目に固定する（src/lib/current-user.ts）。
+      // 現在のユーザーはシードの一人目に固定する（src/lib/current-user.ts）。
       // 未設定だと落ちる側に倒してあるので、ページを描くテストのために設定を渡しておく。
       TOIITO_SINGLE_USER_EMAIL: SEED_USERS[0].email,
     },

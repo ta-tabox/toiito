@@ -115,7 +115,7 @@ memo_links     （将来）メモ間・問い間のリンキング辺
 UI 側でやらない。
 入口の `proxy.ts` は cookie の有無しか見ない楽観的な判定なので、**他人のリソースを弾く最後の層は repo 関数になる**。
 
-**現在の利用者を返す口は `lib/current-user.ts` の `getCurrentUser` 一つ**で、RSC と Server Action はここを通ってから repo 関数を呼ぶ。
+**現在のユーザーを返す口は `lib/current-user.ts` の `getCurrentUser` 一つ**で、RSC と Server Action はここを通ってから repo 関数を呼ぶ。
 戻り値の `id` には印（`OwnerId`）が付いており、repo 関数は所有者としてその型しか受け取らない。
 中身は `TOIITO_SINGLE_USER_EMAIL` が名指しする一人で、本番も同じである（本物のログインは #68（ログイン（Google OAuth）とリソースの所有権））。
 ログインが入るまで本番の外周を守るのは Basic 認証だけで、外す順序は `DEPLOY.md`「アクセス制限」が持つ。
@@ -228,7 +228,7 @@ toiito/
     ├── src/
     │   ├── app/           ルーティング（問い一覧 / 対話 / メモ逆引き）
     │   ├── components/    UI 部品（メモのアンダーライン表示など）
-    │   ├── lib/           db.ts（Prisma repo 層）・current-user.ts（現在の利用者）・ai/（AI 呼び出し）・personas.ts・anchors.ts
+    │   ├── lib/           db.ts（Prisma repo 層）・current-user.ts（現在のユーザー）・ai/（AI 呼び出し）・personas.ts・anchors.ts
     │   ├── personas/      二体のシステムプロンプト（.md で管理）
     │   └── generated/     Prisma クライアント（生成物・gitignore）
     ├── scripts/           node が直接読む開発用スクリプト（pnpm seed・コメント検査）

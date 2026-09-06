@@ -21,7 +21,7 @@ describe("readSingleUserEmail", () => {
 });
 
 describe("getCurrentUser", () => {
-  it("env が名指しする利用者を返し、その id が repo 関数の所有者になる", async () => {
+  it("env が名指しするユーザーを返し、その id が repo 関数の所有者になる", async () => {
     const owner = await createOwner();
     const user = await getCurrentUser();
 
@@ -29,7 +29,7 @@ describe("getCurrentUser", () => {
     expect(user.email).toBe(SEED_USERS[0].email);
   });
 
-  it("env が名指しする利用者が DB に居なければ投げる", async () => {
+  it("env が名指しするユーザーが DB に居なければ投げる", async () => {
     await expect(getCurrentUser()).rejects.toThrow(/DB に居ない/);
   });
 });

@@ -18,7 +18,7 @@ test("問いを投入して発話すると、ai_a → ai_b の順にフェイク
 }) => {
   await page.goto("/");
 
-  // シードは二人分入るので、一覧に出るのは現在の利用者の分だけであることを先に見る。
+  // シードは二人分入るので、一覧に出るのは現在のユーザーの分だけであることを先に見る。
   // 絞り込みが repo 層から抜けると、ここに二人目の問いが並ぶ。
   await expect(page.getByText(OTHER_USER_INPUT.body)).toHaveCount(0);
 

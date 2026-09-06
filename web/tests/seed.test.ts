@@ -12,7 +12,7 @@ afterAll(async () => {
 });
 
 /**
- * シードが入れた利用者の ID を引く。
+ * シードが入れたユーザーの ID を引く。
  *
  * 所有者を作るのはシード自身なので、他のテストのように先回りして作らない。
  */
@@ -101,7 +101,7 @@ describe("シードの投入", () => {
     }
   });
 
-  it("利用者が既にいる DB へは何も入れない", async () => {
+  it("ユーザーが既にいる DB へは何も入れない", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     try {
