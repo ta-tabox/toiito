@@ -361,17 +361,17 @@ describe("memos", () => {
 });
 
 describe("所有権", () => {
-  /** 他人と、その人が持つ問い一件・発話一件・メモ一件。 */
+  /** アクセス権の無い相手と、その人が持つ問い一件・発話一件・メモ一件。 */
   async function otherWithOneOfEach() {
     const other = await createOwner("other@example.com");
     const { question, session, messages, memos } =
       await db.createQuestionWithTranscript(other, {
-        body: "他人の問い",
+        body: "アクセス権の無い問い",
         messages: [
           {
             speaker: "ai_a",
-            body: "他人の発話",
-            memos: [{ anchorStart: 0, anchorEnd: 2, keyword: "他人" }],
+            body: "アクセス権の無い発話",
+            memos: [{ anchorStart: 0, anchorEnd: 2, keyword: "アクセス" }],
           },
         ],
       });
@@ -379,7 +379,7 @@ describe("所有権", () => {
     return { other, question, session, message: messages[0], memo: memos[0] };
   }
 
-  it("読み出しは、他人の問いを一件も返さない", async () => {
+  it("読み出しは、アクセス権の無い問いを一件も返さない", async () => {
     const { question, session, message } = await otherWithOneOfEach();
     await db.createQuestion(owner, "自分の問い");
 
@@ -397,7 +397,7 @@ describe("所有権", () => {
     ).not.toContain(message.body);
   });
 
-  it("書き込みは、他人の問い・セッション・発話のどれへも届かない", async () => {
+  it("書き込みは、アクセス権の無い問い・セッション・発話のどれへも届かない", async () => {
     const { question, session, message } = await otherWithOneOfEach();
 
     await expect(db.createSession(owner, question.id)).rejects.toThrow(
@@ -417,7 +417,7 @@ describe("所有権", () => {
     );
   });
 
-  it("他人の問いと存在しない問いは、同じ失敗になる", async () => {
+  it("アクセス権の無い問いと存在しない問いは、同じ失敗になる", async () => {
     const { question } = await otherWithOneOfEach();
 
     // 二つを見分けられると、URL を差し替えるだけで在ることが読める。

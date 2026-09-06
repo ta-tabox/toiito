@@ -17,12 +17,12 @@ import type { OwnerId } from "@/lib/types";
  *
  * 既定の email はシードの一人目で、`TOIITO_SINGLE_USER_EMAIL` が名指しするのと同じ人になる（`vitest.config.ts`）。
  * ページを描くテストは `getCurrentUser` 越しにこの人を引くので、既定から動かすと画面が空になる。
- * 他人を作るときだけ email を渡す。
+ * アクセス権を分けたい相手を作るときだけ email を渡す。
  */
 export async function createOwner(
   email: string = SEED_USERS[0].email,
 ): Promise<OwnerId> {
-  const user = await createUser(email, `テストの利用者（${email}）`);
+  const user = await createUser(email, `テストのユーザー（${email}）`);
 
   return user.id;
 }

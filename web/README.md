@@ -47,7 +47,7 @@ pnpm dev
 | `TOIITO_ANTHROPIC_EFFORT_CONCRETE` | 任意 | 未設定（API の既定） | 具体さんの思考の深さ。`low` / `medium` / `high` / `xhigh` / `max`。値域の外は既定へ倒す |
 | `TOIITO_ANTHROPIC_EFFORT_ABSTRACT` | 任意 | `medium` | 抽象さんの思考の深さ。値域は同上 |
 | `TOIITO_FAKE_AI` | 任意 | 未設定 | `1` でネットワークに出ず決定的な応答を返す。API キー無しで縦一本を通すためのハーネス |
-| `TOIITO_SINGLE_USER_EMAIL` | ログインが入るまで必須（本番も） | — | 唯一の利用者として扱う `user.email`。未設定だと画面が落ちる。指した email の利用者が DB に居ない場合も落ちる |
+| `TOIITO_SINGLE_USER_EMAIL` | ログインが入るまで必須（本番も） | — | 唯一のユーザーとして扱う `user.email`。未設定だと画面が落ちる。指した email のユーザーが DB に居ない場合も落ちる |
 | `TOIITO_TEST_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_test` | テストの接続先。CI で差し替える口 |
 | `TOIITO_E2E_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_e2e` | E2E の接続先。変えてよいのはサーバーの側だけで、データベース名は `toiito_e2e` から動かせない |
 | `DIRECT_URL_PROD` | `pnpm migrate:prod` を叩くなら必須 | — | 本番 Neon の直結。手元から migration を流す先 |
@@ -71,9 +71,9 @@ E2E は worktree をまたいで `toiito_e2e` 一本を共有するので、こ�
 `TOIITO_FAKE_AI=1` は AI 呼び出しを伴う動作確認で使う。
 実 API を自動テストで叩かない（遅い・非決定的・金がかかる）。
 
-`TOIITO_SINGLE_USER_EMAIL` は、ログインが入るまでの唯一の利用者を名指しする（`docs/adr/0028-ownership-before-auth.md` 決定 5）。
+`TOIITO_SINGLE_USER_EMAIL` は、ログインが入るまでの唯一のユーザーを名指しする（`docs/adr/0028-ownership-before-auth.md` 決定 5）。
 `pnpm seed` が入れる一人目の email をそのまま書けばよい（`scripts/seed/users.ts`）。
-シードを流す前や、名指しした email の利用者が居ない DB では落ちる。
+シードを流す前や、名指しした email のユーザーが居ない DB では落ちる。
 テストと E2E は設定を自分で渡すので、手で書くのは `.env.local` の一箇所だけである。
 
 ```

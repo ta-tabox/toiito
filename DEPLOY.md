@@ -23,7 +23,7 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 | `ANTHROPIC_API_KEY` | 同上 | Claude API のキー |
 | `TOIITO_BASIC_AUTH_USER` | 同上 | Basic 認証の利用者名（任意の文字列） |
 | `TOIITO_BASIC_AUTH_PASSWORD` | 同上 | Basic 認証のパスワード |
-| `TOIITO_SINGLE_USER_EMAIL` | 同上 | ログインが入るまでの唯一の利用者の `user.email`。下の「唯一の利用者」も要る |
+| `TOIITO_SINGLE_USER_EMAIL` | 同上 | ログインが入るまでの唯一のユーザーの `user.email`。下の「唯一のユーザーの行を入れる」も要る |
 | `PRODUCTION_DIRECT_URL` | GitHub の Settings → Secrets and variables → Actions → **Repository secrets** | `DIRECT_URL` と同じ値。migration を流す workflow だけが読む |
 
 `pg` v9 で `sslmode=require` が libpq の意味へ変わって証明書を検証しなくなるので、**接続の 3 本は `sslmode=verify-full` で終える**。
@@ -36,19 +36,24 @@ ADR を立てていない理由は `docs/adr/README.md`「ADR にしないもの
 `TOIITO_FAKE_AI` は**本番に入れない**。
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
 `TOIITO_SINGLE_USER_EMAIL` は**本番にも入れる**（`docs/adr/0028-ownership-before-auth.md` 決定 5）。
-ログインが入るまで、本番の利用者はこの変数が名指しする一人に固定される。
+ログインが入るまで、本番のユーザーはこの変数が名指しする一人に固定される。
 **この間、外周を守っているのは Basic 認証だけである**——外す順序は下の「アクセス制限」。
 
 **6 本とも Production に入れてから最初のビルドを回す**。
 `postinstall` の `prisma generate` は `prisma.config.ts` 経由で `DIRECT_URL` を即時解決するので、無いとインストール段階で exit 1 になる。
 要るのは解決できることだけで、接続は要らない（`prisma generate` は DB へ繋がない）。
 
-## 唯一の利用者
+## 唯一のユーザーの行を入れる
 
-`TOIITO_SINGLE_USER_EMAIL` が名指しする行が本番の `user` 表に無いと、全ページが落ちる。
+ログインが入るまで、このアプリは `TOIITO_SINGLE_USER_EMAIL` が名指しする一人として動く。
+`getCurrentUser` はその email で `user` 表を引き、**行が無ければ例外を投げる**（`web/src/lib/current-user.ts`）。
+だから本番には、その email を持つ行が一つ要る。
 
-**所有権の migration（`20260902090000_ownership_foundation`）が、既に問いのある DB では受け皿の行を一つ作る**。
-email は `owner@toiito.invalid` の placeholder なので、自分のものへ差し替える。
+行を用意する道は二つあり、**本番に問いが在ったかどうか**で分かれる。
+
+**在った場合**は、所有権の migration（`20260902090000_ownership_foundation`）が受け皿の行を既に作っている。
+既存の問いの持ち主にするために作った行で、email は `owner@toiito.invalid` の placeholder になっている（migration ファイルは公開リポジトリに残るので、実在の宛先を書けない）。
+やることはその email を自分のものへ差し替えることだけで、**問いの持ち主も一緒に付いてくる**。
 
 ```bash
 DIRECT_URL='<本番の直結>' pnpm exec prisma db execute --stdin <<'SQL'
@@ -58,7 +63,7 @@ update "user"
 SQL
 ```
 
-問いが一件も無い DB では受け皿が作られないので、そのときは入れる側を叩く。
+**無かった場合**は受け皿が作られていないので、行を一つ入れる。
 
 ```bash
 DIRECT_URL='<本番の直結>' pnpm exec prisma db execute --stdin <<'SQL'
@@ -67,11 +72,12 @@ values (gen_random_uuid()::text, '<表示名>', '<TOIITO_SINGLE_USER_EMAIL と�
 SQL
 ```
 
-`updatedAt` に既定値が無いので、生の SQL では明示する（`@updatedAt` は Prisma 側の仕組みで、DB の DEFAULT ではない）。
-`pnpm seed` は開発用の問いまで入れるうえ `NODE_ENV=production` で止まるので、本番には使わない。
+`createdAt` と `updatedAt` を手で埋めるのは、後者に DB の DEFAULT が無いためである（`@updatedAt` は Prisma が書き込み時に埋める仕組みで、DB 側の既定値ではない）。
+`pnpm seed` は使わない。
+開発用の問いまで入れるうえ、`NODE_ENV=production` で止まる。
 
 **email はログインに使う Google アカウントのものにしておく**。
-#68（ログイン（Google OAuth）とリソースの所有権）が入ると Better Auth が利用者の行を作るが、自動リンクは既定で有効にしない決定なので（`docs/adr/0029-auth-better-auth.md` 決定 6）、**email が違うと、いま書いた問いがログイン後の自分から見えなくなる**。
+#68（ログイン（Google OAuth）とリソースの所有権）が入ると Better Auth がユーザーの行を作るが、自動リンクは既定で有効にしない決定なので（`docs/adr/0029-auth-better-auth.md` 決定 6）、**email が違うと、いま書いた問いがログイン後の自分から見えなくなる**。
 揃えておけば、リンクされなかった場合でも `questions.user_id` の付け替え一回で済む。
 
 ## 初回のセットアップ
@@ -162,8 +168,8 @@ PR ごとの Preview デプロイにも環境変数を 6 本入れる（Vercel �
 `next build` は proxy を実行しないのでビルドは通るため、**Vercel のチェックは緑のまま中身だけ壊れる**。
 
 `TOIITO_SINGLE_USER_EMAIL` も同じ形で壊れる。
-欠けていれば全ページが落ち、名指しした email の利用者が Preview の DB に居なくても落ちる。
-Preview と本番で値が違ってよい（Preview はシードの一人目、本番は「唯一の利用者」で入れた行）。
+欠けていれば全ページが落ち、名指しした email のユーザーが Preview の DB に居なくても落ちる。
+Preview と本番で値が違ってよい（Preview はシードの一人目、本番は「唯一のユーザーの行を入れる」で用意した行）。
 
 決定の経緯と採らなかった案は `docs/adr/0015-preview-neon-branch.md`。
 
@@ -188,9 +194,9 @@ DIRECT_URL='<preview の直結>' pnpm exec prisma migrate resolve --applied 2026
 DATABASE_URL='<preview のプーラー>' pnpm seed
 ```
 
-**所有権の migration（`20260902090000_ownership_foundation`）を流した後、Preview に利用者が居なければ `pnpm seed` を流す**。
-この migration は既存の問いを消さず、受け皿の利用者へ寄せる。
-`TOIITO_SINGLE_USER_EMAIL` が名指しする行だけは要るので、シードの一人目を入れるか、上の「唯一の利用者」と同じ手で差し替える。
+**所有権の migration（`20260902090000_ownership_foundation`）を流した後、Preview にユーザーが居なければ `pnpm seed` を流す**。
+この migration は既存の問いを消さず、受け皿のユーザーへ寄せる。
+`TOIITO_SINGLE_USER_EMAIL` が名指しする行だけは要るので、シードの一人目を入れるか、上の「唯一のユーザーの行を入れる」と同じ手で差し替える。
 
 接続先はシェルの環境変数が `.env.local` より優先される（`process.loadEnvFile` も `--env-file` も、既に環境にある値を上書きしない）。
 `migrate status` が `Database schema is up to date!` を返せば辻褄が合っている。

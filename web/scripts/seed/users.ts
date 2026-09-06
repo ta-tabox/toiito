@@ -1,15 +1,15 @@
 /**
- * 開発用シードが入れる二人の宣言。
+ * 開発用シードが入れるユーザー二人の宣言。
  *
  * 二人入れるのは、所有権の絞り込みが効いていることを一人では見られないため。
- * 先頭が「現在の利用者」で、`TOIITO_SINGLE_USER_EMAIL` はこの email を名指しする（`src/lib/current-user.ts`）。
+ * 先頭が「現在のユーザー」で、`TOIITO_SINGLE_USER_EMAIL` はこの email を名指しする（`src/lib/current-user.ts`）。
  * 二人目の問いは、どの画面にも出てはいけない側として在る。
  *
- * 本物のログインが入れば、利用者を作るのは Better Auth になる（#68（ログイン（Google OAuth）とリソースの所有権））。
+ * 本物のログインが入れば、ユーザーを作るのは Better Auth になる（#68（ログイン（Google OAuth）とリソースの所有権））。
  * ここが作るのは、その前に画面を触るための固定の二人だけである。
  */
 
-/** シードで入れる利用者一人分。 */
+/** シードで入れるユーザー一人分。 */
 export type SeedUser = {
   email: string;
   name: string;

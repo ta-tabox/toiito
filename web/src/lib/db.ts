@@ -11,15 +11,15 @@
  * repo 関数はすべて async。
  * DB 非依存の計算をここへ積まない（anchors.ts のような純関数層へ置く）。
  *
- * **他人のリソースを弾く最後の層がここ**（`docs/adr/0030-ownership-granularity.md`）。
- * 入口の proxy.ts は cookie の有無しか見ず、UI は絞り込みを持たない。
+ * **アクセス権のないリソースを弾くのは、この層である**（`docs/adr/0030-ownership-granularity.md`）。
+ * 入口の proxy.ts は cookie の有無しか見ず、UI も画面ごとの絞り込みを持たない。
  * だから所有者を受け取る repo 関数は、読みも書きも所有者の条件を必ず where に置く。
- * 所有者を持つのは `questions` だけで、下位のテーブルは親を辿って判定する。
+ * 所有者の列を持つのは `questions` だけで、下位のテーブルは親を辿って判定する。
  *
  * **検査しているのはこの層で、DB の制約ではない**（RLS は使っていない）。
  * 取ってから user_id を比べる形は比べ忘れても型が通るので、条件は取得の後でなく where に置く。
- * where に置けば「無い」と「見せない」が同じ応答になり、404 と 403 の違いから在ることが漏れる隙も消える。
- * `id` は `/q/<id>` の URL に出て他人の手へ渡るので、知っていること自体は権限にならない。
+ * where に置けば「存在しない」と「アクセス権がない」が同じ応答になり、404 と 403 の違いから在ることが漏れる隙も消える。
+ * `id` は `/q/<id>` の URL に出て権限を持たない相手の手にも渡るので、知っていること自体は権限にならない。
  */
 
 import { randomUUID } from "node:crypto";
@@ -96,18 +96,21 @@ export function questionText(q: Question): string {
 }
 
 /**
- * `user` 表の行を、所有者として通せる形へ印を付ける。
+ * `user` 表から読んだ行を、ドメイン型の `User` へ写す。
  *
- * `OwnerId` を作ってよいのはこの関数だけ。
- * ここを通すことが「その文字列は本当に `user.id` である」の唯一の根拠になり、URL やフォームから来た文字列は所有者になれない。
+ * 呼ぶのは `user` 表を引いた直後の二箇所（getUserByEmail と createUser）だけである。
+ * `OwnerId` の印を付けてよいのはこの関数で、ここを通ることが「その文字列は本当に `user.id` である」の唯一の根拠になる。
+ * URL やフォームから来た文字列はここを通らないので、所有者になれない。
  */
-function toUser(row: { id: string; email: string; name: string }): User {
+function fromUserRow(row: { id: string; email: string; name: string }): User {
   return { ...row, id: row.id as OwnerId };
 }
 
 /**
- * 利用者を email で引く。
- * 無ければ undefined を返す（見つからないことは正常系）。
+ * ユーザーを email で引く。
+ *
+ * 居なければ例外でなく undefined を返す。
+ * 呼び出し側（current-user.ts）が「まだ作られていない」と「引けた」を分けて扱うので、無いことを失敗にしない。
  */
 export async function getUserByEmail(email: string): Promise<User | undefined> {
   const row = await db().user.findUnique({
@@ -115,11 +118,11 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
     select: { id: true, email: true, name: true },
   });
 
-  return row ? toUser(row) : undefined;
+  return row ? fromUserRow(row) : undefined;
 }
 
 /**
- * 利用者を作る。
+ * ユーザーを作る。
  *
  * 本番の経路では Better Auth が四表を書くので、ここを通るのは開発用シードだけである。
  * id は Better Auth の生成に合わせず UUID を振る。
@@ -131,7 +134,7 @@ export async function createUser(email: string, name: string): Promise<User> {
     select: { id: true, email: true, name: true },
   });
 
-  return toUser(row);
+  return fromUserRow(row);
 }
 
 /**
@@ -172,11 +175,15 @@ export async function listQuestions(owner: OwnerId): Promise<Question[]> {
 }
 
 /**
- * 所有者の問いを一件引く。
- * 無ければ undefined を返す（見つからないことは正常系）。
+ * 所有者の問いを id で一件引く。
  *
- * 他人の問いも undefined になる。
- * 「無い」と「見せない」を同じ応答にしないと、URL を差し替えるだけで在ることが読める。
+ * 無ければ undefined を返す。
+ * アクセス権のない問いも同じ undefined になる。
+ * 二つを違う応答にすると、URL の id を差し替えるだけで在ることが読める。
+ *
+ * findUnique でなく findFirst なのは Prisma の制約による。
+ * findUnique の where は一意な列しか受け取らないので、`user_id` の条件を足せない。
+ * id は主キーなので返るのは 0 件か 1 件で、「先頭」という意味は持たない。
  */
 export async function getQuestion(
   owner: OwnerId,
@@ -189,11 +196,11 @@ export async function getQuestion(
 }
 
 /**
- * 所有者の問いであることを確かめる。
- * 他人の問いと存在しない問いを、同じ失敗にする。
+ * その問いが所有者のものであることを確かめ、違えば投げる。
+ * アクセス権のない問いと存在しない問いを、同じ失敗にする。
  *
- * 書き込みの前に呼ぶ。
- * 読み出しは where に条件を置けば済むが、`create` は where を持たないので先に確かめるしかない。
+ * 呼ぶのは、その問いにセッションを足す前（createSession）と、問いの列を更新する前（updateCurrentForm・updateQuestionStatus）である。
+ * 読み出しは where に条件を置けば済むが、`create` と `update` は所有者の条件を where へ入れられないので先に確かめる。
  */
 async function requireOwnedQuestion(
   owner: OwnerId,
@@ -210,7 +217,9 @@ async function requireOwnedQuestion(
 }
 
 /**
- * 所有者のセッションであることを確かめる。
+ * そのセッションが所有者のものであることを確かめ、違えば投げる。
+ *
+ * 呼ぶのは、そのセッションへ発話を足す前（addMessage）である。
  * 失敗の畳み方は requireOwnedQuestion と同じ。
  */
 async function requireOwnedSession(
@@ -228,7 +237,7 @@ async function requireOwnedSession(
 }
 
 /**
- * 問いの現在の形を更新する。
+ * 問いの現在の形を書き換える。
  * 原型（body）は触らない。
  *
  * 空文字・空白のみは「現在の形なし」として扱い、表示を原型へ戻す。
@@ -251,7 +260,7 @@ export async function setCurrentForm(
 }
 
 /**
- * 問いの状態を更新する。
+ * 問いの状態を書き換える。
  *
  * 値域は QUESTION_STATUSES。
  * DB の enum が弾く前にここでも検査する。
@@ -271,10 +280,10 @@ export async function setQuestionStatus(
 }
 
 /**
- * 所有者のセッションを一件引く。
- * 無ければ undefined を返す（見つからないことは正常系）。
+ * 所有者のセッションを id で一件引く。
  *
- * 他人のセッションも undefined になる（畳み方は getQuestion と同じ）。
+ * `sessions` は所有者の列を持たないので、親の問いの `user_id` を辿って判定する（`docs/adr/0030-ownership-granularity.md` 決定 2）。
+ * 無ければ undefined を返し、アクセス権のないセッションも同じ undefined になる（畳み方と findFirst の理由は getQuestion と同じ）。
  */
 export async function getSession(
   owner: OwnerId,
@@ -401,7 +410,7 @@ export async function addMessage(
  * `anchor_end <= 本文長` はここの責務なので、挿入前に検査して文脈付きで拒否する。
  *
  * 所有者の確認は本文を引く読みに畳んである。
- * 他人の発話は「見つからない」に落ちるので、requireOwnedSession をもう一度呼ばない。
+ * アクセス権のない発話は「見つからない」に落ちるので、requireOwnedSession をもう一度呼ばない。
  */
 export async function addMemo(
   owner: OwnerId,
