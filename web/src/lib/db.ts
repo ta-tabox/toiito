@@ -11,7 +11,7 @@
  * repo 関数はすべて async。
  * DB 非依存の計算をここへ積まない（anchors.ts のような純関数層へ置く）。
  *
- * **他人のリソースを弾く最後の層がここ**（`docs/adr/0020-ownership-granularity.md`）。
+ * **他人のリソースを弾く最後の層がここ**（`docs/adr/0030-ownership-granularity.md`）。
  * 入口の proxy.ts は cookie の有無しか見ず、UI は絞り込みを持たない。
  * だから所有者を受け取る repo 関数は、読みも書きも所有者の条件を必ず where に置く。
  * 所有者を持つのは `questions` だけで、下位のテーブルは親を辿って判定する。

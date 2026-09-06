@@ -71,7 +71,7 @@ SQL
 `pnpm seed` は開発用の問いまで入れるうえ `NODE_ENV=production` で止まるので、本番には使わない。
 
 **email はログインに使う Google アカウントのものにしておく**。
-#68（ログイン（Google OAuth）とリソースの所有権）が入ると Better Auth が利用者の行を作るが、自動リンクは既定で有効にしない決定なので（`docs/adr/0019-auth-better-auth.md` 決定 6）、**email が違うと、いま書いた問いがログイン後の自分から見えなくなる**。
+#68（ログイン（Google OAuth）とリソースの所有権）が入ると Better Auth が利用者の行を作るが、自動リンクは既定で有効にしない決定なので（`docs/adr/0029-auth-better-auth.md` 決定 6）、**email が違うと、いま書いた問いがログイン後の自分から見えなくなる**。
 揃えておけば、リンクされなかった場合でも `questions.user_id` の付け替え一回で済む。
 
 ## 初回のセットアップ

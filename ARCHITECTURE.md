@@ -18,7 +18,7 @@ VISION の設計原理が上位。
   呼び出し規約は `lib/ai/` がプロバイダ非依存の形で持ち、固有の値域と API の作法は `lib/ai/anthropic.ts` に閉じる（`docs/adr/0021-ai-provider-scope.md`）
 - **Better Auth（自前ホスト）** — 認証。
   Google OAuth 一本で、パスワードは持たない。
-  入れるのは許可リストに載ったメールアドレスだけ（選定の経緯は `docs/adr/0019-auth-better-auth.md`、開き方は `docs/adr/0018-invite-only-multi-user.md`）。
+  入れるのは許可リストに載ったメールアドレスだけ（選定の経緯は `docs/adr/0029-auth-better-auth.md`、開き方は `docs/adr/0018-invite-only-multi-user.md`）。
   セッションはログインから 1 日で必ず切れる（使っても延ばさない。cookie の属性と併せて `docs/adr/0022-session-security.md`）
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
 
@@ -109,7 +109,7 @@ memo_links     （将来）メモ間・問い間のリンキング辺
 
 `user_id` を持つのは**所有のルートだけ**で、いまは `questions` 一つである（#64（ペルソナをテーブルへ）が入れば二つ目のルートになる）。
 `sessions` / `messages` / `memos` は持たず、所有者は親から辿る。
-下位にも持たせない理由と、却下した案は `docs/adr/0020-ownership-granularity.md`。
+下位にも持たせない理由と、却下した案は `docs/adr/0030-ownership-granularity.md`。
 
 **絞り込みは `db.ts` の repo 関数が行う**。
 UI 側でやらない。
@@ -249,7 +249,7 @@ toiito/
   費用を止める手（#69）と自分のキーへ逃がす手（#70）が揃うまで、AI の課金が誰にでも走る状態を作らない（経緯は `docs/adr/0018-invite-only-multi-user.md`）
 - **パスワード認証**。
   パスワードハッシュは漏れたら他サービスまで巻き添えにするので、守るのではなく資産ごと持たない。
-  入口は Google OAuth 一本（`docs/adr/0019-auth-better-auth.md`）
+  入口は Google OAuth 一本（`docs/adr/0029-auth-better-auth.md`）
 
 ## 持ち越した開いた問い
 
