@@ -160,18 +160,14 @@ vitest の `toiito_test` とは分ける。
 名前が `_e2e` で終わらなければ作り直しは止まる。
 
 **E2E のデータベースは `toiito_e2e` 一本で、worktree ごとに分けない。**
-名前を派生させるのは vitest 側だけである。
-E2E も分けると走りは互いを踏まなくなるが、worktree が消えた後に誰も落とさないデータベースが残る。
-`pnpm db:prune` が落とせるのは自動で派生した `toiito_wt_*_test` だけなので、E2E の派生名は「規則の外」として一覧に出続ける（#177 E2E の DB を共有一本に決着させる）。
+分けると、worktree が消えた後に誰も落とさないデータベースが残る（#177 E2E の DB を共有一本に決着させる）。
 
-**上書きの口 `TOIITO_E2E_DATABASE_URL` が変えてよいのはサーバーの側だけ**（CI や別ポートの Postgres へ向ける）。
+**`TOIITO_E2E_DATABASE_URL` が変えてよいのはサーバーの側だけ**（CI や別ポートの Postgres へ向ける）。
 データベース名が `toiito_e2e` でない上書きは `web/e2e/setup/e2e-database-url.ts` が止める。
 
 **二つの worktree で同時には走らせない。**
-一本を共有するので、後発の作り直しが先発の足元からデータベースを引き抜く形になる。
-引き抜けないよう `drop database` に `with (force)` を付けていないので、他の接続があれば後発が作り直しに失敗して止まる。
-別の worktree で `pnpm e2e` が走っているなら、終わるのを待ってから叩く。
-誰も走っていないのに止まるなら前の走りが残した接続なので、`docker compose restart postgres` で落としてから叩き直す。
+`drop database` に `with (force)` を付けていないので、他の接続があれば後発が作り直しに失敗して止まる。
+誰も走っていないのに止まるなら前の走りが残した接続なので、`docker compose restart postgres` で落とす。
 
 作り直しは globalSetup でなく webServer の command に置く。
 Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、逆にすると dev サーバーが接続を張った後で足元の DB を落とすことになる。
