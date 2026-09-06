@@ -138,73 +138,69 @@ Prisma 7 はこれを破壊的操作として検知し、AI エージェント�
 `pnpm check` は L0〜L3 のままで、E2E を含めない（心拍を遅くしない）。
 下から通しで確かめたいときは `pnpm check:full`（check → e2e の順）。
 
+設定は `web/playwright.config.ts`、spec は `web/e2e/`。
+webServer が `next dev` を `TOIITO_FAKE_AI=1` で起こすので、API キーは要らない。
+
 ブラウザの実体はリポジトリにも node_modules にも入らないので、初回だけ取ってくる。
 
 ```bash
 pnpm exec playwright install chromium
 ```
 
-設定は `web/playwright.config.ts`、spec は `web/e2e/`。
-webServer が `next dev` を `TOIITO_FAKE_AI=1` で起こすので、API キーは要らない。
+### データベース
 
-開発サーバーからは三重に離してあり、`pnpm dev` を止めずに走らせられる。
-口が 3100、データベースが `toiito_e2e`、ビルド出力先が `.next-e2e`。
-出力先まで分けるのは、`next dev` の二重起動検知が `.next/dev/lock` 一つを見ており、口を分けただけでは 3000 で動いている開発サーバーと衝突するため。
-差し替えの口は `TOIITO_DIST_DIR` で、受けるのは `next.config.ts`。
-
-接続先は E2E 専用の `toiito_e2e`。
 走るたびにデータベースごと落として作り直し、migration を積み、`pnpm seed` と同じシードを入れる（`web/e2e/setup/reset-database.ts`）。
 作るのも作り直す側なので、`compose.yaml` の initdb はこのデータベースを知らない。
-vitest の `toiito_test` とは分ける。
-どちらも走る前に中身を作り直すので、同じ DB を向けると互いの行を踏む。
-名前が `_e2e` で終わらなければ作り直しは止まる。
 
 | 決めていること | 破ると |
 |---|---|
 | データベースは `toiito_e2e` 一本で、worktree ごとに分けない | worktree が消えた後、誰も落とさないデータベースが残る（#177 E2E の DB を共有一本に決着させる） |
+| vitest の `toiito_test` とは分ける | どちらも走る前に中身を作り直すので、互いの行を踏む |
 | `TOIITO_E2E_DATABASE_URL` で変えてよいのはサーバーの側だけ（CI や別ポートの Postgres へ向ける） | データベース名が `toiito_e2e` でない上書きは、走り出す前に止まる |
 | 二つの worktree で同時には走らせない | 後発が作り直しに失敗して止まる。戻し方はそのとき出るエラーが書いている |
 
-作り直しは globalSetup でなく webServer の command に置く。
-Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、逆にすると dev サーバーが接続を張った後で足元の DB を落とすことになる。
+### サーバー
 
-入っているのは 12 シナリオ。
+`pnpm dev` を止めずに走らせられるよう、口もデータベースもビルド出力先も分ける。
+
+| | `pnpm dev` | E2E | E2E（制限あり） |
+|---|---|---|---|
+| 口 | 3000 | 3100 | 3101 |
+| データベース | `toiito` | `toiito_e2e` | `toiito_e2e` |
+| ビルド出力先 | `.next` | `.next-e2e` | `.next-e2e-auth` |
+
+出力先まで分けるのは、`next dev` の二重起動検知が `.next/dev/lock` 一つしか見ないため。
+差し替えの口は `TOIITO_DIST_DIR` で、受けるのは `next.config.ts`。
+
+同じサーバーでは制限が掛かる側と掛からない側を両方見られないので、制限ありをもう一本立てる。
+資格情報を持つのはそちらだけで、叩くのは `basic-auth.spec.ts` だけである。
+project ごとに `baseURL` を持たせてあるので、spec は自分がどちらを叩くかを意識しない。
+
+### 入っているもの
 
 | spec | 見るもの |
 |---|---|
 | `dialogue.spec.ts` | 問い投入 → 発話 → 二体が ai_a → ai_b の順に応答 |
-| `memo.spec.ts` | 発話の選択 → メモ作成 → アンダーライン出現 |
-| 同上 | メモが `/memos` に並び、拡大表示から出所の発話へ着地 |
-| 同上 | 下線を押すと、その語のメモが一覧で開く |
-| 同上 | 着地した発話に印が付く |
-| 同上 | 再訪したあとでも、メモが当時の発話へ着地する |
-| 同上 | 再訪するとセッションの切り替え口が出て、過去を読み返せる |
-| `basic-auth.spec.ts` | 資格情報が無ければ 401 で止まる |
-| 同上 | 401 が `WWW-Authenticate` を添える |
-| 同上 | パスワードが違えば 401 で止まる |
-| 同上 | 資格情報が合えば通り、その先はアプリが応える |
-| 同上 | ブラウザが資格情報を持てば、問いの一覧まで開く |
+| `memo.spec.ts` | 発話の選択とメモの作成、下線と `/memos` からの逆引き、再訪を挟んでも着地が切れないこと |
+| `basic-auth.spec.ts` | 資格情報の有無で 401 と通過が分かれ、401 が `WWW-Authenticate` を添えること |
 
-`memo.spec.ts` の 2 本は #57（再訪と過去セッションの読み方）で足した。
-逆引きの着地が再訪を挟んでも切れないことを見る。
-
-`basic-auth.spec.ts` の 5 本は #102（本番の URL が制限の外にある）で足した。
-**サーバーを二本立てて分ける**——既定の一本は資格情報を持たないので制限が掛からず、上の 7 本はそれまでどおり走る。
-資格情報を持つもう一本（口は 3101、出力先は `.next-e2e-auth`）だけを `basic-auth.spec.ts` が叩く。
-project を分けて `baseURL` を持たせているので、spec 側は行き先を意識しない。
-
-叩くのは存在しない経路（`/no-such-page`）にしてある。
-データベースを引かずに済むので他の spec の作り直しと競走せず、アプリのルートでない場所が 401 になること自体が「制限が routing より前に掛かっている」証拠にもなる。
+`basic-auth.spec.ts` が叩くのは存在しない経路（`/no-such-page`）である。
+データベースを引かないので他の spec の作り直しと競走せず、アプリのルートでない場所が 401 になること自体が「制限が routing より前に掛かっている」証拠にもなる。
 
 **この層は Vercel のランタイム差を再現しない**。
 `next dev` も `next start` も Node で走るので、Edge でだけ環境変数が読めない類の失敗はここに出ない。
 本番が閉じている確認は `DEPLOY.md`「アクセス制限」の curl が持つ。
 
-選択は Range を組んで document へ mouseup を投げる形で作る。
-Playwright のドラッグでは文字の途中で始まる範囲を安定して作れず、選択を拾う側は document の mouseup を見ている。
+### spec を書くときの制約
 
-本文の下線は role で指す。
-選択した直後だけ、同じ文字列が本文とメモフォームの引用の二箇所に出るので、文字で指すとリンクでない側を掴む。
+- **spec は直列に走る**（`workers: 1`）。
+  一つのデータベースを共有しているので、増やすと spec 同士が互いの行を踏む
+- **データベースの作り直しは globalSetup でなく webServer の command に置く**。
+  Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、逆にすると dev サーバーが接続を張った後で足元のデータベースを落とすことになる
+- **選択は Range を組んで document へ mouseup を投げて作る**。
+  Playwright のドラッグでは文字の途中から始まる範囲を安定して作れず、拾う側は document の mouseup を見ている
+- **本文の下線は role で指す**。
+  選択した直後だけ同じ文字列が本文とメモフォームの引用の二箇所に出るので、文字で指すとリンクでない側を掴む
 
 ## テスト可能性の設計制約（コードの書き方に課すルール)
 
