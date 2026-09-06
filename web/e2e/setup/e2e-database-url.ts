@@ -13,7 +13,7 @@ import path from "node:path";
 /**
  * E2E が共有する唯一のデータベース名。
  *
- * worktree ごとに名前を派生させるのは vitest 側だけで、E2E はこの一本を共有する（HARNESS.md「E2E（L4）」）。
+ * worktree ごとに名前を派生させるのは vitest 側だけで、E2E はこの一本を共有する（docs/HARNESS.md「E2E（L4）」）。
  * 派生させると worktree が消えた後も誰も落とさない DB が残るので、名前を分ける口は開けない。
  */
 const DATABASE_NAME = "toiito_e2e";
@@ -36,7 +36,7 @@ export function resolveE2eDatabaseUrl(override: string | undefined): string {
 
   if (name !== DATABASE_NAME) {
     throw new Error(
-      `TOIITO_E2E_DATABASE_URL のデータベース名が ${DATABASE_NAME} でない: ${name}。この環境変数は接続先のサーバーを変えるための口であって、worktree ごとに名前を分けるための口ではない（HARNESS.md「E2E（L4）」）`,
+      `TOIITO_E2E_DATABASE_URL のデータベース名が ${DATABASE_NAME} でない: ${name}。この環境変数は接続先のサーバーを変えるための口であって、worktree ごとに名前を分けるための口ではない（docs/HARNESS.md「E2E（L4）」）`,
     );
   }
 

@@ -46,7 +46,7 @@ export type CommonSettings = {
    */
   readonly timeoutMs: number;
 
-  /** ネットワークに出ず決定的な応答を返すか（HARNESS.md 参照）。 */
+  /** ネットワークに出ず決定的な応答を返すか（docs/HARNESS.md 参照）。 */
   readonly fake: boolean;
 };
 

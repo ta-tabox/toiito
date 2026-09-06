@@ -2,7 +2,7 @@
 
 記録日: 2026-07-07。
 状態: **アイディア（未着手）**。
-本体 MVP（ARCHITECTURE.md）とは分離した拡張枠。
+本体 MVP（docs/ARCHITECTURE.md）とは分離した拡張枠。
 MVP の完了条件には含めない。
 着手判断は MVP 常用後（メモが実データとして溜まってから）。
 
@@ -43,7 +43,7 @@ Obsidian のグラフビューのイメージで、堆積した地層を俯瞰�
 ### Phase 2: memo_links の実装
 
 グラフが「見るだけ」から「編む」に変わる転回点。
-`memo_links` テーブルは ARCHITECTURE.md で予約済み（id, from_memo_id, to_memo_id, kind）。
+`memo_links` テーブルは docs/ARCHITECTURE.md で予約済み（id, from_memo_id, to_memo_id, kind）。
 メモ間リンクを張る UI（グラフ上でノード二つ選択 → リンク）を足すと、人間が張った辺が構造ノイズ（機械的な連鎖辺）と区別されて浮かぶ。
 
 ### Phase 3: メタグラフ（アプリ全域の走査）

@@ -95,7 +95,7 @@ function stderrOf(cause: unknown): string {
  * E2E 用データベースを落として作り直す。
  *
  * `with (force)` は付けない。
- * 付けると相手の接続ごとデータベースを引き抜けてしまい、一本を共有する運用で二つ目の走りが先発を黙って殺す（HARNESS.md「E2E（L4）」）。
+ * 付けると相手の接続ごとデータベースを引き抜けてしまい、一本を共有する運用で二つ目の走りが先発を黙って殺す（docs/HARNESS.md「E2E（L4）」）。
  * 繋いだままの相手が居れば drop が失敗し、抜く側のここが止まる。
  */
 function recreateDatabase(): void {
@@ -108,7 +108,7 @@ function recreateDatabase(): void {
     throw new Error(
       [
         `E2E 用 Postgres（${databaseName}）の準備に失敗した。`,
-        "立っていなければ docker compose up -d で立てる（HARNESS.md「ローカル Postgres」）。",
+        "立っていなければ docker compose up -d で立てる（docs/HARNESS.md「ローカル Postgres」）。",
         "他の走りが繋いだままなら、終わるのを待ってから叩き直す（E2E は一本を共有するので、二つの worktree で同時には走らせない）。",
         "誰も走っていないのに止まるなら前の走りが残した接続なので、docker compose restart postgres で落とす。",
         stderrOf(cause),
