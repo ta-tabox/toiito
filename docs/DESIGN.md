@@ -14,7 +14,7 @@
 
 ### トークン
 
-値の正は `web/src/app/globals.css` で、この表はその写しである。
+値の正はこの表で、`web/src/app/globals.css` の変数名は用途名を英語へ写したものである。
 
 | 用途 | light | dark |
 |---|---|---|
