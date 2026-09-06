@@ -48,7 +48,7 @@ pnpm dev
 | `TOIITO_ANTHROPIC_EFFORT_ABSTRACT` | 任意 | `medium` | 抽象さんの思考の深さ。値域は同上 |
 | `TOIITO_FAKE_AI` | 任意 | 未設定 | `1` でネットワークに出ず決定的な応答を返す。API キー無しで縦一本を通すためのハーネス |
 | `TOIITO_TEST_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_test` | テストの接続先。CI で差し替える口 |
-| `TOIITO_E2E_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_e2e` | E2E の接続先。テストと同じ DB を向けると互いの行を踏むので分ける |
+| `TOIITO_E2E_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_e2e` | E2E の接続先。変えてよいのはサーバーの側だけで、データベース名は `toiito_e2e` から動かせない |
 | `DIRECT_URL_PROD` | `pnpm migrate:prod` を叩くなら必須 | — | 本番 Neon の直結。手元から migration を流す先 |
 | `DIRECT_URL_PREVIEW` | `pnpm migrate:preview` を叩くなら必須 | — | Neon の `preview` ブランチの直結。同上 |
 
@@ -64,7 +64,8 @@ DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
 名前が `_test` で終わらなければ止まるようにしてある。
 
 `TOIITO_E2E_DATABASE_URL` も既定のままでよい（走るたびに作り直す側が、無ければ作る）。
-こちらは名前が `_e2e` で終わらなければ止まる。
+E2E は worktree をまたいで `toiito_e2e` 一本を共有するので、こちらで変えてよいのはサーバーの側（ホスト・ポート・資格情報）だけである。
+データベース名が `toiito_e2e` でない上書きは止まる（`HARNESS.md`「E2E（L4）」）。
 
 `TOIITO_FAKE_AI=1` は AI 呼び出しを伴う動作確認で使う。
 実 API を自動テストで叩かない（遅い・非決定的・金がかかる）。
