@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 /* 色・書体・字組み・幅のトークン。
-   値の正は DESIGN.md（色／書体と字組み／余白と密度）で、変数名は同文書の用途名を英語へ写したもの。
+   値の正は docs/DESIGN.md（色／書体と字組み／余白と密度）で、変数名は同文書の用途名を英語へ写したもの。
    ここで足した名前以外の色をコンポーネントへ直書きしない。
    直書きするとダークの二系統が片方だけ動く。
 
-   面は彩度を持たず、暖と寒の傾きだけを持つ（DESIGN.md「彩度の規律」）。
+   面は彩度を持たず、暖と寒の傾きだけを持つ（docs/DESIGN.md「彩度の規律」）。
    彩度を持つのは人間の発話（moss-surface）と自分が付けた印（mark）の二つだけで、三つ目が増えたらそこが破れ目になる。 */
 :root {
   --ground: #fbf9f4;
@@ -59,14 +59,14 @@
   --color-on-moss: var(--on-moss);
   --color-mark: var(--mark);
 
-  /* 和文が本体で、欧文と数字は従属欧文で足りる（DESIGN.md「書体と字組み」）。
+  /* 和文が本体で、欧文と数字は従属欧文で足りる（docs/DESIGN.md「書体と字組み」）。
      欧文専用の書体を混ぜると、一行の中で字面の大きさとベースラインに段差が出る。
      変数の実体は layout.tsx が next/font から注ぐ。 */
   --font-mincho: var(--font-shippori-mincho), serif;
   --font-gothic: var(--font-zen-kaku-gothic-new), sans-serif;
 
   /* 役ごとの大きさと行間。
-     `-lg` はデスクトップ側の変種で、DESIGN.md の表の右列に当たる。
+     `-lg` はデスクトップ側の変種で、docs/DESIGN.md の表の右列に当たる。
      読み下す文章の行間が 1.9 を下回らないのは密度を上げないため、拾い読みする短い文字列が 1.7 で締まるのは塊として読ませないためで、両者を同じ値へ寄せない。 */
   --text-question: 20px;
   --text-question--line-height: 1.75;
@@ -98,7 +98,7 @@ body {
   font-family: var(--font-gothic);
 }
 
-/* 書きの間（DESIGN.md「重心」）。
+/* 書きの間（docs/DESIGN.md「重心」）。
    入力へ触れているあいだだけ読みの側が退き、入力が主役になる。
    退かせる対象を data 属性で名指すのは、退いてよいのが読み返す本文だけで、同じ画面にある戻り導線やセッションの切り替え口まで薄くすると迷子になるため。 */
 [data-recedes-while-writing] {
@@ -114,7 +114,7 @@ main:has(:is(input, textarea):focus) [data-recedes-while-writing] {
    発話以外にまで枠が付くため。id の書式の正は q/[id]/page.tsx。
    data-landed を付けるのは landing-mark.tsx で、:target は使わない（理由はそちら）。
    一度だけ走って消えるのは、着地は瞬間の出来事なのに、URL のフラグメントは読み進めても残るため。
-   着地させたのは自分が付けたメモなので、色は印と同じ琥珀を使う（DESIGN.md「彩度の規律」）。 */
+   着地させたのは自分が付けたメモなので、色は印と同じ琥珀を使う（docs/DESIGN.md「彩度の規律」）。 */
 [id^="msg-"] {
   scroll-margin-top: 1.5rem;
 }
@@ -131,7 +131,7 @@ main:has(:is(input, textarea):focus) [data-recedes-while-writing] {
   }
 }
 
-/* 動きを切っている人には、落差も遅延も無しで出す（DESIGN.md「動き」）。
+/* 動きを切っている人には、落差も遅延も無しで出す（docs/DESIGN.md「動き」）。
    着地の印はここで消さない。
    一度だけ光って消える形が逆引きの着地点そのものを指しており、落とすと飛んだ先で何が起きたか分からなくなる。 */
 @media (prefers-reduced-motion: reduce) {

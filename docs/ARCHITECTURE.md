@@ -9,20 +9,20 @@ VISION の設計原理が上位。
 - **Next.js (App Router) + TypeScript** — UI と API を一体で持つ。
   `web/` 配下
 - **Vercel（Hobby）** — 本番の実行環境。
-  Hobby は非商用限定なので、他人へ開いて収益化する段になったら必ず一度決め直す（選定の経緯は `docs/adr/0002-production-runtime.md`）
+  Hobby は非商用限定なので、他人へ開いて収益化する段になったら必ず一度決め直す（選定の経緯は `adr/0002-production-runtime.md`）
 - **Postgres + Prisma** — 永続化。
   開発も本番も同じ方言に揃える。
   ローカルは `compose.yaml` の Postgres、本番は Neon（手順は `DEPLOY.md`）
 - **Claude API（Anthropic）** — 二体 AI の対話生成。
   Server Actions（サーバー側）からのみ叩く。
-  呼び出し規約は `lib/ai/` がプロバイダ非依存の形で持ち、固有の値域と API の作法は `lib/ai/anthropic.ts` に閉じる（`docs/adr/0021-ai-provider-scope.md`）
+  呼び出し規約は `lib/ai/` がプロバイダ非依存の形で持ち、固有の値域と API の作法は `lib/ai/anthropic.ts` に閉じる（`adr/0021-ai-provider-scope.md`）
 - **Better Auth（自前ホスト）** — 認証。
   Google OAuth 一本で、パスワードは持たない。
-  入れるのは許可リストに載ったメールアドレスだけ（選定の経緯は `docs/adr/0019-auth-better-auth.md`、開き方は `docs/adr/0018-invite-only-multi-user.md`）。
-  セッションはログインから 1 日で必ず切れる（使っても延ばさない。cookie の属性と併せて `docs/adr/0022-session-security.md`）
+  入れるのは許可リストに載ったメールアドレスだけ（選定の経緯は `adr/0019-auth-better-auth.md`、開き方は `adr/0018-invite-only-multi-user.md`）。
+  セッションはログインから 1 日で必ず切れる（使っても延ばさない。cookie の属性と併せて `adr/0022-session-security.md`）
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
 
-永続化について今も効く禁止則（経緯は `docs/adr/0003-persistence-prisma-postgres.md`）。
+永続化について今も効く禁止則（経緯は `adr/0003-persistence-prisma-postgres.md`）。
 
 - **方言を二重に持たない**。
   スキーマの正は `prisma/schema.prisma` 一箇所で、DDL を別ファイルに書き写さない
@@ -40,7 +40,7 @@ VISION の設計原理が上位。
   ホスティング側の設定だけで閉じるもの（暫定の門に使う Vercel Authentication など）はアプリのコードに現れないので、この禁止則の対象ではない。
   入れたくなったら、それは実行環境を決め直す合図として一度戻る
 
-セッションについて今も効く禁止則（経緯は `docs/adr/0022-session-security.md`）。
+セッションについて今も効く禁止則（経緯は `adr/0022-session-security.md`）。
 括ると片方の前提が変わった日にもう片方まで一緒に緩むので、`cookieCache` と `deferSessionRefresh` は理由の違う別々の行で書く。
 
 - **`session.cookieCache` を有効にしない**。
@@ -109,7 +109,7 @@ memo_links     （将来）メモ間・問い間のリンキング辺
 
 `user_id` を持つのは**所有のルートだけ**で、いまは `questions` 一つである（#64（ペルソナをテーブルへ）が入れば二つ目のルートになる）。
 `sessions` / `messages` / `memos` は持たず、所有者は親から辿る。
-下位にも持たせない理由と、却下した案は `docs/adr/0020-ownership-granularity.md`。
+下位にも持たせない理由と、却下した案は `adr/0020-ownership-granularity.md`。
 
 **絞り込みは `db.ts` の repo 関数が行う**。
 UI 側でやらない。
@@ -133,7 +133,7 @@ UI 側でやらない。
 ### 問いの状態機械（2026-08-30 改定）
 
 7 値。
-比喩は選び直しうるが enum の変更は本番の DB を動かすので、**値は比喩を持たない一般語で持ち、比喩は UI のラベルだけが持つ**（`docs/adr/0017-status-value-set.md`）。
+比喩は選び直しうるが enum の変更は本番の DB を動かすので、**値は比喩を持たない一般語で持ち、比喩は UI のラベルだけが持つ**（`adr/0017-status-value-set.md`）。
 ラベルの正は `VISION.md`「語彙」節で、比喩が動いてもそちらの列だけが動く。
 
 | status | 意味 |
@@ -239,10 +239,10 @@ toiito/
 - 問いの「解決済み」クローズフロー（チケットではない）
 - **公開登録**（2026-08-30 改定）。
   他人にも使わせる器へ改めたが、入れるのは許可リストに載ったメールアドレスだけで、誰でも登録できる形は開けない。
-  費用を止める手（#69）と自分のキーへ逃がす手（#70）が揃うまで、AI の課金が誰にでも走る状態を作らない（経緯は `docs/adr/0018-invite-only-multi-user.md`）
+  費用を止める手（#69）と自分のキーへ逃がす手（#70）が揃うまで、AI の課金が誰にでも走る状態を作らない（経緯は `adr/0018-invite-only-multi-user.md`）
 - **パスワード認証**。
   パスワードハッシュは漏れたら他サービスまで巻き添えにするので、守るのではなく資産ごと持たない。
-  入口は Google OAuth 一本（`docs/adr/0019-auth-better-auth.md`）
+  入口は Google OAuth 一本（`adr/0019-auth-better-auth.md`）
 
 ## 持ち越した開いた問い
 

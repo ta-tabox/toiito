@@ -1,7 +1,7 @@
 /**
  * 永続化層。
  * Prisma + Postgres。
- * データモデルの意味の正は ARCHITECTURE.md、スキーマの正は prisma/schema.prisma。
+ * データモデルの意味の正は docs/ARCHITECTURE.md、スキーマの正は prisma/schema.prisma。
  *
  * この層の外へ Prisma を出さない。
  * `@prisma/client` と生成型（`@/generated/prisma`）に触れてよいのはこのファイルだけ。
@@ -245,7 +245,7 @@ export async function listMessages(sessionId: string): Promise<Message[]> {
  * 発話を追記する。
  *
  * messages は immutable で、更新も削除もしない。
- * メモのアンカーが本文のオフセットを指しており、本文が動くと別の位置を指し始めるため（ARCHITECTURE.md「データモデル」）。
+ * メモのアンカーが本文のオフセットを指しており、本文が動くと別の位置を指し始めるため（docs/ARCHITECTURE.md「データモデル」）。
  */
 export async function addMessage(
   sessionId: string,
@@ -440,7 +440,7 @@ export function withSetupGuidance(cause: unknown): unknown {
   }
 
   return new Error(
-    "データベースの準備ができていない。docker compose up -d で立て、web/ で pnpm exec prisma migrate deploy を積んでから再実行する（HARNESS.md「ローカル Postgres」）",
+    "データベースの準備ができていない。docker compose up -d で立て、web/ で pnpm exec prisma migrate deploy を積んでから再実行する（docs/HARNESS.md「ローカル Postgres」）",
     { cause },
   );
 }
