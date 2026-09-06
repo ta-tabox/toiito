@@ -7,6 +7,7 @@ paths:
 
 値と現況の正は `docs/DESIGN.md` で、ここが持つのは守らせる規則だけである。
 矛盾したらこちらが勝つ。
+上位文書は `docs/VISION.md`（なぜ）> `docs/ARCHITECTURE.md`（どう）で、そちらと矛盾したら上位が勝つ。
 
 ## 原則
 
