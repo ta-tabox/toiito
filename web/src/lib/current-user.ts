@@ -3,7 +3,7 @@
  *
  * RSC と Server Action はここを通ってから db.ts を呼ぶ。
  * 経路を一本に絞るのは、誰を通すかの述語を後で一箇所へ入れられるようにするため（`docs/adr/0022-session-security.md` 決定 9）。
- * その述語はまだ空で、いま置いてあるのは器だけである。
+ * その述語はまだ空で、いま置いてあるのはラッパだけである。
  *
  * ログインはまだ無く、利用者は環境変数が名指しする一人に固定される（`docs/adr/0027-ownership-before-auth.md` 決定 5）。
  * 本番でもそうなので、**外周を守っているのは `proxy.ts` の Basic 認証だけ**である。
@@ -32,7 +32,7 @@ type SingleUserEnv = {
  * 唯一の利用者の email を env から読む。
  *
  * 未設定なら落とす。
- * 素通しへ倒す分岐を作らないためで、「掛けたつもりで掛かっていない」形はこの器で既に二度出ている（`docs/adr/0022-session-security.md`）。
+ * 素通しへ倒す分岐を作らないためで、「掛けたつもりで掛かっていない」形はこのアプリで既に二度出ている（`docs/adr/0022-session-security.md`）。
  */
 export function readSingleUserEmail(env: SingleUserEnv): string {
   const email = env.TOIITO_SINGLE_USER_EMAIL;

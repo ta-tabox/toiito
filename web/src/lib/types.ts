@@ -25,7 +25,7 @@ export type OwnerId = string & { readonly __brand: "OwnerId" };
 
 /**
  * 利用者。
- * 実体は Better Auth の `user` 表で、この器が読むのはこの三つだけ。
+ * 実体は Better Auth の `user` 表で、このアプリが読むのはこの三つだけ。
  */
 export type User = { id: OwnerId; email: string; name: string };
 

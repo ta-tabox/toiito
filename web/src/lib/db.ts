@@ -118,7 +118,7 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
  *
  * 本番の経路では Better Auth が四表を書くので、ここを通るのは開発用シードだけである。
  * id は Better Auth の生成に合わせず UUID を振る。
- * `user.id` は文字列でありさえすればよく、この二人が IdP を持たない以上、綴りを真似ても得るものが無い。
+ * `user.id` は文字列でありさえすればよく、この二人が IdP を持たない以上、id の作り方を真似ても得るものが無い。
  */
 export async function createUser(email: string, name: string): Promise<User> {
   const row = await db().user.create({

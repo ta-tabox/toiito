@@ -58,7 +58,7 @@ SQL
 `updatedAt` に既定値が無いので、生の SQL では明示する（`@updatedAt` は Prisma 側の仕組みで、DB の DEFAULT ではない）。
 
 **email はログインに使う Google アカウントのものにしておく**。
-#68（ログイン（Google OAuth）とリソースの所有権）が入ると Better Auth が利用者の行を作るが、自動リンクは既定で有効にしない決定なので（`docs/adr/0019-auth-better-auth.md` 決定 6）、**綴りが違うと、いま書いた問いがログイン後の自分から見えなくなる**。
+#68（ログイン（Google OAuth）とリソースの所有権）が入ると Better Auth が利用者の行を作るが、自動リンクは既定で有効にしない決定なので（`docs/adr/0019-auth-better-auth.md` 決定 6）、**email が違うと、いま書いた問いがログイン後の自分から見えなくなる**。
 揃えておけば、リンクされなかった場合でも `questions.user_id` の付け替え一回で済む。
 
 ## 初回のセットアップ

@@ -5,7 +5,7 @@
  *
  * フィールド名は snake_case。
  * 列名・ドメイン型（src/lib/types.ts）と三者の名前が揃い、repo 層の詰め替えが要らなくなる。
- * 例外は Better Auth の四表（User / Session / Account / Verification）で、生成された綴りのまま置く。
+ * 例外は Better Auth の四表（User / Session / Account / Verification）で、生成されたモデル名と列名のまま置く。
  * 揃えると版が上がるたびに手で直すことになり、そこまでして揃える利益がこの四表には無い（docs/adr/0019-auth-better-auth.md）。
  *
  * check 制約は Prisma スキーマで表現できないため migration の SQL が唯一の置き場になる。
@@ -171,7 +171,7 @@ model MemoLink {
 
 /// 利用者。Better Auth が持つ四表の一つ。
 ///
-/// 綴りは Better Auth 1.7.2 が要求するまま（camelCase・型は既定）で、snake_case へ揃えない（`docs/adr/0019-auth-better-auth.md`）。
+/// モデル名と列名は Better Auth 1.7.2 が要求するまま（camelCase・型は既定）で、snake_case へ揃えない（`docs/adr/0019-auth-better-auth.md`）。
 /// 揃えると版が上がるたびに手で直すことになる。
 /// この四表を読むのは `db.ts` の二つの用途だけで、詰め替えが増えないことが据え置きの条件（`docs/adr/0027-ownership-before-auth.md`）。
 model User {
@@ -194,7 +194,7 @@ model User {
 ///
 /// **対話の `sessions` とは別物**。
 /// こちらはログイン、あちらは問いへの再訪（`DialogueSession`）。
-/// 綴りの規約は User と同じ。
+/// モデル名と列名の規約は User と同じ。
 model Session {
   id        String   @id
   expiresAt DateTime
@@ -215,7 +215,7 @@ model Session {
 ///
 /// プロバイダと IdP 側の識別子を持つのは `user` でなくこちら（`docs/adr/0019-auth-better-auth.md`）。
 /// OAuth のトークンは保存しない方針だが、列は Better Auth の要求どおり置く（保存しないのは実行時の設定で、#68 が入れる）。
-/// 綴りの規約は User と同じ。
+/// モデル名と列名の規約は User と同じ。
 model Account {
   id                    String    @id
   issuer                String
@@ -240,8 +240,8 @@ model Account {
 
 /// 検証トークン。Better Auth が持つ四表の一つ。
 ///
-/// パスワードを実装しないのでこの器では使わないが、Better Auth が四表を前提に動くので置く。
-/// 綴りの規約は User と同じ。
+/// パスワードを実装しないのでこのアプリでは使わないが、Better Auth が四表を前提に動くので置く。
+/// モデル名と列名の規約は User と同じ。
 model Verification {
   id         String   @id
   identifier String
