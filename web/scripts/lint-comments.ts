@@ -65,6 +65,33 @@ type CommentLine = {
 const DEFAULT_TARGETS = ["src", "scripts", "tests"];
 
 /**
+ * コメントに書かない語と、代わりに書く語。
+ * 語はリポジトリごとに変わるが、規則そのものは変わらない。
+ *
+ * 比喩と個人語彙は書き手には一意でも、このリポジトリの md を読んでいない読者には辞書が無い。
+ * 語の正は `.claude/rules/coding.md`「コメント」節で、ここはその一覧を機械が読める形へ写したもの。
+ */
+const BANNED_WORDS: ReadonlyArray<{ word: string; instead: string }> = [
+  { word: "引く", instead: "取得する / 検索する" },
+  { word: "落とす", instead: "throw する / 削除する / 拒否する" },
+  { word: "倒す", instead: "既定値にする / フォールバックする" },
+  { word: "畳む", instead: "まとめる / 変換する / 閉じる" },
+  { word: "流す", instead: "適用する / デプロイする / 実行する" },
+  { word: "弾く", instead: "拒否する" },
+  { word: "握る", instead: "握りつぶす" },
+  { word: "掛ける", instead: "設定する" },
+  { word: "口", instead: "エントリポイント" },
+  { word: "関門", instead: "検証" },
+  { word: "印", instead: "フラグ" },
+  { word: "登録簿", instead: "レジストリ" },
+  { word: "受け皿", instead: "既定の行" },
+  { word: "素通し", instead: "検証なしで通す" },
+  { word: "領分", instead: "担当" },
+  { word: "器", instead: "リポジトリ / アプリ" },
+  { word: "綴り", instead: "名前" },
+];
+
+/**
  * 検査の対象にする拡張子。
  * ここに無い拡張子は、ディレクトリを名指しで渡されても集めない。
  */
@@ -108,6 +135,14 @@ const LIST_MARKER = /^(?:[-*・→|]|\d+[.)])/;
 const CODE_FENCE = /^`{3}/;
 
 /**
+ * 行内のコード片。
+ * バッククォートで囲った範囲を指す。
+ *
+ * 識別子と型はコードであって散文ではないので、禁止語の判定から外す。
+ */
+const INLINE_CODE = /`[^`]*`/g;
+
+/**
  * 括弧の始まり。
  * 閉じるまで文は終わっていないので、内側の句点は文の切れ目に数えない。
  */
@@ -143,6 +178,7 @@ export function lintSource(fileName: string, text: string): Violation[] {
     ...checkJsDocTypeAnnotations(source, comments),
     ...checkSentenceEndLineBreaks(source, comments),
     ...checkOneSentencePerLine(source, comments),
+    ...checkBannedWords(source, comments),
   ];
 }
 
@@ -315,6 +351,40 @@ function checkOneSentencePerLine(
           "1 行に 2 文以上ある。句点で割る。一文一行なら、一文直したときの diff が 1 行で済み、レビューで「この文」を指せる",
         severity: "error",
       });
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * 規約が禁じた語をコメントが使っていないかを見る。
+ *
+ * 判定は語の部分一致で、活用も前後の文字も見ない。
+ * `印` が `印字` に当たるような誤検出は、実例を見てから語を減らすか絞るかを決める。
+ */
+function checkBannedWords(
+  source: ts.SourceFile,
+  comments: CommentRange[],
+): Violation[] {
+  const violations: Violation[] = [];
+
+  for (const block of toCommentBlocks(source, comments)) {
+    for (const line of block) {
+      const prose = line.text.replace(INLINE_CODE, "");
+
+      for (const banned of BANNED_WORDS) {
+        if (!prose.includes(banned.word)) {
+          continue;
+        }
+
+        violations.push({
+          line: line.line,
+          rule: "comments/noBannedWord",
+          message: `「${banned.word}」は使わない。代わりに ${banned.instead}`,
+          severity: "warn",
+        });
+      }
     }
   }
 

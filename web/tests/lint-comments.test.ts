@@ -448,7 +448,7 @@ export function f() {}
   });
 
   it("1 行完結の JSDoc も見る", () => {
-    const source = `${header}/** 文字列を絞り込む。DB へ渡す前の関門。 */
+    const source = `${header}/** 文字列を絞り込む。DB へ渡す前に検証する。 */
 export function f() {}
 `;
 
@@ -475,7 +475,7 @@ export function f() {}
 
   it("英文の終止符では割らせない", () => {
     const source = `${header}/**
- * 入口は lintSource。CLI は node scripts/lint-comments.mts [path...]。
+ * エントリポイントは lintSource。CLI は node scripts/lint-comments.mts [path...]。
  */
 export function f() {}
 `;
@@ -496,5 +496,37 @@ export const a = 1;
 `;
 
     expect(lintSource("sample.ts", source)[0].line).toBe(4);
+  });
+});
+
+describe("禁止語", () => {
+  const header = "/**\n * 冒頭。\n */\n\n";
+
+  it("コメント本文の禁止語を warn で報告する", () => {
+    const source = `${header}/**
+ * 未設定なら落とす。
+ */
+export function f() {}
+`;
+
+    expect(lintSource("sample.ts", source)).toEqual([
+      {
+        line: 6,
+        rule: "comments/noBannedWord",
+        message:
+          "「落とす」は使わない。代わりに throw する / 削除する / 拒否する",
+        severity: "warn",
+      },
+    ]);
+  });
+
+  it("コード片と文字列リテラルの中では報告しない", () => {
+    const source = `${header}/**
+ * \`落とす\` という語をコード片として書く。
+ */
+export const a = "落とす";
+`;
+
+    expect(rulesOf(source)).toEqual([]);
   });
 });
