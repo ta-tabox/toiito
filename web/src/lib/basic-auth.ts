@@ -49,7 +49,7 @@ export function readBasicAuthCredentials(
 
   if (env.NODE_ENV === "production") {
     throw new Error(
-      "本番では TOIITO_BASIC_AUTH_USER と TOIITO_BASIC_AUTH_PASSWORD が要る（DEPLOY.md「アクセス制限」）",
+      "本番では TOIITO_BASIC_AUTH_USER と TOIITO_BASIC_AUTH_PASSWORD が要る（docs/DEPLOY.md「アクセス制限」）",
     );
   }
 

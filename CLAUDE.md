@@ -2,18 +2,18 @@
 
 目的: 問いを仕込んで発酵させる Web アプリ「トイット（Toiito）」を設計・実装する。
 AI をスピードアップではなくスローダウン（自分の問いを深め、安易な答えに逃げない）のために使うという問題意識の具体化。
-全体像は `VISION.md`（立ち上げ時に意味構築した正）。
-見た目と使用感の正は `DESIGN.md`（色・書体・余白・状態の見せ方・残す摩擦）。
+全体像は `docs/VISION.md`（立ち上げ時に意味構築した正）。
+見た目と使用感は、規則の正が `.claude/rules/design.md`、値と現況の正が `docs/DESIGN.md`（色・書体・余白・状態の見せ方・残す摩擦）。
 完了条件: MVP（問い投入 → 二視点AIとの対話 → キーワードメモ → メモからのセッション逆引き、の一連）が動き、自分の問いで実際に常用できている状態。
 このプロジェクトは有期で、完了条件を満たしたら**終わる**。
 
 ## 正はどこにあるか
-**作業単位と状態の正は GitHub Issues**、順序と横断規約の正は `ROADMAP.md`、決定の正は `docs/adr/`。
+**作業単位と状態の正は GitHub Issues**、順序と横断規約の正は `docs/ROADMAP.md`、決定の正は `docs/adr/`。
 **この三つの外に申し送りの層を持たない**（ADR-0023。手で保守する写しは状態を抱えて腐るため）。
 続きは open の issue から拾う。
 現在地の一枚が要るときは、写しを保守するのでなく三つから取り直して作る。
 
-## 開発ハーネス（本文は `HARNESS.md`）
+## 開発ハーネス（本文は `docs/HARNESS.md`）
 ローカル Postgres を立ててから作業する（ルートで `docker compose up -d`。接続は `web/.env.local` に `DATABASE_URL` と `DIRECT_URL` の二本）。
 変更 → `web/` で `pnpm check`（型→lint→テスト→ビルド）→ 緑ならコミット。
 パッケージマネージャは pnpm。
@@ -24,8 +24,8 @@ lint/format は **Biome 一本**（`biome.json` が正。ESLint/Prettier は使�
 AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自動テストで叩かない）。
 ロジックは lib 層へ寄せ、「lib 関数 + テスト → UI 配線」の順で作る。
 
-コーディング規約は `.claude/rules/`（`writing.md` は常時、`coding.md` と `languages/typescript.md` は該当ファイルの Read で読み込まれる）。
-隣接ファイルを読まずに新規ファイルを書くときは、先に `.claude/rules/coding.md` と `.claude/rules/languages/typescript.md` を Read する。
+コーディング規約は `.claude/rules/`（`writing.md` は常時、`coding.md`・`languages/typescript.md`・`design.md` は該当ファイルの Read で読み込まれる）。
+隣接ファイルを読まずに新規ファイルを書くときは、先に `.claude/rules/coding.md` と `.claude/rules/languages/typescript.md` を Read する（画面へ触るなら `.claude/rules/design.md` も）。
 **コードを書く前に**、次の二つを開く（レビューやリファクタに限らない。実装・テスト追加・バグ修正でも同じ）。
 
 - skill `coding-standards` — 判断基準集。言語固有の作法（JSDoc・import・空行）は `.claude/rules/languages/` にしかなく、skill 本体には載っていない
@@ -63,7 +63,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 コードの読み手は差分から意図を復元するレビュアーなので、コミットは時間でなく関心で区切る。
 粒度の正は `.claude/rules/writing.md`「コミットの粒度」。
 - **author は人間名義**。
-  Claude も `-c` を付けず素の `git commit` を使う（手元は local config に焼いてある。リモートはクラウド環境の `GIT_AUTHOR_*` が渡し、無ければセッション起動フックが止まる。置き場の規則は `HARNESS.md`「設定の置き場」）。
+  Claude も `-c` を付けず素の `git commit` を使う（手元は local config に焼いてある。リモートはクラウド環境の `GIT_AUTHOR_*` が渡し、無ければセッション起動フックが止まる。置き場の規則は `docs/HARNESS.md`「設定の置き場」）。
   author が答えるのは責任を誰が担ったかの一点で、それはどこで書いても動かない。
 - **リモートでは committer だけ Claude 名義**（コンテナの global config が既にその値なので、こちらから渡すものは無い）。
   コンテナは署名を強制し、その鍵は `noreply@anthropic.com` に紐づいているので、committer を人間名義にすると GitHub が Unverified を出す。

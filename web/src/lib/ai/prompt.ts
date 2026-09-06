@@ -13,7 +13,7 @@ export type Transcript = { speaker: Speaker; body: string }[];
 
 /**
  * 原型と現在の形を両方渡す。
- * 片方だけでは、問いが移った先を見失うか、原型からのずれを検出できないかのどちらかになる（ARCHITECTURE.md「原型と現在の形」）。
+ * 片方だけでは、問いが移った先を見失うか、原型からのずれを検出できないかのどちらかになる（docs/ARCHITECTURE.md「原型と現在の形」）。
  */
 export type QuestionRef = { body: string; current_form?: string | null };
 
