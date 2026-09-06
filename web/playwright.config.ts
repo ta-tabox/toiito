@@ -48,8 +48,8 @@ const SERVER_ENV = {
   DIRECT_URL: E2E_DATABASE_URL,
   TOIITO_FAKE_AI: "1",
 
-  // 認証はまだ無いので、現在の利用者はシードの一人目に固定する（docs/adr/0019-auth-better-auth.md 決定 7）。
-  TOIITO_FAKE_USER_EMAIL: SEED_USERS[0].email,
+  // ログインはまだ無いので、現在の利用者はシードの一人目に固定する（docs/adr/0027-ownership-before-auth.md 決定 5）。
+  TOIITO_SINGLE_USER_EMAIL: SEED_USERS[0].email,
 };
 
 export default defineConfig({
