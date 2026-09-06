@@ -22,10 +22,6 @@
 5. **「決定」と読めない事柄は ADR にしない。**
    未決の論点は issue、順序は `docs/ROADMAP.md`、現況は `docs/ARCHITECTURE.md`
 
-規約4が本文を書き換えさせないので、**0027 までのレコードは `VISION.md`・`ARCHITECTURE.md`・`HARNESS.md`・`ROADMAP.md`・`DEPLOY.md`・`DESIGN.md` をルート直下のものとして指している**。
-6 本は `docs/` へ移したので、読むときはそちらへ読み替える。
-`DESIGN.md` はさらに規範と記述へ分かれ、守らせる規則は `.claude/rules/design.md` が持つ。
-
 `関係する ADR` に入れるのは ADR 番号だけ。
 他の文書を指したいときは本文中で参照する（欄の意味を一意に保つと、supersede の連鎖を
 機械的に辿れる）。
@@ -97,12 +93,17 @@ ADR にしない側へ倒す。
 | [0024](0024-env-file-scope.md) | `.env*` を Claude が触ってよい範囲を、読みと書きで別々に引く | 2026-09-02 | 採用 |
 | [0026](0026-defer-streaming.md) | AI 応答のストリーミング化を、残す摩擦の側に立って見送る | 2026-09-03 | 採用 |
 | [0027](0027-rules-under-claude.md) | コーディング規約は `.claude/rules/` に置き、`CODING.md` はルートから消す | 2026-09-06 | 採用 |
+| [0028](0028-docs-under-docs.md) | 器自身の文書を `docs/` へ寄せ、`DESIGN.md` を規範と記述に分ける | 2026-09-06 | 採用 |
 
 決定日は元の決定日で、番号順とは揃わない。
 0003〜0006 は #92 でこの受け皿を作る前の散文から後から割ったものなので、`docs/adr/` の新設（0001）より前の日付を持つ。
 
 **0026 までのレコードは `CODING.md` をルートの一枚として指している。**
 [0027](0027-rules-under-claude.md) で `.claude/rules/` へ分けたので、それより前のレコードにある `CODING.md` は `coding.md`（コード）か `writing.md`（文章・コミット）と読む。
+
+**0027 までのレコードは `VISION.md`・`ARCHITECTURE.md`・`HARNESS.md`・`ROADMAP.md`・`DEPLOY.md`・`DESIGN.md` をルート直下の一枚として指している。**
+[0028](0028-docs-under-docs.md) で `docs/` へ寄せたので、それより前のレコードにある 6 本は `docs/` 直下と読む。
+`DESIGN.md` はさらに規範と記述へ分かれ、守らせる規則は `.claude/rules/design.md` が持つ。
 
 ## ADR にしないもの
 
