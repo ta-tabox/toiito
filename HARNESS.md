@@ -159,15 +159,11 @@ vitest の `toiito_test` とは分ける。
 どちらも走る前に中身を作り直すので、同じ DB を向けると互いの行を踏む。
 名前が `_e2e` で終わらなければ作り直しは止まる。
 
-**E2E のデータベースは `toiito_e2e` 一本で、worktree ごとに分けない。**
-分けると、worktree が消えた後に誰も落とさないデータベースが残る（#177 E2E の DB を共有一本に決着させる）。
-
-**`TOIITO_E2E_DATABASE_URL` が変えてよいのはサーバーの側だけ**（CI や別ポートの Postgres へ向ける）。
-データベース名が `toiito_e2e` でない上書きは `web/e2e/setup/e2e-database-url.ts` が止める。
-
-**二つの worktree で同時には走らせない。**
-`drop database` に `with (force)` を付けていないので、他の接続があれば後発が作り直しに失敗して止まる。
-誰も走っていないのに止まるなら前の走りが残した接続なので、`docker compose restart postgres` で落とす。
+| 決めていること | 破ると |
+|---|---|
+| データベースは `toiito_e2e` 一本で、worktree ごとに分けない | worktree が消えた後、誰も落とさないデータベースが残る（#177 E2E の DB を共有一本に決着させる） |
+| `TOIITO_E2E_DATABASE_URL` で変えてよいのはサーバーの側だけ（CI や別ポートの Postgres へ向ける） | データベース名が `toiito_e2e` でない上書きは、走り出す前に止まる |
+| 二つの worktree で同時には走らせない | 後発が作り直しに失敗して止まる。戻し方はそのとき出るエラーが書いている |
 
 作り直しは globalSetup でなく webServer の command に置く。
 Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、逆にすると dev サーバーが接続を張った後で足元の DB を落とすことになる。
