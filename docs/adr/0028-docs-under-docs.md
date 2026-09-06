@@ -47,8 +47,9 @@
 - ルート直下の md は `README.md`・`CLAUDE.md`・`CLAUDE.local.md` の 3 本になる
 - 0027 までのレコードが名指す 6 本は `docs/` 直下と読み替える（規約4により本文は書き換えず、`docs/adr/README.md` が読み替えを持つ）
 - `.claude/rules/` は `writing.md`・`coding.md`・`design.md`・`languages/typescript.md` の 4 本になる
-- `.claude/rules/design.md` は 136 行で、issue #181（器自身の文書を docs/ へ寄せる）が置いた 100 行の目安を超えた。
-  値を一つも持たず、占めているのが規則とその根拠だけなので、`docs/` へ戻せる説明が残っていない
+- `.claude/rules/design.md` は 95 行で、issue #181（器自身の文書を docs/ へ寄せる）が置いた 100 行の目安に収まる。
+  初稿は 136 行あり、超えた分を「値の説明を docs へ戻す」で削ろうとしたが値は一つも持っていなかった。
+  太らせていたのは画面に当たらない規律の同乗で、VISION の設計原理を画面の言葉へ翻訳した「原則」節と、体験改善の要求全般に当てる「残す摩擦」の線引きの二つがそれに当たる
 - 適用済みの `web/prisma/migrations/20260816090000_init/migration.sql` だけは `HARNESS.md` の名指しを残す。
   Prisma が checksum で本文を見張っており、書き換えると流し直しが止まる
 
@@ -59,5 +60,6 @@
 
 `.claude/rules/design.md` だけで UI を書けず、値を見に `docs/DESIGN.md` を開く回数が多いとき。
 境界が規範の側へ寄りすぎているので、閾値を持つ規則（16px・1.9・8px の倍数）ごと `docs/` へ戻し、rules は禁止則だけにする。
+行数で測るなら見るのは値の混入ではなく、画面に当たらない規律が混じっていないかになる。
 
 Claude Code が `.claude/rules/` の `paths` を廃止したとき（0027 の覆る条件と共通）。
