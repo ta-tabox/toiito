@@ -65,7 +65,7 @@ jobs:
       DATABASE_URL: postgresql://toiito:toiito@localhost:5433/toiito
       DIRECT_URL: postgresql://toiito:toiito@localhost:5433/toiito
       TOIITO_TEST_DATABASE_URL: postgresql://toiito:toiito@localhost:5433/toiito_test
-      # ここは無人で回る経路なので、実 Claude API を叩かせない（HARNESS.md「意図的にやらないこと」）。
+      # ここは無人で回る経路なので、実 Claude API を叩かせない（docs/HARNESS.md「意図的にやらないこと」）。
       TOIITO_FAKE_AI: "1"
 
     steps:

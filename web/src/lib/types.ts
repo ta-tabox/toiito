@@ -1,7 +1,7 @@
 /**
  * アプリ全体で共有するドメイン型。
  * 永続化の実装（Prisma）にも UI にも依存しない。
- * 意味の正は ARCHITECTURE.md「データモデル」。
+ * 意味の正は docs/ARCHITECTURE.md「データモデル」。
  *
  * db.ts と UI の境界はここ一枚。
  * Prisma の生成型はこの向こうへ出さない。
@@ -31,7 +31,7 @@ export type User = { id: OwnerId; email: string; name: string };
 
 /**
  * body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、current_form は対話の中で言い直された焦点。
- * 二つに分けている理由は ARCHITECTURE.md「原型と現在の形」。
+ * 二つに分けている理由は docs/ARCHITECTURE.md「原型と現在の形」。
  */
 export type Question = {
   id: string;

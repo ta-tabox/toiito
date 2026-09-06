@@ -3,10 +3,10 @@
 本番へ出す手順。
 秘密の置き場・初回のセットアップ・デプロイと切り戻しを持つ。
 
-何をもって「動いた」と言うかは `HARNESS.md`、なぜこの構成なのかは `docs/adr/` が持つ。
+何をもって「動いた」と言うかは `HARNESS.md`、なぜこの構成なのかは `adr/` が持つ。
 ここは現況の手順だけに閉じる。
 
-アプリは Vercel（Hobby）、DB は Neon の無料プラン（選定の経緯は `docs/adr/0002-production-runtime.md`）。
+アプリは Vercel（Hobby）、DB は Neon の無料プラン（選定の経緯は `adr/0002-production-runtime.md`）。
 Vercel の Root Directory は `web/`。
 main へ入れば Vercel が本番を差し替え、同じ push で `.github/workflows/migrate.yml` が migration を流す。
 手で叩くものは無い。
@@ -27,15 +27,15 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 | `PRODUCTION_DIRECT_URL` | GitHub の Settings → Secrets and variables → Actions → **Repository secrets** | `DIRECT_URL` と同じ値。migration を流す workflow だけが読む |
 
 `pg` v9 で `sslmode=require` が libpq の意味へ変わって証明書を検証しなくなるので、**接続の 3 本は `sslmode=verify-full` で終える**。
-Neon は直結・プーラーのどちらのホストでもこの綴りを通す（2026-08-29 に `pg` 8.23.0 で実測）。
-ADR を立てていない理由は `docs/adr/README.md`「ADR にしないもの」。
+Neon は直結・プーラーのどちらのホストでもこのパラメータを通す（2026-08-29 に `pg` 8.23.0 で実測）。
+ADR を立てていない理由は `adr/README.md`「ADR にしないもの」。
 
-ローカルと CI の接続文字列はこの綴りを持たない（`localhost` へ TLS を張っていないので関係が無い）。
+ローカルと CI の接続文字列は `sslmode` を持たない（`localhost` へ TLS を張っていないので関係が無い）。
 
 `TOIITO_ANTHROPIC_MODEL` は任意（既定 `claude-sonnet-5`）。
 `TOIITO_FAKE_AI` は**本番に入れない**。
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
-`TOIITO_SINGLE_USER_EMAIL` は**本番にも入れる**（`docs/adr/0028-ownership-before-auth.md` 決定 5）。
+`TOIITO_SINGLE_USER_EMAIL` は**本番にも入れる**（`adr/0031-ownership-before-auth.md` 決定 5）。
 ログインが入るまで、本番のユーザーはこの変数が名指しする一人に固定される。
 **この間、外周を守っているのは Basic 認証だけである**——外す順序は下の「アクセス制限」。
 
@@ -77,15 +77,15 @@ SQL
 開発用の問いまで入れるうえ、`NODE_ENV=production` で止まる。
 
 **email はログインに使う Google アカウントのものにしておく**。
-#68（ログイン（Google OAuth）とリソースの所有権）が入ると Better Auth がユーザーの行を作るが、自動リンクは既定で有効にしない決定なので（`docs/adr/0029-auth-better-auth.md` 決定 6）、**email が違うと、いま書いた問いがログイン後の自分から見えなくなる**。
+#68（ログイン（Google OAuth）とリソースの所有権）が入ると Better Auth がユーザーの行を作るが、自動リンクは既定で有効にしない決定なので（`adr/0029-auth-better-auth.md` 決定 6）、**email が違うと、いま書いた問いがログイン後の自分から見えなくなる**。
 揃えておけば、リンクされなかった場合でも `questions.user_id` の付け替え一回で済む。
 
 ## 初回のセットアップ
 
 1. **Neon 側で自分の組織を切り**、その下に本番プロジェクトを作って接続文字列を 2 本控える。
-   Vercel Marketplace の Neon 統合は使わない（`docs/adr/0012-neon-outside-vercel-marketplace.md`）。
+   Vercel Marketplace の Neon 統合は使わない（`adr/0012-neon-outside-vercel-marketplace.md`）。
    Marketplace 経由で作ると Neon プロジェクトが Vercel 所有の組織の配下に入り、そこから自分のアカウントへ移すセルフサービスの経路が無い。
-   **Postgres は 18 を選ぶ**（ローカルと CI も 18。`docs/adr/0009-postgres-18.md`）。
+   **Postgres は 18 を選ぶ**（ローカルと CI も 18。`adr/0009-postgres-18.md`）。
    Neon はメジャーの in-place upgrade を持たず、後から変えるにはプロジェクトごと作り直すことになる。
    Region は **AWS US East 1 (N. Virginia)** で、Vercel の関数リージョンの既定（`iad1`）と揃える。
    揃っていないと DB の往復が毎回大陸をまたぐ。
@@ -120,7 +120,7 @@ corepack は使わない（`CLAUDE.md`「開発ハーネス」）。
 `mise.toml` を上げたら同じ値へ揃える。
 揃え忘れると本番だけ古い pnpm で install することになり、`web/pnpm-workspace.yaml` の `allowBuilds` が効かずに `prisma generate` が engine 不在で落ちうる。
 
-自動検出に任せない理由と、採らなかった案は `docs/adr/0007-production-pnpm-version.md`。
+自動検出に任せない理由と、採らなかった案は `adr/0007-production-pnpm-version.md`。
 
 ## migration
 
@@ -136,7 +136,7 @@ Vercel のビルドとは競走するが、`migrate deploy` は秒・`next build
 2. 旧コードが古い列を使わなくなる変更を、次の PR で入れる
 3. 古い列を落とす migration は、さらにその後の PR で入れる
 
-決定の経緯と、この規律が守れなかったときの倒し先は `docs/adr/0008-production-migration-path.md`。
+決定の経緯と、この規律が守れなかったときの倒し先は `adr/0008-production-migration-path.md`。
 
 **手元から流す口もある**（切り戻しの後の再実行や、自動経路が落ちたとき）。
 
@@ -171,7 +171,7 @@ PR ごとの Preview デプロイにも環境変数を 6 本入れる（Vercel �
 欠けていれば全ページが落ち、名指しした email のユーザーが Preview の DB に居なくても落ちる。
 Preview と本番で値が違ってよい（Preview はシードの一人目、本番は「唯一のユーザーの行を入れる」で用意した行）。
 
-決定の経緯と採らなかった案は `docs/adr/0015-preview-neon-branch.md`。
+決定の経緯と採らなかった案は `adr/0015-preview-neon-branch.md`。
 
 ### ブランチを切る
 
@@ -235,7 +235,7 @@ curl -s -b jar -D - -o /dev/null 'https://<preview-url>/no-such-page'
 ```
 
 `WWW-Authenticate: Basic realm="toiito"` を伴う 401 が返ればアプリ側の制限に届いている。
-この realm は `web/src/proxy.ts` にしかない綴りなので、どちらの層が答えたかがこれで割れる。
+この realm は `web/src/proxy.ts` にしかない文字列なので、どちらの層が答えたかがこれで割れる。
 アプリのルートに当たらない経路を叩くのは、制限が routing より前に掛かっていることも同時に見るため。
 
 **向いている DB は、Preview のランタイムログで見る**。
@@ -268,7 +268,7 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 `web/src/proxy.ts` が全リクエストを見て、`TOIITO_BASIC_AUTH_USER` と `TOIITO_BASIC_AUTH_PASSWORD` に一致しなければ 401 を返す。
 
 **本番で二本が欠けていれば、リクエストを捌く前に落ちる**。
-掛けたつもりの制限が掛かっていない状態を作らないための設計で、経緯は `docs/adr/0013-production-basic-auth.md`。
+掛けたつもりの制限が掛かっていない状態を作らないための設計で、経緯は `adr/0013-production-basic-auth.md`。
 
 **ホスティング側のアクセス制限は本番に効かない**（2026-08-29 に実測）。
 Hobby で選べる Vercel Authentication の Standard Protection は、API 上の名前が `prod_deployment_urls_and_all_previews` で、守るのは production の**デプロイ URL**（`<project>-<hash>-<team>.vercel.app`）と Preview だけである。
@@ -279,7 +279,7 @@ production の domain（`<project>.vercel.app`）は素通しになる。
 **Vercel Authentication は無効化しない**。
 デプロイ URL と Preview はあちらが守り続ける。
 
-**Basic 認証を外す順序は決めてある**（`docs/adr/0028-ownership-before-auth.md` 決定 5）。
+**Basic 認証を外す順序は決めてある**（`adr/0031-ownership-before-auth.md` 決定 5）。
 
 1. #68 でログインを入れる。この時点では Basic 認証を残したままなので、ログイン画面へ辿り着くのに Basic を一度通る（二重になる）
 2. 本番へ出して、ログインと所有権が実際に動くことを確かめる
@@ -310,7 +310,7 @@ curl -s -o /dev/null -w '%{http_code}\n' https://<project>.vercel.app/
 独自ドメインは当てていない。
 `<project>.vercel.app` のまま使い、当てるのは #68 が入るか Hobby から動かすときにする。
 アクセス制限はアプリ側にあるので、当てても保護は付いてくる。
-Hobby は非商用限定なので、他人へ開く段では実行環境ごと決め直すことになる（`docs/adr/0002-production-runtime.md`「覆る条件」）。
+Hobby は非商用限定なので、他人へ開く段では実行環境ごと決め直すことになる（`adr/0002-production-runtime.md`「覆る条件」）。
 
 ## 引き受けている非対称
 
@@ -329,7 +329,7 @@ DB 側の枠の問題として別に立てる条件は満たさなかったの�
 Vercel Hobby の関数実行時間の上限は 300 秒で、変更できない。
 **一往復の実測は 15〜27 秒**（2026-08-29・実キー・本番で 2 回）。
 上限の 5〜9% なので、当面ここが効いてくることは無い。
-近づいたら実行環境を決め直す（`docs/adr/0002-production-runtime.md`「覆る条件」）。
+近づいたら実行環境を決め直す（`adr/0002-production-runtime.md`「覆る条件」）。
 
 内訳は上の 10 秒と合わせて読める。
 **AI の生成が 14〜17 秒、アイドル後の立ち上がりが約 10 秒**。

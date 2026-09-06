@@ -2,7 +2,7 @@
  * L4（ブラウザ実挙動）の設定。
  *
  * 見るのは `e2e/` の spec だけで、L0〜L3 は `pnpm check` の側が持つ。
- * AI 呼び出しはフェイクモードに固定する（HARNESS.md「AI フェイクモード」）。
+ * AI 呼び出しはフェイクモードに固定する（docs/HARNESS.md「AI フェイクモード」）。
  * 実 API を自動テストで叩かない。
  *
  * 接続先とサーバーは開発用から三重に離す。
@@ -15,7 +15,7 @@
  *
  * **この層は Vercel のランタイム差を再現しない**。
  * next dev も next start も Node で走るので、Edge でだけ環境変数が読めない類の失敗はここに出ない。
- * 本番そのものを叩く確認は `DEPLOY.md`「アクセス制限」が持つ。
+ * 本番そのものを叩く確認は `docs/DEPLOY.md`「アクセス制限」が持つ。
  */
 
 import { BASIC_AUTH } from "@e2e/setup/basic-auth-credentials";
@@ -48,7 +48,7 @@ const SERVER_ENV = {
   DIRECT_URL: E2E_DATABASE_URL,
   TOIITO_FAKE_AI: "1",
 
-  // ログインはまだ無いので、現在の利用者はシードの一人目に固定する（docs/adr/0028-ownership-before-auth.md 決定 5）。
+  // ログインはまだ無いので、現在の利用者はシードの一人目に固定する（docs/adr/0031-ownership-before-auth.md 決定 5）。
   TOIITO_SINGLE_USER_EMAIL: SEED_USERS[0].email,
 };
 

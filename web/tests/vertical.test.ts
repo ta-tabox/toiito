@@ -12,7 +12,7 @@ import * as db from "@/lib/db";
 import { loadPersona, type PersonaId } from "@/lib/personas";
 import type { OwnerId } from "@/lib/types";
 
-/** 実 API を叩かないためのプロバイダ（HARNESS.md「実 API を自動テストで叩かない」）。 */
+/** 実 API を叩かないためのプロバイダ（docs/HARNESS.md「実 API を自動テストで叩かない」）。 */
 const FAKE_PROVIDER = new AnthropicProvider({
   model: ANTHROPIC_DEFAULTS.model,
   maxTokens: ANTHROPIC_DEFAULTS.maxTokens,

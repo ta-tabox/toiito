@@ -1,5 +1,5 @@
 /**
- * 永続化スキーマの正。意味（なぜこの形か）の正は ARCHITECTURE.md「データモデル」。
+ * 永続化スキーマの正。意味（なぜこの形か）の正は docs/ARCHITECTURE.md「データモデル」。
  *
  * ファイル全体に効く約束は二つだけで、残りは各宣言のコメントが持つ。
  *
@@ -28,7 +28,7 @@ datasource db {
   provider = "postgresql"
 }
 
-/// 問いの状態。7 値である理由と各値の意味は ARCHITECTURE.md「問いの状態機械」。
+/// 問いの状態。7 値である理由と各値の意味は docs/ARCHITECTURE.md「問いの状態機械」。
 ///
 /// 値は比喩を持たない一般語で持ち、比喩は UI のラベルだけが持つ（`docs/adr/0017-status-value-set.md`）。
 /// 比喩は選び直しうるが enum の変更は本番の DB を動かすので、値の側へ比喩を持ち込まない。
@@ -88,7 +88,7 @@ model Question {
 /// 問いに何度戻ったかが読み返せるように、過去のセッションは畳まれず、堆積したまま残る。
 ///
 /// モデル名だけが `Dialogue` を冠する。
-/// Better Auth のログインセッションが `Session` を名乗り、Prisma のモデル名は一意でなければならないため（`docs/adr/0028-ownership-before-auth.md`）。
+/// Better Auth のログインセッションが `Session` を名乗り、Prisma のモデル名は一意でなければならないため（`docs/adr/0031-ownership-before-auth.md`）。
 /// 表・列・ドメイン型（`types.ts` の `Session`）はどれも動いていない。
 model DialogueSession {
   id          String   @id @default(uuid(4)) @db.Uuid
@@ -155,7 +155,7 @@ model Memo {
 }
 
 /// メモ間のリンキング辺。MVP では書き込まない（テーブルだけ切っておく）。
-/// 実装粒度（kind をキーワード一致にするか埋め込みにするか）は ARCHITECTURE.md の開いた問い。
+/// 実装粒度（kind をキーワード一致にするか埋め込みにするか）は docs/ARCHITECTURE.md の開いた問い。
 model MemoLink {
   id           String   @id @default(uuid(4)) @db.Uuid
   from_memo_id String   @db.Uuid
@@ -173,7 +173,7 @@ model MemoLink {
 ///
 /// モデル名と列名は Better Auth 1.7.2 が要求するまま（camelCase・型は既定）で、snake_case へ揃えない（`docs/adr/0029-auth-better-auth.md`）。
 /// 揃えると版が上がるたびに手で直すことになる。
-/// この四表を読むのは `db.ts` の二つの用途だけで、詰め替えが増えないことが据え置きの条件（`docs/adr/0028-ownership-before-auth.md`）。
+/// この四表を読むのは `db.ts` の二つの用途だけで、詰め替えが増えないことが据え置きの条件（`docs/adr/0031-ownership-before-auth.md`）。
 model User {
   id            String   @id
   name          String

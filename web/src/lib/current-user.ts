@@ -6,7 +6,7 @@
  * いまその判定は無く、引いたユーザーをそのまま返している。
  * 停止したユーザーを弾くような判定（#69（管理機能））が要るようになったとき、書き足す先はこの関数の中だけになる。
  *
- * ログインはまだ無く、ユーザーは環境変数が名指しする一人に固定される（`docs/adr/0028-ownership-before-auth.md` 決定 5）。
+ * ログインはまだ無く、ユーザーは環境変数が名指しする一人に固定される（`docs/adr/0031-ownership-before-auth.md` 決定 5）。
  * 本番でもそうなので、**外周を守っているのは `proxy.ts` の Basic 認証だけ**である。
  * Basic 認証を外すのは、#68（ログイン（Google OAuth）とリソースの所有権）で本物のログインを入れて本番で動作を確かめた後になる。
  * `better-auth` と将来の `@/lib/auth` を import してよいのはこのファイルだけで、それは biome の `noRestrictedImports` が見ている。
@@ -63,7 +63,7 @@ export const getCurrentUser = cache(async (): Promise<User> => {
 
   if (!user) {
     throw new Error(
-      `TOIITO_SINGLE_USER_EMAIL が名指しするユーザーが DB に居ない: ${email}。手元と Preview は pnpm seed、本番は DEPLOY.md「唯一のユーザーの行を入れる」の手順で用意する`,
+      `TOIITO_SINGLE_USER_EMAIL が名指しするユーザーが DB に居ない: ${email}。手元と Preview は pnpm seed、本番は docs/DEPLOY.md「唯一のユーザーの行を入れる」の手順で用意する`,
     );
   }
 

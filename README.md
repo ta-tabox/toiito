@@ -22,7 +22,7 @@ AI は答えを与えない。
 - **逆引き** — メモの一覧から、それが生まれた当時のセッションへ戻れる。
   対話は流れて消えるものではなく、堆積して振り返れるもの
 
-なぜ作るかの正は [VISION.md](VISION.md)。
+なぜ作るかの正は [docs/VISION.md](docs/VISION.md)。
 
 ## 現況
 
@@ -32,11 +32,11 @@ MVP の縦一本——問い投入 → 二視点 AI との対話 → キーワ�
 **他人が試せる URL は無い**。
 本番は Vercel に立っているが（[ADR-0002](docs/adr/0002-production-runtime.md)）、作者だけが通れるようアクセスを制限してある（[ADR-0013](docs/adr/0013-production-basic-auth.md)）。
 自分専用の道具なので、当面その形は変えない。
-出す手順は [DEPLOY.md](DEPLOY.md)。
+出す手順は [docs/DEPLOY.md](docs/DEPLOY.md)。
 
 残っているのは作者自身が常用できるかの判定で、それが済むまで機能を足さない。
 
-どの順で何を作るかは [ROADMAP.md](ROADMAP.md)、いま何に着手しているかは GitHub Issues が持つ。
+どの順で何を作るかは [docs/ROADMAP.md](docs/ROADMAP.md)、いま何に着手しているかは GitHub Issues が持つ。
 
 ## 技術スタック
 
@@ -45,19 +45,20 @@ Next.js (App Router) + TypeScript。
 二体 AI の対話生成は Claude API を Server Actions からのみ叩く。
 ツールチェーンは mise + pnpm + Biome、テストは Vitest、E2E は Playwright。
 
-確定事項とそれぞれの禁止則は [ARCHITECTURE.md](ARCHITECTURE.md)「技術スタック（確定事項）」が持つ。
+確定事項とそれぞれの禁止則は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)「技術スタック（確定事項）」が持つ。
 
-開発の入口——起動・環境変数・判定の口の打ち方——は [web/README.md](web/README.md) と [HARNESS.md](HARNESS.md)。
+開発の入口——起動・環境変数・判定の口の打ち方——は [web/README.md](web/README.md) と [docs/HARNESS.md](docs/HARNESS.md)。
 
 ## 文書
 
-ルートの `ls` が目次として働くので、README は索引に徹して中身を複製しない。
+器自身の文書は `docs/` に集めてあり、その `ls` が目次として働くので、README は索引に徹して中身を複製しない。
 
-- [VISION.md](VISION.md) — なぜ作るか。問題意識・中心メタファー・設計原理
-- [ARCHITECTURE.md](ARCHITECTURE.md) — いまどうなっているか。技術スタック・データモデル・二体 AI のオーケストレーション
-- [ROADMAP.md](ROADMAP.md) — 作る順序と、その理由と、完了条件
-- [HARNESS.md](HARNESS.md) — 何をもって「動いた」と言うか。L0〜L5 の検証層
-- [DEPLOY.md](DEPLOY.md) — 本番へどう出すか。秘密の置き場・セットアップ・切り戻し
+- [docs/VISION.md](docs/VISION.md) — なぜ作るか。問題意識・中心メタファー・設計原理
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — いまどうなっているか。技術スタック・データモデル・二体 AI のオーケストレーション
+- [docs/DESIGN.md](docs/DESIGN.md) — どう見えて、どう触れるか。色・書体・余白・状態の見せ方・残す摩擦
+- [docs/ROADMAP.md](docs/ROADMAP.md) — 作る順序と、その理由と、完了条件
+- [docs/HARNESS.md](docs/HARNESS.md) — 何をもって「動いた」と言うか。L0〜L5 の検証層
+- [docs/DEPLOY.md](docs/DEPLOY.md) — 本番へどう出すか。秘密の置き場・セットアップ・切り戻し
 - [docs/adr/](docs/adr/) — なぜそう決めたか。1決定1レコードで追記のみ
 - [.claude/rules/](.claude/rules/) — コードと文書の書き方の規約（Claude Code が読み込む規範）
 
