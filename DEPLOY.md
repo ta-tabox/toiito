@@ -23,6 +23,7 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 | `ANTHROPIC_API_KEY` | 同上 | Claude API のキー |
 | `TOIITO_BASIC_AUTH_USER` | 同上 | Basic 認証の利用者名（任意の文字列） |
 | `TOIITO_BASIC_AUTH_PASSWORD` | 同上 | Basic 認証のパスワード |
+| `TOIITO_SINGLE_USER_EMAIL` | 同上 | ログインが入るまでの唯一の利用者の `user.email`。下の「唯一の利用者」も要る |
 | `PRODUCTION_DIRECT_URL` | GitHub の Settings → Secrets and variables → Actions → **Repository secrets** | `DIRECT_URL` と同じ値。migration を流す workflow だけが読む |
 
 `pg` v9 で `sslmode=require` が libpq の意味へ変わって証明書を検証しなくなるので、**接続の 3 本は `sslmode=verify-full` で終える**。
@@ -34,18 +35,31 @@ ADR を立てていない理由は `docs/adr/README.md`「ADR にしないもの
 `TOIITO_ANTHROPIC_MODEL` は任意（既定 `claude-sonnet-5`）。
 `TOIITO_FAKE_AI` は**本番に入れない**。
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
-`TOIITO_FAKE_USER_EMAIL` も**本番に入れない**。
-こちらは注意ではなく、入っているとモジュールの評価時に投げるので Production のビルドが落ちる（`docs/adr/0019-auth-better-auth.md` 決定 7）。
-Preview だけは `VERCEL_ENV` で除けてあるので、同じ変数を Preview へ入れても落ちない（`docs/adr/0027-ownership-before-auth.md` 決定 5）。
+`TOIITO_SINGLE_USER_EMAIL` は**本番にも入れる**（`docs/adr/0027-ownership-before-auth.md` 決定 5）。
+ログインが入るまで、本番の利用者はこの変数が名指しする一人に固定される。
+**この間、外周を守っているのは Basic 認証だけである**——外す順序は下の「アクセス制限」。
 
-**#68（ログイン（Google OAuth）とリソースの所有権）が入るまで、本番は動かない。**
-所有者を先にデータ層へ入れた回（`docs/adr/0027-ownership-before-auth.md` 決定 5）から、現在の利用者を決める手段が本番に無い。
-同じ回の migration が持ち主のいない既存の問いを消しているので、動いていたとしても中身は空である。
-引き受けた条件と、止められない事情ができたときの倒し先は 0024 の決定 5。
-
-**5 本とも Production に入れてから最初のビルドを回す**。
+**6 本とも Production に入れてから最初のビルドを回す**。
 `postinstall` の `prisma generate` は `prisma.config.ts` 経由で `DIRECT_URL` を即時解決するので、無いとインストール段階で exit 1 になる。
 要るのは解決できることだけで、接続は要らない（`prisma generate` は DB へ繋がない）。
+
+## 唯一の利用者
+
+`TOIITO_SINGLE_USER_EMAIL` が名指しする行が本番の `user` 表に無いと、全ページが落ちる。
+`pnpm seed` は開発用の問いまで入れるうえ `NODE_ENV=production` で止まるので、本番へは行を一つだけ入れる。
+
+```bash
+DIRECT_URL='<本番の直結>' pnpm exec prisma db execute --stdin <<'SQL'
+insert into "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
+values (gen_random_uuid()::text, '<表示名>', '<TOIITO_SINGLE_USER_EMAIL と同じ値>', false, now(), now());
+SQL
+```
+
+`updatedAt` に既定値が無いので、生の SQL では明示する（`@updatedAt` は Prisma 側の仕組みで、DB の DEFAULT ではない）。
+
+**email はログインに使う Google アカウントのものにしておく**。
+#68（ログイン（Google OAuth）とリソースの所有権）が入ると Better Auth が利用者の行を作るが、自動リンクは既定で有効にしない決定なので（`docs/adr/0019-auth-better-auth.md` 決定 6）、**綴りが違うと、いま書いた問いがログイン後の自分から見えなくなる**。
+揃えておけば、リンクされなかった場合でも `questions.user_id` の付け替え一回で済む。
 
 ## 初回のセットアップ
 
@@ -124,7 +138,7 @@ PR ごとの Preview デプロイにも環境変数を 6 本入れる（Vercel �
 | `DATABASE_URL` | `preview` ブランチのプーラー経由 |
 | `DIRECT_URL` | 同ブランチの直結 |
 | `TOIITO_FAKE_AI` | `1` |
-| `TOIITO_FAKE_USER_EMAIL` | `pnpm seed` が入れる一人目の email（`web/scripts/seed/users.ts`） |
+| `TOIITO_SINGLE_USER_EMAIL` | `pnpm seed` が入れる一人目の email（`web/scripts/seed/users.ts`） |
 | `TOIITO_BASIC_AUTH_USER` | Production と同じ値 |
 | `TOIITO_BASIC_AUTH_PASSWORD` | 同上 |
 
@@ -134,9 +148,9 @@ PR ごとの Preview デプロイにも環境変数を 6 本入れる（Vercel �
 欠けていると `proxy.ts` がモジュールの評価時に投げ、Preview の全リクエストが 500 になる。
 `next build` は proxy を実行しないのでビルドは通るため、**Vercel のチェックは緑のまま中身だけ壊れる**。
 
-`TOIITO_FAKE_USER_EMAIL` も同じ形で壊れる。
-欠けていれば全ページが落ち、指した email の利用者が Preview の DB に居なくても落ちる。
-**本番（Production）には入れない**——認証を丸ごと外す口なので、入っていると起動時に投げる（`docs/adr/0019-auth-better-auth.md` 決定 7）。
+`TOIITO_SINGLE_USER_EMAIL` も同じ形で壊れる。
+欠けていれば全ページが落ち、名指しした email の利用者が Preview の DB に居なくても落ちる。
+Preview と本番で値が違ってよい（Preview はシードの一人目、本番は「唯一の利用者」で入れた行）。
 
 決定の経緯と採らなかった案は `docs/adr/0015-preview-neon-branch.md`。
 
@@ -246,7 +260,15 @@ production の domain（`<project>.vercel.app`）は素通しになる。
 **Vercel Authentication は無効化しない**。
 デプロイ URL と Preview はあちらが守り続ける。
 
-#68 が入ったら Basic 認証ごと外す。
+**Basic 認証を外す順序は決めてある**（`docs/adr/0027-ownership-before-auth.md` 決定 5）。
+
+1. #68 でログインを入れる。この時点では Basic 認証を残したままなので、ログイン画面へ辿り着くのに Basic を一度通る（二重になる）
+2. 本番へ出して、ログインと所有権が実際に動くことを確かめる
+3. **確かめた後で** Basic 認証を外す（`proxy.ts` と `src/lib/basic-auth.ts` ごと）
+
+順序を守るのは運用の規律で、機械は止めない。
+**逆順にすると、ログインが動かないまま外周だけが外れる**——`TOIITO_SINGLE_USER_EMAIL` が名指しする一人として誰でも入れる状態になる。
+引き受けた条件（開発者が一人で、URL を公開していない）と、その条件が変わったときの倒し先は 0027 の決定 5。
 
 ### 効きの確認
 

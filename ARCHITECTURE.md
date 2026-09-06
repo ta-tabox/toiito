@@ -117,8 +117,8 @@ UI 側でやらない。
 
 **現在の利用者を返す口は `lib/current-user.ts` の `getCurrentUser` 一つ**で、RSC と Server Action はここを通ってから repo 関数を呼ぶ。
 戻り値の `id` には印（`OwnerId`）が付いており、repo 関数は所有者としてその型しか受け取らない。
-中身は当面フェイクで、`TOIITO_FAKE_USER_EMAIL` が指す固定の利用者を返す（本物のログインは #68（ログイン（Google OAuth）とリソースの所有権））。
-本番でこの環境変数が設定されていたら、モジュールの評価時に投げる。
+中身は `TOIITO_SINGLE_USER_EMAIL` が名指しする一人で、本番も同じである（本物のログインは #68（ログイン（Google OAuth）とリソースの所有権））。
+ログインが入るまで本番の外周を守るのは Basic 認証だけで、外す順序は `DEPLOY.md`「アクセス制限」が持つ。
 
 認証まわりの四表（`user` / `session` / `account` / `verification`）は Better Auth が持ち、綴りは生成されたままにする。
 `db.ts` が触るのは `user` の `id` / `email` / `name` の三つだけで、どれも詰め替えの要らない綴りなので、snake_case へ揃える利益が発生しない（`docs/adr/0027-ownership-before-auth.md`）。
