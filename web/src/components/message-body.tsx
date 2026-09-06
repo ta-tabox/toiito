@@ -29,7 +29,7 @@ import type { Memo, Message } from "@/lib/types";
 /**
  * メモが掛かっている区間の装飾。
  *
- * 面でなく線で出すのは、彩度を持つ面を人間の発話の一つに留めるため（docs/DESIGN.md「彩度の規律」）。
+ * 面でなく線で出すのは、彩度を持つ面を人間の発話の一つに留めるため（.claude/rules/design.md「彩度の規律」）。
  * 画面の中で最も強い色が、自分で置いた印になる。
  */
 const MARKED_STYLE =

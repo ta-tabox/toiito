@@ -24,6 +24,7 @@
 
 規約4が本文を書き換えさせないので、**0027 までのレコードは `VISION.md`・`ARCHITECTURE.md`・`HARNESS.md`・`ROADMAP.md`・`DEPLOY.md`・`DESIGN.md` をルート直下のものとして指している**。
 6 本は `docs/` へ移したので、読むときはそちらへ読み替える。
+`DESIGN.md` はさらに規範と記述へ分かれ、守らせる規則は `.claude/rules/design.md` が持つ。
 
 `関係する ADR` に入れるのは ADR 番号だけ。
 他の文書を指したいときは本文中で参照する（欄の意味を一意に保つと、supersede の連鎖を
