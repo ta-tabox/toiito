@@ -26,10 +26,10 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 | `PRODUCTION_DIRECT_URL` | GitHub の Settings → Secrets and variables → Actions → **Repository secrets** | `DIRECT_URL` と同じ値。migration を流す workflow だけが読む |
 
 `pg` v9 で `sslmode=require` が libpq の意味へ変わって証明書を検証しなくなるので、**接続の 3 本は `sslmode=verify-full` で終える**。
-Neon は直結・プーラーのどちらのホストでもこの綴りを通す（2026-08-29 に `pg` 8.23.0 で実測）。
+Neon は直結・プーラーのどちらのホストでもこのパラメータを通す（2026-08-29 に `pg` 8.23.0 で実測）。
 ADR を立てていない理由は `adr/README.md`「ADR にしないもの」。
 
-ローカルと CI の接続文字列はこの綴りを持たない（`localhost` へ TLS を張っていないので関係が無い）。
+ローカルと CI の接続文字列は `sslmode` を持たない（`localhost` へ TLS を張っていないので関係が無い）。
 
 `TOIITO_ANTHROPIC_MODEL` は任意（既定 `claude-sonnet-5`）。
 `TOIITO_FAKE_AI` は**本番に入れない**。
@@ -185,7 +185,7 @@ curl -s -b jar -D - -o /dev/null 'https://<preview-url>/no-such-page'
 ```
 
 `WWW-Authenticate: Basic realm="toiito"` を伴う 401 が返ればアプリ側の制限に届いている。
-この realm は `web/src/proxy.ts` にしかない綴りなので、どちらの層が答えたかがこれで割れる。
+この realm は `web/src/proxy.ts` にしかない文字列なので、どちらの層が答えたかがこれで割れる。
 アプリのルートに当たらない経路を叩くのは、制限が routing より前に掛かっていることも同時に見るため。
 
 **向いている DB は、Preview のランタイムログで見る**。

@@ -79,7 +79,7 @@ paths:
 - 共通部品は `web/src/components/ui/` へ切る
 - UI ライブラリを入れない。
   既定が快適な SaaS の見た目であるものは、離れるより寄せる方が楽になる
-- 同じ実装が 3 箇所に出たら切る。
+- 同じ className の並びが 3 箇所に出たら切る。
   2 箇所では切らない（`.claude/rules/coding.md`「YAGNI」）
 
 ## やらないこと
