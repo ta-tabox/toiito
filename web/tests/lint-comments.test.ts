@@ -520,11 +520,18 @@ export function f() {}
     ]);
   });
 
-  it("コード片と文字列リテラルの中では報告しない", () => {
+  it("コード片の中では報告しない", () => {
     const source = `${header}/**
  * \`落とす\` という語をコード片として書く。
  */
-export const a = "落とす";
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("コメントの外の文字列リテラルでは報告しない", () => {
+    const source = `${header}export const a = "落とす";
 `;
 
     expect(rulesOf(source)).toEqual([]);
