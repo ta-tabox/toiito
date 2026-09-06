@@ -32,7 +32,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 - skill `karpathy-guidelines` — 過剰実装と巻き込み変更を防ぐ振る舞いの規律。
   「変更した各行が依頼に辿れるか」で手を止める。
   プラグインとして引くと、コンテナが毎回空から始まるリモートでは初回セッションに間に合わないので、本体は `.claude/skills/` へ同梱してある。
-  外部由来で、出所は https://github.com/multica-ai/andrej-karpathy-skills の 2c60614（MIT。旧 owner は forrestchang で、改称前の URL もリダイレクトで通るが正は新綴り）。
+  外部由来で、出所は https://github.com/multica-ai/andrej-karpathy-skills の 2c60614（MIT。旧 owner は forrestchang で、改称前の URL もリダイレクトで通るが正は新しい URL）。
   上流の更新は手で取り込む
 
 **コメントも文書（`.md`）も、改行は句点で**。
@@ -98,16 +98,16 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   push は追記であって、他人の作業を消さない。
   **ただし戻せない操作——force push・履歴の書き換え・ブランチやタグの削除——は、その都度人間に諾否を訊く**。
   境目は場所でなく、他人の作業を消しうるかどうかにある。
-  毎回止まらないよう `.claude/settings.json` の `permissions.allow` に `Bash(git push:*)` を置き、戻せない綴りは `permissions.ask` で押さえてある（規則に当たった操作は auto モードの自動分類へ回らない）。
+  毎回止まらないよう `.claude/settings.json` の `permissions.allow` に `Bash(git push:*)` を置き、戻せない操作のコマンド文字列は `permissions.ask` で押さえてある（規則に当たった操作は auto モードの自動分類へ回らない）。
   ask は前方一致なので `git push origin --force main` のような並びを拾えないが、その語順は `.claude/hooks/guard-force-push.sh` がコマンド全文を見て ask へ回す。
 - **issue と PR の起票・コメント・close は Claude が叩いてよい**（閲覧・`gh run` の確認も同じ）。
   どれも reopen で戻るので、他人の作業を消さない側に入る。
   **マージだけは、その都度人間に諾否を訊く**——main への push が本番デプロイと migration を起こす（ADR-0008）ので、reopen で戻る操作と同じには扱えない。
   repo の削除・public 化（`gh repo edit`）・secret・`gh auth` は `permissions.deny` で落としてある——承認を挟めば通る類ではなく、判じる場面がそもそも来ない。
-  ただし deny が効くのは綴りにだけで、`gh api -X PATCH repos/…` は `gh repo edit` を経由せず同じ操作へ届く。
-  `gh api` は綴りが一つしか無く前方一致では層を分けられないので、受け止めるのは `.claude/hooks/guard-gh-api.sh` がコマンド全文を見る側にある。
+  ただし deny が効くのはコマンド文字列の前方一致にだけで、`gh api -X PATCH repos/…` は `gh repo edit` を経由せず同じ操作へ届く。
+  `gh api` はコマンド名が一つしか無く前方一致では層を分けられないので、受け止めるのは `.claude/hooks/guard-gh-api.sh` がコマンド全文を見る側にある。
   素通しは読み取りと、`/comments` `/replies` への投稿と、レビュースレッドの resolve / unresolve の三つだけで、どれも編集や取り消しで戻るので `gh issue comment` が allow なのと同じ層に当たる。
-  `ask` に `gh api -X DELETE` を二綴り残したのはフックを切ったときの下限で、語順に依存しない判定はフックが持つ（`guard-force-push.sh` と同じ型の限界）。
+  `ask` に `gh api -X DELETE` と `gh api --method DELETE` の二つを残したのはフックを切ったときの下限で、語順に依存しない判定はフックが持つ（`guard-force-push.sh` と同じ型の限界）。
   機械は保険、正はこの規約。
 - **PR も author は人間**（そもそも author は名乗る欄でなく叩いたアカウント。bot 名義は「第三者が出したものを承認した」という嘘の外形を作る）。
   Claude の関与は author でなく**本文の「判断したこと」節**へ。
