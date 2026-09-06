@@ -42,7 +42,7 @@ rules は一度注入されると以後の全ターンに残るので、コー�
 ## 帰結
 
 - `.claude/rules/{writing,coding}.md` と `.claude/rules/languages/typescript.md` が増え、`CODING.md` と `.claude/skills/coding-standards/languages/` が消える
-- `CLAUDE.md`「コーディング規約」節と git 節の「粒度の正」、`README.md`「文書」節、`DESIGN.md` の YAGNI への参照、`web/biome.json` のメッセージ、`web/scripts/lint-comments.ts` のコメントは `.claude/rules/` を指す
+- `CLAUDE.md`「コーディング規約」節と git 節の「粒度の正」、`HARNESS.md`「機械が見ている分」の一覧の所在、`README.md`「文書」節、`DESIGN.md` の YAGNI への参照、`web/biome.json` のメッセージ、`web/scripts/lint-comments.ts` のコメントは `.claude/rules/` を指す
 - 0026 までのレコードが名指しする `CODING.md` は `.claude/rules/coding.md`（コード）か `writing.md`（文章・コミット）と読む
 - 雛形の `design.md`（UI 規約の骨格）は配っていない。
   この器は `DESIGN.md` を既に 297 行持っており、規範と記述の切り分けを先に決める必要がある
