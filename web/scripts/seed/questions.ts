@@ -6,7 +6,7 @@
  *
  * 入口は SEED_INPUTS（一人目）と OTHER_USER_INPUT（二人目）。
  * どちらも宣言（keyword ベース）から、範囲の埋まった投入の入力へ写したもの。
- * 誰が持つかを決めるのは seed/index.ts で、ここは中身だけを言う。
+ * 誰が持つかを決めるのは `seed/index.ts` で、`questions.ts` は本文とメモだけを持つ。
  */
 
 import type { MemoInput, QuestionInput } from "@/lib/db";
@@ -191,7 +191,7 @@ export const SEED_INPUTS: QuestionInput[] = SEED_QUESTIONS.map(toQuestionInput);
  * 二人目が持つ問いの宣言。
  *
  * 所有権の絞り込みが抜けたことを画面から見えるようにするために置く。
- * 一人目で開いた一覧・逆引き・対話画面のどこにこれが出ても、絞り込みが効いていない。
+ * 一人目で開いた一覧・逆引き・対話画面のどれかに `OTHER_USER_INPUT` の問いが出たら、repo 関数の絞り込みが効いていない。
  */
 const OTHER_USER_QUESTION: QuestionSeed = {
   body: "他人の問いは、私の一覧に出てはいけない",

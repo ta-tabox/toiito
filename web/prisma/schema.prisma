@@ -193,7 +193,7 @@ model User {
 /// ログインのセッション。Better Auth が使う四表の一つ。
 ///
 /// **対話の `sessions` とは別物**。
-/// こちらはログイン、あちらは問いへの再訪（`DialogueSession`）。
+/// `Session` はログイン、`DialogueSession` は問いへの再訪を表す。
 /// モデル名と列名の規約は User と同じ。
 model Session {
   id        String   @id
@@ -213,7 +213,7 @@ model Session {
 
 /// 外部 IdP のアカウント。Better Auth が使う四表の一つ。
 ///
-/// プロバイダと IdP 側の識別子を持つのは `user` でなくこちら（`docs/adr/0029-auth-better-auth.md`）。
+/// プロバイダと IdP の識別子を持つのは `User` でなく `Account` である（`docs/adr/0029-auth-better-auth.md`）。
 /// OAuth のトークンは保存しない方針だが、列は Better Auth の要求どおり置く（保存しないのは実行時の設定で、#68 が入れる）。
 /// モデル名と列名の規約は User と同じ。
 model Account {

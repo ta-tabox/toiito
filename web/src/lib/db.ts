@@ -6,13 +6,13 @@
  * この層の外へ Prisma を出さない。
  * `@prisma/client` と生成型（`@/generated/prisma`）に触れてよいのはこのファイルだけ。
  * UI と Server Actions が受け取るのは types.ts のドメイン型に限る。
- * schema.prisma の値域を動かすと戻り値がドメイン型へ代入できなくなり、L0（tsc）が落ちる。
+ * schema.prisma の値域を動かすと戻り値がドメイン型へ代入できなくなり、`tsc` が失敗する。
  *
  * repo 関数はすべて async。
- * DB 非依存の計算をここへ積まない（anchors.ts のような純関数層へ置く）。
+ * DB 非依存の計算を `db.ts` へ積まない（`anchors.ts` のような純関数層へ置く）。
  *
- * **アクセス権のないリソースを弾くのは、この層である**（`docs/adr/0030-ownership-granularity.md`）。
- * 入口の proxy.ts は cookie の有無しか見ず、UI も画面ごとの絞り込みを持たない。
+ * **アクセス権のないリソースを拒否するのは、この層である**（`docs/adr/0030-ownership-granularity.md`）。
+ * `proxy.ts` は cookie の有無しか見ず、UI も画面ごとの絞り込みを持たない。
  * だから所有者を受け取る repo 関数は、読みも書きも所有者の条件を必ず where に置く。
  * 所有者の列を持つのは `questions` だけで、下位のテーブルは親を辿って判定する。
  *
@@ -48,7 +48,7 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 /**
  * 遅延生成した接続を返す。
- * Prisma に渡してから落とすと原因が設定であることが読めないので、接続先が無ければここで落とす。
+ * Prisma に渡してから失敗すると原因が設定であることが読めないので、`DATABASE_URL` が無ければ `db` が throw する。
  */
 function db(): PrismaClient {
   if (!globalForPrisma.prisma) {
@@ -61,7 +61,7 @@ function db(): PrismaClient {
     globalForPrisma.prisma = new PrismaClient({
       adapter: new PrismaPg({ connectionString: DATABASE_URL }),
 
-      // 表示にも意味の判断にも使わない列は、読み出した行から落とす。
+      // 表示にも意味の判断にも使わない列は、取得した行から削除する。
       // seq は並べ替えのため、user_id は絞り込みのためだけに在り、どちらもこの層の内側で閉じる。
       // これで戻り値がドメイン型とちょうど一致し、BigInt が UI 側へ渡ることも起きない。
       omit: {
@@ -98,19 +98,19 @@ export function questionText(q: Question): string {
 /**
  * `user` 表から読んだ行を、ドメイン型の `User` へ写す。
  *
- * 呼ぶのは `user` 表を引いた直後の二箇所（getUserByEmail と createUser）だけである。
- * `OwnerId` の印を付けてよいのはこの関数で、ここを通ることが「その文字列は本当に `user.id` である」の唯一の根拠になる。
- * URL やフォームから来た文字列はここを通らないので、所有者になれない。
+ * 呼ぶのは `user` 表を SELECT した直後の 2 箇所（`getUserByEmail` と `createUser`）だけである。
+ * `OwnerId` へ変換してよいのは `fromUserRow` だけで、`fromUserRow` を経由したことが「その文字列は `user.id` である」の唯一の根拠になる。
+ * URL やフォームから来た文字列は `fromUserRow` を経由しないので、`OwnerId` にならない。
  */
 function fromUserRow(row: { id: string; email: string; name: string }): User {
   return { ...row, id: row.id as OwnerId };
 }
 
 /**
- * ユーザーを email で引く。
+ * `user` 表から email で 1 件取得する。
  *
- * 居なければ例外でなく undefined を返す。
- * 呼び出し側（current-user.ts）が「まだ作られていない」と「引けた」を分けて扱うので、無いことを失敗にしない。
+ * 行が無ければ throw せず undefined を返す。
+ * 呼び出し側（`current-user.ts`）が「行がまだ無い」と「取得できた」を分けて扱うため。
  */
 export async function getUserByEmail(email: string): Promise<User | undefined> {
   const row = await db().user.findUnique({
@@ -124,7 +124,7 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
 /**
  * ユーザーを作る。
  *
- * 本番の経路では Better Auth が四表を書くので、ここを通るのは開発用シードだけである。
+ * 本番の経路では Better Auth が四表を書くので、`createUser` を呼ぶのは開発用シードだけである。
  * id は Better Auth の生成に合わせず UUID を振る。
  * `user.id` は文字列でありさえすればよく、この二人が IdP を持たない以上、id の作り方を真似ても得るものが無い。
  */
@@ -175,10 +175,10 @@ export async function listQuestions(owner: OwnerId): Promise<Question[]> {
 }
 
 /**
- * 所有者の問いを id で一件引く。
+ * id で問いを 1 件取得する。
  *
  * 無ければ undefined を返す。
- * アクセス権のない問いも同じ undefined になる。
+ * owner 以外が所有する問いも同じ undefined になる。
  * 二つを違う応答にすると、URL の id を差し替えるだけで在ることが読める。
  *
  * findUnique でなく findFirst なのは Prisma の制約による。
@@ -263,7 +263,7 @@ export async function setCurrentForm(
  * 問いの状態を書き換える。
  *
  * 値域は QUESTION_STATUSES。
- * DB の enum が弾く前にここでも検査する。
+ * DB の enum が拒否する前に `setQuestionStatus` でも検査する。
  */
 export async function setQuestionStatus(
   owner: OwnerId,
@@ -280,10 +280,10 @@ export async function setQuestionStatus(
 }
 
 /**
- * 所有者のセッションを id で一件引く。
+ * id でセッションを 1 件取得する。
  *
  * `sessions` は所有者の列を持たないので、親の問いの `user_id` を辿って判定する（`docs/adr/0030-ownership-granularity.md` 決定 2）。
- * 無ければ undefined を返し、アクセス権のないセッションも同じ undefined になる（畳み方と findFirst の理由は getQuestion と同じ）。
+ * 無ければ undefined を返し、owner 以外が所有するセッションも同じ undefined になる（同じ応答にする理由と findFirst の理由は `getQuestion` と同じ）。
  */
 export async function getSession(
   owner: OwnerId,
@@ -297,7 +297,7 @@ export async function getSession(
 }
 
 /**
- * 所有者の問いの、最新セッションを引く。
+ * owner が所有する問いの、最新セッションを 1 件取得する。
  *
  * 対話画面が表示するのはこれ一つ。
  * 同時刻に並んだ場合は挿入順（seq）で決める。
@@ -332,11 +332,11 @@ export async function createSession(
 /**
  * 問いのセッションを、そのセッションで付いたメモのキーワードごと古い順に返す。
  *
- * 日付だけの一覧ではどのセッションだったか思い出せないので、人間が印を付けた語を手掛かりとして添える。
- * 同じ語に何度も印を付けることがあるため、キーワードは重複を落として返す。
+ * 日付だけの一覧ではどのセッションだったか思い出せないので、人間がメモを付けた語を手掛かりとして添える。
+ * 同じ語に何度もメモを付けることがあるため、キーワードは重複を削除して返す。
  * 並びは古い順で、latestSession（新しい順の先頭）とは逆になる。
- * 読み返しは投入からの順に辿るので、切り替え口に出す回数（1 回目・2 回目）と並びが一致する方を採る。
- * セッションごとにメモを引くと N+1 になるので、メモは問い単位で一度に引いてから束ね直す。
+ * 読み返しは投入からの順に辿るので、セッションの切り替え UI に出す回数（1 回目・2 回目）と並びが一致する方を採る。
+ * セッションごとにメモを SELECT すると N+1 になるので、メモは問い単位で一度に取得してから束ね直す。
  */
 export async function listSessionsWithKeywords(
   owner: OwnerId,
@@ -407,10 +407,10 @@ export async function addMessage(
  * メッセージ本文の一部にメモを付ける。
  *
  * DB の check は本文長を知らないため `start >= 0 && end > start` しか守れない。
- * `anchor_end <= 本文長` はここの責務なので、挿入前に検査して文脈付きで拒否する。
+ * `anchor_end <= 本文長` は `addMemo` の責務なので、挿入前に検査して文脈付きで拒否する。
  *
- * 所有者の確認は本文を引く読みに畳んである。
- * アクセス権のない発話は「見つからない」に落ちるので、requireOwnedSession をもう一度呼ばない。
+ * 所有者の判定は本文を取得する SELECT の where に含めてある。
+ * owner 以外が所有する発話はその SELECT が 0 件になって throw するので、`requireOwnedSession` をもう一度呼ばない。
  */
 export async function addMemo(
   owner: OwnerId,
@@ -469,7 +469,7 @@ export async function listMemosForSession(
  * 全メモを、出所の発話・セッション・問いごと新しい順に返す。
  *
  * メモからの逆引き用。
- * `memos → messages → sessions → questions` を一度に引き、N+1 に割らない。
+ * `memos → messages → sessions → questions` を一度に SELECT し、N+1 に割らない。
  * 古い順で読む用途が無く、件数を絞るときも先頭から取れば新しい分が残るので、並びは新しい順で確定させる。
  * 表示側で反転すると、絞った後の並べ替えになって古い分が残る。
  *
@@ -529,9 +529,9 @@ export type QuestionInput = {
  * 問いを、初回セッションの対話とメモごと作る。
  *
  * 書き込みの順序と経路はアプリと同じ（createQuestion → addMessage → addMemo）。
- * 投入の口を別に作ると、アプリで起きることが投入したデータでは起きなくなり、画面で確かめている状態が実際の状態とずれる。
- * 一つのトランザクションには畳まない。
- * 畳むには repo 関数を tx 版へ組み直すことになり、アプリと同じ経路を通るという上の性質を失う。
+ * シード専用の書き込み経路を別に作ると、アプリで起きることがシードしたデータでは起きなくなり、画面で確かめている状態が実際の状態とずれる。
+ * 1 つのトランザクションにはまとめない。
+ * まとめるには repo 関数を tx 版へ組み直すことになり、アプリと同じ経路を通るという上の性質を失う。
  */
 export async function createQuestionWithTranscript(
   owner: OwnerId,
@@ -593,7 +593,7 @@ const SETUP_ERROR_CODES = new Set(["P1001", "P1003", "P2021"]);
 /**
  * DB の準備ができていない失敗なら、手当てを促す文へ包み直す。
  *
- * Prisma のエラーコードを読めるのはこの層だけなので、判定もここが持つ（この層の外へ Prisma を出さない）。
+ * Prisma のエラーコードを読めるのは `db.ts` だけなので、判定も `db.ts` が持つ（`db.ts` の外へ Prisma を出さない）。
  * それ以外の失敗はそのまま返す。
  * 原因を伏せると、準備の問題でない失敗まで docker を疑わせることになる。
  */
