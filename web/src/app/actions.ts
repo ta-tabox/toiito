@@ -4,13 +4,14 @@
  * 画面から呼ばれる Server Action の束。
  * フォーム入力を lib の呼び出しへ配線する。
  *
- * ここに判断を置かない（HARNESS.md「テスト可能性の設計制約」）。
+ * ここに判断を置かない（docs/HARNESS.md「テスト可能性の設計制約」）。
  * Server Action は単体テストから直に呼べないので、条件分岐が入り込んだ時点で検証の外へ出る。
  * 入力の受け取り・lib の呼び出し・再検証と遷移だけに留める。
  */
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/current-user";
 import { addMemo, createQuestion, createSession } from "@/lib/db";
 import { personaCalls, retryTurn, runTurn } from "@/lib/turn";
 
@@ -20,7 +21,8 @@ export async function createQuestionAction(formData: FormData) {
   if (!body) {
     return;
   }
-  const { question } = await createQuestion(body);
+  const owner = (await getCurrentUser()).id;
+  const { question } = await createQuestion(owner, body);
   redirect(`/q/${question.id}`);
 }
 
@@ -29,7 +31,7 @@ export async function createQuestionAction(formData: FormData) {
  * 過去のセッションは残る。
  */
 export async function newSessionAction(questionId: string) {
-  await createSession(questionId);
+  await createSession((await getCurrentUser()).id, questionId);
   revalidatePath(`/q/${questionId}`);
 }
 
@@ -44,14 +46,16 @@ export async function speakAction(
     return;
   }
 
-  await runTurn({ questionId, sessionId, body, calls: personaCalls() });
+  const owner = (await getCurrentUser()).id;
+  await runTurn({ owner, questionId, sessionId, body, calls: personaCalls() });
 
   revalidatePath(`/q/${questionId}`);
 }
 
 /** 成立しなかった一往復を、預かってある発話でもう一度回す。 */
 export async function retryTurnAction(questionId: string, sessionId: string) {
-  await retryTurn({ questionId, sessionId, calls: personaCalls() });
+  const owner = (await getCurrentUser()).id;
+  await retryTurn({ owner, questionId, sessionId, calls: personaCalls() });
 
   revalidatePath(`/q/${questionId}`);
 }
@@ -73,7 +77,14 @@ export async function createMemoAction(questionId: string, formData: FormData) {
   const anchorEnd = Number(formData.get("anchor_end"));
   const note = String(formData.get("note") ?? "").trim();
 
-  await addMemo(messageId, anchorStart, anchorEnd, keyword, note || undefined);
+  await addMemo(
+    (await getCurrentUser()).id,
+    messageId,
+    anchorStart,
+    anchorEnd,
+    keyword,
+    note || undefined,
+  );
 
   revalidatePath(`/q/${questionId}`);
 }

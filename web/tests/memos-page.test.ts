@@ -1,10 +1,19 @@
+import { createOwner } from "@tests/setup/owner";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import MemosPage from "@/app/memos/page";
 import * as db from "@/lib/db";
+import type { OwnerId } from "@/lib/types";
 
 afterAll(async () => {
   await db.disconnect();
+});
+
+// repo 関数はどれも所有者を要求するので、空にした後のケースごとに一人作る。
+let owner: OwnerId;
+
+beforeEach(async () => {
+  owner = await createOwner();
 });
 
 /**
@@ -57,13 +66,15 @@ function childrenOf(element: ReactElement): ReactNode {
 async function memoInLongMessage(keyword: string, note?: string) {
   const before = "前".repeat(100);
   const after = "後".repeat(100);
-  const { question, session } = await db.createQuestion("逆引きの検査");
+  const { question, session } = await db.createQuestion(owner, "逆引きの検査");
   const message = await db.addMessage(
+    owner,
     session.id,
     "ai_a",
     `${before}${keyword}${after}`,
   );
   const memo = await db.addMemo(
+    owner,
     message.id,
     before.length,
     before.length + keyword.length,
@@ -94,7 +105,7 @@ describe("/memos", () => {
 
     // 再訪を挟む。
     // セッションを名指ししていないと、着地先が最新セッションになって発話が DOM に無い（issue #57）。
-    await db.createSession(question.id);
+    await db.createSession(owner, question.id);
 
     const opened = await MemosPage({
       searchParams: Promise.resolve({ memo: memo.id }),

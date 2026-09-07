@@ -1,17 +1,19 @@
 /**
  * 一往復が途中で失敗したときに何が残るかの検査。
  *
- * 見るのは `messages` と預かりの二つだけで、AI の応答の中身は見ない（呼び出し規約は `ai.test.ts` の領分）。
+ * 見るのは `messages` と預かりの二つだけで、AI の応答の中身は見ない（呼び出し規約は `ai.test.ts` の担当）。
  * 実 API は叩かない（HARNESS.md「実 API を自動テストで叩かない」）。
  */
 
-import { afterAll, describe, expect, it } from "vitest";
+import { createOwner } from "@tests/setup/owner";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { ANTHROPIC_DEFAULTS, AnthropicProvider } from "@/lib/ai/anthropic";
 import { AiProvider, type ProviderResponse } from "@/lib/ai/provider";
 import * as db from "@/lib/db";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import { loadPersona, type PersonaId } from "@/lib/personas";
 import { type PersonaCalls, retryTurn, runTurn } from "@/lib/turn";
+import type { OwnerId } from "@/lib/types";
 
 /** ネットワークに出ず決定的な応答を返すプロバイダ。 */
 const FAKE_PROVIDER = new AnthropicProvider({
@@ -50,13 +52,21 @@ function calls(failing?: PersonaId): PersonaCalls {
   return { ai_a: call("ai_a"), ai_b: call("ai_b") };
 }
 
+// repo 関数はどれも所有者を要求するので、空にした後のケースごとに一人作る。
+let owner: OwnerId;
+
+beforeEach(async () => {
+  owner = await createOwner();
+});
+
 /** 問いと、その最初のセッションを立てる。 */
 async function newDialogue() {
   const { question, session } = await db.createQuestion(
+    owner,
     "速さを求めることは、何を失うことなのか",
   );
 
-  return { questionId: question.id, sessionId: session.id };
+  return { owner, questionId: question.id, sessionId: session.id };
 }
 
 afterAll(async () => {
@@ -73,10 +83,10 @@ describe("一往復", () => {
       calls: calls(),
     });
 
-    const messages = await db.listMessages(target.sessionId);
+    const messages = await db.listMessages(owner, target.sessionId);
     expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
     expect(messages[0].body).toBe("急ぐほど問いが痩せる気がする");
-    expect(await db.getPendingBody(target.sessionId)).toBeUndefined();
+    expect(await db.getPendingBody(owner, target.sessionId)).toBeUndefined();
   });
 
   it("ai_b が落ちると発話は一つも残らず、人間の本文だけが預かりに残る", async () => {
@@ -89,8 +99,8 @@ describe("一往復", () => {
     });
 
     // ai_a は成功しているが、成立していない一往復の断片は置かない。
-    expect(await db.listMessages(target.sessionId)).toEqual([]);
-    expect(await db.getPendingBody(target.sessionId)).toBe(
+    expect(await db.listMessages(owner, target.sessionId)).toEqual([]);
+    expect(await db.getPendingBody(owner, target.sessionId)).toBe(
       "急ぐほど問いが痩せる気がする",
     );
   });
@@ -104,8 +114,8 @@ describe("一往復", () => {
       calls: calls("ai_a"),
     });
 
-    expect(await db.listMessages(target.sessionId)).toEqual([]);
-    expect(await db.getPendingBody(target.sessionId)).toBe(
+    expect(await db.listMessages(owner, target.sessionId)).toEqual([]);
+    expect(await db.getPendingBody(owner, target.sessionId)).toBe(
       "急ぐほど問いが痩せる気がする",
     );
   });
@@ -117,7 +127,7 @@ describe("一往復", () => {
     await runTurn({ ...target, body, calls: calls("ai_b") });
     await runTurn({ ...target, body, calls: calls() });
 
-    const messages = await db.listMessages(target.sessionId);
+    const messages = await db.listMessages(owner, target.sessionId);
     expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
   });
 
@@ -127,7 +137,7 @@ describe("一往復", () => {
     await runTurn({ ...target, body: "一つ目", calls: calls() });
     await runTurn({ ...target, body: "二つ目", calls: calls() });
 
-    const messages = await db.listMessages(target.sessionId);
+    const messages = await db.listMessages(owner, target.sessionId);
     expect(messages.map((m) => m.speaker)).toEqual([
       "human",
       "ai_a",
@@ -149,7 +159,7 @@ describe("一往復", () => {
         calls: calls(),
       }),
     ).rejects.toThrow();
-    expect(await db.getPendingBody(target.sessionId)).toBeUndefined();
+    expect(await db.getPendingBody(owner, target.sessionId)).toBeUndefined();
   });
 });
 
@@ -164,10 +174,10 @@ describe("再送", () => {
     });
     await retryTurn({ ...target, calls: calls() });
 
-    const messages = await db.listMessages(target.sessionId);
+    const messages = await db.listMessages(owner, target.sessionId);
     expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
     expect(messages[0].body).toBe("急ぐほど問いが痩せる気がする");
-    expect(await db.getPendingBody(target.sessionId)).toBeUndefined();
+    expect(await db.getPendingBody(owner, target.sessionId)).toBeUndefined();
   });
 
   it("また落ちれば預かりはそのまま残る", async () => {
@@ -180,8 +190,8 @@ describe("再送", () => {
     });
     await retryTurn({ ...target, calls: calls("ai_b") });
 
-    expect(await db.listMessages(target.sessionId)).toEqual([]);
-    expect(await db.getPendingBody(target.sessionId)).toBe(
+    expect(await db.listMessages(owner, target.sessionId)).toEqual([]);
+    expect(await db.getPendingBody(owner, target.sessionId)).toBe(
       "急ぐほど問いが痩せる気がする",
     );
   });
@@ -191,7 +201,7 @@ describe("再送", () => {
 
     await retryTurn({ ...target, calls: calls() });
 
-    expect(await db.listMessages(target.sessionId)).toEqual([]);
+    expect(await db.listMessages(owner, target.sessionId)).toEqual([]);
   });
 
   it("待つあいだに新しい発話が来ていたら、その預かりは巻き添えにしない", async () => {
@@ -199,14 +209,14 @@ describe("再送", () => {
 
     // 再送の応答を待つあいだに新しい発話が送られた状態。
     // 二つの Server Action が同時に走ると起きるので、預かりを差し替えてから成立させて再現する。
-    await db.savePendingBody(target.sessionId, "あとから送った発話");
-    await db.commitTurn(target.sessionId, {
+    await db.savePendingBody(owner, target.sessionId, "あとから送った発話");
+    await db.commitTurn(owner, target.sessionId, {
       human: "再送していた発話",
       ai_a: "具体の応答",
       ai_b: "抽象の応答",
     });
 
-    expect(await db.getPendingBody(target.sessionId)).toBe(
+    expect(await db.getPendingBody(owner, target.sessionId)).toBe(
       "あとから送った発話",
     );
   });
@@ -215,14 +225,14 @@ describe("再送", () => {
     const target = await newDialogue();
 
     await expect(
-      db.commitTurn(target.sessionId, {
+      db.commitTurn(owner, target.sessionId, {
         human: "預けていない発話",
         ai_a: "具体の応答",
         ai_b: "抽象の応答",
       }),
     ).resolves.toBeUndefined();
 
-    const messages = await db.listMessages(target.sessionId);
+    const messages = await db.listMessages(owner, target.sessionId);
     expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
   });
 });
@@ -236,9 +246,9 @@ describe("再訪", () => {
       body: "急ぐほど問いが痩せる気がする",
       calls: calls("ai_b"),
     });
-    await db.createSession(target.questionId);
+    await db.createSession(owner, target.questionId);
 
-    // 預かりを出す口も再送の口も最新のセッションにしか無いので、残すと画面から触れない行になる。
-    expect(await db.getPendingBody(target.sessionId)).toBeUndefined();
+    // 預かりを表示する UI も再送の UI も最新のセッションにしか無いので、残すと画面から触れない行になる。
+    expect(await db.getPendingBody(owner, target.sessionId)).toBeUndefined();
   });
 });

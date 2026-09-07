@@ -2,7 +2,7 @@
 # Vercel に release_command 相当が無いので、経路をここへ分けている（決定の経緯は docs/adr/0008-production-migration-path.md）。
 #
 # Vercel のデプロイとは競走するが、migrate deploy は秒・next build は分なので、順序は構造上ほぼ守られる。
-# 後方非互換な変更（列の削除・改名）はこの前提が効かないので、自動経路に載せず人間が三段階へ割る（DEPLOY.md）。
+# 後方非互換な変更（列の削除・改名）はこの前提が効かないので、自動経路に載せず人間が三段階へ割る（docs/DEPLOY.md）。
 #
 # 走らせる条件を migration ファイルの有無で絞っていない。
 # migrate deploy は流すものが無ければ何もしないので、paths の綴りを誤って黙って流れないより、毎回走らせて落ちたら赤で気づく方を採る。

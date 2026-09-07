@@ -9,20 +9,20 @@ VISION の設計原理が上位。
 - **Next.js (App Router) + TypeScript** — UI と API を一体で持つ。
   `web/` 配下
 - **Vercel（Hobby）** — 本番の実行環境。
-  Hobby は非商用限定なので、他人へ開いて収益化する段になったら必ず一度決め直す（選定の経緯は `docs/adr/0002-production-runtime.md`）
+  Hobby は非商用限定なので、他人へ開いて収益化する段になったら必ず一度決め直す（選定の経緯は `adr/0002-production-runtime.md`）
 - **Postgres + Prisma** — 永続化。
   開発も本番も同じ方言に揃える。
   ローカルは `compose.yaml` の Postgres、本番は Neon（手順は `DEPLOY.md`）
 - **Claude API（Anthropic）** — 二体 AI の対話生成。
   Server Actions（サーバー側）からのみ叩く。
-  呼び出し規約は `lib/ai/` がプロバイダ非依存の形で持ち、固有の値域と API の作法は `lib/ai/anthropic.ts` に閉じる（`docs/adr/0021-ai-provider-scope.md`）
+  呼び出し規約は `lib/ai/` がプロバイダ非依存の形で持ち、固有の値域と API の作法は `lib/ai/anthropic.ts` に閉じる（`adr/0021-ai-provider-scope.md`）
 - **Better Auth（自前ホスト）** — 認証。
   Google OAuth 一本で、パスワードは持たない。
-  入れるのは許可リストに載ったメールアドレスだけ（選定の経緯は `docs/adr/0019-auth-better-auth.md`、開き方は `docs/adr/0018-invite-only-multi-user.md`）。
-  セッションはログインから 1 日で必ず切れる（使っても延ばさない。cookie の属性と併せて `docs/adr/0022-session-security.md`）
+  入れるのは許可リストに載ったメールアドレスだけ（選定の経緯は `adr/0029-auth-better-auth.md`、開き方は `adr/0018-invite-only-multi-user.md`）。
+  セッションはログインから 1 日で必ず切れる（使っても延ばさない。cookie の属性と併せて `adr/0022-session-security.md`）
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
 
-永続化について今も効く禁止則（経緯は `docs/adr/0003-persistence-prisma-postgres.md`）。
+永続化について今も効く禁止則（経緯は `adr/0003-persistence-prisma-postgres.md`）。
 
 - **方言を二重に持たない**。
   スキーマの正は `prisma/schema.prisma` 一箇所で、DDL を別ファイルに書き写さない
@@ -40,21 +40,21 @@ VISION の設計原理が上位。
   ホスティング側の設定だけで閉じるもの（暫定の門に使う Vercel Authentication など）はアプリのコードに現れないので、この禁止則の対象ではない。
   入れたくなったら、それは実行環境を決め直す合図として一度戻る
 
-セッションについて今も効く禁止則（経緯は `docs/adr/0022-session-security.md`）。
+セッションについて今も効く禁止則（経緯は `adr/0022-session-security.md`）。
 括ると片方の前提が変わった日にもう片方まで一緒に緩むので、`cookieCache` と `deferSessionRefresh` は理由の違う別々の行で書く。
 
 - **`session.cookieCache` を有効にしない**。
   有効にすると、取り消したセッションが `maxAge` の間はキャッシュ経路で通り、DB が権威であることがその区間だけ成り立たなくなる。
   #69（管理機能）の停止が即座に効くという要件がそこで書けなくなるので、`maxAge` を短くしても戻らない（問題は区間の長さでなく、区間が存在するかどうかにある）。
   障害時の倒れ方も逆になる——キャッシュ無しは DB へ届かなければ誰も通らないが、有りは届かなくても窓の間は通る。
-  速度が要るときに先に手を付けるのは `getSession` ラッパの `React.cache()` で、あちらは取り消しの窓を作らない
+  速度が要るときに先に手を付けるのは `getCurrentUser`（`lib/current-user.ts`）の `React.cache()` で、あちらは取り消しの窓を作らない
 - **`session.deferSessionRefresh` を有効にしない**。
   この器の DB はリードレプリカを持たないので解こうとしている問題が無く、延命の POST を撃つのはクライアントの JS なのでサーバー側から呼ぶ経路には実行する主体がいない。
   加えて `disableSessionRefresh` と組み合わせると、期限切れのセッション行が DB から一度も掃除されなくなる。
   リードレプリカを入れても後ろの二つは消えないので、そのときも自動では解禁しない
 - **ログインをまたぐ自前の識別子を作らない**。
   Better Auth はログインのたびにセッションのトークンを新規発行し、既存の cookie の値を引き継ぐ経路を持たないので、仕込める識別子がそもそも存在しない。
-  匿名セッション・未ログインの下書きの引き継ぎ・自前の「戻り先」cookie に識別子を載せる綴りは、この性質を壊してセッション固定の経路を開ける。
+  匿名セッション・未ログインの下書きの引き継ぎ・自前の「戻り先」cookie に識別子を載せる実装は、この性質を壊してセッション固定の経路を開ける。
   未ログインで何かを書かせたくなったら、ログインをまたがない形（下書きをサーバーへ持たない）で解けるかを先に見る
 
 ## システム全体像
@@ -112,14 +112,21 @@ memo_links     （将来）メモ間・問い間のリンキング辺
 
 `user_id` を持つのは**所有のルートだけ**で、いまは `questions` 一つである（#64（ペルソナをテーブルへ）が入れば二つ目のルートになる）。
 `sessions` / `messages` / `memos` は持たず、所有者は親から辿る。
-下位にも持たせない理由と、却下した案は `docs/adr/0020-ownership-granularity.md`。
+下位にも持たせない理由と、却下した案は `adr/0030-ownership-granularity.md`。
 
 **絞り込みは `db.ts` の repo 関数が行う**。
 UI 側でやらない。
 入口の `proxy.ts` は cookie の有無しか見ない楽観的な判定なので、**他人のリソースを弾く最後の層は repo 関数になる**。
 
-認証まわりの四表（`user` / `session` / `account` / `verification`）は Better Auth が持ち、綴りは生成されたままにする（`db.ts` から読まないので、snake_case へ揃える利益が発生しない）。
+**現在のユーザーを返す口は `lib/current-user.ts` の `getCurrentUser` 一つ**で、RSC と Server Action はここを通ってから repo 関数を呼ぶ。
+戻り値の `id` には印（`OwnerId`）が付いており、repo 関数は所有者としてその型しか受け取らない。
+中身は `TOIITO_SINGLE_USER_EMAIL` が名指しする一人で、本番も同じである（本物のログインは #68（ログイン（Google OAuth）とリソースの所有権））。
+ログインが入るまで本番の外周を守るのは Basic 認証だけで、外す順序は `DEPLOY.md`「アクセス制限」が持つ。
+
+認証まわりの四表（`user` / `session` / `account` / `verification`）は Better Auth が持ち、モデル名も列名も生成されたままにする。
+`db.ts` が触るのは `user` の `id` / `email` / `name` の三つだけで、どれも詰め替えの要らない列名なので、snake_case へ揃える利益が発生しない（`adr/0031-ownership-before-auth.md`）。
 **Better Auth の `session` は対話の `sessions` と別物である**——前者はログイン、後者は問いへの再訪。
+Prisma のモデル名が一意でなければならないので、`Session` を名乗るのは Better Auth の側で、対話の側は `DialogueSession` と綴る（表も列もドメイン型も動いていない）。
 
 ### 原型と現在の形（2026-07-19 追加）
 
@@ -136,7 +143,7 @@ UI 側でやらない。
 ### 問いの状態機械（2026-08-30 改定）
 
 7 値。
-比喩は選び直しうるが enum の変更は本番の DB を動かすので、**値は比喩を持たない一般語で持ち、比喩は UI のラベルだけが持つ**（`docs/adr/0017-status-value-set.md`）。
+比喩は選び直しうるが enum の変更は本番の DB を動かすので、**値は比喩を持たない一般語で持ち、比喩は UI のラベルだけが持つ**（`adr/0017-status-value-set.md`）。
 ラベルの正は `VISION.md`「語彙」節で、比喩が動いてもそちらの列だけが動く。
 
 | status | 意味 |
@@ -163,18 +170,20 @@ DB 側の正は `prisma/schema.prisma` の enum `QuestionStatus`、アプリ側�
 
 `messages` へ入るのは**成立した一往復だけ**である。
 human / ai_a / ai_b の三行は、二体が両方返ってから一トランザクションで入る（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
-途中で AI 呼び出しが落ちたときに残るのは `pending_messages` が預かっている人間の本文だけで、成功していた ai_a の応答は捨てる。
+途中で AI 呼び出しが失敗したときに残るのは `pending_messages` が預かっている人間の本文だけで、成功していた ai_a の応答は破棄する。
 
 - **預かりが在ることが「前回の一往復が成立しなかった」という状態そのもの**である。
   失敗の理由は持たず、画面の文言は一つ（5 つある失敗経路の区別は `turn.ts` が出す `turn_failed` の行が持つ）
 - **再送は預かりの本文からプロンプトを組む**。
   打ち直させないための預かりなので、新しい入力を受け取らない
-- 預かりはセッションにつき一件で、**捨てるのは利用者が次へ進んだときだけ**である。
-  新しい発話が来れば差し替わり、新しいセッションで再訪すれば捨てられる（`createSession`）。
-  預かりを出す口も再送の口も最新のセッションにしか無いので、再訪で捨てないと画面から二度と触れない行が残る。
-  AI が落ちたことを理由に捨てる経路は無い
+- 預かりはセッションにつき一件で、**削除するのはユーザーが次へ進んだときだけ**である。
+  新しい発話が来れば差し替わり、新しいセッションで再訪すれば削除される（`createSession`）。
+  預かりを表示する UI も再送の UI も最新のセッションにしか無いので、再訪で削除しないと画面から二度と触れない行が残る。
+  AI 呼び出しの失敗を理由に削除する経路は無い
 - **`pending_messages` は可変である**。
-  immutable の不変条件が掛かっているのは `messages` だけで、預かりの本文にメモのアンカーは付かない
+  immutable の不変条件が効いているのは `messages` だけで、預かりの本文にメモのアンカーは付かない
+- 所有者は親から辿る（`user_id` を持たない）。
+  repo 関数は所有者を受け取り、`session → question → user_id` で絞る
 - 発話本文の上限は 4000 字（`web/src/lib/message.ts`）。
   単位は UTF-16 code unit で、textarea の `maxLength` と同じ数え方になる
 
@@ -243,7 +252,7 @@ toiito/
     ├── src/
     │   ├── app/           ルーティング（問い一覧 / 対話 / メモ逆引き）
     │   ├── components/    UI 部品（メモのアンダーライン表示など）
-    │   ├── lib/           db.ts（Prisma repo 層）・ai/（AI 呼び出し）・personas.ts・anchors.ts
+    │   ├── lib/           db.ts（Prisma repo 層）・current-user.ts（現在のユーザー）・ai/（AI 呼び出し）・personas.ts・anchors.ts
     │   ├── personas/      二体のシステムプロンプト（.md で管理）
     │   └── generated/     Prisma クライアント（生成物・gitignore）
     ├── scripts/           node が直接読む開発用スクリプト（pnpm seed・コメント検査）
@@ -261,10 +270,10 @@ toiito/
 - 問いの「解決済み」クローズフロー（チケットではない）
 - **公開登録**（2026-08-30 改定）。
   他人にも使わせる器へ改めたが、入れるのは許可リストに載ったメールアドレスだけで、誰でも登録できる形は開けない。
-  費用を止める手（#69）と自分のキーへ逃がす手（#70）が揃うまで、AI の課金が誰にでも走る状態を作らない（経緯は `docs/adr/0018-invite-only-multi-user.md`）
+  費用を止める手（#69）と自分のキーへ逃がす手（#70）が揃うまで、AI の課金が誰にでも走る状態を作らない（経緯は `adr/0018-invite-only-multi-user.md`）
 - **パスワード認証**。
   パスワードハッシュは漏れたら他サービスまで巻き添えにするので、守るのではなく資産ごと持たない。
-  入口は Google OAuth 一本（`docs/adr/0019-auth-better-auth.md`）
+  入口は Google OAuth 一本（`adr/0029-auth-better-auth.md`）
 
 ## 持ち越した開いた問い
 

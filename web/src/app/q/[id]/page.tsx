@@ -5,7 +5,7 @@
  * 一度に描くのはセッション一つ。
  * 既定は最新で、`?s=<session_id>` が指すセッションがあればそちらを描く。
  * 過去のセッションは読み取り専用にする。
- * 再訪は前の続きではなく「また話す」ことなので、足したい発話は最新のセッションへ行く（ARCHITECTURE.md「再訪と、過去セッションの読み方」）。
+ * 再訪は前の続きではなく「また話す」ことなので、足したい発話は最新のセッションへ行く（docs/ARCHITECTURE.md「再訪と、過去セッションの読み方」）。
  *
  * 発話の生成と永続化は Server Action の領分。
  * 本文の描画と選択からのメモ作成は MessageBody の領分。
@@ -26,6 +26,7 @@ import {
 import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
 import { RetryForm, SpeakForm } from "@/components/speak-form";
+import { getCurrentUser } from "@/lib/current-user";
 import {
   getPendingBody,
   getQuestion,
@@ -49,7 +50,7 @@ const SWITCHER_KEYWORDS = 3;
 /**
  * 話者ごとの吹き出し。
  *
- * 三者は同じ幅で並び、分かれるのは面の温度と角の落とし方だけになる（DESIGN.md「話者の描き分け」）。
+ * 三者は同じ幅で並び、分かれるのは面の温度と角の落とし方だけになる（.claude/rules/design.md「話者の描き分け」）。
  * 二体はどちらも左なので位置では分かれず、暖が具体・寒が抽象で、抽象だけが罫を回す。
  * 温度差は周辺視で拾う手掛かりであって識別の正ではないので、名前のラベルは消さない。
  */
@@ -87,12 +88,13 @@ export default async function QuestionPage({
 }) {
   const { id } = await params;
   const { s: selectedId } = await searchParams;
-  const question = await getQuestion(id);
+  const owner = (await getCurrentUser()).id;
+  const question = await getQuestion(owner, id);
   if (!question) {
     notFound();
   }
 
-  const sessions = await listSessionsWithKeywords(id);
+  const sessions = await listSessionsWithKeywords(owner, id);
   const latest = sessions.at(-1);
 
   // 選ぶ先をこの問いのセッションの中から引くことで、他の問いのセッション ID を ?s に差し込まれても届かない。
@@ -105,9 +107,9 @@ export default async function QuestionPage({
   }
 
   const isLatest = session.id === latest.id;
-  const messages = await listMessages(session.id);
-  const memos = await listMemosForSession(session.id);
-  const pendingBody = await getPendingBody(session.id);
+  const messages = await listMessages(owner, session.id);
+  const memos = await listMemosForSession(owner, session.id);
+  const pendingBody = await getPendingBody(owner, session.id);
 
   const speak = speakAction.bind(null, question.id, session.id);
   const retry = retryTurnAction.bind(null, question.id, session.id);

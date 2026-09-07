@@ -20,6 +20,7 @@ import Link from "next/link";
 import { MemoDialog } from "@/components/memo-dialog";
 import { Row } from "@/components/ui/row";
 import { excerptParts } from "@/lib/anchors";
+import { getCurrentUser } from "@/lib/current-user";
 import { listMemosWithContext } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ const DIALOG_EXCERPT_MARGIN = 200;
 /**
  * 印の付いた区間の装飾。
  *
- * 面でなく線で出すのは、彩度を持つ面を人間の発話の一つに留めるため（DESIGN.md「彩度の規律」）。
+ * 面でなく線で出すのは、彩度を持つ面を人間の発話の一つに留めるため（.claude/rules/design.md「彩度の規律」）。
  * `<mark>` の既定は黄色い面なので、背景を透かして下線へ置き換える。
  */
 const MARKED_STYLE =
@@ -55,7 +56,7 @@ export default async function MemosPage({
   searchParams: Promise<{ memo?: string }>;
 }) {
   const { memo: openedId } = await searchParams;
-  const memos = await listMemosWithContext();
+  const memos = await listMemosWithContext((await getCurrentUser()).id);
   const opened = memos.find((memo) => memo.id === openedId);
   const openedQuote =
     opened &&

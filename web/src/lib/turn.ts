@@ -22,12 +22,14 @@ import {
   savePendingBody,
 } from "@/lib/db";
 import { loadPersona, type PersonaId } from "@/lib/personas";
+import type { OwnerId } from "@/lib/types";
 
 /** 一往復で呼ぶ二体。 */
 export type PersonaCalls = Record<PersonaId, PersonaCall>;
 
-/** どの問いのどのセッションを、どの二体で回すか。 */
+/** 誰の、どの問いのどのセッションを、どの二体で回すか。 */
 type TurnTarget = {
+  readonly owner: OwnerId;
   readonly questionId: string;
   readonly sessionId: string;
   readonly calls: PersonaCalls;
@@ -106,17 +108,17 @@ async function callBoth(input: {
 export async function runTurn(
   target: TurnTarget & { readonly body: string },
 ): Promise<void> {
-  const { questionId, sessionId, calls, body } = target;
+  const { owner, questionId, sessionId, calls, body } = target;
 
-  const question = await getQuestion(questionId);
+  const question = await getQuestion(owner, questionId);
   if (!question) {
     throw new Error(`runTurn: question not found: ${questionId}`);
   }
 
-  await savePendingBody(sessionId, body);
+  await savePendingBody(owner, sessionId, body);
 
   const transcript: Transcript = [
-    ...(await listMessages(sessionId)),
+    ...(await listMessages(owner, sessionId)),
     { speaker: "human", body },
   ];
   const responses = await callBoth({
@@ -129,7 +131,7 @@ export async function runTurn(
     return;
   }
 
-  await commitTurn(sessionId, { human: body, ...responses });
+  await commitTurn(owner, sessionId, { human: body, ...responses });
 }
 
 /**
@@ -138,7 +140,7 @@ export async function runTurn(
  * 預かりが無ければ何もしない（二重に届いた再送。直前の一往復は成立している）。
  */
 export async function retryTurn(target: TurnTarget): Promise<void> {
-  const body = await getPendingBody(target.sessionId);
+  const body = await getPendingBody(target.owner, target.sessionId);
   if (body === undefined) {
     return;
   }

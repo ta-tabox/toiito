@@ -2,7 +2,7 @@
 
 Next.js（App Router）+ TypeScript。
 **何を・なぜ作るかはここに書かない**。
-正はリポジトリルートの `VISION.md` / `ARCHITECTURE.md` / `HARNESS.md` / `ROADMAP.md`。
+正はリポジトリルートの `docs/VISION.md` / `docs/ARCHITECTURE.md` / `docs/HARNESS.md` / `docs/ROADMAP.md`。
 ここに置くのは、このディレクトリで手を動かすときに要る手順と設定だけ。
 
 ## 起動
@@ -15,7 +15,7 @@ docker compose up -d
 ```
 
 先にリポジトリルートで Postgres を立てる。
-アプリもテストも実 Postgres へ繋ぐので、これが無いと `pnpm dev` も `pnpm check` も動かない（詳細は `HARNESS.md`「ローカル Postgres」）。
+アプリもテストも実 Postgres へ繋ぐので、これが無いと `pnpm dev` も `pnpm check` も動かない（詳細は `docs/HARNESS.md`「ローカル Postgres」）。
 
 ```bash
 pnpm install
@@ -28,7 +28,7 @@ pnpm dev
 **赤のままコミットしない**。
 
 リモート（Claude Code on the web）ではこの節の準備が要らない。
-セッション起動時のフックが Postgres も `.env.local` も依存も用意するので、`pnpm dev` から始められる（`HARNESS.md`「リモート」）。
+セッション起動時のフックが Postgres も `.env.local` も依存も用意するので、`pnpm dev` から始められる（`docs/HARNESS.md`「リモート」）。
 
 ## 環境変数
 
@@ -47,8 +47,9 @@ pnpm dev
 | `TOIITO_ANTHROPIC_EFFORT_CONCRETE` | 任意 | 未設定（API の既定） | 具体さんの思考の深さ。`low` / `medium` / `high` / `xhigh` / `max`。値域の外は既定へ倒す |
 | `TOIITO_ANTHROPIC_EFFORT_ABSTRACT` | 任意 | `medium` | 抽象さんの思考の深さ。値域は同上 |
 | `TOIITO_FAKE_AI` | 任意 | 未設定 | `1` でネットワークに出ず決定的な応答を返す。API キー無しで縦一本を通すためのハーネス |
+| `TOIITO_SINGLE_USER_EMAIL` | ログインが入るまで必須（本番も） | — | 唯一のユーザーとして扱う `user.email`。未設定だと画面が落ちる。指した email のユーザーが DB に居ない場合も落ちる |
 | `TOIITO_TEST_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_test` | テストの接続先。CI で差し替える口 |
-| `TOIITO_E2E_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_e2e` | E2E の接続先。テストと同じ DB を向けると互いの行を踏むので分ける |
+| `TOIITO_E2E_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_e2e` | E2E の接続先。変えてよいのはサーバーの側だけで、データベース名は `toiito_e2e` から動かせない |
 | `DIRECT_URL_PROD` | `pnpm migrate:prod` を叩くなら必須 | — | 本番 Neon の直結。手元から migration を流す先 |
 | `DIRECT_URL_PREVIEW` | `pnpm migrate:preview` を叩くなら必須 | — | Neon の `preview` ブランチの直結。同上 |
 
@@ -64,15 +65,29 @@ DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
 名前が `_test` で終わらなければ止まるようにしてある。
 
 `TOIITO_E2E_DATABASE_URL` も既定のままでよい（走るたびに作り直す側が、無ければ作る）。
-こちらは名前が `_e2e` で終わらなければ止まる。
+E2E は worktree をまたいで `toiito_e2e` 一本を共有するので、こちらで変えてよいのはサーバーの側（ホスト・ポート・資格情報）だけである。
+データベース名が `toiito_e2e` でない上書きは止まる（`docs/HARNESS.md`「E2E（L4）」）。
 
 `TOIITO_FAKE_AI=1` は AI 呼び出しを伴う動作確認で使う。
 実 API を自動テストで叩かない（遅い・非決定的・金がかかる）。
 
+`TOIITO_SINGLE_USER_EMAIL` は、ログインが入るまでの唯一のユーザーを名指しする（`docs/adr/0031-ownership-before-auth.md` 決定 5）。
+`pnpm seed` が入れる一人目の email をそのまま書けばよい（`scripts/seed/users.ts`）。
+シードを流す前や、名指しした email のユーザーが居ない DB では落ちる。
+テストと E2E は設定を自分で渡すので、手で書くのは `.env.local` の一箇所だけである。
+
+```
+TOIITO_SINGLE_USER_EMAIL=first@example.com
+```
+
+**本番にも同じ変数が要る**（値は `docs/DEPLOY.md`「秘密の置き場」）。
+本番でこれを許している間、外周を守っているのは Basic 認証だけになる。
+外す順序——ログインを入れて本番で確かめてから Basic 認証を外す——は `docs/DEPLOY.md`「アクセス制限」が持つ。
+
 `DIRECT_URL_PROD` と `DIRECT_URL_PREVIEW` は、手元から本番と Preview へ migration を流す口（`pnpm migrate:prod` / `pnpm migrate:preview`）。
 `DIRECT_URL` を書き換えて使い回さないのは、直前に何を入れたかで流し先が変わるため。
 本番へは main への push で `.github/workflows/migrate.yml` が流すので、こちらを叩くのは切り戻しと再実行の場面になる。
-Preview には自動経路が無いので、migration を含む PR の画面を見るには毎回叩く（`DEPLOY.md`「Preview」）。
+Preview には自動経路が無いので、migration を含む PR の画面を見るには毎回叩く（`docs/DEPLOY.md`「Preview」）。
 
 ## E2E を走らせる
 
@@ -89,7 +104,7 @@ pnpm e2e
 `pnpm check` は E2E を含まない（心拍を遅くしない）。
 通しで確かめるのは `pnpm check:full`（check → e2e）。
 webServer は口（3100）・データベース（`toiito_e2e`）・ビルド出力先（`.next-e2e`）を開発用から分けるので、`pnpm dev` は止めなくてよい。
-詳細は `HARNESS.md`「E2E（L4）」。
+詳細は `docs/HARNESS.md`「E2E（L4）」。
 
 ## スキーマを変えるとき
 

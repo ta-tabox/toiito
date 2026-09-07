@@ -1,5 +1,5 @@
 # `pnpm check`（L0 型 → L1 静的 → L2 ユニット → L3 ビルド）を PR と main で機械的に回す。
-# 「1 issue = 1 セッション = 1 PR。CI 緑 + マージで閉じる」（ROADMAP.md）の緑を、
+# 「1 issue = 1 セッション = 1 PR。CI 緑 + マージで閉じる」（docs/ROADMAP.md）の緑を、
 # ローカルの自己申告でなくマージの条件として持つための一本。
 #
 # 設計の芯はローカルとの対称——ハーネスが保証するのは「どこで走らせても pnpm check が同じ意味を持つ」ことなので、
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    # L2 以上は実 Postgres へ繋ぐ（HARNESS.md「ローカル Postgres」）。
+    # L2 以上は実 Postgres へ繋ぐ（docs/HARNESS.md「ローカル Postgres」）。
     # メジャーを本番 Neon と揃えるのは方言差を出さないため。
     services:
       postgres:
