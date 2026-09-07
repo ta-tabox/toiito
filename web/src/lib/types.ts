@@ -17,9 +17,9 @@ import type { QuestionStatus } from "@/lib/question";
 /**
  * 所有者の ID。
  *
- * 素の string と混ざらないよう印を付ける。
- * db.ts の repo 関数はこの型しか所有者として受け取らないので、URL やフォームから来た文字列をそのまま渡せない。
- * 印を付けてよいのは `user` 表を引いた db.ts だけで、他所で `as OwnerId` と書けば型は通るが、それは規約違反として読める。
+ * 素の string と混ざらないよう、ブランド型にしてある。
+ * `db.ts` の repo 関数は `OwnerId` しか所有者として受け取らないので、URL やフォームから来た文字列をそのまま渡せない。
+ * `OwnerId` へ変換してよいのは `user` 表を SELECT した `db.ts` だけで、他所で `as OwnerId` と書けば `tsc` は通るが、それは規約違反として読める。
  */
 export type OwnerId = string & { readonly __brand: "OwnerId" };
 
