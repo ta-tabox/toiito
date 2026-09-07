@@ -220,7 +220,7 @@ async function requireOwnedQuestion(
  * そのセッションが所有者のものであることを確かめ、違えば投げる。
  *
  * 呼ぶのは、そのセッションへ発話を足す前（addMessage）である。
- * 失敗の畳み方は requireOwnedQuestion と同じ。
+ * throw する条件とエラーの文面は `requireOwnedQuestion` と同じ。
  */
 async function requireOwnedSession(
   owner: OwnerId,
@@ -241,8 +241,8 @@ async function requireOwnedSession(
  * 原型（body）は触らない。
  *
  * 空文字・空白のみは「現在の形なし」として扱い、表示を原型へ戻す。
- * 存在しない問いへの言い直しは呼び出し側の誤りなので、問いが無ければ例外を投げる。
- * 黙って握らない。
+ * 存在しない問いへの言い直しは呼び出し側の誤りなので、問いが無ければ throw する。
+ * 見つからないことを正常終了として扱わない。
  */
 export async function setCurrentForm(
   owner: OwnerId,
@@ -317,7 +317,7 @@ export async function latestSession(
 /**
  * 同じ問いに新しいセッションを足す（再訪）。
  *
- * 既存のセッションは畳まない。
+ * 既存のセッションは閉じず、そのまま残す。
  * 何度戻ったかが読み返せることが目的。
  */
 export async function createSession(
