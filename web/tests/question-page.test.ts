@@ -1,13 +1,21 @@
+import { createOwner } from "@tests/setup/owner";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import QuestionPage from "@/app/q/[id]/page";
 import { MessageBody } from "@/components/message-body";
 import { SpeakForm } from "@/components/speak-form";
 import * as db from "@/lib/db";
-import type { Memo, Message } from "@/lib/types";
+import type { Memo, Message, OwnerId } from "@/lib/types";
 
 afterAll(async () => {
   await db.disconnect();
+});
+
+// repo 関数はどれも所有者を要求するので、空にした後のケースごとに一人作る。
+let owner: OwnerId;
+
+beforeEach(async () => {
+  owner = await createOwner();
 });
 
 /**
@@ -32,7 +40,7 @@ function elementsOf(node: ReactNode): ReactElement[] {
 
 /** 二つの発話を持ち、後ろの発話にだけメモが付いた問いを作る。 */
 async function questionWithMemoOnSecondMessage() {
-  const created = await db.createQuestionWithTranscript({
+  const created = await db.createQuestionWithTranscript(owner, {
     body: "対話画面にメモが出るか",
     messages: [
       { speaker: "human", body: "口火を切る" },
@@ -75,8 +83,9 @@ describe("/q/[id]", () => {
 
   it("?s が指すセッションを描く（再訪しても当時の発話が残る）", async () => {
     const { question, messages } = await questionWithMemoOnSecondMessage();
-    const revisit = await db.createSession(question.id);
+    const revisit = await db.createSession(owner, question.id);
     const later = await db.addMessage(
+      owner,
       revisit.id,
       "human",
       "日を空けてまた話す",
@@ -99,7 +108,7 @@ describe("/q/[id]", () => {
 
   it("過去セッションを読むときは発話フォームを出さない", async () => {
     const { question, session } = await questionWithMemoOnSecondMessage();
-    await db.createSession(question.id);
+    await db.createSession(owner, question.id);
 
     const hasSpeakForm = (id?: string) =>
       renderTree(question.id, id).then((tree) =>

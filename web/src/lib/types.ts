@@ -15,6 +15,21 @@
 import type { QuestionStatus } from "@/lib/question";
 
 /**
+ * 所有者の ID。
+ *
+ * 素の string と混ざらないよう、ブランド型にしてある。
+ * `db.ts` の repo 関数は `OwnerId` しか所有者として受け取らないので、URL やフォームから来た文字列をそのまま渡せない。
+ * `OwnerId` へ変換してよいのは `user` 表を SELECT した `db.ts` だけで、他所で `as OwnerId` と書けば `tsc` は通るが、それは規約違反として読める。
+ */
+export type OwnerId = string & { readonly __brand: "OwnerId" };
+
+/**
+ * ユーザー。
+ * 実体は Better Auth の `user` 表で、このアプリが読むのはこの三つだけ。
+ */
+export type User = { id: OwnerId; email: string; name: string };
+
+/**
  * body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、current_form は対話の中で言い直された焦点。
  * 二つに分けている理由は docs/ARCHITECTURE.md「原型と現在の形」。
  */
