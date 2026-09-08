@@ -17,13 +17,8 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { getUserById } from "@/lib/db";
+import { LOGIN_PATH } from "@/lib/protected-paths";
 import type { User } from "@/lib/types";
-
-/**
- * サインインの画面。
- * 未サインインのリクエストの送り先。
- */
-export const LOGIN_PATH = "/login";
 
 /** サインインした後に戻る画面。 */
 const AFTER_SIGN_IN_PATH = "/";

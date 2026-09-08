@@ -3,15 +3,16 @@
  *
  * 見るのは `e2e/` の spec だけで、型検査・lint・単体テスト・ビルドは `pnpm check` が持つ。
  * AI 呼び出しはフェイクモードに固定し、実 API を自動テストで叩かない（docs/HARNESS.md「AI フェイクモード」）。
+ * サインインも Google を経ない経路に固定する（`TOIITO_FAKE_LOGIN=1`）。
+ * 実 OAuth では二人分のサインインを自動化できず、Google の同意画面を通す往復はこのアプリのコードではない（docs/adr/0032-login-and-fake-sign-in.md 決定 1）。
+ *
  * 接続先とサーバーは開発用から三重に離す（データベース `toiito_e2e`・ポート 3100・出力先 `.next-e2e`）。
  * 出力先まで分けるのは、next dev の二重起動検知が `.next/dev/lock` 一つを見ており、ポートを分けただけでは `pnpm dev` と衝突するため。
- * サーバーは二本立て、資格情報を持つのは一本だけにする（同じサーバーでアクセス制限の有無を両方は見られない）。
  *
  * **Vercel のランタイム差は再現しない**。
- * next dev も next start も Node で走るので、Edge でだけ環境変数が読めない類の失敗は Playwright では出ない（本番そのものを叩く確認は `docs/DEPLOY.md`「アクセス制限」）。
+ * next dev も next start も Node で走るので、Edge でだけ環境変数が読めない類の失敗は Playwright では出ない（本番そのものを叩く確認は `docs/DEPLOY.md`「ログイン」）。
  */
 
-import { BASIC_AUTH } from "@e2e/setup/basic-auth-credentials";
 import { E2E_DATABASE_URL } from "@e2e/setup/e2e-database-url";
 import { defineConfig, devices } from "@playwright/test";
 import { SEED_USERS } from "@scripts/seed/users";
@@ -27,23 +28,13 @@ const DIST_DIR = ".next-e2e";
 
 const BASE_URL = `http://localhost:${PORT}`;
 
-/** アクセス制限を有効にしたサーバーのポート。 */
-const AUTH_PORT = 3101;
-
-/** そのサーバーのビルド出力先（ポートだけ分けても next dev の二重起動検知に当たる）。 */
-const AUTH_DIST_DIR = ".next-e2e-auth";
-
-const AUTH_BASE_URL = `http://localhost:${AUTH_PORT}`;
-
-/** 二本のサーバーが共通で要る env。 */
-const SERVER_ENV = {
-  DATABASE_URL: E2E_DATABASE_URL,
-  DIRECT_URL: E2E_DATABASE_URL,
-  TOIITO_FAKE_AI: "1",
-
-  // ログインはまだ無いので、現在のユーザーはシードの一人目に固定する（docs/adr/0031-ownership-before-auth.md 決定 5）。
-  TOIITO_SINGLE_USER_EMAIL: SEED_USERS[0].email,
-};
+/**
+ * E2E のサーバーがセッションのトークンの署名に使う秘密。
+ *
+ * 本番の値とは関係が無い。
+ * Better Auth は 32 文字未満だと警告を出すので、長さだけ満たしておく。
+ */
+const AUTH_SECRET = "e2e-の秘密-の-ことば-0123456789abcdef-0123456789";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -56,13 +47,7 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testIgnore: /basic-auth\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], baseURL: BASE_URL },
-    },
-    {
-      name: "basic-auth",
-      testMatch: /basic-auth\.spec\.ts/,
-      use: { ...devices["Desktop Chrome"], baseURL: AUTH_BASE_URL },
     },
   ],
 
@@ -81,21 +66,18 @@ export default defineConfig({
       // 既定の 60 秒では、作り直し（migration + シード）と dev サーバーの初回ビルドが積み上がったときに足りない。
       timeout: 120_000,
 
-      env: { ...SERVER_ENV, TOIITO_DIST_DIR: DIST_DIR },
-    },
-    {
-      // アクセス制限を有効にした側はデータベースを作り直さない。
-      // 二本が同じ `toiito_e2e` を同時に作り直すと、互いの足元を壊すことになる。
-      command: `pnpm exec next dev --port ${AUTH_PORT}`,
-      url: AUTH_BASE_URL,
-      reuseExistingServer: false,
-      timeout: 120_000,
-
       env: {
-        ...SERVER_ENV,
-        TOIITO_DIST_DIR: AUTH_DIST_DIR,
-        TOIITO_BASIC_AUTH_USER: BASIC_AUTH.user,
-        TOIITO_BASIC_AUTH_PASSWORD: BASIC_AUTH.password,
+        DATABASE_URL: E2E_DATABASE_URL,
+        DIRECT_URL: E2E_DATABASE_URL,
+        TOIITO_DIST_DIR: DIST_DIR,
+        TOIITO_FAKE_AI: "1",
+
+        BETTER_AUTH_SECRET: AUTH_SECRET,
+        TOIITO_FAKE_LOGIN: "1",
+
+        // シードの二人ともサインインできるようにする。
+        // 二人目が入れないと、他人の問いが見えないことを二人分のセッションで確かめられない。
+        TOIITO_ALLOWED_EMAILS: SEED_USERS.map((user) => user.email).join(","),
       },
     },
   ],

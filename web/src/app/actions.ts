@@ -12,13 +12,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
-  LOGIN_PATH,
   requireCurrentUser,
   signInAsFakeUser,
   signOutCurrentUser,
   startGoogleSignIn,
 } from "@/lib/current-user";
 import { addMemo, createQuestion, createSession } from "@/lib/db";
+import { LOGIN_PATH } from "@/lib/protected-paths";
 import { personaCalls, retryTurn, runTurn } from "@/lib/turn";
 
 /** 問いを投入し、その対話画面へ送る。 */
