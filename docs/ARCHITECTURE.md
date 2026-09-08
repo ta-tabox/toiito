@@ -66,7 +66,7 @@ VISION の設計原理が上位。
 Next.js サーバー層 ──── Claude API（二体のシステムプロンプトを切替えて逐次呼出）
    │
    ▼
-Postgres（questions / sessions / messages / memos / memo_links ＋ Better Auth の四表）
+Postgres（questions / sessions / messages / pending_messages / memos / memo_links ＋ Better Auth の四表）
 ```
 
 単一 Web アプリ。
@@ -97,6 +97,9 @@ sessions       一つの問いに対する対話セッション（複数回あ�
 
 messages       発話。人間 + AI二体の三者
   id, session_id, speaker(human/ai_a/ai_b), body, created_at
+
+pending_messages  送信されたが一往復が完了していない人間の発話。1 セッションに 1 行
+  session_id(主キー), body, created_at
 
 memos          キーワードメモ。文字選択で残す
   id, message_id, anchor_start, anchor_end, keyword, note, created_at

@@ -17,12 +17,18 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createMemoAction, newSessionAction, speakAction } from "@/app/actions";
+import {
+  createMemoAction,
+  newSessionAction,
+  retryTurnAction,
+  speakAction,
+} from "@/app/actions";
 import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
-import { SpeakForm } from "@/components/speak-form";
+import { RetryForm, SpeakForm } from "@/components/speak-form";
 import { getCurrentUser } from "@/lib/current-user";
 import {
+  getPendingBody,
   getQuestion,
   listMemosForSession,
   listMessages,
@@ -103,8 +109,10 @@ export default async function QuestionPage({
   const isLatest = session.id === latest.id;
   const messages = await listMessages(owner, session.id);
   const memos = await listMemosForSession(owner, session.id);
+  const pendingBody = await getPendingBody(owner, session.id);
 
   const speak = speakAction.bind(null, question.id, session.id);
+  const retry = retryTurnAction.bind(null, question.id, session.id);
   const newSession = newSessionAction.bind(null, question.id);
   const createMemo = createMemoAction.bind(null, question.id);
 
@@ -195,6 +203,10 @@ export default async function QuestionPage({
         )}
       </div>
 
+      {isLatest && pendingBody && (
+        <PendingTurn body={pendingBody} action={retry} />
+      )}
+
       {isLatest ? (
         <SpeakForm action={speak} />
       ) : (
@@ -204,5 +216,28 @@ export default async function QuestionPage({
       )}
       <LandingMark />
     </main>
+  );
+}
+
+/**
+ * 送信に失敗した発話と、その再送ボタンを表示する。
+ *
+ * 破線の枠で囲うのは、`messages` に入った発話と区別するため。
+ */
+function PendingTurn({
+  body,
+  action,
+}: {
+  body: string;
+  action: () => Promise<void>;
+}) {
+  return (
+    <div className="mt-8 rounded border border-rule border-dashed bg-surface-low p-3 md:p-4">
+      <p className="text-aux text-ink-weak">応答の取得に失敗した。</p>
+      <p className="mt-2 whitespace-pre-wrap text-utterance text-ink md:text-utterance-lg">
+        {body}
+      </p>
+      <RetryForm action={action} />
+    </div>
   );
 }

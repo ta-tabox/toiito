@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * 発話フォーム。
- * 送信中であることを画面に見せるためだけの client component。
+ * 新しい発話を送る `SpeakForm` と、送信に失敗した発話を再送する `RetryForm` を持つ。
+ * 送信中であることを画面へ表示するための client component。
  *
- * 持つのは表示だけで、入力の検証も送信先の決定も引き受けない。
- * Server Action は bind 済みのものを呼び出し側から受け取る。
+ * 入力の検証も送信先の決定も行わない。
+ * Server Action は bind 済みのものを引数で受け取る。
  */
 
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { TextArea } from "@/components/ui/field";
+import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 
 /** 対話へ発話を送るフォーム。 */
 export function SpeakForm({
@@ -23,9 +24,23 @@ export function SpeakForm({
       <TextArea
         name="body"
         rows={3}
+        maxLength={MESSAGE_BODY_MAX_LENGTH}
         placeholder="問いについて、いま思うことを"
       />
-      <SubmitButton />
+      <SubmitButton label="発話する（二体が応答するまで少し待つ）" />
+    </form>
+  );
+}
+
+/**
+ * `pending_messages` に残っている発話の再送フォーム。
+ *
+ * 送る本文は `pending_messages` が持っているので、入力欄を出さない。
+ */
+export function RetryForm({ action }: { action: () => Promise<void> }) {
+  return (
+    <form action={action} className="mt-3 flex flex-col">
+      <SubmitButton label="再送" tone="quiet" />
     </form>
   );
 }
@@ -34,14 +49,22 @@ export function SpeakForm({
  * 送信ボタン。
  *
  * 応答を待つ間は押せなくなり、ラベルが「二体が応答中」の表示へ変わる。
- * useFormStatus は親フォームの状態を読むので、form を描く側と同じコンポーネントには置けない（常に pending: false が返る）。
+ * `useFormStatus` は親フォームの状態を読むので、`form` を描くコンポーネントには置けない（常に `pending: false` が返る）。
+ * 再送のときは `tone="quiet"` でボタンの色を薄くする。
+ * `RetryForm` と `SpeakForm` は同時に表示されるので、両方を濃い色にすると主要な操作がどちらか分からなくなる。
  */
-function SubmitButton() {
+function SubmitButton({
+  label,
+  tone = "solid",
+}: {
+  label: string;
+  tone?: "solid" | "quiet";
+}) {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" tone="solid" disabled={pending} className="self-end">
-      {pending ? <RespondingLabel /> : "発話する（二体が応答するまで少し待つ）"}
+    <Button type="submit" tone={tone} disabled={pending} className="self-end">
+      {pending ? <RespondingLabel /> : label}
     </Button>
   );
 }
