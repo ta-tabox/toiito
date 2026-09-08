@@ -530,6 +530,27 @@ export function f() {}
     expect(rulesOf(source)).toEqual([]);
   });
 
+  it("除外語に挙げた複合語では報告しない", () => {
+    const source = `${header}/**
+ * 入口は lintSource。
+ * 直後の空行が JSDoc を分ける目印。
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("除外語を取り除いた残りに語があれば報告する", () => {
+    const source = `${header}/**
+ * 入口は lintSource で、読み込み口は別にある。
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/noBannedWord"]);
+  });
+
   it("コメントの外の文字列リテラルでは報告しない", () => {
     const source = `${header}export const a = "落とす";
 `;
