@@ -5,14 +5,10 @@
  * `prisma.config.ts` が `.env.local` の `DIRECT_URL` から読むので、どの DB を守るかは呼ぶ側の配線が決める。
  *
  * 見つけても throw しない。
- * 別のブランチで積んだ migration はそのブランチを離れても剥がれないが、作り直してよいかは中身の持ち主にしか判断できない。
- * 走るたびに作り直せる相手（`tests/setup/database.ts` のテスト用 DB）は、そもそもこの検査を通らない。
+ * 別のブランチで積んだ migration は剥がれずに残るが、作り直してよいかは中身の持ち主にしか判断できない。
+ * `prisma migrate status` は使わない（ローカルに無い migration が DB へ積まれていても「up to date」を返す）。
  *
- * `prisma migrate status` は使わない。
- * ローカルに無い migration が DB へ積まれていても「up to date」を返すので、この食い違いを検出できない。
- *
- * エントリポイントは CLI。
- * いまの配線は `pnpm dev` の前段一つで、その配線での繋ぎ先は開発用 DB になる。
+ * エントリポイントは CLI で、いまの配線は `pnpm dev` の前段一つ（繋ぎ先は開発用 DB）。
  */
 
 import { spawnSync } from "node:child_process";

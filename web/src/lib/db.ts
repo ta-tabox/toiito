@@ -1,25 +1,14 @@
 /**
- * 永続化層。
- * Prisma + Postgres。
+ * 永続化層（Prisma + Postgres）。
  * データモデルの意味の正は docs/ARCHITECTURE.md、スキーマの正は prisma/schema.prisma。
  *
- * この層の外へ Prisma を出さない。
- * `@prisma/client` と生成型（`@/generated/prisma`）に触れてよいのはこのファイルだけ。
- * UI と Server Actions が受け取るのは types.ts のドメイン型に限る。
- * schema.prisma の値域を動かすと戻り値がドメイン型へ代入できなくなり、`tsc` が失敗する。
- *
- * repo 関数はすべて async。
+ * `db.ts` の外へ Prisma を出さない。
+ * `@prisma/client` と生成型（`@/generated/prisma`）に触れてよいのは `db.ts` だけで、UI と Server Actions が受け取るのは `types.ts` のドメイン型に限る。
  * DB 非依存の計算を `db.ts` へ積まない（`anchors.ts` のような純関数層へ置く）。
  *
- * **アクセス権のないリソースを拒否するのは、この層である**（`docs/adr/0030-ownership-granularity.md`）。
- * `proxy.ts` は cookie の有無しか見ず、UI も画面ごとの絞り込みを持たない。
- * だから所有者を受け取る repo 関数は、読みも書きも所有者の条件を必ず where に置く。
+ * **アクセス権のないリソースを拒否するのは `db.ts` で、DB の制約（RLS）ではない**（`docs/adr/0030-ownership-granularity.md`）。
+ * 所有者を受け取る repo 関数は、読みも書きも所有者の条件を必ず where に置く（取得してから user_id を比べる形は、比べ忘れても `tsc` が通ってしまう）。
  * 所有者の列を持つのは `questions` だけで、下位のテーブルは親を辿って判定する。
- *
- * **検査しているのはこの層で、DB の制約ではない**（RLS は使っていない）。
- * 取ってから user_id を比べる形は比べ忘れても型が通るので、条件は取得の後でなく where に置く。
- * where に置けば「存在しない」と「アクセス権がない」が同じ応答になり、404 と 403 の違いから在ることが漏れる隙も消える。
- * `id` は `/q/<id>` の URL に出て権限を持たない相手の手にも渡るので、知っていること自体は権限にならない。
  */
 
 import { randomUUID } from "node:crypto";
@@ -182,8 +171,7 @@ export async function listQuestions(owner: OwnerId): Promise<Question[]> {
  * owner 以外が所有する問いも同じ undefined になる。
  * 二つを違う応答にすると、URL の id を差し替えるだけで在ることが読める。
  *
- * findUnique でなく findFirst なのは Prisma の制約による。
- * findUnique の where は一意な列しか受け取らないので、`user_id` の条件を足せない。
+ * findUnique でなく findFirst なのは、findUnique の where が一意な列しか受け取らず `user_id` の条件を足せないため。
  * id は主キーなので返るのは 0 件か 1 件で、「先頭」という意味は持たない。
  */
 export async function getQuestion(
@@ -341,11 +329,9 @@ export async function createSession(
 
 /**
  * 問いのセッションを、そのセッションで付いたメモのキーワードごと古い順に返す。
+ * キーワードは重複を削除する。
  *
- * 日付だけの一覧ではどのセッションだったか思い出せないので、人間がメモを付けた語を手掛かりとして添える。
- * 同じ語に何度もメモを付けることがあるため、キーワードは重複を削除して返す。
- * 並びは古い順で、latestSession（新しい順の先頭）とは逆になる。
- * 読み返しは投入からの順に辿るので、セッションの切り替え UI に出す回数（1 回目・2 回目）と並びが一致する方を採る。
+ * 並びが古い順なのは、セッションの切り替え UI が出す回数（1 回目・2 回目）と一致させるため。
  * セッションごとにメモを SELECT すると N+1 になるので、メモは問い単位で一度に取得してから束ね直す。
  */
 export async function listSessionsWithKeywords(
@@ -605,10 +591,8 @@ export type QuestionInput = {
 /**
  * 問いを、初回セッションの対話とメモごと作る。
  *
- * 書き込みの順序と経路はアプリと同じ（createQuestion → addMessage → addMemo）。
- * シード専用の書き込み経路を別に作ると、アプリで起きることがシードしたデータでは起きなくなり、画面で確かめている状態が実際の状態とずれる。
- * 1 つのトランザクションにはまとめない。
- * まとめるには repo 関数を tx 版へ組み直すことになり、アプリと同じ経路を通るという上の性質を失う。
+ * 書き込みの順序と経路はアプリと同じにする（`createQuestion` → `addMessage` → `addMemo`。docs/ARCHITECTURE.md「DB への書き込み経路」）。
+ * 1 つのトランザクションにまとめないのは、まとめると repo 関数を tx 版へ組み直すことになり、アプリと同じ経路を通らなくなるため。
  */
 export async function createQuestionWithTranscript(
   owner: OwnerId,

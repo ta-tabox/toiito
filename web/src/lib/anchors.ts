@@ -100,12 +100,11 @@ export type ExcerptParts = {
 
 /**
  * メモの引用を、アンカーの手前・本体・後ろの三つに切って作る。
- *
- * アンカー区間（メモの anchor_start / anchor_end）の前後へ margin 文字ずつ広げ、本文の端と書記素境界で止める。
+ * アンカー区間（`anchorStart` / `anchorEnd`）の前後へ margin 文字ずつ広げ、本文の端と書記素境界で止める。
  * 連結すれば引用の全文になる。
+ *
  * 三つに割るのは、UI がアンカー本体だけを描き分けるため。
  * 一本の文字列で返すと、UI 側が同じオフセット演算をやり直すことになる。
- * #11 で Memo をクラス化したら、この関数はそのメソッドへ移す。
  */
 export function excerptParts(
   body: string,

@@ -3,13 +3,10 @@
  * 永続化の実装（Prisma）にも UI にも依存しない。
  * 意味の正は docs/ARCHITECTURE.md「データモデル」。
  *
- * db.ts と UI の境界は `types.ts` 一枚。
- * Prisma の生成型を `types.ts` の外へ出さない。
+ * `db.ts` と UI の境界は `types.ts` 一枚で、Prisma の生成型を `types.ts` の外へ出さない。
  * 時刻は Date（Prisma の DateTime も JS の Date なので詰め替えが要らない）。
- * 表示用の文字列化は format.ts の責務で、この型は持たない。
- *
- * 実行時の値（値域の定数など）は置かない。
- * それぞれのドメインのモジュールが持つ。
+ * 表示用の文字列化は `format.ts` の責務で、ドメイン型は持たない。
+ * 実行時の値（値域の定数など）は置かず、それぞれのドメインのモジュールが持つ。
  */
 
 import type { QuestionStatus } from "@/lib/question";

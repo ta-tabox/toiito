@@ -1,26 +1,13 @@
 /**
  * コメント規約のうち、Biome が構造的に検出できない分だけを見るリンタ。
  *
- * Biome のリンタはコメントを走査対象に持たない。
- * built-in ルールにも GritQL プラグインにも、コメント本体へ届く経路が無い。
- * このリンタが引き受けるのはその穴だけで、コメント以外の作法は biome.json 側に置く。
- * 同じ規約を二箇所に書かない。
- *
- * 判定は TypeScript の API へ渡す。
- * 行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約のリンタ自身が誤った箇所を報告する。
- *
- * パーサは `@typescript/typescript6` を名指しで import する。
- * TypeScript 7 は Go 移植で `typescript` の既定 export から旧 JS コンパイラ API が外れており、`createSourceFile` が無い。
- * このリポジトリが `typescript` に何を入れていてもこの import は 6 系の JS API を掴むので、`typescript` へ戻さない。
- *
- * Biome も vcs.useIgnoreFile で同じ正を見るので、対象から外すものは .gitignore が正。
- * 独自の除外リストを持つと、生成物の扱いが Biome と食い違う。
+ * Biome はコメント本体へ届く経路を持たないので、このリンタが引き受けるのはその穴だけである。
+ * コメント以外の作法は biome.json へ置き、対象から外すものは .gitignore を正とする（Biome も vcs.useIgnoreFile で同じ正を見る）。
+ * 判定は行単位の正規表現でなく TypeScript の API に任せる（正規表現では文字列リテラル中の記号と本物のコメントを区別できない）。
+ * パーサの `@typescript/typescript6` を `typescript` へ戻さない（TypeScript 7 は既定 export から `createSourceFile` を外している。`docs/adr/0011-typescript-7-parser.md`）。
  *
  * エントリポイントは lintSource。
- * CLI は node scripts/lint-comments.ts [path...]。
- *
- * このファイルは複数のリポジトリで同じ内容を保つ共有物である。
- * このリポジトリ固有の逸脱を足すときは、このコメントの直下に理由を書く。
+ * このファイルは複数のリポジトリで同じ内容を保つ共有物なので、このリポジトリ固有の逸脱を足すときはこのコメントの直下に理由を書く。
  */
 
 import { spawnSync } from "node:child_process";
@@ -101,8 +88,7 @@ const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
  * テストファイルの命名。
  * `foo.test.ts` や `foo.spec.tsx` のように、拡張子の手前へ test / spec を挟む形を指す。
  *
- * 判定をディレクトリでなくファイル名に置いている。
- * 免除の理由は「対応する実装のファイル名が主題を既に名指している」ことなので、その名が src/ に居ても tests/ に居ても情報量は変わらない。
+ * 判定はディレクトリでなくファイル名に置く。
  * ディレクトリで判定すると、テストを併置するリポジトリで同じ規約が別の意味になる。
  */
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
@@ -124,7 +110,6 @@ const SENTENCE_END = /[。.]$/;
  * 箇条書きと表の行が持つ。
  *
  * 散文の続きではないので、手前の行から文が流れ込んでいない。
- * 機械が図を見抜いているのではなく、書き手が宣言している。
  */
 const LIST_MARKER = /^(?:[-*・→|]|\d+[.)])/;
 

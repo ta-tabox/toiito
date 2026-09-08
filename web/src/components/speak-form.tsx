@@ -47,11 +47,10 @@ export function RetryForm({ action }: { action: () => Promise<void> }) {
 
 /**
  * 送信ボタン。
- *
  * 応答を待つ間は押せなくなり、ラベルが「二体が応答中」の表示へ変わる。
+ *
  * `useFormStatus` は親フォームの状態を読むので、`form` を描くコンポーネントには置けない（常に `pending: false` が返る）。
- * 再送のときは `tone="quiet"` でボタンの色を薄くする。
- * `RetryForm` と `SpeakForm` は同時に表示されるので、両方を濃い色にすると主要な操作がどちらか分からなくなる。
+ * `RetryForm` と `SpeakForm` は同時に表示されるので、再送の側を `tone="quiet"` で薄くして主要な操作を一つに保つ。
  */
 function SubmitButton({
   label,
@@ -71,12 +70,10 @@ function SubmitButton({
 
 /**
  * 応答待ちのラベル。
- *
  * 三つの点が順に明滅して、止まっているのではないことを示す。
- * 進み具合は出さない（.claude/rules/design.md「やらないこと」の進捗インジケータに当たる）。
- * 点は読み上げから外す（文字の「…」と違い、鳴らしても意味にならない）。
- * 正の値だと最初の一巡が揃って光り、波に見え始めるまで待たせることになるので、animation-delay を負にして位相をずらす。
- * 動きを切っている人には点だけが静かに並ぶ（.claude/rules/design.md「動き」）。
+ *
+ * 進み具合は出さず、点は読み上げから外す（`.claude/rules/design.md`「やらないこと」「動き」）。
+ * `animation-delay` を負にするのは、正の値だと最初の一巡が揃って光り、波に見え始めるまで待たせるため。
  */
 function RespondingLabel() {
   return (

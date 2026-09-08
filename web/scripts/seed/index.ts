@@ -2,15 +2,13 @@
  * 開発用データの投入。
  *
  * ユーザー二人と、その持ち物としての問い・対話・メモを一式入れて、UI を手触りで確かめられる状態にする。
- * このファイルが持つのは投入のステップと誰が何を持つかだけで、入れる値は同じディレクトリの users.ts と questions.ts、書き込みの手順は db.ts の createQuestionWithTranscript が持つ。
+ * `seed/index.ts` が持つのは投入のステップと誰が何を持つかだけで、入れる値は `users.ts` と `questions.ts`、書き込みの手順は `db.ts` の `createQuestionWithTranscript` が持つ。
  * アプリと同じ経路を通らない書き込み経路を増やさない（docs/ARCHITECTURE.md「DB への書き込み経路」）。
- * 接続先は DATABASE_URL 一点で、db.ts が読む。
- * 投入先の受け取り方を二つ持つと env は開発用・引数はテスト用という食い違いが起こるので、投入先を選ぶ引数を `seed` に作らない。
+ * 接続先は `DATABASE_URL` 一点で、投入先を選ぶ引数を `seed` に作らない（受け取り方を二つ持つと、env は開発用・引数はテスト用という食い違いが起こる）。
  * 動くのはユーザーが一人も居ない DB に対してだけで、既に入っている DB へは何も入れずに終わる。
  * 本番（NODE_ENV=production）では、空でも投入しない。
  *
- * エントリポイントは `seed`。
- * CLI は node scripts/seed/index.ts（pnpm seed）。
+ * エントリポイントは `seed`（CLI は pnpm seed）。
  */
 
 import path from "node:path";

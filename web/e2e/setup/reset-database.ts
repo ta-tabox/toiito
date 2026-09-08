@@ -8,9 +8,7 @@
  * Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、globalSetup へ置くと dev サーバーが先に接続を張った後で足元の DB を削除することになる。
  *
  * 素の node が走らせる CLI で、接続先は webServer から渡る DATABASE_URL。
- * リポジトリ内のモジュールを import しない形に閉じてある。
- * tsconfig の paths が効くのは型検査と、paths を読む実行側（Playwright・vitest・Next）までで、素の node の解決には無い。
- * `reset-database.ts` が import を持つと、エイリアスの写しを node 側へもう一つ持つことになる。
+ * リポジトリ内のモジュールを import しない（tsconfig の paths が効くのは型検査と、paths を読む実行側までで、素の node の解決には無い）。
  */
 
 import { execFileSync } from "node:child_process";
