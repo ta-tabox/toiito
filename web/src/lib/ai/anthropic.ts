@@ -6,7 +6,7 @@
  * 何をどう見せるか（本文の組み立て）と、応答をどう扱うか（記録・打ち切りの拒否）は `lib/ai/index.ts` の決め事なので持たない。
  *
  * `process.env` は読まない。
- * env を模した object を受ける純関数だけを出し、`process.env` を渡すのは providers.ts（docs/HARNESS.md「テスト可能性の設計制約」2）。
+ * env を模した object を受ける純関数だけを出し、`process.env` を渡すのは `providers.ts`。
  */
 
 import {

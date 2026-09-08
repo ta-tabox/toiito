@@ -2,7 +2,7 @@
  * Anthropic 固有の検査。
  * 深さの値域・env から設定を作る写像・Claude API へ送るリクエストの中身を守る。
  *
- * env は process.env を触らず、env を模した object を渡す（docs/HARNESS.md「テスト可能性の設計制約」2）。
+ * env は `process.env` を触らず、env を模した object を渡す（規約は `src/lib/ai/providers.ts`）。
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";

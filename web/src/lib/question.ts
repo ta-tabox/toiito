@@ -13,13 +13,13 @@
  * 比喩を担うのは表示側のラベルだけなので、`QUESTION_STATUSES` へ比喩由来の語を足さない。
  */
 export const QUESTION_STATUSES = [
-  "new", // 仕込んだが、まだ材料が付いていない
-  "stocked", // 材料が付き、蒸留に入れる
-  "resolved", // 答えが出て閉じた。別の置き場へは書き出していない
-  "exported", // 答えが出て、別の置き場へ書き出した
-  "holding", // 持ち続ける問い。答えが出ないことは欠陥ではない
-  "permanent", // 閉じないことが正しい問い。閉じ候補として催促しない
-  "discarded", // 棄却
+  "new",
+  "stocked",
+  "resolved",
+  "exported",
+  "holding",
+  "permanent",
+  "discarded",
 ] as const;
 
 export type QuestionStatus = (typeof QUESTION_STATUSES)[number];

@@ -5,13 +5,10 @@ import * as db from "@/lib/db";
 import { QUESTION_STATUSES } from "@/lib/question";
 import type { OwnerId } from "@/lib/types";
 
-// 接続先はテスト専用データベース。
-// vitest.config.ts が env で渡し、ケースごとに空にする（tests/setup/truncate.ts）。
 afterAll(async () => {
   await db.disconnect();
 });
 
-// repo 関数はどれも所有者を要求するので、空にした後のケースごとに一人作る。
 let owner: OwnerId;
 
 beforeEach(async () => {

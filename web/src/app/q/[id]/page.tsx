@@ -8,8 +8,7 @@
  *
  * 発話の生成と永続化は Server Action、本文の描画と選択からのメモ作成は `MessageBody` の担当で、`QuestionPage` は並べて描くところまで。
  *
- * 各発話に付ける id="msg-<message_id>" は逆引き（/memos）の着地点。
- * 書式は /memos が組み立てるリンクと、着地した発話を強調する `landing-mark.tsx` / `globals.css` が共有しているので、変えるならその三箇所とも直す。
+ * 各発話に付ける id="msg-<message_id>" は逆引き（/memos）の着地点で、書式の正は `memos/page.tsx`。
  */
 
 import Link from "next/link";

@@ -24,7 +24,6 @@ afterAll(async () => {
   await db.disconnect();
 });
 
-// repo 関数はどれも所有者を要求するので、空にした後のケースごとに一人作る。
 let owner: OwnerId;
 
 beforeEach(async () => {

@@ -5,8 +5,6 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import * as db from "@/lib/db";
 import type { OwnerId } from "@/lib/types";
 
-// 接続先はテスト専用データベース。
-// vitest.config.ts が env で渡し、ケースごとに空にする（tests/setup/truncate.ts）。
 afterAll(async () => {
   await db.disconnect();
 });

@@ -52,7 +52,6 @@ function calls(failing?: PersonaId): PersonaCalls {
   return { ai_a: call("ai_a"), ai_b: call("ai_b") };
 }
 
-// repo 関数はどれも所有者を要求するので、空にした後のケースごとに一人作る。
 let owner: OwnerId;
 
 beforeEach(async () => {
