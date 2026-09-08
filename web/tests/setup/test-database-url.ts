@@ -50,7 +50,7 @@ function hashedSlug(name: string): string {
  * worktree 名は末尾に一意の接尾辞を持つので、頭を残して尻を切ると別の worktree と同じ名前になる。
  *
  * 空は返さない。
- * 呼ぶ側は前後に `toiito_wt_` と `_test` を繋いだ名前を作るので、空を返すと掃除の側が派生名として見分けられなくなる。
+ * 呼ぶ側は前後に `toiito_wt_` と `_test` を繋いだ名前を作るので、空を返すと `scripts/prune-test-databases.ts` が派生名として見分けられなくなる。
  */
 export function toDatabaseSlug(name: string): string {
   const normalized = name

@@ -50,7 +50,7 @@ export function RetryForm({ action }: { action: () => Promise<void> }) {
  * 応答を待つ間は押せなくなり、ラベルが「二体が応答中」の表示へ変わる。
  *
  * `useFormStatus` は親フォームの状態を読むので、`form` を描くコンポーネントには置けない（常に `pending: false` が返る）。
- * `RetryForm` と `SpeakForm` は同時に表示されるので、再送の側を `tone="quiet"` で薄くして主要な操作を一つに保つ。
+ * `RetryForm` と `SpeakForm` は同時に表示されるので、`RetryForm` を `tone="quiet"` で薄くして主要な操作を一つに保つ。
  */
 function SubmitButton({
   label,

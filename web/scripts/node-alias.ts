@@ -21,7 +21,7 @@ const srcDir = path.resolve(import.meta.dirname, "../src");
  * `@/…` を実ファイルへ当てるときに試す拡張子。
  *
  * node は拡張子を補わないので、拡張子なしで書かれた src 側に `.ts` を当てる。
- * 空文字の側は、import のパスに拡張子が既に付いている場合。
+ * 空文字は、import のパスに拡張子が既に付いている場合に当たる。
  */
 const CANDIDATE_SUFFIXES = ["", ".ts"];
 

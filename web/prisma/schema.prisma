@@ -31,7 +31,7 @@ datasource db {
 /// 問いの状態。7 値である理由と各値の意味は docs/ARCHITECTURE.md「問いの状態機械」。
 ///
 /// 値は比喩を持たない一般語で持ち、比喩は UI のラベルだけが持つ（`docs/adr/0017-status-value-set.md`）。
-/// 比喩は選び直しうるが enum の変更は本番の DB を動かすので、値の側へ比喩を持ち込まない。
+/// 比喩は選び直しうるが enum の変更は本番の DB を動かすので、`QuestionStatus` の値へ比喩を持ち込まない。
 ///
 /// TS 側の対応は `src/lib/question.ts` の `QUESTION_STATUSES`（型 `QuestionStatus` と UI ラベルがそこから派生する）。
 /// 二箇所に書くのは冗長に見えるが、ずれると repo 関数の戻り値がドメイン型へ代入できなくなり `tsc` が落ちる。

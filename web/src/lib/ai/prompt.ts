@@ -31,7 +31,7 @@ const SPEAKER_TAG: Record<Speaker, string> = {
 
 /**
  * ペルソナ一体へ渡すユーザーメッセージを組み立てる。
- * 原型と現在の形を両方載せる理由は QuestionRef の側にある。
+ * 原型と現在の形を両方載せる理由は `QuestionRef` の JSDoc にある。
  */
 export function buildUserContent(
   question: QuestionRef,

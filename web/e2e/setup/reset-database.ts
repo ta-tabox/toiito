@@ -1,7 +1,7 @@
 /**
  * E2E 用データベースを走るたびに作り直す。
  *
- * 削除して作り直すところまでが `reset-database.ts` の責務で、ブラウザ操作の側は spec が持つ。
+ * 削除して作り直すところまでが `reset-database.ts` の責務で、ブラウザ操作は spec が持つ。
  * ケースごとに空にする vitest 側（tests/setup/truncate.ts）と違い、E2E はアプリを跨いで状態を積む一本道なので、区切るのは走り単位。
  *
  * 呼ぶのは playwright.config.ts の webServer が `next dev` を起こす前。

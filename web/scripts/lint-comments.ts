@@ -622,7 +622,7 @@ function excludeIgnored(files: string[]): string[] {
 
 /**
  * 既定の対象はリポジトリの構成に対する見込みなので、無いディレクトリは黙って飛ばす。
- * 引数で名指しされた場所が無いのは打ち間違いなので、引数の側は collectSourceFiles に throw させる。
+ * 引数で名指しされた場所が無いのは打ち間違いなので、collectSourceFiles に throw させる。
  */
 function resolveTargets(argv: string[]): string[] {
   return argv.length > 0
