@@ -53,6 +53,39 @@
 - 返信の投稿は push の後（commit → push → 返信）。
   未 push のハッシュはリンクにならない
 
+## 語彙と読み手
+特定の語を禁じるだけでは婉曲は残るので、各項に判定手順を付けてある。
+英語で書くときも同じ規律に従う。
+
+- 比喩で言えることは直叙で言う。
+  言い換えが存在する比喩は装飾なので使わない
+  / Say it literally when a literal phrase exists
+- 独自用語は、このプロジェクトの用語集にある語だけ使う。
+  使うときは初出で一行定義する。
+  用語集が無いなら独自用語を使わない
+  / Use only the house terms this project lists, and define each on first use
+- 読み手はこのセッションを見ていない。
+  コメント・コミット本文・PR・issue は、その文と対象の差分だけで意味が取れること
+  / The reader has not seen the session that produced the change
+- 各文の主語と目的語を名詞で書く。
+  「これ」「それ」「例の」「上の」で対象を指さない
+  / Name the subject and object, and use no demonstratives for the referent
+- 結論は動詞で言い切る。
+  含意・反語・皮肉で結論を代替しない
+  / State the conclusion with a verb, not by implication or irony
+- 質問は「何を決めるか」を一文目に置き、選択肢は名詞で書く。
+  選択肢の説明は「選ぶと何が起きるか」だけ
+  / Put the decision in the first sentence and make the options nouns
+- 書く前に、指示語・比喩・会話への参照の3種を走査して置き換える
+  / Before writing, scan for demonstratives, metaphors, and references to the conversation
+
+| 悪例 | 良例 |
+|---|---|
+| 上の議論のとおり入力経路を一本にする | 入力を `scripts/capture.ts` の1経路に限る |
+| ここでこの仕組みが効いてくる | このチェックは下書きが公開一覧に載るのを止める |
+| 検査が緑であることは、意図した条件下で緑であることを保証しない | 検査が通っても、固定した版で走ったとは限らない |
+| Handled the edge case per our earlier discussion | Return an empty list when `items` is `None` |
+
 
 ## プロジェクト固有（育てる欄）
 - 「箇条・例示・図示の行は句点で閉じなくてよい」を四規律に足し、雛形の「緩めてよいのは箇条の 1 項目の内側だけ」を落としている。
