@@ -12,11 +12,21 @@
  *
  * 下線の付いた区間は `/memos?memo=<id>` へのリンクにする。
  * 逆向き（メモ → 発話）は /memos が持っているので、`MessageBody` は発話 → メモを埋める側。
+ * 下線に触れているあいだメモを覗ける枠と、その枠を止める切り替えは `memo-preview.tsx` が持つ。
  */
 
 import Link from "next/link";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type SyntheticEvent,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
+import { MemoPreview, MemoPreviewToggle } from "@/components/memo-preview";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import {
@@ -134,6 +144,9 @@ export function MessageBody({
         ))}
       </div>
 
+      {/* 下線を持つ発話だけが切り替えを申し出て、画面に描かれるのはそのうちの一つだけである（`memo-preview.tsx`）。 */}
+      {memos.length > 0 && <MemoPreviewToggle />}
+
       {/* body へ移すのは、祖先が containing block を作ると fixed の基準が画面でなくその祖先へ移るため。 */}
       {draft &&
         createPortal(
@@ -154,7 +167,7 @@ export function MessageBody({
  * セグメント一つ分の描画。
  *
  * メモが付いていれば、メモの数だけ下線を重ねたリンクにする。
- * 付いていなければただの span。
+ * 付いていなければただの span で、下線も覗き見も持たない。
  *
  * draggable を切るのは、下線の内側から選択を始めたときにリンクのドラッグが起きるのを防ぐため。
  * 既にメモの付いた区間へ重ねてメモを作る経路が塞がる。
@@ -168,6 +181,8 @@ function SegmentText({
   index: number;
   memos: Memo[];
 }) {
+  const previewId = useId();
+  const [previewAnchor, setPreviewAnchor] = useState<DOMRect | null>(null);
   const covering = memos.filter((memo) => segment.memoIds.includes(memo.id));
   const [firstMemo] = covering;
 
@@ -175,30 +190,30 @@ function SegmentText({
     return <span data-segment-index={index}>{segment.text}</span>;
   }
 
+  const openPreview = (event: SyntheticEvent<HTMLAnchorElement>) =>
+    setPreviewAnchor(event.currentTarget.getBoundingClientRect());
+  const closePreview = () => setPreviewAnchor(null);
+
   return (
-    <Link
-      href={`/memos?memo=${narrowestMemo(covering).id}`}
-      data-segment-index={index}
-      title={memoHint(covering)}
-      draggable={false}
-    >
-      {stackedUnderlines(segment.text, covering.length)}
-    </Link>
+    <>
+      <Link
+        href={`/memos?memo=${narrowestMemo(covering).id}`}
+        data-segment-index={index}
+        aria-describedby={previewId}
+        draggable={false}
+        onMouseEnter={openPreview}
+        onMouseLeave={closePreview}
+        onFocus={openPreview}
+        onBlur={closePreview}
+      >
+        {stackedUnderlines(segment.text, covering.length)}
+      </Link>
+
+      {previewAnchor && (
+        <MemoPreview id={previewId} memos={covering} anchor={previewAnchor} />
+      )}
+    </>
   );
-}
-
-/**
- * 区間に付いているメモを、hover で覗ける一つの文字列へまとめる。
- * 付いていなければ undefined（title 属性ごと出さない）。
- */
-function memoHint(covering: Memo[]): string | undefined {
-  if (covering.length === 0) {
-    return undefined;
-  }
-
-  return covering
-    .map((memo) => (memo.note ? `${memo.keyword}: ${memo.note}` : memo.keyword))
-    .join("\n");
 }
 
 /**

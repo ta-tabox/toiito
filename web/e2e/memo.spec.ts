@@ -43,6 +43,10 @@ const SCENARIOS = {
       "E2E: 二つの発話を続けて選んでも入力欄は一つに保たれる。やめれば何も残らない。",
     words: ["二つの発話を続けて", "やめれば何も残らない"],
   },
+  preview: {
+    question: "E2E: 下線に触れるとメモが読めるのか",
+    utterance: "E2E: 触れただけで中身が見えてほしい",
+  },
   overlap: {
     question: "E2E: 重なったメモは重なって見えるのか",
     utterance: "E2E: 一つの語に二つのメモを重ねて付ける",
@@ -111,10 +115,30 @@ test("発話の一部を選ぶとメモを作れ、その区間にアンダー�
     "text-decoration-line",
     "underline",
   );
-  await expect(marked).toHaveAttribute(
-    "title",
-    `${utterance}: この言い換えが効いた`,
-  );
+});
+
+test("下線に触れるとメモが出て、切り替えを切ると出なくなる", async ({
+  page,
+}) => {
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.preview);
+  const { utterance } = SCENARIOS.preview;
+  await selectTextIn(page, aiA, utterance);
+
+  await page.getByLabel("メモ").fill("触れて読めるか見る");
+  await page.getByRole("button", { name: "メモする" }).click();
+
+  const marked = aiA.getByRole("link", { name: utterance, exact: true });
+  await marked.hover();
+
+  // 出すのはキーワードとノートの両方で、title 属性では書式を持てなかった分がここに要る。
+  const preview = page.getByRole("tooltip");
+  await expect(preview).toContainText(utterance);
+  await expect(preview).toContainText("触れて読めるか見る");
+
+  await page.getByRole("button", { name: /^ホバーでメモを出す/ }).click();
+  await marked.hover();
+
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
 });
 
 test("重なった区間には付いているメモの数だけ下線が出て、押すと狭い方のメモが開く", async ({
