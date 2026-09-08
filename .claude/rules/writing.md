@@ -54,6 +54,45 @@
   未 push のハッシュはリンクにならない
 
 
+## 語彙と読み手（2026-09-08 追加）
+比喩と婉曲は特定の語を禁じても残るので、規律は判定手順が付く形で書く。
+各項に英語の対を付けてある。英語で書くときも同じ規律に従う。
+
+- 比喩で言えることは直叙で言う。
+  言い換えが存在する比喩は装飾なので使わない。
+  / Say it literally if a literal phrase exists; a metaphor with an available literal equivalent is decoration
+- 用語集を持つプロジェクトでは、その一覧にある語だけ独自用語として使う。
+  一覧を持たないプロジェクトでは独自用語を使わない。
+  どちらでも初出で一行定義し、語を一般的でない意味へ転用しない。
+  用語集の場所はそのプロジェクトの `CLAUDE.md` が指す
+  / Use a house term only if the project's glossary lists it; if there is no glossary, use none. Define it on first use either way
+- 読み手はこのセッションを見ていない、を既定にする。
+  コメント・コミット本文・PR・質問文は、その文と対象のコードや差分だけで意味が取れること。
+  会話を指す語（「上の議論のとおり」「例の件」）を書かない
+  / Assume the reader has not seen this session; a comment, commit, PR, or question must be understandable from itself and the code it sits on
+- 各文の主語と目的語を名詞で書く。
+  指示語（これ・それ・例の・上の）で対象を指さない。
+  概念を主語にして人の判断を隠さない
+  / Every sentence names its subject and object with a noun; no demonstratives for the referent; do not hide a human decision behind an abstract subject
+- 結論は動詞で言い切る。
+  含意・反語・皮肉で結論を代替しない。
+  皮肉を載せた文の直後に、同じ内容を直叙で一文書く
+  / State the conclusion with a verb; do not replace it with implication, rhetorical question, or irony; after an ironic sentence, restate it literally
+- 質問は「何を決めるか」を一文目に置き、選択肢は名詞で書く。
+  選択肢の説明には「選ぶと何が起きるか」だけを書く
+  / A question states the decision in its first sentence; options are nouns; option descriptions say what happens if chosen
+- 残る文章を書く直前に、指示語・比喩・会話参照の3種を走査して置換する
+  / Before writing persistent text, scan for demonstratives, metaphors, and references to the conversation, and replace all three
+
+| 悪例 | 良例 |
+|---|---|
+| 器の側で判じる | このリポジトリの担当者が決める |
+| 上の議論のとおり、口を一本にする | 入力手段を `dispatch-capture` の1本に限る |
+| 超えたら封緘（正典 membrane.md） | 800 字を超えたら本文を `memory/parcels/` のファイルへ移し、ここには要約1行と参照を残す |
+| 検査が緑であることは、意図した条件下で緑であることを保証しない、というのが答えになる | 検査が通っても、固定した版で走ったとは限らない。版も検査で確かめる |
+| Handled the edge case per our earlier discussion | Return an empty list when `items` is `None` (previously raised `TypeError`) |
+| This is where the membrane earns its keep | This check stops kb-only facts from being copied into `memory/notes/` |
+
 ## プロジェクト固有（育てる欄）
 - 「箇条・例示・図示の行は句点で閉じなくてよい」を四規律に足し、雛形の「緩めてよいのは箇条の 1 項目の内側だけ」を落としている。
   理由は、このリポジトリの md が箇条中心で、閉じない行の方が多数派だから。
