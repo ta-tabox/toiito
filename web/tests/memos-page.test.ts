@@ -1,9 +1,21 @@
 import { createOwner } from "@tests/setup/owner";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import MemosPage from "@/app/memos/page";
 import * as db from "@/lib/db";
 import type { OwnerId } from "@/lib/types";
+
+/**
+ * `requireCurrentUser` が返すユーザー。
+ * `beforeEach` が作った所有者を、モックの外から差し替えるための入れ物。
+ */
+const currentUser = vi.hoisted(() => ({ value: undefined as unknown }));
+
+// 本物の `requireCurrentUser` は Better Auth のセッションを読むので、リクエストの外では呼べない。
+// ここで見たいのは所有者を受け取った後の描画なので、セッションの読み取りごと差し替える（サインインの検査は `e2e/auth.spec.ts`）。
+vi.mock("@/lib/current-user", () => ({
+  requireCurrentUser: async () => currentUser.value,
+}));
 
 afterAll(async () => {
   await db.disconnect();
@@ -13,6 +25,7 @@ let owner: OwnerId;
 
 beforeEach(async () => {
   owner = await createOwner();
+  currentUser.value = await db.getUserById(owner);
 });
 
 /**

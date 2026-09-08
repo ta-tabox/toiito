@@ -33,7 +33,13 @@ export function fakeLogin(isEnabled: boolean) {
     endpoints: {
       signInFake: createAuthEndpoint(
         "/sign-in/fake",
-        { method: "POST" },
+
+        // 本文の型は `$Infer` で宣言する。
+        // Better Auth が本文の schema に使う zod はこのアプリの依存に無いので、実行時の検証は `parseBody` が持つ。
+        {
+          method: "POST",
+          metadata: { $Infer: { body: {} as FakeSignInBody } },
+        },
         async (ctx) => {
           if (!isEnabled) {
             throw new APIError("NOT_FOUND", {

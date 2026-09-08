@@ -7,12 +7,12 @@
  */
 
 import Link from "next/link";
-import { createQuestionAction } from "@/app/actions";
+import { createQuestionAction, signOutAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Pill } from "@/components/ui/pill";
 import { Row } from "@/components/ui/row";
-import { getCurrentUser } from "@/lib/current-user";
+import { requireCurrentUser } from "@/lib/current-user";
 import { listQuestions, questionText } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
 
@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
  * 投入フォームと問いの一覧。
  */
 export default async function Home() {
-  const questions = await listQuestions((await getCurrentUser()).id);
+  const questions = await listQuestions((await requireCurrentUser()).id);
 
   return (
     <main className="mx-auto w-full max-w-reading flex-1 px-5 py-10">
@@ -32,12 +32,19 @@ export default async function Home() {
         <span className="font-gothic text-aux text-ink-weak">問いの発酵槽</span>
       </h1>
 
-      <Link
-        href="/memos"
-        className="mt-2 inline-block text-aux text-ink-weak hover:underline"
-      >
-        メモ一覧 →
-      </Link>
+      <div className="mt-2 flex items-baseline justify-between gap-4">
+        <Link href="/memos" className="text-aux text-ink-weak hover:underline">
+          メモ一覧 →
+        </Link>
+        <form action={signOutAction}>
+          <button
+            type="submit"
+            className="text-aux text-ink-weak hover:underline"
+          >
+            ログアウト
+          </button>
+        </form>
+      </div>
 
       <form action={createQuestionAction} className="mt-8 flex gap-2">
         <Field
