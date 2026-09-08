@@ -4,7 +4,7 @@
  * 見るのは `e2e/` の spec だけで、型検査・lint・単体テスト・ビルドは `pnpm check` が持つ。
  * AI 呼び出しはフェイクモードに固定し、実 API を自動テストで叩かない（docs/HARNESS.md「AI フェイクモード」）。
  * サインインも Google を経ない経路に固定する（`TOIITO_FAKE_LOGIN=1`）。
- * 実 OAuth では二人分のサインインを自動化できず、Google の同意画面を通す往復はこのアプリのコードではない（docs/adr/0032-login-and-fake-sign-in.md 決定 1）。
+ * 実 OAuth では二人分のサインインを自動化できず、Google の同意画面を通す往復はこのアプリのコードではない（docs/adr/0033-login-and-fake-sign-in.md 決定 1）。
  *
  * 接続先とサーバーは開発用から三重に離す（データベース `toiito_e2e`・ポート 3100・出力先 `.next-e2e`）。
  * 出力先まで分けるのは、next dev の二重起動検知が `.next/dev/lock` 一つを見ており、ポートを分けただけでは `pnpm dev` と衝突するため。

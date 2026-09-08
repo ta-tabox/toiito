@@ -173,7 +173,7 @@ pnpm exec playwright install chromium
 差し替えの口は `TOIITO_DIST_DIR` で、受けるのは `next.config.ts`。
 
 サーバーは一本で、サインインは Google を経ない経路に固定する（`TOIITO_FAKE_LOGIN=1`）。
-実 OAuth では二人分のサインインを自動化できず、未サインインの状態も作れない（`adr/0032-login-and-fake-sign-in.md` 決定 1）。
+実 OAuth では二人分のサインインを自動化できず、未サインインの状態も作れない（`adr/0033-login-and-fake-sign-in.md` 決定 1）。
 許可リスト（`TOIITO_ALLOWED_EMAILS`）にはシードの二人を入れてあるので、spec は `e2e/setup/sign-in.ts` の `signIn` でどちらにもなれる。
 
 ### 入っているもの

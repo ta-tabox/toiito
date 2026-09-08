@@ -5,7 +5,7 @@
  * 画面が 404 を返すか、それとも中身を出したうえで空に見せているかは、ブラウザから叩かないと見えない。
  *
  * 二人分のセッションを作れるのは `TOIITO_FAKE_LOGIN=1` の環境だけである。
- * 実 OAuth では二人分のサインインを自動化できない（`docs/adr/0032-login-and-fake-sign-in.md` 決定 1）。
+ * 実 OAuth では二人分のサインインを自動化できない（`docs/adr/0033-login-and-fake-sign-in.md` 決定 1）。
  */
 
 import { signIn } from "@e2e/setup/sign-in";

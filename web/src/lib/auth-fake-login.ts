@@ -24,7 +24,7 @@ type FakeSignInBody = { email: string };
  * `isEnabled` が false なら、エンドポイントは常に 404 を throw する。
  *
  * 無効なときもプラグインごと外さないのは、`auth.api.signInFake` の型を環境変数で消さないため。
- * 本番で有効にできないことは `readAuthConfig` が別に検証する（`docs/adr/0032-login-and-fake-sign-in.md` 決定 3）。
+ * 本番で有効にできないことは `readAuthConfig` が別に検証する（`docs/adr/0033-login-and-fake-sign-in.md` 決定 3）。
  */
 export function fakeLogin(isEnabled: boolean) {
   return {

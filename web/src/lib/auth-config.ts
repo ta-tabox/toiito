@@ -163,7 +163,7 @@ function readFakeLoginEnabled(env: AuthEnv): boolean {
 
   if (isEnabled && env.VERCEL_ENV === "production") {
     throw new Error(
-      "TOIITO_FAKE_LOGIN は本番（VERCEL_ENV=production）では設定できない。Preview と E2E だけが使う（docs/adr/0032-login-and-fake-sign-in.md 決定 3）",
+      "TOIITO_FAKE_LOGIN は本番（VERCEL_ENV=production）では設定できない。Preview と E2E だけが使う（docs/adr/0033-login-and-fake-sign-in.md 決定 3）",
     );
   }
 

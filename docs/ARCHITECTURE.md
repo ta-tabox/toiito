@@ -123,7 +123,7 @@ UI 側でやらない。
 戻り値の `id` には印（`OwnerId`）が付いており、repo 関数は所有者としてその型しか受け取らない。
 中身は Better Auth のセッションが指す `user` 行で、未サインインなら `getCurrentUser` が undefined を返し、`requireCurrentUser` が `/login` へ送る。
 入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（`adr/0022-session-security.md` 決定 8）。
-Google を経ないサインイン（`TOIITO_FAKE_LOGIN=1`）は Preview と E2E だけが使い、本番では起動時に拒否される（`adr/0032-login-and-fake-sign-in.md`）。
+Google を経ないサインイン（`TOIITO_FAKE_LOGIN=1`）は Preview と E2E だけが使い、本番では起動時に拒否される（`adr/0033-login-and-fake-sign-in.md`）。
 
 認証まわりの四表（`user` / `session` / `account` / `verification`）は Better Auth が持ち、モデル名も列名も生成されたままにする。
 `db.ts` が触るのは `user` の `id` / `email` / `name` の三つだけで、どれも詰め替えの要らない列名なので、snake_case へ揃える利益が発生しない（`adr/0031-ownership-before-auth.md`）。

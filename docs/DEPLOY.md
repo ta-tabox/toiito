@@ -38,7 +38,7 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 `TOIITO_FAKE_AI` は**本番に入れない**。
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
 `TOIITO_FAKE_LOGIN` も**本番に入れない**。
-入れても動かず、`VERCEL_ENV=production` を見て起動時に落ちる（`adr/0032-login-and-fake-sign-in.md` 決定 3）。
+入れても動かず、`VERCEL_ENV=production` を見て起動時に落ちる（`adr/0033-login-and-fake-sign-in.md` 決定 3）。
 
 **8 本とも Production に入れてから最初のビルドを回す**。
 `postinstall` の `prisma generate` は `prisma.config.ts` 経由で `DIRECT_URL` を即時解決するので、無いとインストール段階で exit 1 になる。
@@ -51,7 +51,7 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 **やることは、サインインして新しくできた行へ問いを移し、置き場だった行を削除することである。**
 
 **この節の作業より前に `owner@toiito.invalid` を自分の email へ書き換えない。**
-自動リンクを有効にしない決定（`adr/0029-auth-better-auth.md` 決定 6）の下では、同じ email の行が先に在るとサインインそのものが `account not linked` で拒否される（`adr/0032-login-and-fake-sign-in.md` 決定 6）。
+自動リンクを有効にしない決定（`adr/0029-auth-better-auth.md` 決定 6）の下では、同じ email の行が先に在るとサインインそのものが `account not linked` で拒否される（`adr/0033-login-and-fake-sign-in.md` 決定 6）。
 書き換えてしまった場合は、`owner@toiito.invalid` へ戻してからサインインする。
 
 1. `TOIITO_ALLOWED_EMAILS` に自分の Google アカウントの email を入れて本番へデプロイする
@@ -267,14 +267,14 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 
 ## ログイン
 
-本番の外周を守るのは**アプリのログイン**である（`adr/0032-login-and-fake-sign-in.md`）。
+本番の外周を守るのは**アプリのログイン**である（`adr/0033-login-and-fake-sign-in.md`）。
 `web/src/proxy.ts` が全リクエストを見て、セッションの cookie が無ければ `/login` へ送る。
 入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（`adr/0022-session-security.md` 決定 8）。
 
 **Basic 認証は #68 で外した**。
 `adr/0013-production-basic-auth.md` が最初から書いていた覆る条件が発火したので、`TOIITO_BASIC_AUTH_USER` と `TOIITO_BASIC_AUTH_PASSWORD` は Production と Preview の両方から消す。
 
-**Basic 認証とログインが同時に入れ替わる**（`adr/0032-login-and-fake-sign-in.md` 決定 8）。
+**Basic 認証とログインが同時に入れ替わる**（`adr/0033-login-and-fake-sign-in.md` 決定 8）。
 0031 の決定 5 が書いた三段（入れる → 確かめる → 外す）は、判定のコードが残っていることを前提にしていた。
 `src/lib/basic-auth.ts` を削除した以上、Basic 認証はデプロイした瞬間に消える。
 
