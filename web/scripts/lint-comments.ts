@@ -239,7 +239,7 @@ function checkModuleHeader(
     ];
   }
 
-  // 直後の空行が、モジュールへの注釈と直下の宣言への JSDoc を分ける唯一の手掛かり。
+  // 直後の空行が、モジュールへの注釈と直下の宣言への JSDoc を分ける唯一の目印。
   // 空行を挟まないと TS もエディタも、冒頭コメントを次の宣言のドキュメントとして扱う。
   if (!isFollowedByBlankLine(text, header.end)) {
     return [
