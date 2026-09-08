@@ -163,18 +163,18 @@ pnpm exec playwright install chromium
 
 `pnpm dev` を止めずに走らせられるよう、口もデータベースもビルド出力先も分ける。
 
-| | `pnpm dev` | E2E | E2E（制限あり） |
-|---|---|---|---|
-| 口 | 3000 | 3100 | 3101 |
-| データベース | `toiito` | `toiito_e2e` | `toiito_e2e` |
-| ビルド出力先 | `.next` | `.next-e2e` | `.next-e2e-auth` |
+| | `pnpm dev` | E2E |
+|---|---|---|
+| 口 | 3000 | 3100 |
+| データベース | `toiito` | `toiito_e2e` |
+| ビルド出力先 | `.next` | `.next-e2e` |
 
 出力先まで分けるのは、`next dev` の二重起動検知が `.next/dev/lock` 一つしか見ないため。
 差し替えの口は `TOIITO_DIST_DIR` で、受けるのは `next.config.ts`。
 
-同じサーバーでは制限が掛かる側と掛からない側を両方見られないので、制限ありをもう一本立てる。
-資格情報を持つのはそちらだけで、叩くのは `basic-auth.spec.ts` だけである。
-project ごとに `baseURL` を持たせてあるので、spec は自分がどちらを叩くかを意識しない。
+サーバーは一本で、サインインは Google を経ない経路に固定する（`TOIITO_FAKE_LOGIN=1`）。
+実 OAuth では二人分のサインインを自動化できず、未サインインの状態も作れない（`adr/0032-login-and-fake-sign-in.md` 決定 1）。
+許可リスト（`TOIITO_ALLOWED_EMAILS`）にはシードの二人を入れてあるので、spec は `e2e/setup/sign-in.ts` の `signIn` でどちらにもなれる。
 
 ### 入っているもの
 
@@ -182,14 +182,18 @@ project ごとに `baseURL` を持たせてあるので、spec は自分がど�
 |---|---|
 | `dialogue.spec.ts` | 問い投入 → 発話 → 二体が ai_a → ai_b の順に応答 |
 | `memo.spec.ts` | 発話の選択とメモの作成、下線と `/memos` からの逆引き、再訪を挟んでも着地が切れないこと |
-| `basic-auth.spec.ts` | 資格情報の有無で 401 と通過が分かれ、401 が `WWW-Authenticate` を添えること |
+| `auth.spec.ts` | 未サインインがログインの画面へ送られること、ログインとログアウトの導線、cookie の属性、別 origin からの POST が拒まれること |
+| `ownership.spec.ts` | 他人の問いが一覧に出ず、URL を直接叩いても 404 になること |
 
-`basic-auth.spec.ts` が叩くのは存在しない経路（`/no-such-page`）である。
-データベースを引かないので他の spec の作り直しと競走せず、アプリのルートでない場所が 401 になること自体が「制限が routing より前に掛かっている」証拠にもなる。
+`auth.spec.ts` だけはサインイン済みで始めない。
+未サインインの状態そのものを見るので、他の spec が共有する前提（`signIn` の `beforeEach`）を使わない。
+
+CSRF の検査には対照を置く。
+同じ multipart の POST が自分の origin からは通ることを見ないと、別 origin での失敗が origin の照合によるものだと言えない。
 
 **この層は Vercel のランタイム差を再現しない**。
 `next dev` も `next start` も Node で走るので、Edge でだけ環境変数が読めない類の失敗はここに出ない。
-本番が閉じている確認は `DEPLOY.md`「アクセス制限」の curl が持つ。
+本番の cookie に `Secure` が乗っていることの確認は `DEPLOY.md`「ログイン」の curl が持つ。
 
 ### spec を書くときの制約
 
@@ -207,9 +211,9 @@ project ごとに `baseURL` を持たせてあるので、spec は自分がど�
 1. **ロジックは lib 層へ寄せる**。
    UI コンポーネントや Server Actions にロジックを埋めない。
    actions.ts は「lib を呼ぶ配線」に留める
-2. **`process.env` を読むのは、その値を使う層の入口だけ**（`lib/config.ts` が DB 接続先、`lib/ai/providers.ts` が AI プロバイダ、`proxy.ts` が Basic 認証）。
+2. **`process.env` を読むのは、その値を使う層の入口だけ**（`lib/config.ts` が DB 接続先、`lib/ai/providers.ts` が AI プロバイダ、`lib/auth.ts` が認証）。
    探す側が使う場所から辿れるよう、解決済みの値は使う層に置く。
-   env から値への写像と既定値は、その値を使う側のモジュールが純関数として持つ（`lib/ai/anthropic.ts` の `readAnthropicSettings` と `ANTHROPIC_DEFAULTS`、`lib/basic-auth.ts` の `readBasicAuthCredentials`）。
+   env から値への写像と既定値は、その値を使う側のモジュールが純関数として持つ（`lib/ai/anthropic.ts` の `readAnthropicSettings` と `ANTHROPIC_DEFAULTS`、`lib/auth-config.ts` の `readAuthConfig`）。
    他のモジュールは解決済みの値を参照する。
    呼び出しごとに変わりうる値は引数で受け取る。
    env の読み方そのものは、その純関数へ env を模した object を渡して検査する。
