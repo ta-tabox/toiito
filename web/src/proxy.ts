@@ -1,5 +1,5 @@
 /**
- * 本番の入口に Basic 認証を掛ける配線（Next の proxy 規約）。
+ * 本番のすべてのリクエストへ Basic 認証を適用する配線（Next の proxy 規約）。
  *
  * 判定は `@/lib/basic-auth` が持ち、ここは 401 と `WWW-Authenticate` へ変換するだけにする。
  * #68（ログイン（Google OAuth）とリソースの所有権）が入ったら、このファイルごと外す。
@@ -11,7 +11,7 @@
  * 本番で設定が欠けていれば、リクエストを捌く前に落ちる。
  *
  * proxy は常に Node.js ランタイムで走るので、`process.env` は本物である。
- * 旧 middleware 規約の既定だった Edge では、ここが読む三つが実行時に undefined になり、資格情報が無いと判断して素通ししていた（2026-08-29 に生成物で確認）。
+ * 旧 middleware 規約の既定だった Edge では、ここが読む三つが実行時に undefined になり、資格情報が無いと判断して検証なしで通していた（2026-08-29 に生成物で確認）。
  */
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -25,7 +25,7 @@ const credentials = readBasicAuthCredentials({
   NODE_ENV: process.env.NODE_ENV,
 });
 
-/** すべてのリクエストに Basic 認証を掛ける。 */
+/** すべてのリクエストへ Basic 認証を適用する。 */
 export function proxy(request: NextRequest): NextResponse {
   if (credentials === null) {
     return NextResponse.next();

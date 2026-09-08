@@ -45,7 +45,7 @@ export type Session = { id: string; question_id: string; started_at: Date };
 
 /**
  * セッションと、そのセッションで付いたメモのキーワード。
- * 対話画面の切り替え口が、どのセッションだったかの手掛かりに使う。
+ * 対話画面のセッション切り替えが、どのセッションだったかの手掛かりに使う。
  */
 export type SessionWithKeywords = Session & { keywords: string[] };
 

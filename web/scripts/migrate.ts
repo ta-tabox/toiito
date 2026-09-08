@@ -1,11 +1,11 @@
 /**
- * 本番と Preview の DB へ migration を流す。
+ * 本番と Preview の DB へ migration を適用する。
  *
- * main への push で本番へ流れる経路（`.github/workflows/migrate.yml`）とは別の、手元から叩く口。
+ * main への push で本番へ適用する経路（`.github/workflows/migrate.yml`）とは別の、手元から叩くコマンド。
  * Preview には自動経路が無いので（`docs/adr/0015-preview-neon-branch.md`）、migration を含む PR の画面を見るにはここを通る。
- * 接続先は流し先ごとの環境変数が持ち、`.env.local` の `DIRECT_URL`（ローカル）は子プロセスの env で上書きする。
+ * 接続先は適用先ごとの環境変数が持ち、`.env.local` の `DIRECT_URL`（ローカル）は子プロセスの env で上書きする。
  *
- * 入口は CLI（`pnpm migrate:prod` / `pnpm migrate:preview`）。
+ * エントリポイントは CLI（`pnpm migrate:prod` / `pnpm migrate:preview`）。
  */
 
 import { execFileSync } from "node:child_process";
@@ -13,9 +13,9 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 /**
- * 流し先と、その接続先を持つ環境変数の対応。
+ * 適用先と、その接続先を持つ環境変数の対応。
  *
- * 変数を分けてあるのは、一本の `DIRECT_URL` を書き換えて使い回すと、直前に何を入れたかで流し先が変わるため。
+ * 変数を分けてあるのは、一本の `DIRECT_URL` を書き換えて使い回すと、直前に何を入れたかで適用先が変わるため。
  * 名前の正は `web/README.md` の表。
  */
 const DIRECT_URL_VARIABLES = {
@@ -23,16 +23,16 @@ const DIRECT_URL_VARIABLES = {
   preview: "DIRECT_URL_PREVIEW",
 } as const;
 
-/** 流し先の名前。 */
+/** 適用先の名前。 */
 export type TargetName = keyof typeof DIRECT_URL_VARIABLES;
 
-/** 流し先の一覧。 */
+/** 適用先の一覧。 */
 export const TARGET_NAMES: readonly TargetName[] = Object.keys(
   DIRECT_URL_VARIABLES,
 ) as TargetName[];
 
 /**
- * 流し先の接続先を持つ環境変数。
+ * 適用先の接続先を持つ環境変数。
  *
  * `process.env` をそのまま渡せるよう、宣言した以外のキーも通す（`config.ts` と同じ形）。
  */
@@ -42,17 +42,17 @@ type DirectUrlEnv = {
   readonly [key: string]: string | undefined;
 };
 
-/** 解決した流し先。 */
+/** 解決した適用先。 */
 export type MigrationTarget = {
   readonly name: TargetName;
   readonly directUrl: string;
 };
 
 /**
- * 引数と環境変数から流し先を決める。
+ * 引数と環境変数から適用先を決める。
  *
  * 名前が値域の外のときと、対応する環境変数が空のときは投げる。
- * 環境変数が無いまま既定へ倒すと `.env.local` のローカル DB へ流れるので、黙って倒さない。
+ * 環境変数が無いまま既定値にすると `.env.local` のローカル DB へ適用されるので、黙って既定値にしない。
  */
 export function resolveTarget(
   name: string | undefined,
@@ -91,8 +91,8 @@ export function describeConnection(directUrl: string): string {
 /**
  * CLI の本体。
  *
- * 流し先を先に告げてから流す。
- * 本番と Preview の取り違えに、流す前に気付けるようにするため。
+ * 適用先を先に表示してから適用する。
+ * 本番と Preview の取り違えに、適用の前に気付けるようにするため。
  */
 function main(): void {
   const target = resolveTarget(process.argv[2], process.env);

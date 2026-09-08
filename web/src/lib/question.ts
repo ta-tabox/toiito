@@ -26,7 +26,7 @@ export type QuestionStatus = (typeof QUESTION_STATUSES)[number];
 
 /**
  * 外から来た文字列を QuestionStatus へ絞り込む。
- * DB へ渡す前の関門。
+ * DB へ渡す前の検証。
  */
 export function isQuestionStatus(value: string): value is QuestionStatus {
   return (QUESTION_STATUSES as readonly string[]).includes(value);

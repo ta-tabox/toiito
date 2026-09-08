@@ -17,7 +17,7 @@ beforeEach(async () => {
 });
 
 /**
- * server component が返した要素ツリーを、描画せずに文字列へ畳む。
+ * server component が返した要素ツリーを、描画せずに文字列へまとめる。
  *
  * react-dom で描くと next/link が client の実行時（hooks・router context）を要求する。
  * 検査したいのは「どの語が並び、どこへリンクするか」だけなので、ツリーのまま読む。

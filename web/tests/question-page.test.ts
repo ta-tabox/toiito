@@ -77,7 +77,7 @@ describe("/q/[id]", () => {
       .filter((id) => id !== undefined);
 
     // id を持つのは発話だけ。
-    // 着地の印が発話以外に付かないことを、この一致が保証する。
+    // 着地の強調が発話以外に付かないことを、この一致が保証する。
     expect(ids).toEqual(messages.map((m) => `msg-${m.id}`));
   });
 

@@ -10,7 +10,7 @@
  *
  * `prisma migrate reset` は使わない。
  * Prisma 7 はこれを破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求する。
- * テストは無人でも回る必要があるので、drop / create を直に流して同意の要求を避ける（`e2e/setup/reset-database.ts` と同じ経路）。
+ * テストは無人でも回る必要があるので、drop / create を直に実行して同意の要求を避ける（`e2e/setup/reset-database.ts` と同じ経路）。
  */
 
 import { execFileSync } from "node:child_process";
@@ -45,7 +45,7 @@ function runPrisma(args: string[], url: string, input?: string): void {
 }
 
 /**
- * データベースを落として空のものを作り直す。
+ * データベースを削除して空のものを作り直す。
  *
  * force を付けるのは、前の走りが落ちた接続を残していても止まらないようにするため。
  * drop / create はトランザクションの内側で走れないので、二文をまとめて渡さない。

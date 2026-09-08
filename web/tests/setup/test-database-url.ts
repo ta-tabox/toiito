@@ -15,9 +15,9 @@ import path from "node:path";
 const DEFAULT_DATABASE_NAME = "toiito_test";
 
 /**
- * worktree から派生した名前だけに付く印。
+ * worktree から派生した名前だけに付く接頭辞。
  *
- * 掃除（`scripts/prune-test-databases.ts`）は現存の worktree と突き合わせて孤児を落とすので、手で `TOIITO_TEST_DATABASE_URL` を指した DB と見分けが付かないと、使っている最中のものを落とす。
+ * 掃除（`scripts/prune-test-databases.ts`）は現存の worktree と突き合わせて孤児を削除するので、手で `TOIITO_TEST_DATABASE_URL` を指した DB と見分けが付かないと、使っている最中のものを削除する。
  */
 const DERIVED_PREFIX = "toiito_wt_";
 
@@ -44,9 +44,9 @@ function hashedSlug(name: string): string {
  * ディレクトリ名をデータベース名の部品へ均す。
  *
  * 英数字以外をすべて `_` へ潰す。
- * worktree 名にはハイフンも大文字も入りうるが、引用符なしで接続 URL へ書ける綴りに寄せる。
+ * worktree 名にはハイフンも大文字も入りうるが、引用符なしで接続 URL へ書ける形に寄せる。
  *
- * 上限を超えたときに落とすのは先頭側。
+ * 上限を超えたときに切り捨てるのは先頭側。
  * worktree 名は末尾に一意の接尾辞を持つので、頭を残して尻を切ると別の worktree と同じ名前になる。
  *
  * 空は返さない。
@@ -104,9 +104,9 @@ export const TEST_DATABASE_URL =
   `postgresql://toiito:toiito@localhost:5433/${testDatabaseName(repositoryRoot)}`;
 
 /**
- * データベースを落とすときに経由する接続先。
+ * データベースを削除するときに経由する接続先。
  *
- * データベースは自分自身へ繋いだまま落とせないので、同じサーバーの `postgres` を指す。
+ * データベースは自分自身へ繋いだまま削除できないので、同じサーバーの `postgres` を指す。
  */
 export function adminUrl(url: string): string {
   const admin = new URL(url);

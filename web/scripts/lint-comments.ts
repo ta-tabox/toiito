@@ -1,5 +1,5 @@
 /**
- * コメント規約のうち、Biome が構造的に検出できない分だけを見るリンタ（L1）。
+ * コメント規約のうち、Biome が構造的に検出できない分だけを見るリンタ。
  *
  * Biome のリンタはコメントを走査対象に持たない。
  * built-in ルールにも GritQL プラグインにも、コメント本体へ届く経路が無い。
@@ -7,16 +7,16 @@
  * 同じ規約を二箇所に書かない。
  *
  * 判定は TypeScript の API へ渡す。
- * 行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約のリンタ自身が嘘をつく。
+ * 行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約のリンタ自身が誤った箇所を報告する。
  *
- * パーサは `@typescript/typescript6` を名指しで引く。
+ * パーサは `@typescript/typescript6` を名指しで import する。
  * TypeScript 7 は Go 移植で `typescript` の既定 export から旧 JS コンパイラ API が外れており、`createSourceFile` が無い。
  * このリポジトリが `typescript` に何を入れていてもここは 6 系の JS API を掴むので、この import を `typescript` へ戻さない。
  *
  * Biome も vcs.useIgnoreFile で同じ正を見るので、対象から外すものは .gitignore が正。
  * 独自の除外リストを持つと、生成物の扱いが Biome と食い違う。
  *
- * 入口は lintSource。
+ * エントリポイントは lintSource。
  * CLI は node scripts/lint-comments.ts [path...]。
  *
  * このファイルは複数のリポジトリで同じ内容を保つ共有物である。
@@ -114,13 +114,13 @@ const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const JSDOC_TYPE_ANNOTATION = /@(param|returns?)\s*\{/g;
 
 /**
- * 文がそこで閉じている印。
+ * 文がそこで閉じていることを示す記号。
  * 日本語の句点と、英文・コード片の終止符。
  */
 const SENTENCE_END = /[。.]$/;
 
 /**
- * 散文でないことを行頭で宣言する印。
+ * 散文でないことを行頭で宣言する記号。
  * 箇条書きと表の行が持つ。
  *
  * 散文の続きではないので、手前の行から文が流れ込んでいない。
@@ -161,7 +161,7 @@ const BRACKET_CLOSE = "）)」】";
 const TRAILING_DECORATION = /^[*_`）)」】\s]*$/;
 
 /**
- * リンタの入口。
+ * リンタのエントリポイント。
  * ソース 1 ファイル分を受け取り、規則ごとの検査を束ねて違反の一覧を返す。
  */
 export function lintSource(fileName: string, text: string): Violation[] {
@@ -242,7 +242,7 @@ function checkModuleHeader(
     ];
   }
 
-  // 直後の空行が、モジュールへの注釈と直下の宣言への JSDoc を分ける唯一の目印。
+  // 直後の空行が、モジュールへの注釈と直下の宣言への JSDoc を分ける唯一の手掛かり。
   // 空行を挟まないと TS もエディタも、これを次の宣言のドキュメントとして扱う。
   if (!isFollowedByBlankLine(text, header.end)) {
     return [
@@ -496,7 +496,7 @@ function maskFencedRegions(lines: CommentLine[]): CommentLine[] {
   });
 }
 
-/** コメントの記号（`//`・`/*`・行頭の `*`・閉じ）を落として本文だけにする。 */
+/** コメントの記号（`//`・`/*`・行頭の `*`・閉じ）を取り除いて本文だけにする。 */
 function stripDecoration(line: string): string {
   return line
     .replace(/^\s*(?:\/\*\*?|\/\/)/, "")
@@ -508,7 +508,7 @@ function stripDecoration(line: string): string {
 /**
  * ソース中の leading コメントを重複なく集め、出現順に並べて返す。
  *
- * 同じコメントが親と子の両方で leading として返るので、開始位置で重複を落とす。
+ * 同じコメントが親と子の両方で leading として返るので、開始位置で重複を取り除く。
  */
 function collectLeadingComments(
   source: ts.SourceFile,
@@ -609,10 +609,10 @@ export function collectSourceFiles(target: string): string[] {
 }
 
 /**
- * .gitignore で除外されているファイルを落とす。
+ * .gitignore で除外されているファイルを取り除く。
  *
- * git が引けない環境では素通しする。
- * リンタが黙って全件を見送るより、生成物込みで騒ぐ方が気付ける。
+ * git を実行できない環境では、除外せず全件を検査する。
+ * リンタが黙って全件を見送るより、生成物込みで違反を出す方が気付ける。
  */
 function excludeIgnored(files: string[]): string[] {
   if (files.length === 0) {
@@ -637,7 +637,7 @@ function excludeIgnored(files: string[]): string[] {
 
 /**
  * 既定の対象はリポジトリの構成に対する見込みなので、無いディレクトリは黙って飛ばす。
- * 引数で名指しされた場所が無いのは打ち間違いなので、そちらは collectSourceFiles に落とさせる。
+ * 引数で名指しされた場所が無いのは打ち間違いなので、そちらは collectSourceFiles に throw させる。
  */
 function resolveTargets(argv: string[]): string[] {
   return argv.length > 0

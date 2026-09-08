@@ -1,7 +1,7 @@
 /**
  * 縦一本（問い投入 → 二体応答 → メモ → 逆引き）が Prisma 経由で通ることの検査。
  * actions.ts が組み立てている順序をそのまま lib で辿る。
- * Server Actions 自体は next/cache・next/navigation を掴むので、配線の検証は L3（next build）に任せる。
+ * Server Actions 自体は next/cache・next/navigation を掴むので、配線の検証は `next build` に任せる。
  */
 
 import { createOwner } from "@tests/setup/owner";
@@ -43,7 +43,7 @@ describe("縦一本", () => {
       "速さを求めることは、何を失うことなのか",
     );
 
-    // 人間の口火 → ai_a（具体）→ ai_b（抽象）の逐次。
+    // 人間の発話 → ai_a（具体）→ ai_b（抽象）の逐次。
     // ai_b は ai_a の発話も含む transcript を受け取る（並列にしない理由）。
     await db.addMessage(
       owner,

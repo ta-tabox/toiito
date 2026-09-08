@@ -142,7 +142,7 @@ describe("応答の受け取り", () => {
 describe("待つ上限", () => {
   /**
    * signal が切れるまで返らない fetch に差し替える。
-   * 上限を掛けていなければ、このテストは応答を待ち続けてタイムアウトで落ちる。
+   * 上限を設定していなければ、このテストは応答を待ち続けてタイムアウトで落ちる。
    */
   function stubHangingResponse() {
     vi.stubGlobal(

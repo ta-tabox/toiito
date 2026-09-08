@@ -40,7 +40,7 @@ class FailingProvider extends AiProvider {
 
 /**
  * 二体ぶんの呼び出し指定。
- * 既定は両方フェイクで、落としたい体だけ差し替える。
+ * 既定は両方フェイクで、失敗させたい体だけ差し替える。
  */
 function calls(failing?: PersonaId): PersonaCalls {
   const call = (id: PersonaId) => ({

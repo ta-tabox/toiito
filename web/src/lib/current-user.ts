@@ -8,7 +8,7 @@
  * 本番も同じなので、認証を持たないリクエストを拒否するのは `proxy.ts` の Basic 認証だけである。
  * `better-auth` と `@/lib/auth` を import してよいのはこのファイルだけで、`biome.json` の `noRestrictedImports` が検査する。
  *
- * 入口は getCurrentUser。
+ * エントリポイントは `getCurrentUser`。
  */
 
 import { cache } from "react";

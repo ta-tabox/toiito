@@ -1,15 +1,15 @@
 /**
  * 状態のピル。
  *
- * 地は 7 値とも一律で、先頭の点だけが開いているか閉じたかの一ビットを持つ（.claude/rules/design.md「状態の見せ方」）。
- * 7 値を色で分けると一覧が処理待ちの列になり、`docs/ARCHITECTURE.md`「意図的にやらないこと」の解決済みクローズフローを見た目の側から作ってしまう。
+ * 背景色は 7 つの状態で共通にし、先頭の点の色だけが `isOpen` を表す（`.claude/rules/design.md`「状態の見せ方」）。
+ * 状態ごとに色を分けると問いの一覧がタスクリストに見え、`docs/ARCHITECTURE.md`「意図的にやらないこと」が退けた解決済みクローズフローを見た目から作ることになる。
  */
 
 import type { QuestionStatus } from "@/lib/question";
 
 /**
  * 状態ごとの表示名と、開いているかどうか。
- * 意味の正は docs/ARCHITECTURE.md「問いの状態機械」、語の正は docs/VISION.md「語彙」節。
+ * 意味の正は `docs/ARCHITECTURE.md`「問いの状態機械」、語の正は `docs/VISION.md`「語彙」節。
  *
  * 比喩を持つのはラベルだけで、値の側は一般語のまま動かない（`docs/adr/0017-status-value-set.md`）。
  * 値域を全網羅する型で受けているので、状態を増やすと最初にここが型で落ちる。

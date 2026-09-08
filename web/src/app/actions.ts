@@ -64,7 +64,7 @@ export async function retryTurnAction(questionId: string, sessionId: string) {
  * 発話本文の一部にメモを付ける。
  *
  * アンカー（anchor_start / anchor_end）は呼び出し側が確定させたものを受け取る。
- * 本文中の位置を求めるのは DOM と anchors.ts の領分で、ここは数値を通すだけ。
+ * 本文中の位置を求めるのは DOM と `anchors.ts` の担当で、ここは数値を通すだけ。
  */
 export async function createMemoAction(questionId: string, formData: FormData) {
   const keyword = String(formData.get("keyword") ?? "").trim();

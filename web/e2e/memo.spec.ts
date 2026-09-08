@@ -192,7 +192,7 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
   await expect(dialog).toBeVisible();
   await dialog.getByRole("link", { name: "この発話へ" }).click();
 
-  // 着地の印は三箇所が同じ書式を共有して初めて出る。
+  // 着地の強調は三箇所が同じ書式を共有して初めて出る。
   // /memos が組み立てるリンク、発話へ付けた id、globals.css の [id^="msg-"]:target。
   await expect(page).toHaveURL(new RegExp(`/q/[^#]+#${messageId}$`));
 
@@ -234,8 +234,8 @@ test("着地した発話に印が付く", async ({ page }) => {
     .getByRole("link", { name: "この発話へ" })
     .click();
 
-  // 見るのは印が付いたことまで。
-  // 色と消え方は CSS の animation が持つので、そこは L5 の領分。
+  // 見るのは `data-landed` が付いたことまで。
+  // 色と消え方は CSS の animation が持つので、自動テストでは見ない。
   await expect(page.locator(`#${messageId}`)).toHaveAttribute(
     "data-landed",
     "",
@@ -275,7 +275,7 @@ test("再訪すると切り替え口が出て、過去セッションを読み�
   const aiA = await postQuestionAndSpeak(page, SCENARIOS.switch);
   const messageId = await idOf(aiA);
 
-  // セッションが一つのうちは切り替え口を出さない（選ぶ先が無い）。
+  // セッションが一つのうちは切り替えのリンクを出さない（選ぶ先が無い）。
   const switcher = page.getByRole("navigation", { name: "セッション" });
   await expect(switcher).toHaveCount(0);
 
@@ -285,7 +285,7 @@ test("再訪すると切り替え口が出て、過去セッションを読み�
   await switcher.getByRole("link").first().click();
 
   // 過去セッションは読み返すだけ。
-  // 続けたくなったときのために、最新へ戻る口だけを残す。
+  // 続けたくなったときのために、最新へ戻るリンクだけを残す。
   await expect(page.locator(`#${messageId}`)).toBeVisible();
   await expect(page.getByRole("button", { name: /^発話する/ })).toHaveCount(0);
   await expect(
@@ -298,7 +298,7 @@ test("再訪すると切り替え口が出て、過去セッションを読み�
  *
  * 返すのは ai_a の応答が入った枠で、メモを付ける対象になる。
  * どの体かの判定は `[fake:` の行に寄せる。
- * 見出しの言い回しはペルソナ文書の改稿で動くが、この印は動かない。
+ * 見出しの言い回しはペルソナ文書の改稿で動くが、`[fake:` という前置きは動かない。
  */
 async function postQuestionAndSpeak(page: Page, scenario: Scenario) {
   const { question, utterance } = scenario;
@@ -319,7 +319,7 @@ async function postQuestionAndSpeak(page: Page, scenario: Scenario) {
 
 /**
  * 枠に付いた着地点の id を読む。
- * 付いていなければ落とす（逆引きの前提が崩れているので、後続の表明は意味を持たない）。
+ * 付いていなければ throw する（逆引きの前提が崩れているので、後続の表明は意味を持たない）。
  */
 async function idOf(message: ReturnType<Page["locator"]>): Promise<string> {
   const id = await message.getAttribute("id");
@@ -344,7 +344,7 @@ async function formRect(page: Page): Promise<FormRect> {
   });
 }
 
-/** メモの小フォーム。発話の口の form と混ざらないよう、「メモする」を持つ側で引く。 */
+/** メモの小フォーム。発話を送る form と混ざらないよう、「メモする」を持つ側で絞る。 */
 function memoForm(page: Page): Locator {
   return page
     .locator("form")
@@ -377,7 +377,7 @@ async function selectTextIn(
  * 同じ選択を、iOS がジェスチャを終えるのと同じ touchend で閉じる。
  *
  * iOS は選択のジェスチャの終わりに mouseup を撃たないので、mouseup だけを見ていると下書きが立たない（issue #147）。
- * この層はデスクトップの Chromium で走って実機の口そのものは再現しないので、守れるのは touchend のリスナが張られていることまで。
+ * この層はデスクトップの Chromium で走って実機の入力そのものは再現しないので、守れるのは touchend のリスナが張られていることまで。
  */
 async function selectTextInByTouch(
   page: Page,
@@ -390,7 +390,7 @@ async function selectTextInByTouch(
 }
 
 /**
- * 枠の中の文字列を選び、指定した口で選択を終える。
+ * 枠の中の文字列を選び、指定したイベントで選択を終える。
  *
  * Range を組んでから document へイベントを投げる。
  * Playwright のドラッグでは文字の途中で始まる範囲を安定して作れない。

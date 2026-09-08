@@ -1,11 +1,11 @@
 /**
  * E2E 用データベースを走るたびに作り直す。
  *
- * 落として作り直すところまでがここの責務で、ブラウザ操作の側は spec が持つ。
+ * 削除して作り直すところまでがここの責務で、ブラウザ操作の側は spec が持つ。
  * ケースごとに空にする vitest 側（tests/setup/truncate.ts）と違い、E2E はアプリを跨いで状態を積む一本道なので、区切るのは走り単位。
  *
  * 呼ぶのは playwright.config.ts の webServer が `next dev` を起こす前。
- * Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、globalSetup へ置くと dev サーバーが先に接続を張った後で足元の DB を落とすことになる。
+ * Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、globalSetup へ置くと dev サーバーが先に接続を張った後で足元の DB を削除することになる。
  *
  * 素の node が走らせる CLI で、接続先は webServer から渡る DATABASE_URL。
  * リポジトリ内のモジュールを import しない形に閉じてある。
@@ -21,7 +21,7 @@ const webRoot = path.resolve(import.meta.dirname, "../..");
 /**
  * 作り直す対象を環境変数から受け取る。
  *
- * 接続先を決める口は playwright.config.ts 一箇所で、ここは受け取る側。
+ * 接続先を決めるのは playwright.config.ts 一箇所で、ここは受け取る側。
  * 二つ持つと、設定とスクリプトが別々の DB を指したまま走る。
  */
 function requireDatabaseUrl(): string {
@@ -40,7 +40,7 @@ const databaseUrl = requireDatabaseUrl();
 
 const databaseName = path.basename(new URL(databaseUrl).pathname);
 
-// E2E の準備は接続先をデータベースごと落として作り直す。
+// E2E の準備は接続先をデータベースごと削除して作り直す。
 // 開発用やテスト用を指したまま走らせたら中身が消えるので、名前で足を止める。
 if (!databaseName.endsWith("_e2e")) {
   throw new Error(
@@ -51,7 +51,7 @@ if (!databaseName.endsWith("_e2e")) {
 /**
  * 作り直しを指示するための接続先。
  *
- * データベースは自分自身へ繋いだまま落とせないので、同じサーバーの `postgres` を経由する。
+ * データベースは自分自身へ繋いだまま削除できないので、同じサーバーの `postgres` を経由する。
  */
 function adminUrl(): string {
   const url = new URL(databaseUrl);
@@ -61,7 +61,7 @@ function adminUrl(): string {
 }
 
 /**
- * SQL を一文流す。
+ * SQL を一文実行する。
  *
  * 接続先は Prisma CLI が prisma.config.ts 越しに DIRECT_URL から読む。
  * drop / create database はトランザクションの内側で走れないので、複数文をまとめて渡さない。
@@ -92,10 +92,10 @@ function stderrOf(cause: unknown): string {
 }
 
 /**
- * E2E 用データベースを落として作り直す。
+ * E2E 用データベースを削除して作り直す。
  *
  * `with (force)` は付けない。
- * 付けると相手の接続ごとデータベースを引き抜けてしまい、一本を共有する運用で二つ目の走りが先発を黙って殺す（docs/HARNESS.md「E2E（L4）」）。
+ * 付けると接続している相手ごとデータベースを削除できてしまい、一本を共有する運用で二つ目の実行が先の実行を黙って壊す（docs/HARNESS.md「E2E（L4）」）。
  * 繋いだままの相手が居れば drop が失敗し、抜く側のここが止まる。
  */
 function recreateDatabase(): void {

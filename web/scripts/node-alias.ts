@@ -5,7 +5,7 @@
  * node へ直接食わせるスクリプト（scripts/ 配下）だけが、自分でその対応を持つ必要がある。
  * seed 固有の配線ではないので、次に src を読むスクリプトが出たらこれを使う。
  *
- * 入口は registerSrcAlias。
+ * エントリポイントは `registerSrcAlias`。
  * 静的 import は本体より先に解決されるため、呼び出し側は src の読み込みを登録後の動的 import へ回す。
  */
 
@@ -20,7 +20,7 @@ const srcDir = path.resolve(import.meta.dirname, "../src");
 /**
  * `@/…` を実ファイルへ当てるときに試す拡張子。
  *
- * node は拡張子を補わないので、拡張子なしで綴られた src 側に .ts を当てる。
+ * node は拡張子を補わないので、拡張子なしで書かれた src 側に `.ts` を当てる。
  * 空文字の側は、import のパスに拡張子が既に付いている場合。
  */
 const CANDIDATE_SUFFIXES = ["", ".ts"];

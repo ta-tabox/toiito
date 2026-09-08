@@ -28,7 +28,7 @@ const prisma = new PrismaClient({
 });
 
 /**
- * 対象はテーブル名の直書きでなく実物から引く。
+ * 対象はテーブル名の直書きでなく `pg_tables` から取得する。
  * モデルを足したとき、消し忘れたテーブルだけが前回の行を持ち越す事故を防ぐため。
  *
  * seq は autoincrement なので restart identity まで含める。

@@ -4,7 +4,7 @@
  * vitest の `TOIITO_TEST_DATABASE_URL` とは別に分ける。
  * どちらも走る前に中身を作り直すので、同じ DB を向けると互いの行を踏む。
  *
- * ここが接続先を決める唯一の口。
+ * ここが接続先を決める唯一の場所。
  * 作り直しの側（reset-database.ts）へは playwright.config.ts が env で渡す。
  */
 
@@ -14,7 +14,7 @@ import path from "node:path";
  * E2E が共有する唯一のデータベース名。
  *
  * worktree ごとに名前を派生させるのは vitest 側だけで、E2E はこの一本を共有する（docs/HARNESS.md「E2E（L4）」）。
- * 派生させると worktree が消えた後も誰も落とさない DB が残るので、名前を分ける口は開けない。
+ * 派生させると worktree が消えた後も誰も削除しない DB が残るので、名前を分ける経路は開けない。
  */
 const DATABASE_NAME = "toiito_e2e";
 

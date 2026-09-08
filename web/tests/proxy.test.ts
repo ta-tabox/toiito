@@ -16,7 +16,7 @@ async function loadProxy(env: Record<string, string>) {
   return (await import("@/proxy")).proxy;
 }
 
-/** 与えたヘッダで本番の入口を叩くリクエストを作る。 */
+/** 与えたヘッダでアクセス制限を叩くリクエストを作る。 */
 function request(authorization?: string): NextRequest {
   const headers = authorization ? { authorization } : undefined;
 

@@ -1,5 +1,5 @@
 /**
- * 本番の入口に掛ける Basic 認証の判定。
+ * 本番のアクセス制限に使う Basic 認証の判定。
  *
  * 通すか通さないかだけを決め、通った先で誰であるかは見ない。
  * 所有権の概念は #68（ログイン（Google OAuth）とリソースの所有権）が持つので、ここには無い。
@@ -24,12 +24,12 @@ type BasicAuthEnv = {
 /**
  * 環境変数から Basic 認証の資格情報を読む。
  *
- * 認証を掛けないときは null を返す。
+ * 認証を要求しないときは null を返す。
  * ただし production では null を返さず投げる。
  * 設定を入れ忘れた本番が黙って開く経路を残さないためで、この失敗は実際に一度踏んでいる（`docs/adr/0013-production-basic-auth.md`）。
  *
  * 片方だけ設定されている場合も投げる。
- * 掛けたいのか掛けたくないのかが読めない状態なので、素通しへ倒さない。
+ * 認証を要求するのかしないのかが読めない状態なので、検証なしで通す側へフォールバックしない。
  */
 export function readBasicAuthCredentials(
   env: BasicAuthEnv,
@@ -89,7 +89,7 @@ function decodeBasic(header: string | null): BasicAuthCredentials | null {
   }
 
   // RFC 7235 のスキーム名は大文字小文字を区別しない。
-  // ブラウザは Basic と綴るが、大文字小文字の違いで弾く理由は無い。
+  // ブラウザは `Basic` と書くが、大文字小文字の違いで拒否する理由は無い。
   const schemeEnd = header.indexOf(" ");
 
   if (
@@ -142,7 +142,7 @@ function equalsInConstantTime(left: string, right: string): boolean {
   let difference = left.length ^ right.length;
 
   for (let index = 0; index < length; index += 1) {
-    // 範囲外は NaN になるので、0 として畳む。
+    // 範囲外は NaN になるので、0 として扱う。
     // 長さの違いは上の XOR が既に拾っている。
     const leftCode = left.charCodeAt(index) || 0;
     const rightCode = right.charCodeAt(index) || 0;
