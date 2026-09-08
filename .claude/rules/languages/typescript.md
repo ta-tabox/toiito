@@ -1,7 +1,6 @@
 ---
 paths:
   - "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"
-  - "**/*.prisma"
 ---
 
 # TypeScript / JavaScript への写像
@@ -68,16 +67,7 @@ toolchain（pnpm / Biome / mise）の設定はここでは扱わない。
 - Prettier / Biome はコメントの内部を折り返さない（`proseWrap` が効くのは Markdown のみ）。
   改行位置は整形任せにできず、書き手が句点で決める（1 行 1 文）
 
-## Prisma スキーマ（`.prisma`）のコメント
-
-TS と同じ「宣言に付く説明は doc コメント」を守るが、**記号は `///`**。
-
-- **model / enum / field / datasource に付ける説明は `///`**。
-  これが Prisma の doc コメントで、生成される TS に JSDoc として出力される（`/// 問い。…` → `* 問い。…`）
-- **`/** */` を宣言の直前に置かない**。
-  構文としては通るが、Prisma は行頭の `*` ごと本文として取り込んでから JSDoc に包み直すので、生成物が `*  * 本文` と二重になる
-- 宣言に付かない説明（ファイル冒頭・generator ブロックの前）は `/** */` でよい。
-  どの宣言にも紐づかないため生成物に影響しない
+Prisma スキーマ（`.prisma`）のコメント規約は `prisma.md` が持つ。
 
 ## 機械が見ている分（toiito）
 

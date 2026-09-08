@@ -2,7 +2,7 @@
 paths:
   - "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"
   - "**/*.{py,sh,bash,zsh,fish}"
-  - "**/*.{sql,go,rs,rb,java,kt,vue,svelte,prisma}"
+  - "**/*.{sql,go,rs,rb,java,kt,vue,svelte}"
 ---
 
 # コーディング規約（核）

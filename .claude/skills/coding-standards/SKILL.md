@@ -357,7 +357,8 @@ ADR だけが追記され、覆すときも消さず新しい ADR で supersede 
 
 | 言語 | ファイル | 読む条件 |
 |---|---|---|
-| TypeScript / JavaScript | `.claude/rules/languages/typescript.md` | `*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}` か `*.prisma` を Read したとき |
+| TypeScript / JavaScript | `.claude/rules/languages/typescript.md` | `*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}` を Read したとき |
+| Prisma | `.claude/rules/languages/prisma.md` | `*.prisma` を Read したとき |
 
 このプロジェクトは TS のみ。
 他言語のファイルは存在しないので、必要になったときに同じ構造（原則→言語イディオムへの写像）で足す。
