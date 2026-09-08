@@ -1,10 +1,10 @@
 /**
- * 消えた worktree が残したテスト用データベースを落とす。
+ * 消えた worktree が残したテスト用データベースを削除する。
  *
- * 落とすのは自動で派生した名前だけで、判定は `tests/setup/test-database-url.ts` の規則を借りる。
- * 手で付けた名前（`toiito_129_e2e` のような）は現存の worktree と突き合わせようがないので、落とさず一覧に出して人間へ渡す。
+ * 削除するのは自動で派生した名前だけで、判定は `tests/setup/test-database-url.ts` の規則を借りる。
+ * 手で付けた名前（`toiito_129_e2e` のような）は現存の worktree と突き合わせようがないので、削除せず一覧に出して人間へ渡す。
  *
- * 入口は CLI（`pnpm db:prune`）。
+ * エントリポイントは CLI（`pnpm db:prune`）。
  */
 
 import { execFileSync } from "node:child_process";
@@ -20,30 +20,30 @@ import {
 /**
  * 自動で派生した名前の形。
  *
- * `toiito_wt_` の印を見るのは、手で `TOIITO_TEST_DATABASE_URL` を指した DB を巻き込まないため。
- * 印が無ければ、いま誰かが使っている `toiito_120_test` のような名前と区別が付かない。
+ * `toiito_wt_` という接頭辞を見るのは、手で `TOIITO_TEST_DATABASE_URL` を指した DB を巻き込まないため。
+ * 接頭辞が無ければ、いま誰かが使っている `toiito_120_test` のような名前と区別が付かない。
  */
 const DERIVED_NAME = /^toiito_wt_.+_test$/;
 
 /**
  * worktree に対応しないまま居続けるデータベース。
  *
- * 開発用と、リポジトリ本体のテスト・E2E がこれに当たる。
+ * 開発用と、リポジトリ本体のテスト・E2E が `PERMANENT_NAMES` に当たる。
  * 毎回一覧へ出しても行動が変わらないので、報告からも外す。
  */
 const PERMANENT_NAMES = ["toiito", "toiito_test", "toiito_e2e"];
 
-/** 落とすものと、人間へ渡すもの。 */
+/** 削除するものと、人間へ渡すもの。 */
 export type PruneTargets = {
   orphans: string[];
   unmanaged: string[];
 };
 
 /**
- * 落として良いデータベースを選ぶ。
+ * 削除して良いデータベースを選ぶ。
  *
  * 現存の worktree から派生する名前は、その worktree がいま使っているので残す。
- * 派生の形に合わない `toiito_*` は、誰が何のために作ったか判定できないので落とさない。
+ * 派生の形に合わない `toiito_*` は、誰が何のために作ったか判定できないので削除しない。
  */
 export function selectPruneTargets(
   existing: readonly string[],
@@ -82,7 +82,7 @@ export function liveDatabaseNames(porcelain: string): string[] {
     .map((line) => testDatabaseName(line.slice(prefix.length)));
 }
 
-/** 孤児を数え上げて落とす。 */
+/** 孤児を数え上げて削除する。 */
 async function prune(): Promise<void> {
   const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString: adminUrl(TEST_DATABASE_URL) }),

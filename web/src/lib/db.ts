@@ -1,25 +1,14 @@
 /**
- * 永続化層。
- * Prisma + Postgres。
+ * 永続化層（Prisma + Postgres）。
  * データモデルの意味の正は docs/ARCHITECTURE.md、スキーマの正は prisma/schema.prisma。
  *
- * この層の外へ Prisma を出さない。
- * `@prisma/client` と生成型（`@/generated/prisma`）に触れてよいのはこのファイルだけ。
- * UI と Server Actions が受け取るのは types.ts のドメイン型に限る。
- * schema.prisma の値域を動かすと戻り値がドメイン型へ代入できなくなり、`tsc` が失敗する。
- *
- * repo 関数はすべて async。
+ * `db.ts` の外へ Prisma を出さない。
+ * `@prisma/client` と生成型（`@/generated/prisma`）に触れてよいのは `db.ts` だけで、UI と Server Actions が受け取るのは `types.ts` のドメイン型に限る。
  * DB 非依存の計算を `db.ts` へ積まない（`anchors.ts` のような純関数層へ置く）。
  *
- * **アクセス権のないリソースを拒否するのは、この層である**（`docs/adr/0030-ownership-granularity.md`）。
- * `proxy.ts` は cookie の有無しか見ず、UI も画面ごとの絞り込みを持たない。
- * だから所有者を受け取る repo 関数は、読みも書きも所有者の条件を必ず where に置く。
+ * **アクセス権のないリソースを拒否するのは `db.ts` で、DB の制約（RLS）ではない**（`docs/adr/0030-ownership-granularity.md`）。
+ * 所有者を受け取る repo 関数は、読みも書きも所有者の条件を必ず where に置く（取得してから user_id を比べる形は、比べ忘れても `tsc` が通ってしまう）。
  * 所有者の列を持つのは `questions` だけで、下位のテーブルは親を辿って判定する。
- *
- * **検査しているのはこの層で、DB の制約ではない**（RLS は使っていない）。
- * 取ってから user_id を比べる形は比べ忘れても型が通るので、条件は取得の後でなく where に置く。
- * where に置けば「存在しない」と「アクセス権がない」が同じ応答になり、404 と 403 の違いから在ることが漏れる隙も消える。
- * `id` は `/q/<id>` の URL に出て権限を持たない相手の手にも渡るので、知っていること自体は権限にならない。
  */
 
 import { randomUUID } from "node:crypto";
@@ -64,7 +53,7 @@ function db(): PrismaClient {
 
       // 表示にも意味の判断にも使わない列は、取得した行から削除する。
       // seq は並べ替えのため、user_id は絞り込みのためだけに在り、どちらもこの層の内側で閉じる。
-      // これで戻り値がドメイン型とちょうど一致し、BigInt が UI 側へ渡ることも起きない。
+      // omit で戻り値がドメイン型とちょうど一致し、BigInt が UI 側へ渡ることも起きない。
       omit: {
         question: { seq: true, user_id: true },
         dialogueSession: { seq: true },
@@ -90,7 +79,7 @@ export async function disconnect(): Promise<void> {
 
 /**
  * 表示に使う問い文を返す。
- * 現在の形があればそれ、無ければ原型。
+ * `current_form` があればその値、無ければ `body`。
  */
 export function questionText(q: Question): string {
   return q.current_form ?? q.body;
@@ -178,12 +167,11 @@ export async function listQuestions(owner: OwnerId): Promise<Question[]> {
 /**
  * id で問いを 1 件取得する。
  *
- * 無ければ undefined を返す。
+ * `id` に一致する行が無ければ undefined を返す。
  * owner 以外が所有する問いも同じ undefined になる。
  * 二つを違う応答にすると、URL の id を差し替えるだけで在ることが読める。
  *
- * findUnique でなく findFirst なのは Prisma の制約による。
- * findUnique の where は一意な列しか受け取らないので、`user_id` の条件を足せない。
+ * findUnique でなく findFirst なのは、findUnique の where が一意な列しか受け取らず `user_id` の条件を足せないため。
  * id は主キーなので返るのは 0 件か 1 件で、「先頭」という意味は持たない。
  */
 export async function getQuestion(
@@ -284,7 +272,7 @@ export async function setQuestionStatus(
  * id でセッションを 1 件取得する。
  *
  * `sessions` は所有者の列を持たないので、親の問いの `user_id` を辿って判定する（`docs/adr/0030-ownership-granularity.md` 決定 2）。
- * 無ければ undefined を返し、owner 以外が所有するセッションも同じ undefined になる（同じ応答にする理由と findFirst の理由は `getQuestion` と同じ）。
+ * `id` に一致する行が無ければ undefined を返し、owner 以外が所有するセッションも同じ undefined になる（同じ応答にする理由と findFirst の理由は `getQuestion` と同じ）。
  */
 export async function getSession(
   owner: OwnerId,
@@ -300,7 +288,7 @@ export async function getSession(
 /**
  * owner が所有する問いの、最新セッションを 1 件取得する。
  *
- * 対話画面が表示するのはこれ一つ。
+ * 対話画面が表示するのは最新セッション一つ。
  * 同時刻に並んだ場合は挿入順（seq）で決める。
  */
 export async function latestSession(
@@ -341,11 +329,9 @@ export async function createSession(
 
 /**
  * 問いのセッションを、そのセッションで付いたメモのキーワードごと古い順に返す。
+ * キーワードは重複を削除する。
  *
- * 日付だけの一覧ではどのセッションだったか思い出せないので、人間がメモを付けた語を手掛かりとして添える。
- * 同じ語に何度もメモを付けることがあるため、キーワードは重複を削除して返す。
- * 並びは古い順で、latestSession（新しい順の先頭）とは逆になる。
- * 読み返しは投入からの順に辿るので、セッションの切り替え UI に出す回数（1 回目・2 回目）と並びが一致する方を採る。
+ * 並びが古い順なのは、セッションの切り替え UI が出す回数（1 回目・2 回目）と一致させるため。
  * セッションごとにメモを SELECT すると N+1 になるので、メモは問い単位で一度に取得してから束ね直す。
  */
 export async function listSessionsWithKeywords(
@@ -443,7 +429,7 @@ export async function commitTurn(
  * 人間の発話を `pending_messages` へ書き込む。
  * 行が既にあれば上書きする。
  *
- * 長さをここで検査するのは、`messages` へ入る本文が必ずこの関数を通るため。
+ * 長さを `savePendingBody` で検査するのは、`messages` へ入る本文が必ずこの関数を通るため。
  */
 export async function savePendingBody(
   owner: OwnerId,
@@ -605,10 +591,8 @@ export type QuestionInput = {
 /**
  * 問いを、初回セッションの対話とメモごと作る。
  *
- * 書き込みの順序と経路はアプリと同じ（createQuestion → addMessage → addMemo）。
- * シード専用の書き込み経路を別に作ると、アプリで起きることがシードしたデータでは起きなくなり、画面で確かめている状態が実際の状態とずれる。
- * 1 つのトランザクションにはまとめない。
- * まとめるには repo 関数を tx 版へ組み直すことになり、アプリと同じ経路を通るという上の性質を失う。
+ * 書き込みの順序と経路はアプリと同じにする（`createQuestion` → `addMessage` → `addMemo`。docs/ARCHITECTURE.md「DB への書き込み経路」）。
+ * 1 つのトランザクションにまとめないのは、まとめると repo 関数を tx 版へ組み直すことになり、アプリと同じ経路を通らなくなるため。
  */
 export async function createQuestionWithTranscript(
   owner: OwnerId,
@@ -671,7 +655,7 @@ const SETUP_ERROR_CODES = new Set(["P1001", "P1003", "P2021"]);
  * DB の準備ができていない失敗なら、手当てを促す文へ包み直す。
  *
  * Prisma のエラーコードを読めるのは `db.ts` だけなので、判定も `db.ts` が持つ（`db.ts` の外へ Prisma を出さない）。
- * それ以外の失敗はそのまま返す。
+ * 準備不足に当たらない失敗はそのまま返す。
  * 原因を伏せると、準備の問題でない失敗まで docker を疑わせることになる。
  */
 export function withSetupGuidance(cause: unknown): unknown {

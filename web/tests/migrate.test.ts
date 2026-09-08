@@ -1,8 +1,9 @@
 /**
- * 流し先の解決。
+ * 適用先の解決。
  *
- * 実際に流す経路（`prisma migrate deploy` の起動）は見ない。
- * 見るのは、意図しない DB へ流れる二つの形——値域の外の名前が通ることと、環境変数が無いまま既定へ倒れること。
+ * 実際に適用する経路（`prisma migrate deploy` の起動）は見ない。
+ * 見るのは、意図しない DB へ適用される二つの形。
+ * 値域の外の名前が通ることと、環境変数が無いまま既定値になることの二つ。
  */
 
 import { describeConnection, resolveTarget } from "@scripts/migrate.ts";
@@ -30,7 +31,7 @@ describe("流し先の解決", () => {
   });
 
   it("環境変数が無ければ弾く", () => {
-    // ここで既定へ倒すと、.env.local のローカル DB へ流れる。
+    // `resolveTarget` が既定値にすると、`.env.local` のローカル DB へ適用される。
     expect(() =>
       resolveTarget("prod", {
         DIRECT_URL: "postgresql://u:p@localhost/toiito",

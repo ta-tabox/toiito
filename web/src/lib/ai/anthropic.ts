@@ -1,12 +1,12 @@
 /**
  * Anthropic（Claude API）固有の一切（サーバー側のみ）。
- * 思考の深さの値域・設定・env からの読み・HTTP の作法をここへ閉じる。
+ * 思考の深さの値域・設定・env からの読み・HTTP の作法を `anthropic.ts` へ閉じる。
  *
  * `effort` は Claude API の `output_config.effort` そのもので、他のプロバイダには無いか別の名前になるので外へ出さない。
- * 何をどう見せるか（本文の組み立て）と、応答をどう扱うか（記録・打ち切りの拒否）は規約の側の決め事なので持たない。
+ * 何をどう見せるか（本文の組み立て）と、応答をどう扱うか（記録・打ち切りの拒否）は `lib/ai/index.ts` の決め事なので持たない。
  *
  * `process.env` は読まない。
- * env を模した object を受ける純関数だけを出し、`process.env` を渡すのは providers.ts（docs/HARNESS.md「テスト可能性の設計制約」2）。
+ * env を模した object を受ける純関数だけを出し、`process.env` を渡すのは `providers.ts`。
  */
 
 import {
@@ -36,8 +36,8 @@ export type AnthropicEffort =
   (typeof ANTHROPIC_EFFORT)[keyof typeof ANTHROPIC_EFFORT];
 
 /**
- * 値域の関門。
- * API へ渡す前に、値域の外（未設定・想定外の値）をここで落とす。
+ * 値域の検証。
+ * API へ渡す前に、値域の外（未設定・想定外の値）を undefined へ変換する。
  */
 const EFFORTS = valueSet<AnthropicEffort>(Object.values(ANTHROPIC_EFFORT));
 
@@ -70,7 +70,7 @@ export type AnthropicSettings = CommonSettings & {
 /**
  * 系統ごとの思考の深さの既定。
  *
- * 抽象系は構造を取り出して材料を添える役で thinking が膨らみやすいので、一段落とす。
+ * 抽象系は構造を取り出して材料を添える役で thinking が膨らみやすいので、一段下げる。
  * undefined は API の既定（high）で走らせるという指定。
  */
 const DEFAULT_EFFORT: Record<PersonaRole, AnthropicEffort | undefined> = {
@@ -85,10 +85,10 @@ const EFFORT_ENV_KEY: Record<PersonaRole, string> = {
 };
 
 /**
- * env が欠けているときに倒れる先。
+ * env が欠けているときに使う既定値。
  *
- * 既定値の文字列をここ一箇所に集める。
- * モデルを変えるたびに散らばった文字列を追う形にしないためで、テストもここを引く。
+ * 既定値の文字列を `ANTHROPIC_DEFAULTS` 一箇所に集める。
+ * モデルを変えるたびに散らばった文字列を追う形にしないためで、テストも `ANTHROPIC_DEFAULTS` を読む。
  */
 export const ANTHROPIC_DEFAULTS = {
   model: "claude-sonnet-5",
@@ -98,7 +98,7 @@ export const ANTHROPIC_DEFAULTS = {
    * 一回の呼び出しを待つ上限（ミリ秒）。
    *
    * 実測の一往復は 15〜27 秒（docs/DEPLOY.md「引き受けている非対称」）なので、一体あたり 120 秒なら正常な生成を切らない。
-   * 二体を逐次に待っても立ち上がりの約 10 秒と合わせて Vercel Hobby の 300 秒に収まり、実行環境に殺される前にこちらが切れる。
+   * 二体を逐次に待っても立ち上がりの約 10 秒と合わせて Vercel Hobby の 300 秒に収まり、実行環境が強制終了する前に `timeoutMs` で打ち切れる。
    */
   timeoutMs: 120000,
   effort: DEFAULT_EFFORT,
@@ -107,8 +107,8 @@ export const ANTHROPIC_DEFAULTS = {
 /**
  * env から設定を読む。
  *
- * 深さは系統ごとに違うので、ここでは読まない（`readAnthropicProviders` が足す）。
- * 数として読めない値（未設定・空・非数）は既定へ倒す。
+ * 深さは系統ごとに違うので、`readAnthropicSettings` では読まない（`readAnthropicProviders` が足す）。
+ * 数として読めない値（未設定・空・非数）は既定値にする。
  * フェイクモードはプロバイダを叩くかどうかの指定で env に依らないので、解決済みの値を受け取る。
  */
 export function readAnthropicSettings(
@@ -137,10 +137,10 @@ export class AnthropicProvider extends AiProvider {
   /**
    * 組み立て済みの本文を Claude API へ送る。
    *
-   * キーが無ければ叩く前に落とす。
-   * 打ち切りは `stop_reason` で判定して通すだけで、拒むかどうかは規約の側が決める。
+   * `apiKey` が無ければ送信の前に throw する。
+   * 打ち切りは `stop_reason` で判定して通すだけで、拒むかどうかは `callPersona` が決める。
    * 上限を超えると `signal` が切れ、走っている fetch は例外を投げて中断する。
-   * その例外はここで捕まえないので、呼び出し元の `callPersona` へそのまま伝わり、あちらが上限超過として投げ直す。
+   * その例外は `send` で捕まえないので、呼び出し元の `callPersona` へそのまま伝わり、`callPersona` が上限超過として投げ直す。
    */
   async send(
     system: string,
@@ -203,7 +203,7 @@ export class AnthropicProvider extends AiProvider {
 
 /**
  * env から系統ごとの深さを読む。
- * 値域の外（未設定・想定外の値）は既定へ倒す。
+ * 値域の外（未設定・想定外の値）は既定値にする。
  */
 function readEffort(
   env: AnthropicEnv,

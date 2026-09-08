@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { loadPersona, PERSONA_LABEL } from "@/lib/personas";
 
 // ペルソナ文書の構造的な健全性のみ検証する。
-// 文体・対話の質は L5（人間の官能）の領分（docs/HARNESS.md）。
+// 文体と対話の質は人間が読んで判断する担当で、自動テストは持たない（docs/HARNESS.md「検証の層構造（下から順に回す）」）。
 describe("ペルソナ定義", () => {
   (["ai_a", "ai_b"] as const).forEach((id) => {
     it(`${id}: 定義が読め、禁止事項（アプリのアイデンティティ）を含む`, () => {

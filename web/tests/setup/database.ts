@@ -1,16 +1,13 @@
 /**
  * テスト用データベースを走るたびに作り直す。
  *
- * ユニットテストは本物の Postgres へ繋ぐ。
- * enum・外部キー・check 制約は本物に当てないと表明した意味を持たないので、インメモリで代替しない。
- * 走り間の隔離をここが持ち、ケース間の隔離は `truncate.ts` が持つ。
- *
- * 積むだけの形にすると、別のブランチで積んだ migration が剥がれずに残る。
- * 型を変える migration を持つブランチを行き来した後、古い側のコードが新しい enum や列に当たって落ちる。
+ * enum・外部キー・check 制約は本物に当てないと表明した意味を持たないので、ユニットテストも本物の Postgres へ繋ぐ。
+ * 走り間の隔離を `database.ts` が持ち、ケース間の隔離は `truncate.ts` が持つ。
+ * 積むだけの形にすると別のブランチで積んだ migration が剥がれずに残り、古い側のコードが新しい enum や列に当たって落ちる。
  *
  * `prisma migrate reset` は使わない。
- * Prisma 7 はこれを破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求する。
- * テストは無人でも回る必要があるので、drop / create を直に流して同意の要求を避ける（`e2e/setup/reset-database.ts` と同じ経路）。
+ * Prisma 7 は `migrate reset` を破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求する。
+ * テストは無人でも回る必要があるので、drop / create を直に実行する（`e2e/setup/reset-database.ts` と同じ経路）。
  */
 
 import { execFileSync } from "node:child_process";
@@ -45,7 +42,7 @@ function runPrisma(args: string[], url: string, input?: string): void {
 }
 
 /**
- * データベースを落として空のものを作り直す。
+ * データベースを削除して空のものを作り直す。
  *
  * force を付けるのは、前の走りが落ちた接続を残していても止まらないようにするため。
  * drop / create はトランザクションの内側で走れないので、二文をまとめて渡さない。

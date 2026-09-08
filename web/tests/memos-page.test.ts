@@ -9,7 +9,6 @@ afterAll(async () => {
   await db.disconnect();
 });
 
-// repo 関数はどれも所有者を要求するので、空にした後のケースごとに一人作る。
 let owner: OwnerId;
 
 beforeEach(async () => {
@@ -17,7 +16,7 @@ beforeEach(async () => {
 });
 
 /**
- * server component が返した要素ツリーを、描画せずに文字列へ畳む。
+ * server component が返した要素ツリーを、描画せずに文字列へまとめる。
  *
  * react-dom で描くと next/link が client の実行時（hooks・router context）を要求する。
  * 検査したいのは「どの語が並び、どこへリンクするか」だけなので、ツリーのまま読む。
@@ -56,7 +55,7 @@ function hrefsOf(node: ReactNode): string[] {
 
 /**
  * 要素の子。
- * props の型が unknown なので、読み出しをここ一箇所に閉じる。
+ * props の型が unknown なので、読み出しを `childrenOf` 一箇所に閉じる。
  */
 function childrenOf(element: ReactElement): ReactNode {
   return (element.props as { children?: ReactNode }).children;

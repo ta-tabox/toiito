@@ -1,8 +1,8 @@
 /**
- * 落として良いデータベースの選別。
+ * 削除して良いデータベースの選別。
  *
- * 実際に落とす経路（drop database の発行）は見ない。
- * 見るのは、生きた worktree の DB を巻き込む形と、規則の外の名前を勝手に落とす形の二つ。
+ * 実際に削除する経路（drop database の発行）は見ない。
+ * 見るのは、生きた worktree の DB を巻き込む形と、規則の外の名前を勝手に削除する形の二つ。
  */
 
 import { selectPruneTargets } from "@scripts/prune-test-databases.ts";

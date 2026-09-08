@@ -2,7 +2,7 @@
  * モデルへ渡す本文の組み立てと、その材料の型（toiito の決め事）。
  * 何をどの順で見せるかはプロバイダに依らないので、API の作法とは別に置く。
  *
- * 出来上がるのは一本のユーザーメッセージで、三者対話の transcript をそこへ畳む。
+ * 出来上がるのは一本のユーザーメッセージで、三者対話の transcript をそのメッセージへまとめる。
  * ai_b の呼び出し時には直前の ai_a の発話も含まれている前提（二体は並列でなく逐次——ai_b は ai_a への応答であることに意味がある）。
  */
 
@@ -31,7 +31,7 @@ const SPEAKER_TAG: Record<Speaker, string> = {
 
 /**
  * ペルソナ一体へ渡すユーザーメッセージを組み立てる。
- * 原型と現在の形を両方載せる理由は QuestionRef の側にある。
+ * 原型と現在の形を両方載せる理由は `QuestionRef` の JSDoc にある。
  */
 export function buildUserContent(
   question: QuestionRef,

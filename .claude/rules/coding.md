@@ -75,9 +75,9 @@ Clean Code / リーダブルコード / 良いコード悪いコードの交差�
 - 物は識別子で名指しする。
   関数・変数・環境変数・テーブル・ファイルはその名をバッククォートで書き、言い換えない。
   主体をぼかす「〜の側」（「規約の側が決める」）も使わない
-- 使わない語の一覧は skill `coding-standards`「語彙」節が持ち、`web/scripts/lint-comments.ts` が検出する。
+- 使わない語の一覧は skill `coding-standards`「語彙」節が持ち、`web/scripts/lint-comments.ts` の `comments/noBannedWord` が検出する。
   語はリポジトリごとに変わるので、核はこの一覧を持たない。
-  既存のコメントを直し終えるまでは warn なので、`pnpm check` は赤くならない
+  当たると `pnpm check` が赤くなる
 - 製品の比喩語（`VISION.md`「語彙」・`DESIGN.md`「語彙」）は UI の文言と md に閉じる。
   コードのコメントでは技術の語で言い、参照は文書名と節名の一行に留める
 - 主語・目的語・失敗の形を省かない。

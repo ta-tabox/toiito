@@ -1,21 +1,14 @@
 /**
- * L4（ブラウザ実挙動）の設定。
+ * ブラウザ実挙動を見る Playwright の設定。
  *
- * 見るのは `e2e/` の spec だけで、L0〜L3 は `pnpm check` の側が持つ。
- * AI 呼び出しはフェイクモードに固定する（docs/HARNESS.md「AI フェイクモード」）。
- * 実 API を自動テストで叩かない。
+ * 見るのは `e2e/` の spec だけで、型検査・lint・単体テスト・ビルドは `pnpm check` が持つ。
+ * AI 呼び出しはフェイクモードに固定し、実 API を自動テストで叩かない（docs/HARNESS.md「AI フェイクモード」）。
+ * 接続先とサーバーは開発用から三重に離す（データベース `toiito_e2e`・ポート 3100・出力先 `.next-e2e`）。
+ * 出力先まで分けるのは、next dev の二重起動検知が `.next/dev/lock` 一つを見ており、ポートを分けただけでは `pnpm dev` と衝突するため。
+ * サーバーは二本立て、資格情報を持つのは一本だけにする（同じサーバーでアクセス制限の有無を両方は見られない）。
  *
- * 接続先とサーバーは開発用から三重に離す。
- * データベースは専用の `toiito_e2e`、口は 3100、出力先は `.next-e2e`。
- * 出力先まで分けるのは、next dev の二重起動検知が `.next/dev/lock` 一つを見ており、口を分けただけでは `pnpm dev` と衝突するため。
- *
- * サーバーは二本立てる。
- * 既定の一本は資格情報を持たないのでアクセス制限が掛からず、縦一本の spec がそれまでどおり走る。
- * もう一本だけが資格情報を持ち、`basic-auth.spec.ts` がそちらを叩く（同じサーバーで両方は見られない）。
- *
- * **この層は Vercel のランタイム差を再現しない**。
- * next dev も next start も Node で走るので、Edge でだけ環境変数が読めない類の失敗はここに出ない。
- * 本番そのものを叩く確認は `docs/DEPLOY.md`「アクセス制限」が持つ。
+ * **Vercel のランタイム差は再現しない**。
+ * next dev も next start も Node で走るので、Edge でだけ環境変数が読めない類の失敗は Playwright では出ない（本番そのものを叩く確認は `docs/DEPLOY.md`「アクセス制限」）。
  */
 
 import { BASIC_AUTH } from "@e2e/setup/basic-auth-credentials";
@@ -23,7 +16,7 @@ import { E2E_DATABASE_URL } from "@e2e/setup/e2e-database-url";
 import { defineConfig, devices } from "@playwright/test";
 import { SEED_USERS } from "@scripts/seed/users";
 
-/** 開発サーバー（3000）と衝突させないための口。 */
+/** 開発サーバー（3000）と衝突させないためのポート。 */
 const PORT = 3100;
 
 /**
@@ -34,10 +27,10 @@ const DIST_DIR = ".next-e2e";
 
 const BASE_URL = `http://localhost:${PORT}`;
 
-/** アクセス制限を掛けたサーバーの口。 */
+/** アクセス制限を有効にしたサーバーのポート。 */
 const AUTH_PORT = 3101;
 
-/** そのサーバーのビルド出力先（口だけ分けても next dev の二重起動検知に掛かる）。 */
+/** そのサーバーのビルド出力先（ポートだけ分けても next dev の二重起動検知に当たる）。 */
 const AUTH_DIST_DIR = ".next-e2e-auth";
 
 const AUTH_BASE_URL = `http://localhost:${AUTH_PORT}`;
@@ -77,7 +70,7 @@ export default defineConfig({
     {
       // データベースの作り直しを dev サーバーの起動と同じ一本に繋ぐ。
       // Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、globalSetup へ置くと順序が逆になる。
-      // 接続先は env で渡す（作り直す側はそれを読むだけで、決める口をもう一つ持たない）。
+      // 接続先は env で渡す（作り直す側はそれを読むだけで、決める場所をもう一つ持たない）。
       command: `node e2e/setup/reset-database.ts && pnpm exec next dev --port ${PORT}`,
       url: BASE_URL,
 
@@ -91,8 +84,8 @@ export default defineConfig({
       env: { ...SERVER_ENV, TOIITO_DIST_DIR: DIST_DIR },
     },
     {
-      // こちらはデータベースを作り直さない。
-      // 二本が同じ `toiito_e2e` を同時に作り直すと、互いの足元を落とすことになる。
+      // アクセス制限を有効にした側はデータベースを作り直さない。
+      // 二本が同じ `toiito_e2e` を同時に作り直すと、互いの足元を壊すことになる。
       command: `pnpm exec next dev --port ${AUTH_PORT}`,
       url: AUTH_BASE_URL,
       reuseExistingServer: false,

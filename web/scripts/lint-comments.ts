@@ -1,26 +1,13 @@
 /**
- * コメント規約のうち、Biome が構造的に検出できない分だけを見るリンタ（L1）。
+ * コメント規約のうち、Biome が構造的に検出できない分だけを見るリンタ。
  *
- * Biome のリンタはコメントを走査対象に持たない。
- * built-in ルールにも GritQL プラグインにも、コメント本体へ届く経路が無い。
- * ここが引き受けるのはその穴だけで、コメント以外の作法は biome.json 側に置く。
- * 同じ規約を二箇所に書かない。
+ * Biome はコメント本体へ届く経路を持たないので、このリンタが引き受けるのはその穴だけである。
+ * コメント以外の作法は biome.json へ置き、対象から外すものは .gitignore を正とする（Biome も vcs.useIgnoreFile で同じ正を見る）。
+ * 判定は行単位の正規表現でなく TypeScript の API に任せる（正規表現では文字列リテラル中の記号と本物のコメントを区別できない）。
+ * パーサの `@typescript/typescript6` を `typescript` へ戻さない（TypeScript 7 は既定 export から `createSourceFile` を外している。`docs/adr/0011-typescript-7-parser.md`）。
  *
- * 判定は TypeScript の API へ渡す。
- * 行単位の正規表現では文字列リテラル中の記号と本物のコメントを区別できず、規約のリンタ自身が嘘をつく。
- *
- * パーサは `@typescript/typescript6` を名指しで引く。
- * TypeScript 7 は Go 移植で `typescript` の既定 export から旧 JS コンパイラ API が外れており、`createSourceFile` が無い。
- * このリポジトリが `typescript` に何を入れていてもここは 6 系の JS API を掴むので、この import を `typescript` へ戻さない。
- *
- * Biome も vcs.useIgnoreFile で同じ正を見るので、対象から外すものは .gitignore が正。
- * 独自の除外リストを持つと、生成物の扱いが Biome と食い違う。
- *
- * 入口は lintSource。
- * CLI は node scripts/lint-comments.ts [path...]。
- *
- * このファイルは複数のリポジトリで同じ内容を保つ共有物である。
- * このリポジトリ固有の逸脱を足すときは、このコメントの直下に理由を書く。
+ * エントリポイントは lintSource。
+ * このファイルは複数のリポジトリで同じ内容を保つ共有物なので、このリポジトリ固有の逸脱を足すときはこのコメントの直下に理由を書く。
  */
 
 import { spawnSync } from "node:child_process";
@@ -69,7 +56,7 @@ const DEFAULT_TARGETS = ["src", "scripts", "tests"];
  * 語はリポジトリごとに変わるが、規則そのものは変わらない。
  *
  * 比喩と個人語彙は書き手には一意でも、このリポジトリの md を読んでいない読者には辞書が無い。
- * 語の正は skill `coding-standards`「語彙」節の表で、ここはその一覧を機械が読める形へ写したもの。
+ * 語の正は skill `coding-standards`「語彙」節の表で、`BANNED_WORDS` はその一覧を機械が読める形へ写したもの。
  * `.claude/rules/coding.md`「コメント」節は一覧を持たず、判定手順（英語への直訳）だけを持つ。
  *
  * `allow` は、その語を含むが禁止の対象ではない複合語。
@@ -105,7 +92,7 @@ const BANNED_WORDS: ReadonlyArray<{
 
 /**
  * 検査の対象にする拡張子。
- * ここに無い拡張子は、ディレクトリを名指しで渡されても集めない。
+ * `SOURCE_EXTENSIONS` に無い拡張子は、ディレクトリを名指しで渡されても集めない。
  */
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
 
@@ -113,8 +100,7 @@ const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
  * テストファイルの命名。
  * `foo.test.ts` や `foo.spec.tsx` のように、拡張子の手前へ test / spec を挟む形を指す。
  *
- * 判定をディレクトリでなくファイル名に置いている。
- * 免除の理由は「対応する実装のファイル名が主題を既に名指している」ことなので、その名が src/ に居ても tests/ に居ても情報量は変わらない。
+ * 判定はディレクトリでなくファイル名に置く。
  * ディレクトリで判定すると、テストを併置するリポジトリで同じ規約が別の意味になる。
  */
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
@@ -126,17 +112,16 @@ const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const JSDOC_TYPE_ANNOTATION = /@(param|returns?)\s*\{/g;
 
 /**
- * 文がそこで閉じている印。
+ * 文がその位置で閉じていることを示す記号。
  * 日本語の句点と、英文・コード片の終止符。
  */
 const SENTENCE_END = /[。.]$/;
 
 /**
- * 散文でないことを行頭で宣言する印。
+ * 散文でないことを行頭で宣言する記号。
  * 箇条書きと表の行が持つ。
  *
  * 散文の続きではないので、手前の行から文が流れ込んでいない。
- * 機械が図を見抜いているのではなく、書き手が宣言している。
  */
 const LIST_MARKER = /^(?:[-*・→|]|\d+[.)])/;
 
@@ -173,7 +158,7 @@ const BRACKET_CLOSE = "）)」】";
 const TRAILING_DECORATION = /^[*_`）)」】\s]*$/;
 
 /**
- * リンタの入口。
+ * リンタのエントリポイント。
  * ソース 1 ファイル分を受け取り、規則ごとの検査を束ねて違反の一覧を返す。
  */
 export function lintSource(fileName: string, text: string): Violation[] {
@@ -195,7 +180,7 @@ export function lintSource(fileName: string, text: string): Violation[] {
 }
 
 /**
- * 冒頭コメントを、それが飾る本体の直前まで遡って探す。
+ * 冒頭コメントを、飾っている本体の直前まで遡って探す。
  *
  * "use server" のようなディレクティブは本体に数えない。
  * ディレクティブの前後どちらに冒頭コメントを置いても構文上は正しく、位置まで縛る理由が無い。
@@ -233,7 +218,7 @@ function checkModuleHeader(
 
   // 空行を挟まず宣言に接したコメントは、その宣言の JSDoc であってモジュールへの注釈ではない。
   // TS もエディタもそう読む。
-  // ここを冒頭コメントとして数えると、「空行を置け」と促した結果、宣言から JSDoc を剥がすことになる。
+  // 宣言に接したコメントを冒頭コメントとして数えると、「空行を置け」と促した結果、宣言から JSDoc を剥がすことになる。
   if (
     header === leading[leading.length - 1] &&
     !isFollowedByBlankLine(text, header.end) &&
@@ -255,7 +240,7 @@ function checkModuleHeader(
   }
 
   // 直後の空行が、モジュールへの注釈と直下の宣言への JSDoc を分ける唯一の目印。
-  // 空行を挟まないと TS もエディタも、これを次の宣言のドキュメントとして扱う。
+  // 空行を挟まないと TS もエディタも、冒頭コメントを次の宣言のドキュメントとして扱う。
   if (!isFollowedByBlankLine(text, header.end)) {
     return [
       {
@@ -304,7 +289,7 @@ function checkJsDocTypeAnnotations(
 /**
  * 改行が文の途中に入っていないかを見る。
  *
- * 句点で閉じていない行の次に本文が続いていたら、そこは文の切れ目ではなく桁で折った跡。
+ * 句点で閉じていない行の次に本文が続いていたら、その改行は文の切れ目ではなく桁で折った跡。
  * 日本語としては意味の切れ目だが、桁で折った跡と機械には見分けが付かないので、読点で折った場合も捕まえる。
  */
 function checkSentenceEndLineBreaks(
@@ -342,7 +327,7 @@ function checkSentenceEndLineBreaks(
  * 1 行に 2 文以上置いていないかを見る。
  *
  * 一文一行なら、一文直したときの diff が 1 行で済み、レビューで「この文」を指せる。
- * 桁で折らない理由がそれなので、文の途中で折らないだけでは足りない。
+ * 一文一行が桁で折らない理由そのものなので、文の途中で折らないだけでは足りない。
  */
 function checkOneSentencePerLine(
   source: ts.SourceFile,
@@ -407,7 +392,7 @@ function checkBannedWords(
           line: line.line,
           rule: "comments/noBannedWord",
           message: `「${banned.word}」は使わない。代わりに ${banned.instead}`,
-          severity: "warn",
+          severity: "error",
         });
       }
     }
@@ -521,7 +506,7 @@ function maskFencedRegions(lines: CommentLine[]): CommentLine[] {
   });
 }
 
-/** コメントの記号（`//`・`/*`・行頭の `*`・閉じ）を落として本文だけにする。 */
+/** コメントの記号（`//`・`/*`・行頭の `*`・閉じ）を取り除いて本文だけにする。 */
 function stripDecoration(line: string): string {
   return line
     .replace(/^\s*(?:\/\*\*?|\/\/)/, "")
@@ -533,7 +518,7 @@ function stripDecoration(line: string): string {
 /**
  * ソース中の leading コメントを重複なく集め、出現順に並べて返す。
  *
- * 同じコメントが親と子の両方で leading として返るので、開始位置で重複を落とす。
+ * 同じコメントが親と子の両方で leading として返るので、開始位置で重複を取り除く。
  */
 function collectLeadingComments(
   source: ts.SourceFile,
@@ -567,7 +552,7 @@ function collectLeadingComments(
 
 /**
  * ディレクティブを除いた最初の文を返す。
- * 冒頭コメントが飾っている本体はこれになる。
+ * 冒頭コメントが飾っている本体はこの文になる。
  */
 function firstNonDirectiveStatement(
   source: ts.SourceFile,
@@ -616,7 +601,7 @@ function lineOf(source: ts.SourceFile, position: number): number {
 
 /**
  * 対象の配下から検査するソースを再帰で集める。
- * ファイルを直に渡されたときは、拡張子が合う場合だけそれ 1 件を返す。
+ * ファイルを直に渡されたときは、拡張子が合う場合だけそのファイル 1 件を返す。
  */
 export function collectSourceFiles(target: string): string[] {
   const stats = fs.statSync(target);
@@ -634,10 +619,10 @@ export function collectSourceFiles(target: string): string[] {
 }
 
 /**
- * .gitignore で除外されているファイルを落とす。
+ * .gitignore で除外されているファイルを取り除く。
  *
- * git が引けない環境では素通しする。
- * リンタが黙って全件を見送るより、生成物込みで騒ぐ方が気付ける。
+ * git を実行できない環境では、除外せず全件を検査する。
+ * リンタが黙って全件を見送るより、生成物込みで違反を出す方が気付ける。
  */
 function excludeIgnored(files: string[]): string[] {
   if (files.length === 0) {
@@ -650,7 +635,7 @@ function excludeIgnored(files: string[]): string[] {
   });
 
   // 0 = 除外対象あり、1 = 無し。
-  // それ以外は git 側の失敗。
+  // 0 と 1 以外は git 側の失敗。
   if (found.status !== 0 && found.status !== 1) {
     return files;
   }
@@ -662,7 +647,7 @@ function excludeIgnored(files: string[]): string[] {
 
 /**
  * 既定の対象はリポジトリの構成に対する見込みなので、無いディレクトリは黙って飛ばす。
- * 引数で名指しされた場所が無いのは打ち間違いなので、そちらは collectSourceFiles に落とさせる。
+ * 引数で名指しされた場所が無いのは打ち間違いなので、collectSourceFiles に throw させる。
  */
 function resolveTargets(argv: string[]): string[] {
   return argv.length > 0

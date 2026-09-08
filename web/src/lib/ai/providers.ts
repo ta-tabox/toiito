@@ -2,7 +2,7 @@
  * 解決済みの AI プロバイダ。
  *
  * AI で `process.env` に触るのはこの一枚だけで、env から値への写像と既定値は各プロバイダの純関数が持つ（docs/HARNESS.md「テスト可能性の設計制約」2）。
- * 呼び出し側はここから解決済みのプロバイダを受け取り、env を知らない。
+ * 呼び出し側は `AI_PROVIDERS` から解決済みのプロバイダを受け取り、env を知らない。
  */
 
 import { readAnthropicProviders } from "@/lib/ai/anthropic";

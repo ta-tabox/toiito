@@ -4,14 +4,14 @@
  * 発話本文の描画と、選択した範囲へメモを付ける小フォーム。
  *
  * オフセットの換算は anchors.ts の純関数だけが行う。
- * ここが引き受けるのは DOM から（セグメント, セグメント内オフセット）を読むところまでで、絶対オフセットを求める式をこのファイルへ書かない。
+ * `MessageBody` が引き受けるのは DOM から（セグメント, セグメント内オフセット）を読むところまでで、絶対オフセットを求める式をこのファイルへ書かない。
  * 書いた時点で、テストの外にオフセット演算が増える。
  *
  * 複数の発話へ跨る選択は捨てる。
  * メモのアンカーは発話一件の本文へ閉じており、跨いだ範囲を一件では表せない。
  *
- * 下線の掛かった区間は `/memos?memo=<id>` へのリンクにする。
- * 逆向き（メモ → 発話）は /memos が持っているので、こちらは発話 → メモを埋める側。
+ * 下線の付いた区間は `/memos?memo=<id>` へのリンクにする。
+ * 逆向き（メモ → 発話）は /memos が持っているので、`MessageBody` は発話 → メモを埋める側。
  */
 
 import Link from "next/link";
@@ -27,22 +27,22 @@ import {
 import type { Memo, Message } from "@/lib/types";
 
 /**
- * メモが掛かっている区間の装飾。
+ * メモが付いている区間の装飾。
  *
- * 面でなく線で出すのは、彩度を持つ面を人間の発話の一つに留めるため（.claude/rules/design.md「彩度の規律」）。
- * 画面の中で最も強い色が、自分で置いた印になる。
+ * 背景でなく下線で出すのは、彩度を持つ背景を人間の発話の一つに留めるため（`.claude/rules/design.md`「彩度の規律」）。
+ * 画面の中で最も強い色が、自分で付けたメモになる。
  */
 const MARKED_STYLE =
   "underline decoration-mark decoration-2 underline-offset-4";
 
-/** 選択を読み直す側と、下書きを畳む側からなる、発話一件ぶんの口。 */
+/** 発話一件ぶんの、選択の読み直しと下書きの取り消し。 */
 type SelectionReader = {
   read: () => void;
   clear: () => void;
 };
 
 /**
- * 選択を読み直す発話の登録簿。
+ * 選択を読み直す発話のレジストリ。
  *
  * document へのリスナを画面に 1 本だけ張るために、React の外へ置く。
  * 鍵が本文の要素そのものなので、開発時に effect が二度走っても同じ発話が二重に載らない。
@@ -58,7 +58,7 @@ type MemoDraft = {
 
 /**
  * 発話本文。
- * メモの掛かった区間へ下線を引き、選択からメモを作る。
+ * メモの付いた区間へ下線を引き、選択からメモを作る。
  */
 export function MessageBody({
   message,
@@ -72,7 +72,7 @@ export function MessageBody({
   const bodyRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<MemoDraft | null>(null);
 
-  // useMemo を通すのは、これが下の useEffect の依存だから。
+  // useMemo を通すのは、`segments` が下の useEffect の依存だから。
   // 素で呼ぶとレンダリングのたびに新しい配列になり、選択のたびに listener を外して張り直すことになる。
   const segments = useMemo(
     () => segmentBody(message.body, memos),
@@ -80,9 +80,9 @@ export function MessageBody({
   );
 
   /**
-   * この発話を登録簿へ載せ、自分宛ての選択で下書きを立てる。
+   * この発話を `readers` へ登録し、自分宛ての選択で下書きを立てる。
    *
-   * 読み取れない選択で下書きを消さないのは、開いているフォームが選択の解除で畳まれるため。
+   * 読み取れない選択で下書きを消さないのは、開いているフォームが選択の解除で閉じてしまうため。
    */
   useEffect(() => {
     const container = bodyRef.current;
@@ -103,9 +103,9 @@ export function MessageBody({
   }, [message.body, segments]);
 
   /**
-   * 下書きを畳み、選んだ範囲の色も消す。
+   * 下書きを閉じ、選んだ範囲の色も消す。
    *
-   * 色だけが残ると、まだ何かが掛かっているように見える。
+   * 色だけが残ると、まだ選択が続いているように見える。
    */
   const closeDraft = () => {
     setDraft(null);
@@ -148,7 +148,7 @@ export function MessageBody({
 /**
  * セグメント一つ分の描画。
  *
- * メモが掛かっていればメモ一覧の当該メモへのリンクにし、掛かっていなければただの span。
+ * メモが付いていればメモ一覧の当該メモへのリンクにし、付いていなければただの span。
  * 重なっている区間はいちばん古いメモへ繋ぐ（重なりの描き分けは別 issue）。
  *
  * draggable を切るのは、下線の内側から選択を始めたときにリンクのドラッグが起きるのを防ぐため。
@@ -185,8 +185,8 @@ function SegmentText({
 /**
  * メモの小フォーム。
  *
- * 背面へ暗幕もスクロールの固定も置かないのは、書いている途中に発話を読み返せる方を採るため。
- * 同じ理由で、この面は body へ portal されて画面の main の外に居るので、書きの間の減光（globals.css）も掛からない。
+ * 背面へ半透明の覆いもスクロールの固定も置かないのは、書いている途中に発話を読み返せる方を採るため。
+ * 同じ理由で、このフォームは body へ portal されて画面の main の外に居るので、`globals.css` の `[data-recedes-while-writing]` による減光も掛からない。
  */
 function MemoForm({
   messageId,
@@ -235,16 +235,17 @@ function MemoForm({
 }
 
 /**
- * 発話の口を登録簿へ載せ、外し方を返す。
+ * 発話の `SelectionReader` を `readers` へ登録し、外し方を返す。
  *
- * document のリスナは登録簿が空でなくなったときに張り、空に戻ったときに外す。
+ * document のリスナは `readers` が空でなくなったときに一組だけ張り、空に戻ったときに外す。
  * 本文の途中から下へドラッグして選ぶとボタンを離す位置が本文の枠の外になるので、リスナは document に置く。
  * 本文の div へ onMouseUp を付けると、React のハンドラは自分の部分木の外で起きた mouseup を受け取らないので、枠の外で離した選択が丸ごと取れない。
  * 静的な div へマウスのハンドラを付けること自体も biome が止める（a11y/noStaticElementInteractions）。
- * keyup も見るのは、shift + 矢印で伸ばした選択を落とさないため。
+ * keyup も見るのは、shift + 矢印で伸ばした選択を取りこぼさないため。
  *
  * iOS は選択のジェスチャの終わりに mouseup を撃たないので、touchend も見る。
- * 長押しから選択ハンドルを動かして離す一連は touchend で終わり、mouseup はそこに来ない。
+ * 実害は #147（スマホで発話を選んでもメモが作れない）。
+ * 長押しから選択ハンドルを動かして離す一連は touchend で終わり、mouseup はその一連に来ない。
  * mouseup が来るのはただのタップのときだけで、その時点では選択が既に潰れている。
  * pointerup を採らないのは、同じ実機で touchend が来た回のうち半分ほどしか来なかったため。
  */
@@ -272,9 +273,9 @@ function subscribeSelection(
 }
 
 /**
- * 選択の始点が入っている発話に読み直させ、他の発話の下書きを畳む。
+ * 選択の始点が入っている発話に読み直させ、他の発話の下書きを閉じる。
  *
- * 潰れた選択をここで返すのは、キャレットが動いただけの keyup で登録簿まで引かないため。
+ * 潰れた選択を早期 return するのは、キャレットが動いただけの keyup で `readers` を走査しないため。
  */
 function notifySelectedMessage(): void {
   const selection = window.getSelection();
@@ -294,7 +295,7 @@ function notifySelectedMessage(): void {
     if (body === container) {
       reader.read();
     } else {
-      // 下書きを画面に一つへ保つため、選んでいない発話のものは畳む。
+      // 下書きを画面に一つへ保つため、選んでいない発話のものは閉じる。
       reader.clear();
     }
   }
@@ -406,8 +407,8 @@ function offsetInSegment(
 }
 
 /**
- * 区間に掛かっているメモを、hover で覗ける一つの文字列へ畳む。
- * 掛かっていなければ undefined（title 属性ごと出さない）。
+ * 区間に付いているメモを、hover で覗ける一つの文字列へまとめる。
+ * 付いていなければ undefined（title 属性ごと出さない）。
  */
 function memoHint(segment: Segment, memos: Memo[]): string | undefined {
   const covering = memos.filter((memo) => segment.memoIds.includes(memo.id));

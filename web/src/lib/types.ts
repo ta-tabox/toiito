@@ -3,13 +3,10 @@
  * 永続化の実装（Prisma）にも UI にも依存しない。
  * 意味の正は docs/ARCHITECTURE.md「データモデル」。
  *
- * db.ts と UI の境界はここ一枚。
- * Prisma の生成型はこの向こうへ出さない。
+ * `db.ts` と UI の境界は `types.ts` 一枚で、Prisma の生成型を `types.ts` の外へ出さない。
  * 時刻は Date（Prisma の DateTime も JS の Date なので詰め替えが要らない）。
- * 表示用の文字列化は format.ts の責務で、この型は持たない。
- *
- * 実行時の値（値域の定数など）は置かない。
- * それぞれのドメインのモジュールが持つ。
+ * 表示用の文字列化は `format.ts` の責務で、ドメイン型は持たない。
+ * 実行時の値（値域の定数など）は置かず、それぞれのドメインのモジュールが持つ。
  */
 
 import type { QuestionStatus } from "@/lib/question";
@@ -19,7 +16,7 @@ import type { QuestionStatus } from "@/lib/question";
  *
  * 素の string と混ざらないよう、ブランド型にしてある。
  * `db.ts` の repo 関数は `OwnerId` しか所有者として受け取らないので、URL やフォームから来た文字列をそのまま渡せない。
- * `OwnerId` へ変換してよいのは `user` 表を SELECT した `db.ts` だけで、他所で `as OwnerId` と書けば `tsc` は通るが、それは規約違反として読める。
+ * `OwnerId` へ変換してよいのは `user` 表を SELECT した `db.ts` だけで、他所の `as OwnerId` は `tsc` を通っても規約違反として読める。
  */
 export type OwnerId = string & { readonly __brand: "OwnerId" };
 
@@ -45,7 +42,7 @@ export type Session = { id: string; question_id: string; started_at: Date };
 
 /**
  * セッションと、そのセッションで付いたメモのキーワード。
- * 対話画面の切り替え口が、どのセッションだったかの手掛かりに使う。
+ * 対話画面のセッション切り替えが、どのセッションだったかの手掛かりに使う。
  */
 export type SessionWithKeywords = Session & { keywords: string[] };
 

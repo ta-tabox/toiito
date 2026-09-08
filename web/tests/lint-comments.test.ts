@@ -51,7 +51,7 @@ export function createQuestion() {}
 `;
 
     // 空行を置けと促すと、この JSDoc を関数から剥がすことになる。
-    // 冒頭コメントが「無い」のが実態で、直すべきはそちら。
+    // 冒頭コメントが「無い」のが実態で、直すべきは冒頭コメントの不在。
     expect(rulesOf(source)).toEqual(["comments/useModuleHeader"]);
   });
 
@@ -502,7 +502,7 @@ export const a = 1;
 describe("禁止語", () => {
   const header = "/**\n * 冒頭。\n */\n\n";
 
-  it("コメント本文の禁止語を warn で報告する", () => {
+  it("コメント本文の禁止語を error で報告する", () => {
     const source = `${header}/**
  * 未設定なら落とす。
  */
@@ -515,7 +515,7 @@ export function f() {}
         rule: "comments/noBannedWord",
         message:
           "「落とす」は使わない。代わりに throw する / 削除する / 拒否する",
-        severity: "warn",
+        severity: "error",
       },
     ]);
   });

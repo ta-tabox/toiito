@@ -1,10 +1,10 @@
 /**
  * 開発用シードとして入れる値の宣言。
  *
- * 投入の手順は持たない（それは db.ts の createQuestionWithTranscript と seed/index.ts のステップ）。
- * ここが答えるのは「何を入れるか」だけで、この形のまま増やしていく。
+ * 投入の手順は持たない（手順は `db.ts` の `createQuestionWithTranscript` と `seed/index.ts` のステップ）。
+ * `questions.ts` が答えるのは「何を入れるか」だけで、この形のまま増やしていく。
  *
- * 入口は SEED_INPUTS（一人目）と OTHER_USER_INPUT（二人目）。
+ * エントリポイントは `SEED_INPUTS`（一人目）と `OTHER_USER_INPUT`（二人目）。
  * どちらも宣言（keyword ベース）から、範囲の埋まった投入の入力へ写したもの。
  * 誰が持つかを決めるのは `seed/index.ts` で、`questions.ts` は本文とメモだけを持つ。
  */
@@ -16,7 +16,7 @@ import type { Speaker } from "@/lib/types";
 /**
  * メモの宣言。
  *
- * 範囲は書かず、本文中の keyword の出現位置から引く（toMemoInput）。
+ * 範囲は書かず、本文中の `keyword` の出現位置から求める（`toMemoInput`）。
  */
 type MemoSeed = {
   keyword: string;
@@ -147,7 +147,7 @@ const SEED_QUESTIONS: QuestionSeed[] = [
  *
  * オフセットを直書きすると本文を一文字直すたびに全部ずれる。
  * 単位は JS の string index（UTF-16 code unit）で、anchors.ts と揃える。
- * 本文に keyword が無ければ落とす。
+ * 本文に `keyword` が無ければ throw する。
  * ずれたまま投入すると、UI では無関係な語に下線が付く。
  */
 function toMemoInput(body: string, memoSeed: MemoSeed): MemoInput {
@@ -183,7 +183,7 @@ function toQuestionInput(questionSeed: QuestionSeed): QuestionInput {
  * 一人目へ投入する入力。
  * 宣言から写した形で、メモの範囲まで埋まっている。
  *
- * 写しを読み込み時に済ませるのは、キーワードの綴り誤りを投入前に落とすため。
+ * 写しを読み込み時に済ませるのは、キーワードの書き誤りを投入前に throw するため。
  */
 export const SEED_INPUTS: QuestionInput[] = SEED_QUESTIONS.map(toQuestionInput);
 

@@ -40,7 +40,7 @@ class FailingProvider extends AiProvider {
 
 /**
  * 二体ぶんの呼び出し指定。
- * 既定は両方フェイクで、落としたい体だけ差し替える。
+ * 既定は両方フェイクで、失敗させたい体だけ差し替える。
  */
 function calls(failing?: PersonaId): PersonaCalls {
   const call = (id: PersonaId) => ({
@@ -52,7 +52,6 @@ function calls(failing?: PersonaId): PersonaCalls {
   return { ai_a: call("ai_a"), ai_b: call("ai_b") };
 }
 
-// repo 関数はどれも所有者を要求するので、空にした後のケースごとに一人作る。
 let owner: OwnerId;
 
 beforeEach(async () => {

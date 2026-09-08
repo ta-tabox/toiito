@@ -34,7 +34,7 @@ type TurnTarget = {
 
 /**
  * 二体の呼び出しの指定を、env から解決済みのプロバイダで組み立てる。
- * 系統の割り当て（具体が ai_a、抽象が ai_b）はここが持つ。
+ * 系統の割り当て（具体が ai_a、抽象が ai_b）は `personaCalls` が持つ。
  */
 export function personaCalls(): PersonaCalls {
   return {
@@ -54,7 +54,7 @@ export function personaCalls(): PersonaCalls {
 /**
  * 成立しなかった一往復を 1 行の JSON で残す。
  *
- * 画面は失敗の理由を区別しないので、5 つある失敗経路を見分けられるのはここだけになる。
+ * 画面は失敗の理由を区別しないので、5 つある失敗経路を見分けられるのはこの記録だけになる。
  * 発話本文は出さない（`lib/ai/` の呼び出し記録と同じ扱い）。
  */
 function logTurnFailure(sessionId: string, error: unknown): void {

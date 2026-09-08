@@ -5,7 +5,7 @@
 
 /**
  * タイムゾーンを JST に固定する。
- * サーバーの居場所（ローカル / Neon のリージョン / CI）で表示がずれると、堆積した対話の間隔が嘘になる。
+ * サーバーの実行場所（ローカル / Neon のリージョン / CI）で表示がずれると、対話の時刻の間隔が実際と違って見える。
  */
 const TIMESTAMP = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Tokyo",

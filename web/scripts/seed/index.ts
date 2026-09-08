@@ -2,15 +2,13 @@
  * 開発用データの投入。
  *
  * ユーザー二人と、その持ち物としての問い・対話・メモを一式入れて、UI を手触りで確かめられる状態にする。
- * このファイルが持つのは投入のステップと誰が何を持つかだけで、入れる値は同じディレクトリの users.ts と questions.ts、書き込みの手順は db.ts の createQuestionWithTranscript が持つ。
- * アプリと同じ経路を通らない投入口を増やさない（docs/ARCHITECTURE.md「DB への書き込み経路」）。
- * 接続先は DATABASE_URL 一点で、db.ts が読む。
- * 投入先を選ぶ引数はここに作らない——渡し口を二つ持つと、env は開発用・引数はテスト用という食い違いが起こる。
+ * `seed/index.ts` が持つのは投入のステップと誰が何を持つかだけで、入れる値は `users.ts` と `questions.ts`、書き込みの手順は `db.ts` の `createQuestionWithTranscript` が持つ。
+ * アプリと同じ経路を通らない書き込み経路を増やさない（docs/ARCHITECTURE.md「DB への書き込み経路」）。
+ * 接続先は `DATABASE_URL` 一点で、投入先を選ぶ引数を `seed` に作らない（受け取り方を二つ持つと、env は開発用・引数はテスト用という食い違いが起こる）。
  * 動くのはユーザーが一人も居ない DB に対してだけで、既に入っている DB へは何も入れずに終わる。
  * 本番（NODE_ENV=production）では、空でも投入しない。
  *
- * 入口は seed。
- * CLI は node scripts/seed/index.ts（pnpm seed）。
+ * エントリポイントは `seed`（CLI は pnpm seed）。
  */
 
 import path from "node:path";
@@ -22,15 +20,15 @@ import { SEED_USERS } from "./users.ts";
 /**
  * db.ts の repo 関数一式。
  *
- * 実体の読み込みは seed の中まで遅らせる（理由は ../node-alias.ts）。
+ * 静的 import は `registerSrcAlias` の登録より先に解決されるので、実体の読み込みは `seed` の中まで遅らせる（`scripts/node-alias.ts`）。
  */
 type Repo = typeof import("@/lib/db");
 
 /**
  * 投入した内容。
  *
- * 問いだけ件数でなく id を返すのは、投入分を後から引けるようにするため。
- * 同じ DB を他の書き手（並行するテスト）と共有していても、これがあれば取り違えない。
+ * 問いだけ件数でなく id を返すのは、投入分を後から取得できるようにするため。
+ * 同じ DB を他の書き手（並行するテスト）と共有していても、`questionIds` があれば取り違えない。
  */
 export type SeedSummary = {
   users: number;
@@ -44,7 +42,7 @@ export type SeedSummary = {
  *
  * `user` 表が空でなければ `seed` は何もせずに終わるが、その検査は行が在る DB にしか効かない。
  * 立ち上げ直後の空の本番 DB は素通りするので、環境変数でも止める。
- * 意図して流すときだけ ALLOW_PROD_SEED を渡す。
+ * 意図して実行するときだけ `ALLOW_PROD_SEED` を渡す。
  */
 function assertNotProduction(): void {
   if (process.env.NODE_ENV === "production" && !process.env.ALLOW_PROD_SEED) {
@@ -59,7 +57,7 @@ function assertNotProduction(): void {
  * 接続先は DATABASE_URL。
  *
  * 一人目が問いの大半を持ち、二人目は一件だけ持つ。
- * 二人目の一件は、一人目の画面のどこにも出てはいけない側として在る（絞り込みが抜けたら、それがそこに出る）。
+ * 二人目の一件は、一人目の画面のどこにも出てはいけない側として在る（絞り込みが抜けたら、二人目の問いが一人目の画面に出る）。
  *
  * 一人目が既に居る DB へは何も入れずに戻る。
  * 投入先の取り違えを、行が増えてから気付く形にしないため。

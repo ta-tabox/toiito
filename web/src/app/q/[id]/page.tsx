@@ -2,17 +2,13 @@
  * 一つの問いの対話画面。
  * 三者（人間・具体・抽象）の発話を時系列で並べ、次の一手を受け取る。
  *
- * 一度に描くのはセッション一つ。
- * 既定は最新で、`?s=<session_id>` が指すセッションがあればそちらを描く。
+ * 一度に描くのはセッション一つで、既定は最新、`?s=<session_id>` が指すセッションがあればそのセッションを描く。
  * 過去のセッションは読み取り専用にする。
  * 再訪は前の続きではなく「また話す」ことなので、足したい発話は最新のセッションへ行く（docs/ARCHITECTURE.md「再訪と、過去セッションの読み方」）。
  *
- * 発話の生成と永続化は Server Action の領分。
- * 本文の描画と選択からのメモ作成は MessageBody の領分。
- * ここは並べて描くところまで。
+ * 発話の生成と永続化は Server Action、本文の描画と選択からのメモ作成は `MessageBody` の担当で、`QuestionPage` は並べて描くところまで。
  *
- * 各発話に付ける id="msg-<message_id>" は逆引き（/memos）の着地点。
- * 書式は /memos が組み立てるリンクと、着地の印を出す landing-mark.tsx / globals.css が共有しているので、変えるならその三箇所とも直す。
+ * 各発話に付ける id="msg-<message_id>" は逆引き（/memos）の着地点で、書式の正は `memos/page.tsx`。
  */
 
 import Link from "next/link";
@@ -42,7 +38,7 @@ import type { Speaker } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 /**
- * 切り替え口の一行へ出すキーワードの数。
+ * セッション切り替えのリンク一行へ出すキーワードの数。
  * どのセッションだったか思い出せれば足りるので、全部は並べない。
  */
 const SWITCHER_KEYWORDS = 3;
@@ -50,9 +46,8 @@ const SWITCHER_KEYWORDS = 3;
 /**
  * 話者ごとの吹き出し。
  *
- * 三者は同じ幅で並び、分かれるのは面の温度と角の落とし方だけになる（.claude/rules/design.md「話者の描き分け」）。
- * 二体はどちらも左なので位置では分かれず、暖が具体・寒が抽象で、抽象だけが罫を回す。
- * 温度差は周辺視で拾う手掛かりであって識別の正ではないので、名前のラベルは消さない。
+ * 三者は同じ幅で並べ、違いは背景色と角丸の位置だけに置く（`.claude/rules/design.md`「話者の描き分け」）。
+ * 背景色は周辺視で拾う手掛かりであって識別の正ではないので、`label` の表示は消さない。
  */
 const SPEAKER_STYLE: Record<
   Speaker,
@@ -97,7 +92,7 @@ export default async function QuestionPage({
   const sessions = await listSessionsWithKeywords(owner, id);
   const latest = sessions.at(-1);
 
-  // 選ぶ先をこの問いのセッションの中から引くことで、他の問いのセッション ID を ?s に差し込まれても届かない。
+  // 選ぶ先をこの問いのセッションの中から検索することで、他の問いのセッション ID を `?s` に差し込まれても届かない。
   const session = selectedId
     ? sessions.find((candidate) => candidate.id === selectedId)
     : latest;

@@ -31,11 +31,11 @@ datasource db {
 /// 問いの状態。7 値である理由と各値の意味は docs/ARCHITECTURE.md「問いの状態機械」。
 ///
 /// 値は比喩を持たない一般語で持ち、比喩は UI のラベルだけが持つ（`docs/adr/0017-status-value-set.md`）。
-/// 比喩は選び直しうるが enum の変更は本番の DB を動かすので、値の側へ比喩を持ち込まない。
+/// 比喩は選び直しうるが enum の変更は本番の DB を動かすので、`QuestionStatus` の値へ比喩を持ち込まない。
 ///
 /// TS 側の対応は `src/lib/question.ts` の `QUESTION_STATUSES`（型 `QuestionStatus` と UI ラベルがそこから派生する）。
 /// 二箇所に書くのは冗長に見えるが、ずれると repo 関数の戻り値がドメイン型へ代入できなくなり `tsc` が落ちる。
-/// ここに値を足したら向こうにも足す。
+/// この enum に値を足したら `QUESTION_STATUSES` にも足す。
 enum QuestionStatus {
   new
   stocked
@@ -58,7 +58,7 @@ enum Speaker {
   @@map("speaker")
 }
 
-/// 問い。コンポスターへの投入単位。
+/// 問い。投入された一件と、その現在の状態。
 /// body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、
 /// current_form は対話の中で言い直された焦点。
 ///
@@ -85,7 +85,7 @@ model Question {
 ///
 /// 最初の一つは問いの投入時に作られる。
 /// 二つ目以降は、同じ問いを対話画面から「新しいセッションで再訪」したときに増える（`createSession`）。
-/// 問いに何度戻ったかが読み返せるように、過去のセッションは畳まれず、堆積したまま残る。
+/// 問いに何度戻ったかを読み返せるように、過去のセッションは閉じず、行として残したままにする。
 ///
 /// モデル名だけが `Dialogue` を冠する。
 /// Better Auth のログインセッションが `Session` を名乗り、Prisma のモデル名は一意でなければならないため（`docs/adr/0031-ownership-before-auth.md`）。
@@ -148,9 +148,9 @@ model Message {
 /// **DB 側に check 制約が効いている**（`memos_anchor_range_check`）:
 /// `anchor_start >= 0 and anchor_end > anchor_start`。
 /// Prisma スキーマでは表現できないので実体は migration の SQL にある。
-/// このモデルの列を動かすときは、そちらも一緒に見ること。
+/// このモデルの列を動かすときは、migration の SQL も一緒に見ること。
 ///
-/// `anchor_end <= 本文長` はここでは表明できない（DB は本文長を知らない）。
+/// `anchor_end <= 本文長` は Prisma スキーマでは表明できない（DB は本文長を知らない）。
 /// 本文を読める db.ts の addMemo が守る。
 model Memo {
   id           String   @id @default(uuid(4)) @db.Uuid

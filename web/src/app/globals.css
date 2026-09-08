@@ -2,11 +2,11 @@
 
 /* 色・書体・字組み・幅のトークン。
    値の正は docs/DESIGN.md（色／書体と字組み／余白と密度）で、変数名は同文書の用途名を英語へ写したもの。
-   ここで足した名前以外の色をコンポーネントへ直書きしない。
+   このファイルで定義した名前以外の色をコンポーネントへ直書きしない。
    直書きするとダークの二系統が片方だけ動く。
 
-   面は彩度を持たず、暖と寒の傾きだけを持つ（.claude/rules/design.md「彩度の規律」）。
-   彩度を持つのは人間の発話（moss-surface）と自分が付けた印（mark）の二つだけで、三つ目が増えたらそこが破れ目になる。 */
+   背景色は彩度を持たず、暖色と寒色の傾きだけを持つ（.claude/rules/design.md「彩度の規律」）。
+   彩度を持つのは人間の発話（moss-surface）と自分が付けたメモ（mark）の二つだけで、三つ目が増えたらそこが破れ目になる。 */
 :root {
   --ground: #fbf9f4;
   --surface-low: #f5f3ee;
@@ -83,7 +83,7 @@
 
   /* 入力欄は 16px を下回らない。
      iOS Safari は 16px 未満の入力欄へフォーカスすると自動でズームし、書き手が選んだ倍率を捨てる（issue #160）。
-     補助の文と同じ 14px へ落としたくなる箇所でも、触れる欄ならこれを敷く。 */
+     補助の文と同じ 14px へ下げたくなる箇所でも、触れる欄なら --text-field を敷く。 */
   --text-field: 16px;
 
   --radius-bubble: 14px;
@@ -98,9 +98,9 @@ body {
   font-family: var(--font-gothic);
 }
 
-/* 書きの間（.claude/rules/design.md「重心」）。
-   入力へ触れているあいだだけ読みの側が退き、入力が主役になる。
-   退かせる対象を data 属性で名指すのは、退いてよいのが読み返す本文だけで、同じ画面にある戻り導線やセッションの切り替え口まで薄くすると迷子になるため。 */
+/* 入力中に周囲を退かせる（.claude/rules/design.md「重心」）。
+   入力へフォーカスしているあいだだけ本文の不透明度を下げ、入力を前へ出す。
+   退かせる対象を data 属性で名指すのは、退いてよいのが読み返す本文だけで、同じ画面にある戻りのリンクやセッション切り替えのリンクまで薄くすると迷子になるため。 */
 [data-recedes-while-writing] {
   transition: opacity 0.4s ease-out;
 }
@@ -109,12 +109,12 @@ main:has(:is(input, textarea):focus) [data-recedes-while-writing] {
   opacity: 0.28;
 }
 
-/* 逆引き（/memos の拡大表示 → /q/<id>#msg-<message_id>）で着地した発話の印。
-   対象を id="msg-…" の要素に絞るのは、これから足すどの id もフラグメントで指せてしまい、
-   発話以外にまで枠が付くため。id の書式の正は q/[id]/page.tsx。
-   data-landed を付けるのは landing-mark.tsx で、:target は使わない（理由はそちら）。
+/* 逆引き（/memos の拡大表示 → /q/<id>#msg-<message_id>）で着地した発話の強調。
+   対象を id="msg-…" の要素に絞るのは、これから足すどの id もフラグメントで指せてしまい、発話以外にまで枠が付くため。
+   id の書式の正は q/[id]/page.tsx。
+   data-landed を付けるのは landing-mark.tsx で、:target は使わない（理由も landing-mark.tsx）。
    一度だけ走って消えるのは、着地は瞬間の出来事なのに、URL のフラグメントは読み進めても残るため。
-   着地させたのは自分が付けたメモなので、色は印と同じ琥珀を使う（.claude/rules/design.md「彩度の規律」）。 */
+   着地させたのは自分が付けたメモなので、色はメモの下線と同じ琥珀を使う（.claude/rules/design.md「彩度の規律」）。 */
 [id^="msg-"] {
   scroll-margin-top: 1.5rem;
 }
@@ -132,8 +132,8 @@ main:has(:is(input, textarea):focus) [data-recedes-while-writing] {
 }
 
 /* 動きを切っている人には、落差も遅延も無しで出す（.claude/rules/design.md「動き」）。
-   着地の印はここで消さない。
-   一度だけ光って消える形が逆引きの着地点そのものを指しており、落とすと飛んだ先で何が起きたか分からなくなる。 */
+   着地の強調はここで消さない。
+   一度だけ光って消える形が逆引きの着地点そのものを指しており、消すと飛んだ先で何が起きたか分からなくなる。 */
 @media (prefers-reduced-motion: reduce) {
   [data-recedes-while-writing] {
     transition: none;
