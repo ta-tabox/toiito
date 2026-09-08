@@ -10,23 +10,28 @@
  * 複数の発話へ跨る選択は捨てる。
  * メモのアンカーは発話一件の本文へ閉じており、跨いだ範囲を一件では表せない。
  *
- * 下線の付いた区間は `/memos?memo=<id>` へのリンクにする。
+ * 下線の付いた区間は、触れると覗き見の枠を開くだけで、それ自体はリンクにしない。
+ * メモ一覧の当該メモへは枠の中のリンクから辿る（枠の中身と開閉は `memo-preview.tsx`）。
  * 逆向き（メモ → 発話）は /memos が持っているので、`MessageBody` は発話 → メモを埋める側。
- * 下線に触れているあいだメモを覗ける枠と、その枠を止める切り替えは `memo-preview.tsx` が持つ。
  */
 
-import Link from "next/link";
 import {
+  type KeyboardEvent,
   type ReactNode,
   type SyntheticEvent,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { MemoPreview, MemoPreviewToggle } from "@/components/memo-preview";
+import {
+  MemoPreviewLayer,
+  openMemoPreview,
+  PREVIEW_ID,
+  scheduleMemoPreviewClose,
+  useOpenMemoPreview,
+} from "@/components/memo-preview";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import {
@@ -43,10 +48,19 @@ import type { Memo, Message } from "@/lib/types";
  * 画面の中で最も強い色が、自分で付けたメモになる。
  *
  * 触れていないあいだ琥珀を薄めるのは、読んでいる最中の下線が本文と競らないようにするため。
- * 濃さで触れている区間を示すので、`group` を持つ `Link` の外でこの装飾を使わない。
  */
-const UNDERLINE_STYLE =
-  "underline decoration-mark/55 decoration-1 group-hover:decoration-mark group-focus-visible:decoration-mark";
+const UNDERLINE_STYLE = "underline decoration-1";
+
+/**
+ * 下線の濃さ。
+ *
+ * 濃い側になるのは、いま開いている覗き見に出ているメモが付いた区間すべてである。
+ * 触れた区間だけを濃くすると、そのメモがどこまで付いているかが分からない。
+ */
+const UNDERLINE_TONE = {
+  active: "decoration-mark",
+  idle: "decoration-mark/55",
+};
 
 /** 一本目の下線と文字の間隔（px）。 */
 const UNDERLINE_OFFSET = 4;
@@ -144,12 +158,13 @@ export function MessageBody({
             segment={segment}
             index={index}
             memos={memos}
+            previewKey={`${message.id}:${segment.start}`}
           />
         ))}
       </div>
 
-      {/* 下線を持つ発話だけが切り替えを申し出て、画面に描かれるのはそのうちの一つだけである（`memo-preview.tsx`）。 */}
-      {memos.length > 0 && <MemoPreviewToggle />}
+      {/* 下線を持つ発話だけが層を申し出て、画面に描かれるのはそのうちの一つだけである（`memo-preview.tsx`）。 */}
+      {memos.length > 0 && <MemoPreviewLayer />}
 
       {/* body へ移すのは、祖先が containing block を作ると fixed の基準が画面でなくその祖先へ移るため。 */}
       {draft &&
@@ -170,23 +185,24 @@ export function MessageBody({
 /**
  * セグメント一つ分の描画。
  *
- * メモが付いていれば、メモの数だけ下線を重ねたリンクにする。
+ * メモが付いていれば、メモの数だけ下線を重ね、触れると覗き見の枠を開く区間にする。
  * 付いていなければただの span で、下線も覗き見も持たない。
  *
- * draggable を切るのは、下線の内側から選択を始めたときにリンクのドラッグが起きるのを防ぐため。
- * 既にメモの付いた区間へ重ねてメモを作る経路が塞がる。
+ * 区間を button 要素にしないのは、button が本文の折り返しに乗らないため。
+ * `display: inline` を当てても行の途中で始まる区間を作れず、区間が独立した箱になって前後の文から切れる。
  */
 function SegmentText({
   segment,
   index,
   memos,
+  previewKey,
 }: {
   segment: Segment;
   index: number;
   memos: Memo[];
+  previewKey: string;
 }) {
-  const previewId = useId();
-  const [previewAnchor, setPreviewAnchor] = useState<DOMRect | null>(null);
+  const open = useOpenMemoPreview();
   const covering = memos.filter((memo) => segment.memoIds.includes(memo.id));
   const [firstMemo] = covering;
 
@@ -194,30 +210,46 @@ function SegmentText({
     return <span data-segment-index={index}>{segment.text}</span>;
   }
 
-  const openPreview = (event: SyntheticEvent<HTMLAnchorElement>) =>
-    setPreviewAnchor(event.currentTarget.getBoundingClientRect());
-  const closePreview = () => setPreviewAnchor(null);
+  const isActive =
+    open?.memos.some((memo) => segment.memoIds.includes(memo.id)) ?? false;
+
+  const showPreview = (event: SyntheticEvent<HTMLElement>) =>
+    openMemoPreview(
+      previewKey,
+      covering,
+      event.currentTarget.getBoundingClientRect(),
+    );
+
+  const showPreviewOnKey = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    showPreview(event);
+  };
 
   return (
-    <>
-      <Link
-        href={`/memos?memo=${narrowestMemo(covering).id}`}
-        data-segment-index={index}
-        aria-describedby={previewId}
-        draggable={false}
-        className="group"
-        onMouseEnter={openPreview}
-        onMouseLeave={closePreview}
-        onFocus={openPreview}
-        onBlur={closePreview}
-      >
-        {stackedUnderlines(segment.text, covering.length)}
-      </Link>
-
-      {previewAnchor && (
-        <MemoPreview id={previewId} memos={covering} anchor={previewAnchor} />
+    // biome-ignore lint/a11y/useSemanticElements: button 要素は本文の折り返しに乗らないので、行の途中から始まる区間には使えない。
+    <span
+      data-segment-index={index}
+      role="button"
+      tabIndex={0}
+      aria-controls={PREVIEW_ID}
+      aria-expanded={open?.key === previewKey}
+      onMouseEnter={showPreview}
+      onMouseLeave={scheduleMemoPreviewClose}
+      onFocus={showPreview}
+      onBlur={scheduleMemoPreviewClose}
+      onClick={showPreview}
+      onKeyDown={showPreviewOnKey}
+    >
+      {stackedUnderlines(
+        segment.text,
+        covering.length,
+        isActive ? UNDERLINE_TONE.active : UNDERLINE_TONE.idle,
       )}
-    </>
+    </span>
   );
 }
 
@@ -227,14 +259,18 @@ function SegmentText({
  * 一本ずつ別の span が持つのは、`text-decoration` が一つの要素につき一本しか描かないため。
  * 入れ子にすると各 span の `text-underline-offset` の位置へ一本ずつ描かれ、折り返した行にも同じ本数が付く。
  */
-function stackedUnderlines(text: string, count: number): ReactNode {
+function stackedUnderlines(
+  text: string,
+  count: number,
+  tone: string,
+): ReactNode {
   let stacked: ReactNode = text;
 
   for (let depth = 0; depth < count; depth += 1) {
     stacked = (
       <span
         data-memo-underline=""
-        className={UNDERLINE_STYLE}
+        className={`${UNDERLINE_STYLE} ${tone}`}
         style={{
           textUnderlineOffset: `${UNDERLINE_OFFSET + depth * UNDERLINE_SPACING}px`,
         }}
@@ -245,24 +281,6 @@ function stackedUnderlines(text: string, count: number): ReactNode {
   }
 
   return stacked;
-}
-
-/**
- * 区間に付いているメモのうち、アンカーの範囲が最も狭いものを返す。
- * 同じ幅のメモが複数あれば、`covering` の先にあるものを返す。
- * 空の配列を渡すと throw する。
- *
- * 重なった区間を押したときに開くメモで、狭い方を返すのは、押した語だけに付いているメモがその語を最もよく説明するため。
- */
-function narrowestMemo(covering: Memo[]): Memo {
-  return covering.reduce((narrowest, memo) =>
-    width(memo) < width(narrowest) ? memo : narrowest,
-  );
-}
-
-/** メモのアンカーが覆う文字数。 */
-function width(memo: Memo): number {
-  return memo.anchor_end - memo.anchor_start;
 }
 
 /**

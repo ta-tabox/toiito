@@ -1,16 +1,18 @@
 "use client";
 
 /**
- * 下線に触れているあいだメモを覗ける枠と、その枠を出すかどうかの切り替え。
+ * 下線に触れたときのメモの覗き見と、その覗き見を出すかどうかの切り替え。
  *
- * どの区間にどのメモが付いているかは呼び出し側（`message-body.tsx`）が決め、`MemoPreview` は渡されたメモを整形して置くだけである。
+ * 開いている覗き見は画面に一つで、その状態は React の外の store が持つ。
+ * どの区間にどのメモが付いているかは呼び出し側（`message-body.tsx`）が決め、この層は渡されたメモを整形して置くだけである。
  * 設定は localStorage に持つ。
  * 読む側の道具の設定であってメモの内容ではないので、サーバーへ送らない。
  *
- * 枠は二つとも `document.body` へ portal する。
- * 発話の本文の中へ置くと、メモを作るための選択にこの枠の文字が入り、アンカーのオフセットがずれる。
+ * 枠は `document.body` へ portal する。
+ * 発話の本文の中へ置くと、メモを作るための選択に枠の文字が入り、アンカーのオフセットがずれる。
  */
 
+import Link from "next/link";
 import {
   type CSSProperties,
   useEffect,
@@ -27,71 +29,230 @@ import type { Memo } from "@/lib/types";
 const PREVIEW_STORAGE_KEY = "toiito:memo-preview";
 
 /**
+ * 枠の要素の id。
+ * 区間の `aria-controls` と、枠の外を押したかどうかの判定が指す。
+ */
+export const PREVIEW_ID = "memo-preview";
+
+/**
  * 覗き見の枠の最大幅（px）。
  * 下線の左端から右へ広げる幅の上限で、枠を画面の内側へ丸めるときの基準にもなる。
  */
 const PREVIEW_MAX_WIDTH = 288;
 
+/**
+ * 覗き見の枠の最大高（px）。
+ * メモ 3 件で埋まる高さで、それ以上は枠の中を縦にスクロールさせる。
+ */
+const PREVIEW_MAX_HEIGHT = 224;
+
 /** 覗き見の枠と、下線・画面の縁との間隔（px）。 */
 const PREVIEW_GAP = 8;
 
 /**
- * メモの覗き見。
- * `anchor` が指す矩形（下線の位置）の近くへ、`memos` のキーワードとノートを置く。
+ * 下線から離れてから枠を閉じるまでの猶予（ms）。
  *
- * 設定が「出さない」なら何も描かない。
+ * 枠は下線から離して置くので、間の隙間を横切るあいだに閉じるとポインタが枠へ届かない。
  */
-export function MemoPreview({
-  id,
-  memos,
-  anchor,
-}: {
-  id: string;
+const CLOSE_DELAY_MS = 150;
+
+/**
+ * いま開いている覗き見。
+ * `key` は開かせた区間で、その区間だけが自分を開いている側だと分かる。
+ */
+type OpenPreview = {
+  key: string;
   memos: Memo[];
   anchor: DOMRect;
-}) {
-  const isEnabled = useMemoPreviewEnabled();
+};
 
-  if (!isEnabled) {
+let openPreview: OpenPreview | null = null;
+
+/**
+ * 覗き見の開閉を知らせる相手。
+ * `useOpenMemoPreview` を呼んでいるコンポーネントが入る。
+ */
+const previewListeners = new Set<() => void>();
+
+let closeTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * 区間 `key` の覗き見を、`anchor` の位置へ開く。
+ * 設定が「出さない」なら何も起きない。
+ */
+export function openMemoPreview(
+  key: string,
+  memos: Memo[],
+  anchor: DOMRect,
+): void {
+  cancelMemoPreviewClose();
+
+  if (!readPreference()) {
+    return;
+  }
+
+  openPreview = { key, memos, anchor };
+  notifyPreviewListeners();
+}
+
+/** 覗き見を閉じる。 */
+export function closeMemoPreview(): void {
+  cancelMemoPreviewClose();
+  openPreview = null;
+  notifyPreviewListeners();
+}
+
+/**
+ * 予約してある close を取り消す。
+ * ポインタが枠へ入ったときに呼ぶ。
+ */
+export function cancelMemoPreviewClose(): void {
+  clearTimeout(closeTimer);
+  closeTimer = undefined;
+}
+
+/**
+ * 猶予のあとに閉じる。
+ * 下線からも枠からもポインタが離れたときに呼ぶ。
+ */
+export function scheduleMemoPreviewClose(): void {
+  cancelMemoPreviewClose();
+  closeTimer = setTimeout(closeMemoPreview, CLOSE_DELAY_MS);
+}
+
+/**
+ * いま開いている覗き見を返し、開閉のたびに呼び出し側を再描画する。
+ * サーバー側の描画では常に null を返す。
+ */
+export function useOpenMemoPreview(): OpenPreview | null {
+  return useSyncExternalStore(
+    subscribePreview,
+    () => openPreview,
+    () => null,
+  );
+}
+
+/** 開閉を受け取る `listener` を登録し、外し方を返す。 */
+function subscribePreview(listener: () => void): () => void {
+  previewListeners.add(listener);
+
+  return () => {
+    previewListeners.delete(listener);
+  };
+}
+
+/** 開閉を全員へ知らせる。 */
+function notifyPreviewListeners(): void {
+  for (const listener of previewListeners) {
+    listener();
+  }
+}
+
+/**
+ * 覗き見の枠と切り替えを描く層。
+ *
+ * `MessageBody` は発話の数だけ mount するので、実際に描くのは最初の一つだけである。
+ * 枠は画面に一つなので、どの発話の区間を開いても同じ層が描く。
+ */
+export function MemoPreviewLayer() {
+  const ownsLayer = useOwnsLayer();
+  const open = useOpenMemoPreview();
+
+  if (!ownsLayer) {
     return null;
   }
 
   return createPortal(
-    <div
-      id={id}
-      role="tooltip"
-      style={positionNear(anchor)}
-      className="pointer-events-none fixed z-10 rounded border border-rule bg-surface-mid p-3 text-aux shadow-[0_0_16px_rgba(0,0,0,0.12)]"
+    <>
+      {open && <PreviewPanel open={open} />}
+      <PreviewToggle />
+    </>,
+    document.body,
+  );
+}
+
+/**
+ * 覗き見の枠。
+ * 区間に付いているメモを並べ、一件ずつメモ一覧の当該メモへのリンクにする。
+ *
+ * キーワードは 1 行、ノートは 2 行で切る。
+ * 枠の幅は決め打ちなので、切らないと横へ溢れる。
+ */
+function PreviewPanel({ open }: { open: OpenPreview }) {
+  useEffect(() => {
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
+
+  return (
+    <nav
+      id={PREVIEW_ID}
+      aria-label="この区間のメモ"
+      style={positionNear(open.anchor)}
+      onMouseEnter={cancelMemoPreviewClose}
+      onMouseLeave={scheduleMemoPreviewClose}
+      className="fixed z-10 overflow-y-auto rounded border border-rule bg-surface-mid p-3 text-aux shadow-[0_0_16px_rgba(0,0,0,0.12)]"
     >
-      <ul className="flex flex-col gap-2">
-        {memos.map((memo) => (
+      <ul className="flex flex-col gap-1">
+        {open.memos.map((memo) => (
           <li key={memo.id}>
-            <p className="font-bold">{memo.keyword}</p>
-            {memo.note && <p className="mt-1 text-ink-weak">{memo.note}</p>}
+            <Link
+              href={`/memos?memo=${memo.id}`}
+              className="block rounded px-2 py-1 hover:bg-surface-high focus-visible:bg-surface-high"
+            >
+              <p className="truncate font-bold">{memo.keyword}</p>
+              {memo.note && (
+                <p className="mt-1 line-clamp-2 text-ink-weak">{memo.note}</p>
+              )}
+            </Link>
           </li>
         ))}
       </ul>
-    </div>,
-    document.body,
+    </nav>
   );
+}
+
+/**
+ * 枠の外を押したら閉じる。
+ *
+ * 触って読む端末には mouseleave が来ないので、閉じる手段がこれしかない。
+ * 下線を押した分を除くのは、押した区間の枠をその直後に開くため。
+ */
+function closeOnOutsidePointer(event: PointerEvent): void {
+  const target = event.target;
+
+  if (
+    target instanceof Element &&
+    target.closest(`#${PREVIEW_ID}, [data-memo-underline]`)
+  ) {
+    return;
+  }
+
+  closeMemoPreview();
+}
+
+/** Esc で閉じる。 */
+function closeOnEscape(event: KeyboardEvent): void {
+  if (event.key === "Escape") {
+    closeMemoPreview();
+  }
 }
 
 /**
  * 覗き見の枠を出すかどうかの切り替え。
  * 画面の右下に小さく置き、押すたびに設定を反転させる。
  *
- * 発話の数だけ mount されるが、描くのは最初の一つだけである。
- * hover を持たない環境では描画そのものを CSS で止める（触って読む画面に、触れない設定が残る）。
+ * hover を持たない端末では描画そのものを CSS で止める（触って読む画面に、触れない設定が残る）。
  */
-export function MemoPreviewToggle() {
-  const ownsToggle = useOwnsToggle();
+function PreviewToggle() {
   const isEnabled = useMemoPreviewEnabled();
 
-  if (!ownsToggle) {
-    return null;
-  }
-
-  return createPortal(
+  return (
     <button
       type="button"
       aria-pressed={isEnabled}
@@ -99,8 +260,7 @@ export function MemoPreviewToggle() {
       className="fixed right-4 bottom-4 hidden text-ink-weak text-meta hover:underline [@media(hover:hover)]:block"
     >
       ホバーでメモを出す: {isEnabled ? "入" : "切"}
-    </button>,
-    document.body,
+    </button>
   );
 }
 
@@ -113,17 +273,20 @@ export function MemoPreviewToggle() {
 function positionNear(anchor: DOMRect): CSSProperties {
   const rightLimit = window.innerWidth - PREVIEW_MAX_WIDTH - PREVIEW_GAP;
   const left = Math.max(PREVIEW_GAP, Math.min(anchor.left, rightLimit));
-  const maxWidth = PREVIEW_MAX_WIDTH;
+  const size = {
+    maxWidth: PREVIEW_MAX_WIDTH,
+    maxHeight: PREVIEW_MAX_HEIGHT,
+  };
 
   if (anchor.top > window.innerHeight / 2) {
     return {
       left,
       bottom: window.innerHeight - anchor.top + PREVIEW_GAP,
-      maxWidth,
+      ...size,
     };
   }
 
-  return { left, top: anchor.bottom + PREVIEW_GAP, maxWidth };
+  return { left, top: anchor.bottom + PREVIEW_GAP, ...size };
 }
 
 /**
@@ -140,7 +303,7 @@ let cachedPreference: boolean | undefined;
 
 /**
  * 覗き見の枠を出す設定かどうかを返し、設定が変わったら呼び出し側を再描画する。
- * サーバー側の描画では常に true を返す（localStorage が無く、覗き見はどのみち hover が起きるまで描かれない）。
+ * サーバー側の描画では常に true を返す（localStorage が無く、覗き見はどのみち触れるまで描かれない）。
  */
 function useMemoPreviewEnabled(): boolean {
   return useSyncExternalStore(subscribePreference, readPreference, () => true);
@@ -192,46 +355,50 @@ function writePreference(isEnabled: boolean): void {
     // 保存できない環境でも、この画面での切り替えは効かせる。
   }
 
+  if (!isEnabled) {
+    closeMemoPreview();
+  }
+
   for (const listener of preferenceListeners) {
     listener();
   }
 }
 
 /**
- * 切り替えを描く役を決めるための一覧。
+ * 覗き見の層を描く役を決めるための一覧。
  * 先頭に居るものが描く役で、増減のたびに全員が判定し直す。
  */
-const toggleClaimants = new Set<() => void>();
+const layerClaimants = new Set<() => void>();
 
 /**
- * 呼び出したコンポーネントが、画面で唯一の切り替えを描く役かどうかを返す。
+ * 呼び出したコンポーネントが、画面で唯一の層を描く役かどうかを返す。
  *
- * `MessageBody` は発話の数だけ mount するので、そのまま描くと同じ切り替えが発話の数だけ重なる。
+ * `MessageBody` は発話の数だけ mount するので、そのまま描くと同じ枠と切り替えが発話の数だけ重なる。
  * 最初の描画では false を返す（`createPortal` は document を要るので、サーバー側では描かせない）。
  */
-function useOwnsToggle(): boolean {
-  const [ownsToggle, setOwnsToggle] = useState(false);
+function useOwnsLayer(): boolean {
+  const [ownsLayer, setOwnsLayer] = useState(false);
 
   useEffect(() => {
     const judge = () => {
-      setOwnsToggle(toggleClaimants.values().next().value === judge);
+      setOwnsLayer(layerClaimants.values().next().value === judge);
     };
 
-    toggleClaimants.add(judge);
+    layerClaimants.add(judge);
     notifyClaimants();
 
     return () => {
-      toggleClaimants.delete(judge);
+      layerClaimants.delete(judge);
       notifyClaimants();
     };
   }, []);
 
-  return ownsToggle;
+  return ownsLayer;
 }
 
 /** 一覧に居る全員へ、自分が描く役かどうかを判定し直させる。 */
 function notifyClaimants(): void {
-  for (const judge of toggleClaimants) {
+  for (const judge of layerClaimants) {
     judge();
   }
 }

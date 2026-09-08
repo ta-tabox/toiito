@@ -106,10 +106,7 @@ test("発話の一部を選ぶとメモを作れ、その区間にアンダー�
   // 下線は ai_a の枠の中の、リンクになっている区間だけを見る。
   // 同じ文字列は人間の発話にも ai_b の引用にも出るので枠で絞り、
   // 選択直後はフォームの引用にも出るので role で絞る。
-  const marked = aiA.getByRole("link", {
-    name: utterance,
-    exact: true,
-  });
+  const marked = markedSegment(aiA, utterance);
   await expect(underlinesOf(marked)).toHaveCount(1);
   await expect(underlinesOf(marked)).toHaveCSS(
     "text-decoration-line",
@@ -127,21 +124,20 @@ test("下線に触れるとメモが出て、切り替えを切ると出なく�
   await page.getByLabel("メモ").fill("触れて読めるか見る");
   await page.getByRole("button", { name: "メモする" }).click();
 
-  const marked = aiA.getByRole("link", { name: utterance, exact: true });
+  const marked = markedSegment(aiA, utterance);
   await marked.hover();
 
   // 出すのはキーワードとノートの両方で、title 属性では書式を持てなかった分がここに要る。
-  const preview = page.getByRole("tooltip");
-  await expect(preview).toContainText(utterance);
-  await expect(preview).toContainText("触れて読めるか見る");
+  await expect(preview(page)).toContainText(utterance);
+  await expect(preview(page)).toContainText("触れて読めるか見る");
 
   await page.getByRole("button", { name: /^ホバーでメモを出す/ }).click();
   await marked.hover();
 
-  await expect(page.getByRole("tooltip")).toHaveCount(0);
+  await expect(preview(page)).toHaveCount(0);
 });
 
-test("重なった区間には付いているメモの数だけ下線が出て、押すと狭い方のメモが開く", async ({
+test("重なった区間には付いているメモの数だけ下線が出て、枠から両方のメモへ行ける", async ({
   page,
 }) => {
   const aiA = await postQuestionAndSpeak(page, SCENARIOS.overlap);
@@ -150,26 +146,30 @@ test("重なった区間には付いているメモの数だけ下線が出て�
 
   await selectTextIn(page, aiA, utterance);
   await page.getByRole("button", { name: "メモする" }).click();
-  await expect(
-    aiA.getByRole("link", { name: utterance, exact: true }),
-  ).toBeVisible();
+  await expect(markedSegment(aiA, utterance)).toBeVisible();
 
   // 二件目は一件目の内側だけに付けるので、本文は三つの区間へ割れる。
   await selectTextIn(page, aiA, inner);
   await page.getByRole("button", { name: "メモする" }).click();
 
-  const overlapped = aiA.getByRole("link", { name: inner, exact: true });
+  const overlapped = markedSegment(aiA, inner);
   await expect(underlinesOf(overlapped)).toHaveCount(2);
 
-  const single = aiA.getByRole("link", {
-    name: "E2E: 一つの語に",
-    exact: true,
-  });
+  const single = markedSegment(aiA, "E2E: 一つの語に");
   await expect(underlinesOf(single)).toHaveCount(1);
 
   await overlapped.click();
 
-  // 重なった区間が開くのは、広い方（発話の全体）ではなく狭い方のメモ。
+  // 枠に出るのは、その区間に付いている二件の両方。
+  await expect(preview(page).getByRole("link")).toHaveCount(2);
+
+  // 触れていない隣の区間も、同じメモが付いているあいだは濃さが揃う。
+  expect(await underlineColorOf(overlapped)).toBe(
+    await underlineColorOf(single),
+  );
+
+  await preview(page).getByRole("link", { name: inner, exact: true }).click();
+
   await expect(page.getByRole("dialog").getByRole("heading")).toHaveText(inner);
 });
 
@@ -245,9 +245,10 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
   await selectTextIn(page, aiA, utterance);
 
   await page.getByRole("button", { name: "メモする" }).click();
-  await expect(
-    underlinesOf(aiA.getByRole("link", { name: utterance, exact: true })),
-  ).toHaveCSS("text-decoration-line", "underline");
+  await expect(underlinesOf(markedSegment(aiA, utterance))).toHaveCSS(
+    "text-decoration-line",
+    "underline",
+  );
 
   await page.goto("/memos");
   await page.getByRole("link", { name: utterance }).click();
@@ -265,13 +266,15 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
   await expect(page.locator(`#${messageId}`)).toBeInViewport();
 });
 
-test("下線を押すと、その語のメモが一覧で開く", async ({ page }) => {
+test("下線を押して出た枠から、その語のメモが一覧で開く", async ({ page }) => {
   const aiA = await postQuestionAndSpeak(page, SCENARIOS.forward);
   const { utterance } = SCENARIOS.forward;
   await selectTextIn(page, aiA, utterance);
   await page.getByRole("button", { name: "メモする" }).click();
 
-  await aiA.getByRole("link", { name: utterance, exact: true }).click();
+  // 下線そのものはリンクにしない（触って読む端末では狙って押せない）。
+  await markedSegment(aiA, utterance).click();
+  await preview(page).getByRole("link", { name: utterance }).click();
 
   // 開くのは押した下線に紐づくメモ一件で、一覧を出すだけでは足りない。
   const dialog = page.getByRole("dialog");
@@ -289,9 +292,7 @@ test("着地した発話に印が付く", async ({ page }) => {
 
   // 下線が出るまでは、メモがまだ出来ていない。
   // 待たずに移ると、そのメモが並んでいない一覧を相手にすることになる。
-  await expect(
-    aiA.getByRole("link", { name: utterance, exact: true }),
-  ).toBeVisible();
+  await expect(markedSegment(aiA, utterance)).toBeVisible();
 
   await page.goto("/memos");
   await page.getByRole("link", { name: utterance }).click();
@@ -408,6 +409,26 @@ async function formRect(page: Page): Promise<FormRect> {
 
     return { top, bottom, left, right };
   });
+}
+
+/** 下線の付いた区間。触れると覗き見の枠が開く。 */
+function markedSegment(message: Locator, text: string): Locator {
+  return message.getByRole("button", { name: text, exact: true });
+}
+
+/** 覗き見の枠。 */
+function preview(page: Page): Locator {
+  return page.getByRole("navigation", { name: "この区間のメモ" });
+}
+
+/**
+ * 区間の下線の色。
+ * 濃さの違いを見るためのもので、値そのものは実装が決める。
+ */
+async function underlineColorOf(marked: Locator): Promise<string> {
+  return underlinesOf(marked)
+    .first()
+    .evaluate((span) => getComputedStyle(span).textDecorationColor);
 }
 
 /**
