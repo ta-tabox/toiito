@@ -233,7 +233,7 @@ function PendingTurn({
 }) {
   return (
     <div className="mt-8 rounded border border-rule border-dashed bg-surface-low p-3 md:p-4">
-      <p className="text-aux text-ink-weak">応答の取得に失敗しました。</p>
+      <p className="text-aux text-ink-weak">応答の取得に失敗した。</p>
       <p className="mt-2 whitespace-pre-wrap text-utterance text-ink md:text-utterance-lg">
         {body}
       </p>
