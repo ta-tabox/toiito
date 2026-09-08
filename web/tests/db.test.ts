@@ -383,7 +383,7 @@ describe("所有権", () => {
     const { other, question, session, message } = await otherWithOneOfEach();
     await db.createQuestion(owner, "自分の問い");
 
-    // 行が在るときだけ意味のある検査になるので、他人の側に一件作ってから読む。
+    // 行が在るときだけ意味のある検査になるので、`other` に一件作ってから読む。
     await db.savePendingBody(other, session.id, "アクセス権の無い未送信の発話");
 
     expect((await db.listQuestions(owner)).map((q) => q.body)).toEqual([

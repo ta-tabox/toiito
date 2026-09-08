@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * 一往復を起こす二つのフォーム——新しい発話と、成立しなかった発話の再送。
- * 送信中であることを画面に見せるためだけの client component。
+ * 新しい発話を送る `SpeakForm` と、送信に失敗した発話を再送する `RetryForm` を持つ。
+ * 送信中であることを画面へ表示するための client component。
  *
- * 持つのは表示だけで、入力の検証も送信先の決定も引き受けない。
- * Server Action は bind 済みのものを呼び出し側から受け取る。
+ * 入力の検証も送信先の決定も行わない。
+ * Server Action は bind 済みのものを引数で受け取る。
  */
 
 import { useFormStatus } from "react-dom";
