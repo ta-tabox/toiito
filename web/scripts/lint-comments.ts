@@ -370,10 +370,8 @@ function checkOneSentencePerLine(
 }
 
 /**
- * 規約が禁じた語をコメントが使っていないかを見る。
+ * `allow` に列挙した複合語を `text` から取り除く。
  *
- * 判定は語の部分一致で、活用は見ない。
- * 語を含むが対象ではない複合語は `allow` へ列挙し、判定の前に本文から取り除く。
  * 語ごと除くとその語の真陽性まで検出しなくなるので、語でなく複合語の側で絞る。
  */
 function stripAllowed(text: string, allow: readonly string[]): string {
@@ -382,6 +380,9 @@ function stripAllowed(text: string, allow: readonly string[]): string {
 
 /**
  * 規約が禁じた語をコメントが使っていないかを見る。
+ *
+ * 判定は語の部分一致で、活用は見ない。
+ * 語を含むが対象ではない複合語は `allow` へ列挙し、`stripAllowed` が判定の前に取り除く。
  */
 function checkBannedWords(
   source: ts.SourceFile,
