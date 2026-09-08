@@ -15,7 +15,7 @@
  */
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -27,13 +27,18 @@ import {
 import type { Memo, Message } from "@/lib/types";
 
 /**
- * メモが付いている区間の装飾。
+ * メモ一件ぶんの下線の装飾。
  *
  * 背景でなく下線で出すのは、彩度を持つ背景を人間の発話の一つに留めるため（`.claude/rules/design.md`「彩度の規律」）。
  * 画面の中で最も強い色が、自分で付けたメモになる。
  */
-const MARKED_STYLE =
-  "underline decoration-mark decoration-2 underline-offset-4";
+const UNDERLINE_STYLE = "underline decoration-mark decoration-1";
+
+/** 一本目の下線と文字の間隔（px）。 */
+const UNDERLINE_OFFSET = 4;
+
+/** 二本目以降の下線を、一本手前の下線から離す距離（px）。 */
+const UNDERLINE_SPACING = 3;
 
 /** 発話一件ぶんの、選択の読み直しと下書きの取り消し。 */
 type SelectionReader = {
@@ -148,8 +153,8 @@ export function MessageBody({
 /**
  * セグメント一つ分の描画。
  *
- * メモが付いていればメモ一覧の当該メモへのリンクにし、付いていなければただの span。
- * 重なっている区間はいちばん古いメモへ繋ぐ（重なりの描き分けは別 issue）。
+ * メモが付いていれば、メモの数だけ下線を重ねたリンクにする。
+ * 付いていなければただの span。
  *
  * draggable を切るのは、下線の内側から選択を始めたときにリンクのドラッグが起きるのを防ぐため。
  * 既にメモの付いた区間へ重ねてメモを作る経路が塞がる。
@@ -163,23 +168,81 @@ function SegmentText({
   index: number;
   memos: Memo[];
 }) {
-  const [firstMemoId] = segment.memoIds;
+  const covering = memos.filter((memo) => segment.memoIds.includes(memo.id));
+  const [firstMemo] = covering;
 
-  if (!firstMemoId) {
+  if (!firstMemo) {
     return <span data-segment-index={index}>{segment.text}</span>;
   }
 
   return (
     <Link
-      href={`/memos?memo=${firstMemoId}`}
+      href={`/memos?memo=${narrowestMemo(covering).id}`}
       data-segment-index={index}
-      title={memoHint(segment, memos)}
+      title={memoHint(covering)}
       draggable={false}
-      className={MARKED_STYLE}
     >
-      {segment.text}
+      {stackedUnderlines(segment.text, covering.length)}
     </Link>
   );
+}
+
+/**
+ * 区間に付いているメモを、hover で覗ける一つの文字列へまとめる。
+ * 付いていなければ undefined（title 属性ごと出さない）。
+ */
+function memoHint(covering: Memo[]): string | undefined {
+  if (covering.length === 0) {
+    return undefined;
+  }
+
+  return covering
+    .map((memo) => (memo.note ? `${memo.keyword}: ${memo.note}` : memo.keyword))
+    .join("\n");
+}
+
+/**
+ * 本文を、`count` 本の下線を重ねた入れ子の span で包む。
+ *
+ * 一本ずつ別の span が持つのは、`text-decoration` が一つの要素につき一本しか描かないため。
+ * 入れ子にすると各 span の `text-underline-offset` の位置へ一本ずつ描かれ、折り返した行にも同じ本数が付く。
+ */
+function stackedUnderlines(text: string, count: number): ReactNode {
+  let stacked: ReactNode = text;
+
+  for (let depth = 0; depth < count; depth += 1) {
+    stacked = (
+      <span
+        data-memo-underline=""
+        className={UNDERLINE_STYLE}
+        style={{
+          textUnderlineOffset: `${UNDERLINE_OFFSET + depth * UNDERLINE_SPACING}px`,
+        }}
+      >
+        {stacked}
+      </span>
+    );
+  }
+
+  return stacked;
+}
+
+/**
+ * 区間に付いているメモのうち、アンカーの範囲が最も狭いものを返す。
+ * 同じ幅のメモが複数あれば、`covering` の先にあるものを返す。
+ * 空の配列を渡すと throw する。
+ *
+ * 重なった区間を押したときに開くメモで、狭い方を返すのは、押した語だけに付いているメモがその語を最もよく説明するため。
+ */
+function narrowestMemo(covering: Memo[]): Memo {
+  return covering.reduce((narrowest, memo) =>
+    width(memo) < width(narrowest) ? memo : narrowest,
+  );
+}
+
+/** メモのアンカーが覆う文字数。 */
+function width(memo: Memo): number {
+  return memo.anchor_end - memo.anchor_start;
 }
 
 /**
@@ -404,20 +467,4 @@ function offsetInSegment(
   }
 
   return offset === 0 ? 0 : segment.text.length;
-}
-
-/**
- * 区間に付いているメモを、hover で覗ける一つの文字列へまとめる。
- * 付いていなければ undefined（title 属性ごと出さない）。
- */
-function memoHint(segment: Segment, memos: Memo[]): string | undefined {
-  const covering = memos.filter((memo) => segment.memoIds.includes(memo.id));
-
-  if (covering.length === 0) {
-    return undefined;
-  }
-
-  return covering
-    .map((memo) => (memo.note ? `${memo.keyword}: ${memo.note}` : memo.keyword))
-    .join("\n");
 }
