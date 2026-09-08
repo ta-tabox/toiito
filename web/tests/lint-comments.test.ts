@@ -502,7 +502,7 @@ export const a = 1;
 describe("禁止語", () => {
   const header = "/**\n * 冒頭。\n */\n\n";
 
-  it("コメント本文の禁止語を warn で報告する", () => {
+  it("コメント本文の禁止語を error で報告する", () => {
     const source = `${header}/**
  * 未設定なら落とす。
  */
@@ -515,7 +515,7 @@ export function f() {}
         rule: "comments/noBannedWord",
         message:
           "「落とす」は使わない。代わりに throw する / 削除する / 拒否する",
-        severity: "warn",
+        severity: "error",
       },
     ]);
   });

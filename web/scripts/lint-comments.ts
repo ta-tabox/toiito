@@ -367,7 +367,7 @@ function checkBannedWords(
           line: line.line,
           rule: "comments/noBannedWord",
           message: `「${banned.word}」は使わない。代わりに ${banned.instead}`,
-          severity: "warn",
+          severity: "error",
         });
       }
     }
