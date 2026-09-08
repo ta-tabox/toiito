@@ -14,8 +14,15 @@ import "./globals.css";
  * 見出しの明朝。
  * 問いだけが明朝で立ち、対話はゴシックで読み下せる（`.claude/rules/design.md`「書体と字組み」）。
  *
- * `preload: false`・画面へ出るウェイトだけの宣言・`subsets` を書かないことの理由は `docs/adr/0032-japanese-webfont-loading.md`。
- * ウェイトを増やすときは、その太さを実際に出す画面と一緒に足す。
+ * 和文の従属欧文へ日付と数字も預けるので、欧文専用の書体は足さない。
+ * `preload: false` にするのは、和文のサブセットが数十本に分かれており、どれが要るかは本文の文字を見るまで決まらないため。
+ *
+ * ウェイトは実際に画面へ出るものだけを挙げる。
+ * 和文は 1 ウェイトが百本を超えるサブセットに分かれるので、使わない一段が初回のビルドと `pnpm dev` の起動をそのぶん引き延ばす。
+ *
+ * `subsets` は書かない。
+ * `subsets` が決めるのは preload の対象だけで、生成される `@font-face` は Google が返す全 `unicode-range` ぶんになるので、`preload: false` と併記しても生成物が変わらない。
+ * 逆に `["latin"]` と書くと、和文が別サブセットとして漏れるように読めてしまう。
  */
 const mincho = Shippori_Mincho({
   weight: ["400"],

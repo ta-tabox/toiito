@@ -238,7 +238,16 @@ function MemoForm({
  * 発話の `SelectionReader` を `readers` へ登録し、外し方を返す。
  *
  * document のリスナは `readers` が空でなくなったときに一組だけ張り、空に戻ったときに外す。
- * 購読先を document にした理由と、mouseup / touchend / keyup の三つを見る理由は `docs/adr/0033-selection-listener-on-document.md`。
+ * 本文の途中から下へドラッグして選ぶとボタンを離す位置が本文の枠の外になるので、リスナは document に置く。
+ * 本文の div へ onMouseUp を付けると、React のハンドラは自分の部分木の外で起きた mouseup を受け取らないので、枠の外で離した選択が丸ごと取れない。
+ * 静的な div へマウスのハンドラを付けること自体も biome が止める（a11y/noStaticElementInteractions）。
+ * keyup も見るのは、shift + 矢印で伸ばした選択を取りこぼさないため。
+ *
+ * iOS は選択のジェスチャの終わりに mouseup を撃たないので、touchend も見る。
+ * 実害は #147（スマホで発話を選んでもメモが作れない）。
+ * 長押しから選択ハンドルを動かして離す一連は touchend で終わり、mouseup はその一連に来ない。
+ * mouseup が来るのはただのタップのときだけで、その時点では選択が既に潰れている。
+ * pointerup を採らないのは、同じ実機で touchend が来た回のうち半分ほどしか来なかったため。
  */
 function subscribeSelection(
   container: Element,
