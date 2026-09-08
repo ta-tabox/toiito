@@ -86,7 +86,7 @@ const BANNED_WORDS: ReadonlyArray<{
   { word: "畳む", instead: "まとめる / 変換する / 閉じる" },
   { word: "流す", instead: "適用する / デプロイする / 実行する" },
   { word: "弾く", instead: "拒否する" },
-  { word: "握る", instead: "保持する / 無視する" },
+  { word: "握る", instead: "握りつぶす" },
   { word: "掛ける", instead: "設定する" },
   { word: "口", instead: "エントリポイント", allow: ["入口", "出口", "窓口"] },
   { word: "関門", instead: "検証" },
