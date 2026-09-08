@@ -1,7 +1,7 @@
 /**
  * 一往復が途中で失敗したときに何が残るかの検査。
  *
- * 見るのは `messages` と預かりの二つだけで、AI の応答の中身は見ない（呼び出し規約は `ai.test.ts` の担当）。
+ * 見るのは `messages` と `pending_messages` の二つだけで、AI の応答の中身は見ない（呼び出し規約は `ai.test.ts` が検査する）。
  * 実 API は叩かない（HARNESS.md「実 API を自動テストで叩かない」）。
  */
 
@@ -74,7 +74,7 @@ afterAll(async () => {
 });
 
 describe("一往復", () => {
-  it("二体が揃えば三行が入り、預かりは消える", async () => {
+  it("ai_a と ai_b が揃えば三行が入り、pending_messages の行は消える", async () => {
     const target = await newDialogue();
 
     await runTurn({
@@ -89,7 +89,7 @@ describe("一往復", () => {
     expect(await db.getPendingBody(owner, target.sessionId)).toBeUndefined();
   });
 
-  it("ai_b が落ちると発話は一つも残らず、人間の本文だけが預かりに残る", async () => {
+  it("ai_b が失敗すると messages は空のままで、pending_messages に本文が残る", async () => {
     const target = await newDialogue();
 
     await runTurn({
@@ -149,7 +149,7 @@ describe("一往復", () => {
     expect(messages[3].body).toBe("二つ目");
   });
 
-  it("上限を超える本文は預かる前に弾く", async () => {
+  it("上限を超える本文は書き込む前に拒否する", async () => {
     const target = await newDialogue();
 
     await expect(
@@ -164,7 +164,7 @@ describe("一往復", () => {
 });
 
 describe("再送", () => {
-  it("預かってある本文で回し直し、成立すれば預かりは消える", async () => {
+  it("pending_messages の本文で回し直すと、三行が入って行が消える", async () => {
     const target = await newDialogue();
 
     await runTurn({
@@ -180,7 +180,7 @@ describe("再送", () => {
     expect(await db.getPendingBody(owner, target.sessionId)).toBeUndefined();
   });
 
-  it("また落ちれば預かりはそのまま残る", async () => {
+  it("もう一度失敗すれば pending_messages の行は残る", async () => {
     const target = await newDialogue();
 
     await runTurn({
@@ -196,7 +196,7 @@ describe("再送", () => {
     );
   });
 
-  it("預かりが無ければ何もしない", async () => {
+  it("pending_messages に行が無ければ何もしない", async () => {
     const target = await newDialogue();
 
     await retryTurn({ ...target, calls: calls() });
@@ -204,11 +204,11 @@ describe("再送", () => {
     expect(await db.listMessages(owner, target.sessionId)).toEqual([]);
   });
 
-  it("待つあいだに新しい発話が来ていたら、その預かりは巻き添えにしない", async () => {
+  it("待つあいだに新しい発話が来ていたら、その行は削除しない", async () => {
     const target = await newDialogue();
 
-    // 再送の応答を待つあいだに新しい発話が送られた状態。
-    // 二つの Server Action が同時に走ると起きるので、預かりを差し替えてから成立させて再現する。
+    // 再送の応答を待つあいだに新しい発話が送られた状態を作る。
+    // 二つの Server Action が同時に走ると起きるので、行を上書きしてから commitTurn する。
     await db.savePendingBody(owner, target.sessionId, "あとから送った発話");
     await db.commitTurn(owner, target.sessionId, {
       human: "再送していた発話",
@@ -221,7 +221,7 @@ describe("再送", () => {
     );
   });
 
-  it("預かりが無いまま成立させても投げない", async () => {
+  it("pending_messages に行が無いまま commitTurn しても throw しない", async () => {
     const target = await newDialogue();
 
     await expect(
@@ -238,7 +238,7 @@ describe("再送", () => {
 });
 
 describe("再訪", () => {
-  it("新しいセッションを始めると、預かりは捨てられる", async () => {
+  it("新しいセッションを作ると pending_messages の行は削除される", async () => {
     const target = await newDialogue();
 
     await runTurn({
@@ -248,7 +248,7 @@ describe("再訪", () => {
     });
     await db.createSession(owner, target.questionId);
 
-    // 預かりを表示する UI も再送の UI も最新のセッションにしか無いので、残すと画面から触れない行になる。
+    // 再送の UI は最新のセッションにしか出ないので、残すと再送できない行になる。
     expect(await db.getPendingBody(owner, target.sessionId)).toBeUndefined();
   });
 });

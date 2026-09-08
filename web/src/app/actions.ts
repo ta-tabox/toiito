@@ -52,7 +52,7 @@ export async function speakAction(
   revalidatePath(`/q/${questionId}`);
 }
 
-/** 成立しなかった一往復を、預かってある発話でもう一度回す。 */
+/** `pending_messages` に残っている発話で、一往復をもう一度実行する。 */
 export async function retryTurnAction(questionId: string, sessionId: string) {
   const owner = (await getCurrentUser()).id;
   await retryTurn({ owner, questionId, sessionId, calls: personaCalls() });

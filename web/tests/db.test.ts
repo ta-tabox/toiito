@@ -383,8 +383,8 @@ describe("所有権", () => {
     const { other, question, session, message } = await otherWithOneOfEach();
     await db.createQuestion(owner, "自分の問い");
 
-    // 預かりは行が在るときだけ意味のある検査になるので、相手の側に一件作ってから読む。
-    await db.savePendingBody(other, session.id, "アクセス権の無い預かり");
+    // 行が在るときだけ意味のある検査になるので、他人の側に一件作ってから読む。
+    await db.savePendingBody(other, session.id, "アクセス権の無い未送信の発話");
 
     expect((await db.listQuestions(owner)).map((q) => q.body)).toEqual([
       "自分の問い",

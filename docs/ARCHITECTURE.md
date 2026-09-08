@@ -98,7 +98,7 @@ sessions       一つの問いに対する対話セッション（複数回あ�
 messages       発話。人間 + AI二体の三者
   id, session_id, speaker(human/ai_a/ai_b), body, created_at
 
-pending_messages  成立していない人間の発話。セッションにつき一件
+pending_messages  送信されたが一往復が完了していない人間の発話。1 セッションに 1 行
   session_id(主キー), body, created_at
 
 memos          キーワードメモ。文字選択で残す
@@ -165,27 +165,6 @@ Prisma のモデル名が一意でなければならないので、`Session` を
 DB 側の正は `prisma/schema.prisma` の enum `QuestionStatus`、アプリ側の正は `web/src/lib/question.ts` の `QUESTION_STATUSES`（型と UI ラベルがここから派生する）。
 二重管理に見えるが、両者がずれると repo 関数の戻り値がドメイン型へ代入できなくなり `tsc` が落ちる。
 **ずれは L0 で捕まる**ので、片方を消して他方へ依存させる必要はない。
-
-### 一往復の成立（2026-09-02 決定）
-
-`messages` へ入るのは**成立した一往復だけ**である。
-human / ai_a / ai_b の三行は、二体が両方返ってから一トランザクションで入る（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
-途中で AI 呼び出しが失敗したときに残るのは `pending_messages` が預かっている人間の本文だけで、成功していた ai_a の応答は破棄する。
-
-- **預かりが在ることが「前回の一往復が成立しなかった」という状態そのもの**である。
-  失敗の理由は持たず、画面の文言は一つ（5 つある失敗経路の区別は `turn.ts` が出す `turn_failed` の行が持つ）
-- **再送は預かりの本文からプロンプトを組む**。
-  打ち直させないための預かりなので、新しい入力を受け取らない
-- 預かりはセッションにつき一件で、**削除するのはユーザーが次へ進んだときだけ**である。
-  新しい発話が来れば差し替わり、新しいセッションで再訪すれば削除される（`createSession`）。
-  預かりを表示する UI も再送の UI も最新のセッションにしか無いので、再訪で削除しないと画面から二度と触れない行が残る。
-  AI 呼び出しの失敗を理由に削除する経路は無い
-- **`pending_messages` は可変である**。
-  immutable の不変条件が効いているのは `messages` だけで、預かりの本文にメモのアンカーは付かない
-- 所有者は親から辿る（`user_id` を持たない）。
-  repo 関数は所有者を受け取り、`session → question → user_id` で絞る
-- 発話本文の上限は 4000 字（`web/src/lib/message.ts`）。
-  単位は UTF-16 code unit で、textarea の `maxLength` と同じ数え方になる
 
 ### 再訪と、過去セッションの読み方（2026-08-23 決定）
 

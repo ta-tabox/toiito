@@ -321,9 +321,8 @@ export async function latestSession(
  * 既存のセッションは閉じず、そのまま残す。
  * 何度戻ったかが読み返せることが目的。
  *
- * この問いの預かりは、同じトランザクションで削除する。
- * 預かりを表示する UI も再送の UI も最新のセッションにしか無いので、残したまま再訪すると画面から二度と触れない行になる。
- * 削除するのはユーザーが明示的に次のセッションへ移ったときだけで、AI 呼び出しの失敗を理由に削除する経路はここにも無い。
+ * この問いの `pending_messages` の行も、同じトランザクションで削除する。
+ * 再送の UI は最新のセッションにしか出ないので、残したまま新しいセッションを作ると再送できない行になる。
  */
 export async function createSession(
   owner: OwnerId,
@@ -415,18 +414,10 @@ export async function addMessage(
 }
 
 /**
- * 一往復を成立させる。
+ * human / ai_a / ai_b の三行を `messages` へ追記し、`pending_messages` の行を削除する。
  *
- * 三行の追記と預かりの削除を一トランザクションにするのは、二体のどちらかが欠けた turn を残さないため（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
- * AI 呼び出しはこの外で終わっている（呼び出しを囲むと、外部 API を待つあいだプーラー経由の接続を保持し続ける）。
- *
- * 発話の並びは意味そのものなので、三行は human → ai_a → ai_b の順に入れる（seq がその順に振られる）。
- *
- * 削除するのは、いま成立させた本文を持つ預かりだけ。
- * 再送の応答を待つあいだに新しい発話が送られると預かりは差し替わるので、`session_id` だけで削除すると先に終わった側が後から来た預かりを巻き添えにする。
- * `delete` でなく `deleteMany` なのは、一致しないときに何もせず通すため（`delete` は行が無いと P2025 を throw し、三行の挿入ごとロールバックする）。
- *
- * 所有者の判定は `addMessage` と同じで、`create` の where に条件を置けないので先に確かめる。
+ * 三行が揃わない turn を残さないため、一トランザクションで行う（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+ * 削除を `body` でも絞り、一致しなければ何もしない `deleteMany` を使うのは、再送を待つあいだに次の発話が送られて `pending_messages` の行が差し替わったとき、その行まで削除しないため。
  */
 export async function commitTurn(
   owner: OwnerId,
@@ -449,15 +440,10 @@ export async function commitTurn(
 }
 
 /**
- * 人間の発話を預かる。
+ * 人間の発話を `pending_messages` へ書き込む。
+ * 行が既にあれば上書きする。
  *
- * セッションにつき一件なので、預かりが在れば差し替える。
- * 差し替えが破棄も兼ねており、成立しなかった発話を削除する別の操作は置いていない。
- *
- * 長さの検査はここの担当になる。
- * 上限は `messages` へ入る本文にも効くが、預かりを経由せずに入る経路が無いので、検証はこの一箇所で足りる。
- *
- * 所有者の判定は `addMessage` と同じで、`upsert` の where に条件を置けないので先に確かめる。
+ * 長さをここで検査するのは、`messages` へ入る本文が必ずこの関数を通るため。
  */
 export async function savePendingBody(
   owner: OwnerId,
@@ -480,8 +466,8 @@ export async function savePendingBody(
 }
 
 /**
- * 預かってある発話の本文を返す。
- * 無ければ undefined（預かりが無いことは、直前の一往復が成立したという正常系）。
+ * `pending_messages` の本文を返す。
+ * 行が無ければ undefined を返す（直前の一往復が完了していれば行は無い）。
  */
 export async function getPendingBody(
   owner: OwnerId,

@@ -220,10 +220,9 @@ export default async function QuestionPage({
 }
 
 /**
- * 成立しなかった一往復の預かり。
+ * 送信に失敗した発話と、その再送ボタンを表示する。
  *
- * 面を破線で囲って発話と見分ける。
- * 預かってある本文は対話の一部ではなく、これから送り直されるものなので、発話と同じ面に見えてはいけない。
+ * 破線の枠で囲うのは、`messages` に入った発話と区別するため。
  */
 function PendingTurn({
   body,
@@ -234,9 +233,7 @@ function PendingTurn({
 }) {
   return (
     <div className="mt-8 rounded border border-rule border-dashed bg-surface-low p-3 md:p-4">
-      <p className="text-aux text-ink-weak">
-        二体からの応答が得られなかった。あなたの発話は預かってあるので、そのままもう一度送れる。
-      </p>
+      <p className="text-aux text-ink-weak">応答の取得に失敗しました。</p>
       <p className="mt-2 whitespace-pre-wrap text-utterance text-ink md:text-utterance-lg">
         {body}
       </p>

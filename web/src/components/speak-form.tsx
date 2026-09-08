@@ -33,15 +33,14 @@ export function SpeakForm({
 }
 
 /**
- * 預かってある発話をもう一度送るフォーム。
+ * `pending_messages` に残っている発話の再送フォーム。
  *
- * 本文は預かりの側が持っているので、送るものを画面から受け取らない。
- * 打ち直させないことがこのフォームの用件で、入力欄を出すとそれを裏切る。
+ * 送る本文は `pending_messages` が持っているので、入力欄を出さない。
  */
 export function RetryForm({ action }: { action: () => Promise<void> }) {
   return (
     <form action={action} className="mt-3 flex flex-col">
-      <SubmitButton label="もう一度試す" tone="quiet" />
+      <SubmitButton label="再送" tone="quiet" />
     </form>
   );
 }
@@ -50,10 +49,9 @@ export function RetryForm({ action }: { action: () => Promise<void> }) {
  * 送信ボタン。
  *
  * 応答を待つ間は押せなくなり、ラベルが「二体が応答中」の表示へ変わる。
- * useFormStatus は親フォームの状態を読むので、form を描く側と同じコンポーネントには置けない（常に pending: false が返る）。
- *
- * 再送だけは淡で出す。
- * 預かりが在るあいだは二つのフォームが並ぶので、実を両方へ敷くと「その画面でいちばん進める一手」が二つになる（DESIGN.md「部品の型」）。
+ * `useFormStatus` は親フォームの状態を読むので、`form` を描くコンポーネントには置けない（常に `pending: false` が返る）。
+ * 再送のときは `tone="quiet"` でボタンの色を薄くする。
+ * `RetryForm` と `SpeakForm` は同時に表示されるので、両方を濃い色にすると主要な操作がどちらか分からなくなる。
  */
 function SubmitButton({
   label,

@@ -1,14 +1,11 @@
 /**
- * 一往復（人間 → 具体 → 抽象）の手順。
+ * 一往復（human → ai_a → ai_b）を実行する。
  *
- * 二体が両方返ってから三行を一度に書く。
- * 途中で失敗したときに残るのは預かってある人間の発話だけで、AI の応答は捨てる（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+ * ai_a と ai_b が両方返ってから、`commitTurn` が三行をまとめて `messages` へ入れる。
+ * AI 呼び出しが失敗しても throw せず、`pending_messages` に人間の発話を残して戻る（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
  *
- * AI の失敗は例外にも戻り値にも乗せない。
- * 成立しなかったことは預かりが残ることで表され、画面はそれを読む。
- *
- * 呼ぶプロバイダは引数で受け取る。
- * env から解決する側（`lib/ai/providers.ts`）へ直に触れると、失敗したときの永続化を検査できなくなる。
+ * 呼び出すプロバイダは引数で受け取る。
+ * `lib/ai/providers.ts` を直接 import すると、テストが失敗経路を作れなくなる。
  */
 
 import { callPersona, type PersonaCall } from "@/lib/ai";
@@ -100,10 +97,9 @@ async function callBoth(input: {
 }
 
 /**
- * 人間の発話から一往復を回す。
+ * `body` を `pending_messages` へ書き込んでから、一往復を実行する。
  *
- * 本文は呼び出しの前に預ける。
- * 二体のどちらかが落ちても、人間が打った本文だけは残る。
+ * ai_a か ai_b が失敗すると `messages` は変わらず、`pending_messages` の行だけが残る。
  */
 export async function runTurn(
   target: TurnTarget & { readonly body: string },
@@ -135,9 +131,9 @@ export async function runTurn(
 }
 
 /**
- * 預かってある発話で、もう一度一往復を回す。
+ * `pending_messages` に残っている発話で、一往復をもう一度実行する。
  *
- * 預かりが無ければ何もしない（二重に届いた再送。直前の一往復は成立している）。
+ * 行が無ければ何もしない（直前の一往復が完了していれば行は無い）。
  */
 export async function retryTurn(target: TurnTarget): Promise<void> {
   const body = await getPendingBody(target.owner, target.sessionId);
