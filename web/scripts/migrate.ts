@@ -2,7 +2,7 @@
  * 本番と Preview の DB へ migration を適用する。
  *
  * main への push で本番へ適用する経路（`.github/workflows/migrate.yml`）とは別の、手元から叩くコマンド。
- * Preview には自動経路が無いので（`docs/adr/0015-preview-neon-branch.md`）、migration を含む PR の画面を見るにはここを通る。
+ * Preview には自動経路が無いので（`docs/adr/0015-preview-neon-branch.md`）、migration を含む PR の画面を見るにはこのスクリプトを通る。
  * 接続先は適用先ごとの環境変数が持ち、`.env.local` の `DIRECT_URL`（ローカル）は子プロセスの env で上書きする。
  *
  * エントリポイントは CLI（`pnpm migrate:prod` / `pnpm migrate:preview`）。

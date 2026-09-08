@@ -56,7 +56,7 @@ function hrefsOf(node: ReactNode): string[] {
 
 /**
  * 要素の子。
- * props の型が unknown なので、読み出しをここ一箇所に閉じる。
+ * props の型が unknown なので、読み出しを `childrenOf` 一箇所に閉じる。
  */
 function childrenOf(element: ReactElement): ReactNode {
   return (element.props as { children?: ReactNode }).children;

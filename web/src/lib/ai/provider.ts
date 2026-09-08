@@ -16,7 +16,7 @@ type FakeEnv = {
 
 /**
  * env からフェイクモードを読む。
- * どのプロバイダを叩くかに依らない指定なので、環境変数名の正をここが持ち、実装には解決済みの真偽値を渡す。
+ * どのプロバイダを叩くかに依らない指定なので、環境変数名の正を `readFakeMode` が持ち、実装には解決済みの真偽値を渡す。
  */
 export function readFakeMode(env: FakeEnv): boolean {
   return env.TOIITO_FAKE_AI === "1";

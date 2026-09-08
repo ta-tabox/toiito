@@ -49,7 +49,7 @@ export function readSingleUserEmail(env: SingleUserEnv): string {
  * `TOIITO_SINGLE_USER_EMAIL` が名指しするユーザーが `user` 表に無ければ throw する。
  * 行が無いユーザーの所有物は 0 件なので、throw しないと空の一覧が正常な結果に見える。
  * `React.cache()` で包むので、1 リクエストの中で何度呼んでも `user` 表への SELECT は 1 回で済む。
- * セッションを取り消せる状態を保ったまま往復を減らせるので、Better Auth の `cookieCache` でなくこれを使う（`docs/adr/0022-session-security.md` 決定 6）。
+ * セッションを取り消せる状態を保ったまま往復を減らせるので、Better Auth の `cookieCache` でなく `React.cache()` を使う（`docs/adr/0022-session-security.md` 決定 6）。
  */
 export const getCurrentUser = cache(async (): Promise<User> => {
   const email = readSingleUserEmail(process.env);

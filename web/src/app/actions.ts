@@ -4,7 +4,7 @@
  * 画面から呼ばれる Server Action の束。
  * フォーム入力を lib の呼び出しへ配線する。
  *
- * ここに判断を置かない（docs/HARNESS.md「テスト可能性の設計制約」）。
+ * Server Action に判断を置かない（docs/HARNESS.md「テスト可能性の設計制約」）。
  * Server Action は単体テストから直に呼べないので、条件分岐が入り込んだ時点で検証の外へ出る。
  * 入力の受け取り・lib の呼び出し・再検証と遷移だけに留める。
  */
@@ -64,7 +64,7 @@ export async function retryTurnAction(questionId: string, sessionId: string) {
  * 発話本文の一部にメモを付ける。
  *
  * アンカー（anchor_start / anchor_end）は呼び出し側が確定させたものを受け取る。
- * 本文中の位置を求めるのは DOM と `anchors.ts` の担当で、ここは数値を通すだけ。
+ * 本文中の位置を求めるのは DOM と `anchors.ts` の担当で、`createMemoAction` は数値を通すだけ。
  */
 export async function createMemoAction(questionId: string, formData: FormData) {
   const keyword = String(formData.get("keyword") ?? "").trim();

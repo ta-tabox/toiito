@@ -51,7 +51,7 @@ export function createQuestion() {}
 `;
 
     // 空行を置けと促すと、この JSDoc を関数から剥がすことになる。
-    // 冒頭コメントが「無い」のが実態で、直すべきはそちら。
+    // 冒頭コメントが「無い」のが実態で、直すべきは冒頭コメントの側。
     expect(rulesOf(source)).toEqual(["comments/useModuleHeader"]);
   });
 

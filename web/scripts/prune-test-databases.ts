@@ -28,7 +28,7 @@ const DERIVED_NAME = /^toiito_wt_.+_test$/;
 /**
  * worktree に対応しないまま居続けるデータベース。
  *
- * 開発用と、リポジトリ本体のテスト・E2E がこれに当たる。
+ * 開発用と、リポジトリ本体のテスト・E2E が `PERMANENT_NAMES` に当たる。
  * 毎回一覧へ出しても行動が変わらないので、報告からも外す。
  */
 const PERMANENT_NAMES = ["toiito", "toiito_test", "toiito_e2e"];

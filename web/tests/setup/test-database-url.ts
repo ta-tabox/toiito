@@ -3,7 +3,7 @@
  *
  * 単独のモジュールに切ってあるのは読み込み順の都合。
  * vitest.config.ts はこの値を必要とするが、設定ファイル自身は `@` エイリアスを定義する側なので、読み込み時点ではまだ `@` が解決できない。
- * ここに import を足すと、その依存が設定の読み込み時に巻き込まれて壊れる。
+ * このモジュールに import を足すと、その依存が設定の読み込み時に巻き込まれて壊れる。
  * 足してよいのは node の組み込みだけ。
  */
 
@@ -69,7 +69,7 @@ export function toDatabaseSlug(name: string): string {
  * このチェックアウトが worktree かどうか。
  *
  * git は worktree の `.git` を、本体の gitdir を指すファイルにする。
- * 名前や配置に依存しない判定はここしかない。
+ * 名前や配置に依存しない判定は `.git` の種類しかない。
  */
 function isWorktree(root: string): boolean {
   try {

@@ -4,7 +4,7 @@
  * vitest の `TOIITO_TEST_DATABASE_URL` とは別に分ける。
  * どちらも走る前に中身を作り直すので、同じ DB を向けると互いの行を踏む。
  *
- * ここが接続先を決める唯一の場所。
+ * `e2e-database-url.ts` が接続先を決める唯一の場所。
  * 作り直しの側（reset-database.ts）へは playwright.config.ts が env で渡す。
  */
 
@@ -25,7 +25,7 @@ const DEFAULT_URL = `postgresql://toiito:toiito@localhost:5433/${DATABASE_NAME}`
  * 上書きを検査して接続先を決める。
  *
  * 通すのはサーバーの側（ホスト・ポート・資格情報）を変える上書きだけである。
- * データベース名を変える上書きは共有一本を破る唯一の経路なので、ここで止める。
+ * データベース名を変える上書きは共有一本を破る唯一の経路なので、`resolveE2eDatabaseUrl` で止める。
  */
 export function resolveE2eDatabaseUrl(override: string | undefined): string {
   if (override === undefined) {

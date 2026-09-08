@@ -1,18 +1,18 @@
 /**
  * 繋ぎ先のデータベースが、スキーマと食い違っていないか見て警告する。
  *
- * 繋ぎ先を決めるのはここではない。
+ * 繋ぎ先を決めるのは `check-database-drift.ts` ではない。
  * `prisma.config.ts` が `.env.local` の `DIRECT_URL` から読むので、どの DB を守るかは呼ぶ側の配線が決める。
  *
  * 見つけても throw しない。
  * 別のブランチで積んだ migration はそのブランチを離れても剥がれないが、作り直してよいかは中身の持ち主にしか判断できない。
- * 走るたびに作り直せる相手（`tests/setup/database.ts` のテスト用 DB）は、そもそもここを通らない。
+ * 走るたびに作り直せる相手（`tests/setup/database.ts` のテスト用 DB）は、そもそもこの検査を通らない。
  *
  * `prisma migrate status` は使わない。
  * ローカルに無い migration が DB へ積まれていても「up to date」を返すので、この食い違いを検出できない。
  *
  * エントリポイントは CLI。
- * いまの配線は `pnpm dev` の前段一つで、そこでの繋ぎ先は開発用 DB になる。
+ * いまの配線は `pnpm dev` の前段一つで、その配線での繋ぎ先は開発用 DB になる。
  */
 
 import { spawnSync } from "node:child_process";
@@ -27,7 +27,7 @@ const DIFF_FOUND = 2;
 /**
  * スキーマとデータベースの食い違いを見る。
  *
- * 繋がらないときは終了コードが 1 になるが、そちらは黙って通す。
+ * 繋がらないときは終了コードが 1 になるが、終了コード 1 は黙って通す。
  * 相手が立っていないことは、この後に続くコマンドが同じ相手で落ちて言う。
  */
 function findsDrift(): boolean {

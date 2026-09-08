@@ -64,7 +64,7 @@ function db(): PrismaClient {
 
       // 表示にも意味の判断にも使わない列は、取得した行から削除する。
       // seq は並べ替えのため、user_id は絞り込みのためだけに在り、どちらもこの層の内側で閉じる。
-      // これで戻り値がドメイン型とちょうど一致し、BigInt が UI 側へ渡ることも起きない。
+      // omit で戻り値がドメイン型とちょうど一致し、BigInt が UI 側へ渡ることも起きない。
       omit: {
         question: { seq: true, user_id: true },
         dialogueSession: { seq: true },
@@ -90,7 +90,7 @@ export async function disconnect(): Promise<void> {
 
 /**
  * 表示に使う問い文を返す。
- * 現在の形があればそれ、無ければ原型。
+ * `current_form` があればその値、無ければ `body`。
  */
 export function questionText(q: Question): string {
   return q.current_form ?? q.body;
@@ -178,7 +178,7 @@ export async function listQuestions(owner: OwnerId): Promise<Question[]> {
 /**
  * id で問いを 1 件取得する。
  *
- * 無ければ undefined を返す。
+ * `id` に一致する行が無ければ undefined を返す。
  * owner 以外が所有する問いも同じ undefined になる。
  * 二つを違う応答にすると、URL の id を差し替えるだけで在ることが読める。
  *
@@ -284,7 +284,7 @@ export async function setQuestionStatus(
  * id でセッションを 1 件取得する。
  *
  * `sessions` は所有者の列を持たないので、親の問いの `user_id` を辿って判定する（`docs/adr/0030-ownership-granularity.md` 決定 2）。
- * 無ければ undefined を返し、owner 以外が所有するセッションも同じ undefined になる（同じ応答にする理由と findFirst の理由は `getQuestion` と同じ）。
+ * `id` に一致する行が無ければ undefined を返し、owner 以外が所有するセッションも同じ undefined になる（同じ応答にする理由と findFirst の理由は `getQuestion` と同じ）。
  */
 export async function getSession(
   owner: OwnerId,
@@ -300,7 +300,7 @@ export async function getSession(
 /**
  * owner が所有する問いの、最新セッションを 1 件取得する。
  *
- * 対話画面が表示するのはこれ一つ。
+ * 対話画面が表示するのは最新セッション一つ。
  * 同時刻に並んだ場合は挿入順（seq）で決める。
  */
 export async function latestSession(
@@ -443,7 +443,7 @@ export async function commitTurn(
  * 人間の発話を `pending_messages` へ書き込む。
  * 行が既にあれば上書きする。
  *
- * 長さをここで検査するのは、`messages` へ入る本文が必ずこの関数を通るため。
+ * 長さを `savePendingBody` で検査するのは、`messages` へ入る本文が必ずこの関数を通るため。
  */
 export async function savePendingBody(
   owner: OwnerId,
@@ -671,7 +671,7 @@ const SETUP_ERROR_CODES = new Set(["P1001", "P1003", "P2021"]);
  * DB の準備ができていない失敗なら、手当てを促す文へ包み直す。
  *
  * Prisma のエラーコードを読めるのは `db.ts` だけなので、判定も `db.ts` が持つ（`db.ts` の外へ Prisma を出さない）。
- * それ以外の失敗はそのまま返す。
+ * 準備不足に当たらない失敗はそのまま返す。
  * 原因を伏せると、準備の問題でない失敗まで docker を疑わせることになる。
  */
 export function withSetupGuidance(cause: unknown): unknown {

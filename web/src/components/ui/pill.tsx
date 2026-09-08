@@ -12,7 +12,7 @@ import type { QuestionStatus } from "@/lib/question";
  * 意味の正は `docs/ARCHITECTURE.md`「問いの状態機械」、語の正は `docs/VISION.md`「語彙」節。
  *
  * 比喩を持つのはラベルだけで、値の側は一般語のまま動かない（`docs/adr/0017-status-value-set.md`）。
- * 値域を全網羅する型で受けているので、状態を増やすと最初にここが型で落ちる。
+ * 値域を全網羅する型で受けているので、状態を増やすと最初に `STATUS_FACE` が型で落ちる。
  */
 const STATUS_FACE: Record<QuestionStatus, { label: string; isOpen: boolean }> =
   {

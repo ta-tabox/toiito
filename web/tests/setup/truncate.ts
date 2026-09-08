@@ -1,7 +1,7 @@
 /**
  * テスト用データベースをケースごとに空にする。
  *
- * ここが隔離の境界で、migration を積むのは globalSetup（`database.ts`）が持つ。
+ * `truncate.ts` が隔離の境界で、migration を積むのは globalSetup（`database.ts`）が持つ。
  *
  * vitest の setupFiles として読み込む。
  * 登録した beforeEach はテストファイルごとに効く。

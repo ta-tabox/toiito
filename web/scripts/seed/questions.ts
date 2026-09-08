@@ -1,8 +1,8 @@
 /**
  * 開発用シードとして入れる値の宣言。
  *
- * 投入の手順は持たない（それは db.ts の createQuestionWithTranscript と seed/index.ts のステップ）。
- * ここが答えるのは「何を入れるか」だけで、この形のまま増やしていく。
+ * 投入の手順は持たない（手順は `db.ts` の `createQuestionWithTranscript` と `seed/index.ts` のステップ）。
+ * `questions.ts` が答えるのは「何を入れるか」だけで、この形のまま増やしていく。
  *
  * エントリポイントは `SEED_INPUTS`（一人目）と `OTHER_USER_INPUT`（二人目）。
  * どちらも宣言（keyword ベース）から、範囲の埋まった投入の入力へ写したもの。

@@ -160,7 +160,7 @@ test("別の発話を選ぶと下書きはそちらへ移り、やめれば選�
 
   await selectTextIn(page, aiB, second);
 
-  // 前の発話の下書きが残っていると、やめた拍子にそれが出てくる。
+  // 前の発話の下書きが残っていると、やめた拍子に前の下書きが出てくる。
   await expect(memoForm(page)).toHaveCount(1);
   await expect(page.getByRole("blockquote")).toHaveText(second);
 
@@ -254,7 +254,7 @@ test("再訪したあとでも、メモからそのメモを付けた当時の�
   await page.getByRole("button", { name: "新しいセッションで再訪" }).click();
 
   // 再訪すると画面は新しいセッションへ移る。
-  // メモを付けた発話はここには無い（消えたのではなく、描いているセッションが違う）。
+  // メモを付けた発話はこの画面には無い（消えたのではなく、描いているセッションが違う）。
   await expect(page.locator(`#${messageId}`)).toHaveCount(0);
 
   await page.goto("/memos");
@@ -264,7 +264,7 @@ test("再訪したあとでも、メモからそのメモを付けた当時の�
     .getByRole("link", { name: "この発話へ" })
     .click();
 
-  // 着地の条件は、飛べたことではなく、当時の発話がそこに描かれていること。
+  // 着地の条件は、飛べたことではなく、当時の発話がその画面に描かれていること。
   await expect(page.locator(`#${messageId}`)).toBeInViewport();
   await expect(page.locator(`#${messageId}`)).toContainText(utterance);
 });

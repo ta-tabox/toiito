@@ -2,10 +2,10 @@
  * 本番のアクセス制限に使う Basic 認証の判定。
  *
  * 通すか通さないかだけを決め、通った先で誰であるかは見ない。
- * 所有権の概念は #68（ログイン（Google OAuth）とリソースの所有権）が持つので、ここには無い。
+ * 所有権の概念は #68（ログイン（Google OAuth）とリソースの所有権）が持つので、`basic-auth.ts` には無い。
  *
  * next にも DOM にも依存しない。
- * HTTP の応答を組み立てるのは middleware の側で、ここは判定を返すだけにする。
+ * HTTP の応答を組み立てるのは `proxy.ts` で、`basic-auth.ts` は判定を返すだけにする。
  */
 
 /** Basic 認証の資格情報。 */
@@ -106,7 +106,7 @@ function decodeBasic(header: string | null): BasicAuthCredentials | null {
   }
 
   // RFC 7617 の利用者名は `:` を含めない。
-  // よって最初の `:` だけが区切りで、それ以降はパスワードの一部になる。
+  // よって最初の `:` だけが区切りで、二つ目以降の `:` はパスワードの一部になる。
   const separator = decoded.indexOf(":");
 
   if (separator === -1) {
@@ -143,7 +143,7 @@ function equalsInConstantTime(left: string, right: string): boolean {
 
   for (let index = 0; index < length; index += 1) {
     // 範囲外は NaN になるので、0 として扱う。
-    // 長さの違いは上の XOR が既に拾っている。
+    // 長さの違いは `difference` の初期値の XOR が既に拾っている。
     const leftCode = left.charCodeAt(index) || 0;
     const rightCode = right.charCodeAt(index) || 0;
 

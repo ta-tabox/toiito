@@ -35,7 +35,7 @@ datasource db {
 ///
 /// TS 側の対応は `src/lib/question.ts` の `QUESTION_STATUSES`（型 `QuestionStatus` と UI ラベルがそこから派生する）。
 /// 二箇所に書くのは冗長に見えるが、ずれると repo 関数の戻り値がドメイン型へ代入できなくなり `tsc` が落ちる。
-/// ここに値を足したら向こうにも足す。
+/// この enum に値を足したら `QUESTION_STATUSES` にも足す。
 enum QuestionStatus {
   new
   stocked
@@ -148,9 +148,9 @@ model Message {
 /// **DB 側に check 制約が効いている**（`memos_anchor_range_check`）:
 /// `anchor_start >= 0 and anchor_end > anchor_start`。
 /// Prisma スキーマでは表現できないので実体は migration の SQL にある。
-/// このモデルの列を動かすときは、そちらも一緒に見ること。
+/// このモデルの列を動かすときは、migration の SQL も一緒に見ること。
 ///
-/// `anchor_end <= 本文長` はここでは表明できない（DB は本文長を知らない）。
+/// `anchor_end <= 本文長` は Prisma スキーマでは表明できない（DB は本文長を知らない）。
 /// 本文を読める db.ts の addMemo が守る。
 model Memo {
   id           String   @id @default(uuid(4)) @db.Uuid

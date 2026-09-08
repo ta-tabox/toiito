@@ -1,7 +1,7 @@
 /**
  * E2E 用データベースを走るたびに作り直す。
  *
- * 削除して作り直すところまでがここの責務で、ブラウザ操作の側は spec が持つ。
+ * 削除して作り直すところまでが `reset-database.ts` の責務で、ブラウザ操作の側は spec が持つ。
  * ケースごとに空にする vitest 側（tests/setup/truncate.ts）と違い、E2E はアプリを跨いで状態を積む一本道なので、区切るのは走り単位。
  *
  * 呼ぶのは playwright.config.ts の webServer が `next dev` を起こす前。
@@ -9,8 +9,8 @@
  *
  * 素の node が走らせる CLI で、接続先は webServer から渡る DATABASE_URL。
  * リポジトリ内のモジュールを import しない形に閉じてある。
- * tsconfig の paths が効くのは型検査と、それを読む実行側（Playwright・vitest・Next）までで、素の node の解決には無い。
- * ここが import を持つと、エイリアスの写しを node 側へもう一つ持つことになる。
+ * tsconfig の paths が効くのは型検査と、paths を読む実行側（Playwright・vitest・Next）までで、素の node の解決には無い。
+ * `reset-database.ts` が import を持つと、エイリアスの写しを node 側へもう一つ持つことになる。
  */
 
 import { execFileSync } from "node:child_process";
@@ -21,7 +21,7 @@ const webRoot = path.resolve(import.meta.dirname, "../..");
 /**
  * 作り直す対象を環境変数から受け取る。
  *
- * 接続先を決めるのは playwright.config.ts 一箇所で、ここは受け取る側。
+ * 接続先を決めるのは playwright.config.ts 一箇所で、`reset-database.ts` は受け取る側。
  * 二つ持つと、設定とスクリプトが別々の DB を指したまま走る。
  */
 function requireDatabaseUrl(): string {
@@ -81,7 +81,7 @@ function execute(sql: string, url: string): void {
 /**
  * 子プロセスが stderr へ書いた内容を取り出す。
  *
- * execFileSync が投げる Error は終了コードまでしか語らないので、Postgres が返した理由はここからしか読めない。
+ * execFileSync が投げる Error は終了コードまでしか語らないので、Postgres が返した理由は stderr からしか読めない。
  */
 function stderrOf(cause: unknown): string {
   if (cause instanceof Error && "stderr" in cause) {
@@ -96,7 +96,7 @@ function stderrOf(cause: unknown): string {
  *
  * `with (force)` は付けない。
  * 付けると接続している相手ごとデータベースを削除できてしまい、一本を共有する運用で二つ目の実行が先の実行を黙って壊す（docs/HARNESS.md「E2E（L4）」）。
- * 繋いだままの相手が居れば drop が失敗し、抜く側のここが止まる。
+ * 繋いだままの相手が居れば drop が失敗し、削除する側のこのスクリプトが止まる。
  */
 function recreateDatabase(): void {
   const admin = adminUrl();
@@ -121,7 +121,7 @@ function recreateDatabase(): void {
  * 空のデータベースへスキーマを積み、開発用シードを入れる。
  *
  * どちらも E2E の接続先を明示して子プロセスへ渡す。
- * `.env.local` を読ませないのは、そこに書いてある開発用の接続先を掴ませないため。
+ * `.env.local` を読ませないのは、`.env.local` に書いてある開発用の接続先を掴ませないため。
  */
 function migrateAndSeed(): void {
   const env = {

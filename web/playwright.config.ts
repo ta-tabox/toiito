@@ -11,10 +11,10 @@
  *
  * サーバーは二本立てる。
  * 既定の一本は資格情報を持たないのでアクセス制限が掛からず、縦一本の spec がそれまでどおり走る。
- * もう一本だけが資格情報を持ち、`basic-auth.spec.ts` がそちらを叩く（同じサーバーで両方は見られない）。
+ * もう一本だけが資格情報を持ち、`basic-auth.spec.ts` がそのサーバーを叩く（同じサーバーで両方は見られない）。
  *
  * **この層は Vercel のランタイム差を再現しない**。
- * next dev も next start も Node で走るので、Edge でだけ環境変数が読めない類の失敗はここに出ない。
+ * next dev も next start も Node で走るので、Edge でだけ環境変数が読めない類の失敗はこの層に出ない。
  * 本番そのものを叩く確認は `docs/DEPLOY.md`「アクセス制限」が持つ。
  */
 
@@ -91,7 +91,7 @@ export default defineConfig({
       env: { ...SERVER_ENV, TOIITO_DIST_DIR: DIST_DIR },
     },
     {
-      // こちらはデータベースを作り直さない。
+      // アクセス制限を有効にした側はデータベースを作り直さない。
       // 二本が同じ `toiito_e2e` を同時に作り直すと、互いの足元を壊すことになる。
       command: `pnpm exec next dev --port ${AUTH_PORT}`,
       url: AUTH_BASE_URL,

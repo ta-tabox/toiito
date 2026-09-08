@@ -1,7 +1,7 @@
 /**
  * 本番のすべてのリクエストへ Basic 認証を適用する配線（Next の proxy 規約）。
  *
- * 判定は `@/lib/basic-auth` が持ち、ここは 401 と `WWW-Authenticate` へ変換するだけにする。
+ * 判定は `@/lib/basic-auth` が持ち、`proxy` は 401 と `WWW-Authenticate` へ変換するだけにする。
  * #68（ログイン（Google OAuth）とリソースの所有権）が入ったら、このファイルごと外す。
  *
  * matcher を書かず全リクエストを通す。
@@ -11,14 +11,14 @@
  * 本番で設定が欠けていれば、リクエストを捌く前に落ちる。
  *
  * proxy は常に Node.js ランタイムで走るので、`process.env` は本物である。
- * 旧 middleware 規約の既定だった Edge では、ここが読む三つが実行時に undefined になり、資格情報が無いと判断して検証なしで通していた（2026-08-29 に生成物で確認）。
+ * 旧 middleware 規約の既定だった Edge では、`proxy.ts` が読む三つが実行時に undefined になり、資格情報が無いと判断して検証なしで通していた（2026-08-29 に生成物で確認）。
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 import { isAuthorized, readBasicAuthCredentials } from "@/lib/basic-auth";
 
 // 読む三つを名指しで渡す。
-// 何に依存しているかがここだけで読め、テストが同じ形で差し替えられる。
+// 依存する環境変数がこの引数の並びで全部読め、テストが同じ形で差し替えられる。
 const credentials = readBasicAuthCredentials({
   TOIITO_BASIC_AUTH_USER: process.env.TOIITO_BASIC_AUTH_USER,
   TOIITO_BASIC_AUTH_PASSWORD: process.env.TOIITO_BASIC_AUTH_PASSWORD,

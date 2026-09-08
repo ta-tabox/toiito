@@ -4,14 +4,14 @@
  * 発話本文の描画と、選択した範囲へメモを付ける小フォーム。
  *
  * オフセットの換算は anchors.ts の純関数だけが行う。
- * ここが引き受けるのは DOM から（セグメント, セグメント内オフセット）を読むところまでで、絶対オフセットを求める式をこのファイルへ書かない。
+ * `MessageBody` が引き受けるのは DOM から（セグメント, セグメント内オフセット）を読むところまでで、絶対オフセットを求める式をこのファイルへ書かない。
  * 書いた時点で、テストの外にオフセット演算が増える。
  *
  * 複数の発話へ跨る選択は捨てる。
  * メモのアンカーは発話一件の本文へ閉じており、跨いだ範囲を一件では表せない。
  *
  * 下線の付いた区間は `/memos?memo=<id>` へのリンクにする。
- * 逆向き（メモ → 発話）は /memos が持っているので、こちらは発話 → メモを埋める側。
+ * 逆向き（メモ → 発話）は /memos が持っているので、`MessageBody` は発話 → メモを埋める側。
  */
 
 import Link from "next/link";
@@ -72,7 +72,7 @@ export function MessageBody({
   const bodyRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<MemoDraft | null>(null);
 
-  // useMemo を通すのは、これが下の useEffect の依存だから。
+  // useMemo を通すのは、`segments` が下の useEffect の依存だから。
   // 素で呼ぶとレンダリングのたびに新しい配列になり、選択のたびに listener を外して張り直すことになる。
   const segments = useMemo(
     () => segmentBody(message.body, memos),
@@ -244,7 +244,7 @@ function MemoForm({
  * keyup も見るのは、shift + カーソルキーで伸ばした選択を取りこぼさないため。
  *
  * iOS は選択のジェスチャの終わりに mouseup を撃たないので、touchend も見る。
- * 長押しから選択ハンドルを動かして離す一連は touchend で終わり、mouseup はそこに来ない。
+ * 長押しから選択ハンドルを動かして離す一連は touchend で終わり、mouseup はその一連に来ない。
  * mouseup が来るのはただのタップのときだけで、その時点では選択が既に潰れている。
  * pointerup を採らないのは、同じ実機で touchend が来た回のうち半分ほどしか来なかったため。
  */
@@ -274,7 +274,7 @@ function subscribeSelection(
 /**
  * 選択の始点が入っている発話に読み直させ、他の発話の下書きを閉じる。
  *
- * 潰れた選択をここで返すのは、キャレットが動いただけの keyup で `readers` を走査しないため。
+ * 潰れた選択を早期 return するのは、キャレットが動いただけの keyup で `readers` を走査しないため。
  */
 function notifySelectedMessage(): void {
   const selection = window.getSelection();

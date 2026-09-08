@@ -3,7 +3,7 @@
  *
  * Biome のリンタはコメントを走査対象に持たない。
  * built-in ルールにも GritQL プラグインにも、コメント本体へ届く経路が無い。
- * ここが引き受けるのはその穴だけで、コメント以外の作法は biome.json 側に置く。
+ * このリンタが引き受けるのはその穴だけで、コメント以外の作法は biome.json 側に置く。
  * 同じ規約を二箇所に書かない。
  *
  * 判定は TypeScript の API へ渡す。
@@ -11,7 +11,7 @@
  *
  * パーサは `@typescript/typescript6` を名指しで import する。
  * TypeScript 7 は Go 移植で `typescript` の既定 export から旧 JS コンパイラ API が外れており、`createSourceFile` が無い。
- * このリポジトリが `typescript` に何を入れていてもここは 6 系の JS API を掴むので、この import を `typescript` へ戻さない。
+ * このリポジトリが `typescript` に何を入れていてもこの import は 6 系の JS API を掴むので、`typescript` へ戻さない。
  *
  * Biome も vcs.useIgnoreFile で同じ正を見るので、対象から外すものは .gitignore が正。
  * 独自の除外リストを持つと、生成物の扱いが Biome と食い違う。
@@ -69,7 +69,7 @@ const DEFAULT_TARGETS = ["src", "scripts", "tests"];
  * 語はリポジトリごとに変わるが、規則そのものは変わらない。
  *
  * 比喩と個人語彙は書き手には一意でも、このリポジトリの md を読んでいない読者には辞書が無い。
- * 語の正は `.claude/rules/coding.md`「コメント」節で、ここはその一覧を機械が読める形へ写したもの。
+ * 語の正は `.claude/rules/coding.md`「コメント」節で、`BANNED_WORDS` はその一覧を機械が読める形へ写したもの。
  */
 const BANNED_WORDS: ReadonlyArray<{ word: string; instead: string }> = [
   { word: "引く", instead: "取得する / 検索する" },
@@ -93,7 +93,7 @@ const BANNED_WORDS: ReadonlyArray<{ word: string; instead: string }> = [
 
 /**
  * 検査の対象にする拡張子。
- * ここに無い拡張子は、ディレクトリを名指しで渡されても集めない。
+ * `SOURCE_EXTENSIONS` に無い拡張子は、ディレクトリを名指しで渡されても集めない。
  */
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
 
@@ -114,7 +114,7 @@ const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const JSDOC_TYPE_ANNOTATION = /@(param|returns?)\s*\{/g;
 
 /**
- * 文がそこで閉じていることを示す記号。
+ * 文がその位置で閉じていることを示す記号。
  * 日本語の句点と、英文・コード片の終止符。
  */
 const SENTENCE_END = /[。.]$/;
@@ -183,7 +183,7 @@ export function lintSource(fileName: string, text: string): Violation[] {
 }
 
 /**
- * 冒頭コメントを、それが飾る本体の直前まで遡って探す。
+ * 冒頭コメントを、飾っている本体の直前まで遡って探す。
  *
  * "use server" のようなディレクティブは本体に数えない。
  * ディレクティブの前後どちらに冒頭コメントを置いても構文上は正しく、位置まで縛る理由が無い。
@@ -221,7 +221,7 @@ function checkModuleHeader(
 
   // 空行を挟まず宣言に接したコメントは、その宣言の JSDoc であってモジュールへの注釈ではない。
   // TS もエディタもそう読む。
-  // ここを冒頭コメントとして数えると、「空行を置け」と促した結果、宣言から JSDoc を剥がすことになる。
+  // 宣言に接したコメントを冒頭コメントとして数えると、「空行を置け」と促した結果、宣言から JSDoc を剥がすことになる。
   if (
     header === leading[leading.length - 1] &&
     !isFollowedByBlankLine(text, header.end) &&
@@ -243,7 +243,7 @@ function checkModuleHeader(
   }
 
   // 直後の空行が、モジュールへの注釈と直下の宣言への JSDoc を分ける唯一の手掛かり。
-  // 空行を挟まないと TS もエディタも、これを次の宣言のドキュメントとして扱う。
+  // 空行を挟まないと TS もエディタも、冒頭コメントを次の宣言のドキュメントとして扱う。
   if (!isFollowedByBlankLine(text, header.end)) {
     return [
       {
@@ -292,7 +292,7 @@ function checkJsDocTypeAnnotations(
 /**
  * 改行が文の途中に入っていないかを見る。
  *
- * 句点で閉じていない行の次に本文が続いていたら、そこは文の切れ目ではなく桁で折った跡。
+ * 句点で閉じていない行の次に本文が続いていたら、その改行は文の切れ目ではなく桁で折った跡。
  * 日本語としては意味の切れ目だが、桁で折った跡と機械には見分けが付かないので、読点で折った場合も捕まえる。
  */
 function checkSentenceEndLineBreaks(
@@ -330,7 +330,7 @@ function checkSentenceEndLineBreaks(
  * 1 行に 2 文以上置いていないかを見る。
  *
  * 一文一行なら、一文直したときの diff が 1 行で済み、レビューで「この文」を指せる。
- * 桁で折らない理由がそれなので、文の途中で折らないだけでは足りない。
+ * 一文一行が桁で折らない理由そのものなので、文の途中で折らないだけでは足りない。
  */
 function checkOneSentencePerLine(
   source: ts.SourceFile,
@@ -542,7 +542,7 @@ function collectLeadingComments(
 
 /**
  * ディレクティブを除いた最初の文を返す。
- * 冒頭コメントが飾っている本体はこれになる。
+ * 冒頭コメントが飾っている本体はこの文になる。
  */
 function firstNonDirectiveStatement(
   source: ts.SourceFile,
@@ -591,7 +591,7 @@ function lineOf(source: ts.SourceFile, position: number): number {
 
 /**
  * 対象の配下から検査するソースを再帰で集める。
- * ファイルを直に渡されたときは、拡張子が合う場合だけそれ 1 件を返す。
+ * ファイルを直に渡されたときは、拡張子が合う場合だけそのファイル 1 件を返す。
  */
 export function collectSourceFiles(target: string): string[] {
   const stats = fs.statSync(target);
@@ -625,7 +625,7 @@ function excludeIgnored(files: string[]): string[] {
   });
 
   // 0 = 除外対象あり、1 = 無し。
-  // それ以外は git 側の失敗。
+  // 0 と 1 以外は git 側の失敗。
   if (found.status !== 0 && found.status !== 1) {
     return files;
   }
@@ -637,7 +637,7 @@ function excludeIgnored(files: string[]): string[] {
 
 /**
  * 既定の対象はリポジトリの構成に対する見込みなので、無いディレクトリは黙って飛ばす。
- * 引数で名指しされた場所が無いのは打ち間違いなので、そちらは collectSourceFiles に throw させる。
+ * 引数で名指しされた場所が無いのは打ち間違いなので、引数の側は collectSourceFiles に throw させる。
  */
 function resolveTargets(argv: string[]): string[] {
   return argv.length > 0

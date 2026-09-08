@@ -31,7 +31,7 @@ describe("流し先の解決", () => {
   });
 
   it("環境変数が無ければ弾く", () => {
-    // ここで既定値にすると、`.env.local` のローカル DB へ適用される。
+    // `resolveTarget` が既定値にすると、`.env.local` のローカル DB へ適用される。
     expect(() =>
       resolveTarget("prod", {
         DIRECT_URL: "postgresql://u:p@localhost/toiito",
