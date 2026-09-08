@@ -41,8 +41,12 @@ import type { Memo, Message } from "@/lib/types";
  *
  * 背景でなく下線で出すのは、彩度を持つ背景を人間の発話の一つに留めるため（`.claude/rules/design.md`「彩度の規律」）。
  * 画面の中で最も強い色が、自分で付けたメモになる。
+ *
+ * 触れていないあいだ琥珀を薄めるのは、読んでいる最中の下線が本文と競らないようにするため。
+ * 濃さで触れている区間を示すので、`group` を持つ `Link` の外でこの装飾を使わない。
  */
-const UNDERLINE_STYLE = "underline decoration-mark decoration-1";
+const UNDERLINE_STYLE =
+  "underline decoration-mark/55 decoration-1 group-hover:decoration-mark group-focus-visible:decoration-mark";
 
 /** 一本目の下線と文字の間隔（px）。 */
 const UNDERLINE_OFFSET = 4;
@@ -201,6 +205,7 @@ function SegmentText({
         data-segment-index={index}
         aria-describedby={previewId}
         draggable={false}
+        className="group"
         onMouseEnter={openPreview}
         onMouseLeave={closePreview}
         onFocus={openPreview}
