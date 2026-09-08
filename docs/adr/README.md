@@ -91,6 +91,7 @@ ADR にしない側へ倒す。
 | [0022](0022-session-security.md) | セッションの守りを既定に委ねず、明示と実際の応答で持つ | 2026-09-01 | 採用 |
 | [0023](0023-retire-next-md.md) | 申し送りの層（`NEXT.md`）を畳む | 2026-09-01 | 採用 |
 | [0024](0024-env-file-scope.md) | `.env*` を Claude が触ってよい範囲を、読みと書きで別々に引く | 2026-09-02 | 採用 |
+| [0025](0025-turn-atomicity-and-pending-utterance.md) | 一往復は三行が揃ってから messages へ入れ、失敗した発話は pending_messages へ残す | 2026-09-02 | 採用 |
 | [0026](0026-defer-streaming.md) | AI 応答のストリーミング化を、残す摩擦の側に立って見送る | 2026-09-03 | 採用 |
 | [0027](0027-rules-under-claude.md) | コーディング規約は `.claude/rules/` に置き、`CODING.md` はルートから消す | 2026-09-06 | 採用 |
 | [0028](0028-docs-under-docs.md) | 器自身の文書を `docs/` へ寄せ、`DESIGN.md` を規範と記述に分ける | 2026-09-06 | 採用 |

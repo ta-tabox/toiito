@@ -26,6 +26,7 @@ import { randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 import { DATABASE_URL } from "@/lib/config";
+import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
 import type {
   Memo,
@@ -319,6 +320,9 @@ export async function latestSession(
  *
  * 既存のセッションは閉じず、そのまま残す。
  * 何度戻ったかが読み返せることが目的。
+ *
+ * この問いの `pending_messages` の行も、同じトランザクションで削除する。
+ * 再送の UI は最新のセッションにしか出ないので、残したまま新しいセッションを作ると再送できない行になる。
  */
 export async function createSession(
   owner: OwnerId,
@@ -326,7 +330,13 @@ export async function createSession(
 ): Promise<Session> {
   await requireOwnedQuestion(owner, questionId);
 
-  return db().dialogueSession.create({ data: { question_id: questionId } });
+  return db().$transaction(async (tx) => {
+    await tx.pendingMessage.deleteMany({
+      where: { session: { question_id: questionId } },
+    });
+
+    return tx.dialogueSession.create({ data: { question_id: questionId } });
+  });
 }
 
 /**
@@ -401,6 +411,73 @@ export async function addMessage(
   return db().message.create({
     data: { session_id: sessionId, speaker, body },
   });
+}
+
+/**
+ * human / ai_a / ai_b の三行を `messages` へ追記し、`pending_messages` の行を削除する。
+ *
+ * 三行が揃わない turn を残さないため、一トランザクションで行う（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+ * 削除を `body` でも絞り、一致しなければ何もしない `deleteMany` を使うのは、再送を待つあいだに次の発話が送られて `pending_messages` の行が差し替わったとき、その行まで削除しないため。
+ */
+export async function commitTurn(
+  owner: OwnerId,
+  sessionId: string,
+  bodies: { human: string; ai_a: string; ai_b: string },
+): Promise<void> {
+  await requireOwnedSession(owner, sessionId);
+
+  await db().$transaction(async (tx) => {
+    for (const speaker of ["human", "ai_a", "ai_b"] as const) {
+      await tx.message.create({
+        data: { session_id: sessionId, speaker, body: bodies[speaker] },
+      });
+    }
+
+    await tx.pendingMessage.deleteMany({
+      where: { session_id: sessionId, body: bodies.human },
+    });
+  });
+}
+
+/**
+ * 人間の発話を `pending_messages` へ書き込む。
+ * 行が既にあれば上書きする。
+ *
+ * 長さをここで検査するのは、`messages` へ入る本文が必ずこの関数を通るため。
+ */
+export async function savePendingBody(
+  owner: OwnerId,
+  sessionId: string,
+  body: string,
+): Promise<void> {
+  await requireOwnedSession(owner, sessionId);
+
+  if (body.length > MESSAGE_BODY_MAX_LENGTH) {
+    throw new Error(
+      `savePendingBody: body length (${body.length}) exceeds limit (${MESSAGE_BODY_MAX_LENGTH}) for session ${sessionId}`,
+    );
+  }
+
+  await db().pendingMessage.upsert({
+    where: { session_id: sessionId },
+    create: { session_id: sessionId, body },
+    update: { body },
+  });
+}
+
+/**
+ * `pending_messages` の本文を返す。
+ * 行が無ければ undefined を返す（直前の一往復が完了していれば行は無い）。
+ */
+export async function getPendingBody(
+  owner: OwnerId,
+  sessionId: string,
+): Promise<string | undefined> {
+  const pending = await db().pendingMessage.findFirst({
+    where: { session_id: sessionId, session: { question: { user_id: owner } } },
+  });
+
+  return pending?.body;
 }
 
 /**

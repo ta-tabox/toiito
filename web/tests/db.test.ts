@@ -380,8 +380,11 @@ describe("所有権", () => {
   }
 
   it("読み出しは、アクセス権の無い問いを一件も返さない", async () => {
-    const { question, session, message } = await otherWithOneOfEach();
+    const { other, question, session, message } = await otherWithOneOfEach();
     await db.createQuestion(owner, "自分の問い");
+
+    // 行が在るときだけ意味のある検査になるので、`other` に一件作ってから読む。
+    await db.savePendingBody(other, session.id, "アクセス権の無い未送信の発話");
 
     expect((await db.listQuestions(owner)).map((q) => q.body)).toEqual([
       "自分の問い",
@@ -392,6 +395,7 @@ describe("所有権", () => {
     expect(await db.listSessionsWithKeywords(owner, question.id)).toEqual([]);
     expect(await db.listMessages(owner, session.id)).toEqual([]);
     expect(await db.listMemosForSession(owner, session.id)).toEqual([]);
+    expect(await db.getPendingBody(owner, session.id)).toBeUndefined();
     expect(
       (await db.listMemosWithContext(owner)).map((m) => m.message_body),
     ).not.toContain(message.body);
@@ -411,6 +415,16 @@ describe("所有権", () => {
     ).rejects.toThrow(/問いが見つからない/);
     await expect(
       db.addMessage(owner, session.id, "human", "割り込み"),
+    ).rejects.toThrow(/セッションが見つからない/);
+    await expect(
+      db.savePendingBody(owner, session.id, "割り込み"),
+    ).rejects.toThrow(/セッションが見つからない/);
+    await expect(
+      db.commitTurn(owner, session.id, {
+        human: "割り込み",
+        ai_a: "具体の応答",
+        ai_b: "抽象の応答",
+      }),
     ).rejects.toThrow(/セッションが見つからない/);
     await expect(db.addMemo(owner, message.id, 0, 2, "横取り")).rejects.toThrow(
       /message not found/,

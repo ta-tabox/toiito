@@ -99,9 +99,27 @@ model DialogueSession {
 
   question Question  @relation(fields: [question_id], references: [id])
   messages Message[]
+  pending  PendingMessage?
 
   @@index([question_id])
   @@map("sessions")
+}
+
+/// 送信されたが、一往復が完了していない人間の発話。
+///
+/// `messages` へは human / ai_a / ai_b の三行が同時に入るため、AI 呼び出しが失敗すると発話が残らない。
+/// この行があることが、直前の送信が失敗した状態を表す（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+///
+/// 1 セッションに 1 行なので `session_id` が主キー。
+/// `messages` と違って更新も削除もする。
+model PendingMessage {
+  session_id String   @id @db.Uuid
+  body       String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  session DialogueSession @relation(fields: [session_id], references: [id])
+
+  @@map("pending_messages")
 }
 
 /// 発話。人間 + AI 二体の三者。

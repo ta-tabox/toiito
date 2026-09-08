@@ -11,18 +11,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { callPersona } from "@/lib/ai";
-import { AI_PROVIDERS } from "@/lib/ai/providers";
 import { getCurrentUser } from "@/lib/current-user";
-import {
-  addMemo,
-  addMessage,
-  createQuestion,
-  createSession,
-  getQuestion,
-  listMessages,
-} from "@/lib/db";
-import { loadPersona } from "@/lib/personas";
+import { addMemo, createQuestion, createSession } from "@/lib/db";
+import { personaCalls, retryTurn, runTurn } from "@/lib/turn";
 
 /** 問いを投入し、その対話画面へ送る。 */
 export async function createQuestionAction(formData: FormData) {
@@ -44,10 +35,7 @@ export async function newSessionAction(questionId: string) {
   revalidatePath(`/q/${questionId}`);
 }
 
-/**
- * 人間の発話 → ai_a（具体）→ ai_b（抽象）の逐次呼び出し。
- * 並列にしない: ai_b は ai_a への応答であることに意味がある（衝突と転位）。
- */
+/** 発話を送って一往復を回す。 */
 export async function speakAction(
   questionId: string,
   sessionId: string,
@@ -59,34 +47,15 @@ export async function speakAction(
   }
 
   const owner = (await getCurrentUser()).id;
-  const question = await getQuestion(owner, questionId);
-  if (!question) {
-    throw new Error("問いが見つからない");
-  }
+  await runTurn({ owner, questionId, sessionId, body, calls: personaCalls() });
 
-  await addMessage(owner, sessionId, "human", body);
+  revalidatePath(`/q/${questionId}`);
+}
 
-  const aiA = await callPersona(
-    {
-      id: "ai_a",
-      prompt: loadPersona("ai_a"),
-      provider: AI_PROVIDERS.concrete,
-    },
-    question,
-    await listMessages(owner, sessionId),
-  );
-  await addMessage(owner, sessionId, "ai_a", aiA);
-
-  const aiB = await callPersona(
-    {
-      id: "ai_b",
-      prompt: loadPersona("ai_b"),
-      provider: AI_PROVIDERS.abstract,
-    },
-    question,
-    await listMessages(owner, sessionId),
-  );
-  await addMessage(owner, sessionId, "ai_b", aiB);
+/** `pending_messages` に残っている発話で、一往復をもう一度実行する。 */
+export async function retryTurnAction(questionId: string, sessionId: string) {
+  const owner = (await getCurrentUser()).id;
+  await retryTurn({ owner, questionId, sessionId, calls: personaCalls() });
 
   revalidatePath(`/q/${questionId}`);
 }
