@@ -69,7 +69,8 @@ const DEFAULT_TARGETS = ["src", "scripts", "tests"];
  * 語はリポジトリごとに変わるが、規則そのものは変わらない。
  *
  * 比喩と個人語彙は書き手には一意でも、このリポジトリの md を読んでいない読者には辞書が無い。
- * 語の正は `.claude/rules/coding.md`「コメント」節で、ここはその一覧を機械が読める形へ写したもの。
+ * 語の正は skill `coding-standards`「語彙」節の表で、ここはその一覧を機械が読める形へ写したもの。
+ * `.claude/rules/coding.md`「コメント」節は一覧を持たず、判定手順（英語への直訳）だけを持つ。
  */
 const BANNED_WORDS: ReadonlyArray<{ word: string; instead: string }> = [
   { word: "引く", instead: "取得する / 検索する" },
