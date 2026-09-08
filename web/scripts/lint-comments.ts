@@ -56,20 +56,32 @@ const DEFAULT_TARGETS = ["src", "scripts", "tests"];
  * 語はリポジトリごとに変わるが、規則そのものは変わらない。
  *
  * 比喩と個人語彙は書き手には一意でも、このリポジトリの md を読んでいない読者には辞書が無い。
- * 語の正は `.claude/rules/coding.md`「コメント」節で、`BANNED_WORDS` はその一覧を機械が読める形へ写したもの。
+ * 語の正は skill `coding-standards`「語彙」節の表で、`BANNED_WORDS` はその一覧を機械が読める形へ写したもの。
+ * `.claude/rules/coding.md`「コメント」節は一覧を持たず、判定手順（英語への直訳）だけを持つ。
+ *
+ * `allow` は、その語を含むが禁止の対象ではない複合語。
+ * 判定の前に本文から取り除くので、`入口` の `口` は報告しない。
  */
-const BANNED_WORDS: ReadonlyArray<{ word: string; instead: string }> = [
+const BANNED_WORDS: ReadonlyArray<{
+  word: string;
+  instead: string;
+  allow?: readonly string[];
+}> = [
   { word: "引く", instead: "取得する / 検索する" },
   { word: "落とす", instead: "throw する / 削除する / 拒否する" },
   { word: "倒す", instead: "既定値にする / フォールバックする" },
   { word: "畳む", instead: "まとめる / 変換する / 閉じる" },
   { word: "流す", instead: "適用する / デプロイする / 実行する" },
-  { word: "弾く", instead: "拒否する" },
+  { word: "弾く", instead: "拒否する / 除外する" },
   { word: "握る", instead: "保持する / 無視する" },
-  { word: "掛ける", instead: "設定する" },
-  { word: "口", instead: "エントリポイント" },
+  { word: "掛ける", instead: "設定する / 適用する" },
+  { word: "口", instead: "エントリポイント", allow: ["入口", "出口", "窓口"] },
   { word: "関門", instead: "検証" },
-  { word: "印", instead: "フラグ" },
+  {
+    word: "印",
+    instead: "フラグ",
+    allow: ["矢印", "目印", "印字", "印刷", "印象"],
+  },
   { word: "登録簿", instead: "レジストリ" },
   { word: "受け皿", instead: "既定の行" },
   { word: "素通し", instead: "検証なしで通す" },
@@ -343,10 +355,19 @@ function checkOneSentencePerLine(
 }
 
 /**
+ * `allow` に列挙した複合語を `text` から取り除く。
+ *
+ * 語ごと除くとその語の真陽性まで検出しなくなるので、語でなく複合語の側で絞る。
+ */
+function stripAllowed(text: string, allow: readonly string[]): string {
+  return allow.reduce((acc, word) => acc.split(word).join(""), text);
+}
+
+/**
  * 規約が禁じた語をコメントが使っていないかを見る。
  *
- * 判定は語の部分一致で、活用も前後の文字も見ない。
- * `印` が `印字` に当たるような誤検出は、実例を見てから語を減らすか絞るかを決める。
+ * 判定は語の部分一致で、活用は見ない。
+ * 語を含むが対象ではない複合語は `allow` へ列挙し、`stripAllowed` が判定の前に取り除く。
  */
 function checkBannedWords(
   source: ts.SourceFile,
@@ -359,7 +380,11 @@ function checkBannedWords(
       const prose = line.text.replace(INLINE_CODE, "");
 
       for (const banned of BANNED_WORDS) {
-        if (!prose.includes(banned.word)) {
+        const scanned = banned.allow
+          ? stripAllowed(prose, banned.allow)
+          : prose;
+
+        if (!scanned.includes(banned.word)) {
           continue;
         }
 
