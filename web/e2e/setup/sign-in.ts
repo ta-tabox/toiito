@@ -7,14 +7,19 @@
  * `page.request` はそのページと cookie を共有するので、この後の `page.goto` はサインイン済みで始まる。
  */
 
+import { E2E_BASE_URL } from "@e2e/setup/base-url";
 import type { Page } from "@playwright/test";
 
 /**
  * `email` のユーザーとしてサインインする。
  * 失敗したら理由を添えて throw する。
+ *
+ * Origin を自分で名乗るのは、Better Auth が cookie を持つ POST に対して origin の照合を要求するため。
+ * ブラウザはフォームの送信に Origin を付けるが、`page.request` は付けないので、2 回目以降のサインインが 403 になる。
  */
 export async function signIn(page: Page, email: string): Promise<void> {
   const response = await page.request.post("/api/auth/sign-in/fake", {
+    headers: { origin: E2E_BASE_URL },
     data: { email },
   });
 

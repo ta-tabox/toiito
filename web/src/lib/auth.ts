@@ -56,20 +56,13 @@ function createAuth() {
     appName: "toiito",
     secret: config.secret,
 
-    // Google は redirect URI の事前登録を要求するので、Google を設定するときだけ基点を明示する。
-    // Google を設定しない Preview と E2E では、Better Auth がリクエストのヘッダから組み立てる。
-    baseURL: config.google?.baseUrl,
+    // 未設定なら Better Auth がリクエストのヘッダから基点を組み立てる。
+    // 組み立てさせると信頼する origin もヘッダから決まるので、URL が固定できる環境では必ず設定する。
+    baseURL: config.baseUrl,
 
     database: prismaAdapter(authDatabaseClient(), { provider: "postgresql" }),
 
-    socialProviders: config.google
-      ? {
-          google: {
-            clientId: config.google.clientId,
-            clientSecret: config.google.clientSecret,
-          },
-        }
-      : {},
+    socialProviders: config.google ? { google: config.google } : {},
 
     session: {
       expiresIn: SESSION_EXPIRES_IN_SECONDS,

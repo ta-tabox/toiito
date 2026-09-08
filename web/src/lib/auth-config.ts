@@ -22,21 +22,24 @@ type AuthEnv = {
   readonly [key: string]: string | undefined;
 };
 
-/**
- * Google OAuth のクライアントと、callback の URL を組み立てる基点。
- *
- * `baseUrl` を同じ型へ入れてあるのは、Google を設定するなら基点も要るという条件を型で表すため。
- * Google は redirect URI の事前登録を要求するので、リクエストのヘッダから基点を組み立てると登録した URI と食い違う。
- */
+/** Google OAuth のクライアント。 */
 export type GoogleClient = {
   readonly clientId: string;
   readonly clientSecret: string;
-  readonly baseUrl: string;
 };
 
 /** 認証の設定。 */
 export type AuthConfig = {
   readonly secret: string;
+
+  /**
+   * cookie と callback の URL を組み立てる基点。
+   *
+   * 未設定なら Better Auth がリクエストのヘッダから組み立てる。
+   * 組み立てさせるとヘッダを名乗った相手が信頼される側へ入るので、Preview のように URL が動く環境でだけ未設定にする。
+   */
+  readonly baseUrl: string | undefined;
+
   readonly allowedEmails: readonly string[];
   readonly google: GoogleClient | undefined;
   readonly isFakeLoginEnabled: boolean;
@@ -48,10 +51,12 @@ export type AuthConfig = {
  * 必須の変数が欠けている場合と、サインインの手段が一つも設定されていない場合は throw する。
  */
 export function readAuthConfig(env: AuthEnv): AuthConfig {
+  const baseUrl = env.BETTER_AUTH_URL;
   const config: AuthConfig = {
     secret: readSecret(env),
+    baseUrl,
     allowedEmails: readAllowedEmails(env),
-    google: readGoogleClient(env),
+    google: readGoogleClient(env, baseUrl),
     isFakeLoginEnabled: readFakeLoginEnabled(env),
   };
 
@@ -118,10 +123,13 @@ function readAllowedEmails(env: AuthEnv): readonly string[] {
  * Google OAuth のクライアントを読む。
  * `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET` の両方が未設定なら undefined を返す。
  *
- * 片方だけ設定されている場合と、`BETTER_AUTH_URL` が欠けている場合は throw する。
+ * 片方だけ設定されている場合と、`baseUrl` が undefined の場合は throw する。
  * 片方だけの状態は Google を使うのか使わないのかが読み取れないので、Google 抜きで起動する側へフォールバックしない。
  */
-function readGoogleClient(env: AuthEnv): GoogleClient | undefined {
+function readGoogleClient(
+  env: AuthEnv,
+  baseUrl: string | undefined,
+): GoogleClient | undefined {
   const clientId = env.GOOGLE_CLIENT_ID;
   const clientSecret = env.GOOGLE_CLIENT_SECRET;
 
@@ -135,15 +143,13 @@ function readGoogleClient(env: AuthEnv): GoogleClient | undefined {
     );
   }
 
-  const baseUrl = env.BETTER_AUTH_URL;
-
   if (!baseUrl) {
     throw new Error(
       "Google OAuth を設定するなら BETTER_AUTH_URL も設定する。Google が redirect URI の事前登録を要求するので、callback の URL をリクエストのヘッダから組み立てると登録した URI と食い違う",
     );
   }
 
-  return { clientId, clientSecret, baseUrl };
+  return { clientId, clientSecret };
 }
 
 /**
@@ -157,7 +163,7 @@ function readFakeLoginEnabled(env: AuthEnv): boolean {
 
   if (isEnabled && env.VERCEL_ENV === "production") {
     throw new Error(
-      "TOIITO_FAKE_LOGIN は本番（VERCEL_ENV=production）では設定できない。Preview と E2E だけが使う（docs/adr/0032-login-and-fake-sign-in.md 決定 4）",
+      "TOIITO_FAKE_LOGIN は本番（VERCEL_ENV=production）では設定できない。Preview と E2E だけが使う（docs/adr/0032-login-and-fake-sign-in.md 決定 3）",
     );
   }
 

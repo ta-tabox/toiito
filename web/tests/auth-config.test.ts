@@ -70,8 +70,8 @@ describe("readAuthConfig", () => {
     expect(config.google).toEqual({
       clientId: "client-id",
       clientSecret: "client-secret",
-      baseUrl: "https://toiito.example",
     });
+    expect(config.baseUrl).toBe("https://toiito.example");
     expect(config.isFakeLoginEnabled).toBe(false);
   });
 
@@ -80,6 +80,10 @@ describe("readAuthConfig", () => {
 
     expect(config.google).toBeUndefined();
     expect(config.isFakeLoginEnabled).toBe(true);
+  });
+
+  it("Google を設定しなければ BETTER_AUTH_URL は無くてよい", () => {
+    expect(readAuthConfig(env()).baseUrl).toBeUndefined();
   });
 
   it("本番で TOIITO_FAKE_LOGIN=1 なら投げる", () => {

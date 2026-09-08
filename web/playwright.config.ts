@@ -13,20 +13,16 @@
  * next dev も next start も Node で走るので、Edge でだけ環境変数が読めない類の失敗は Playwright では出ない（本番そのものを叩く確認は `docs/DEPLOY.md`「ログイン」）。
  */
 
+import { E2E_BASE_URL, E2E_PORT } from "@e2e/setup/base-url";
 import { E2E_DATABASE_URL } from "@e2e/setup/e2e-database-url";
 import { defineConfig, devices } from "@playwright/test";
 import { SEED_USERS } from "@scripts/seed/users";
-
-/** 開発サーバー（3000）と衝突させないためのポート。 */
-const PORT = 3100;
 
 /**
  * 開発サーバーと分けるビルド出力先。
  * next.config.ts が TOIITO_DIST_DIR として受け取る。
  */
 const DIST_DIR = ".next-e2e";
-
-const BASE_URL = `http://localhost:${PORT}`;
 
 /**
  * E2E のサーバーがセッションのトークンの署名に使う秘密。
@@ -47,7 +43,7 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"], baseURL: BASE_URL },
+      use: { ...devices["Desktop Chrome"], baseURL: E2E_BASE_URL },
     },
   ],
 
@@ -56,8 +52,8 @@ export default defineConfig({
       // データベースの作り直しを dev サーバーの起動と同じ一本に繋ぐ。
       // Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、globalSetup へ置くと順序が逆になる。
       // 接続先は env で渡す（作り直す側はそれを読むだけで、決める場所をもう一つ持たない）。
-      command: `node e2e/setup/reset-database.ts && pnpm exec next dev --port ${PORT}`,
-      url: BASE_URL,
+      command: `node e2e/setup/reset-database.ts && pnpm exec next dev --port ${E2E_PORT}`,
+      url: E2E_BASE_URL,
 
       // 前の走りが残したサーバーは掴まない。
       // 掴むと、作り直す前のデータベースへ繋いだままの相手を相手取ることになる。
@@ -74,6 +70,10 @@ export default defineConfig({
 
         BETTER_AUTH_SECRET: AUTH_SECRET,
         TOIITO_FAKE_LOGIN: "1",
+
+        // 基点を明示しないと、Better Auth は信頼する origin をリクエストのヘッダから決める。
+        // 別 origin を名乗る POST が拒まれることを見る spec があるので、ここは固定する。
+        BETTER_AUTH_URL: E2E_BASE_URL,
 
         // シードの二人ともサインインできるようにする。
         // 二人目が入れないと、他人の問いが見えないことを二人分のセッションで確かめられない。
