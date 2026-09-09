@@ -158,15 +158,23 @@ test("重なった区間には付いているメモの数だけ下線が出て�
   const single = markedSegment(aiA, "E2E: 一つの語に");
   await expect(underlinesOf(single)).toHaveCount(1);
 
+  // 外側のメモだけが付いた区間を開くと、枠に出るのはその一件だけ。
+  await single.hover();
+  await expect(preview(page).getByRole("link")).toHaveCount(1);
+
+  const [openColor] = await underlineColorsOf(single);
+  const overlappedColors = await underlineColorsOf(overlapped);
+
+  // 触れていない隣の区間でも、枠に出ているメモの下線は濃い。
+  expect(overlappedColors).toContain(openColor);
+
+  // 同じ区間に重なっているだけで枠に出ていないメモは、薄いまま置く。
+  expect(new Set(overlappedColors).size).toBe(2);
+
   await overlapped.click();
 
   // 枠に出るのは、その区間に付いている二件の両方。
   await expect(preview(page).getByRole("link")).toHaveCount(2);
-
-  // 触れていない隣の区間も、同じメモが付いているあいだは濃さが揃う。
-  expect(await underlineColorOf(overlapped)).toBe(
-    await underlineColorOf(single),
-  );
 
   await preview(page).getByRole("link", { name: inner, exact: true }).click();
 
@@ -422,13 +430,15 @@ function preview(page: Page): Locator {
 }
 
 /**
- * 区間の下線の色。
- * 濃さの違いを見るためのもので、値そのものは実装が決める。
+ * 区間に描かれた下線の色を、本数ぶん返す。
+ *
+ * 見るのは濃さの違いだけで、値そのものも並び順も実装が決める。
+ * どの色がどのメモのものかは、下線が入れ子である以上 DOM からは決まらない。
  */
-async function underlineColorOf(marked: Locator): Promise<string> {
-  return underlinesOf(marked)
-    .first()
-    .evaluate((span) => getComputedStyle(span).textDecorationColor);
+async function underlineColorsOf(marked: Locator): Promise<string[]> {
+  return underlinesOf(marked).evaluateAll((spans) =>
+    spans.map((span) => getComputedStyle(span).textDecorationColor),
+  );
 }
 
 /**

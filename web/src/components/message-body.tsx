@@ -54,8 +54,8 @@ const UNDERLINE_STYLE = "underline decoration-1";
 /**
  * 下線の濃さ。
  *
- * 濃い側になるのは、いま開いている覗き見に出ているメモが付いた区間すべてである。
- * 触れた区間だけを濃くすると、そのメモがどこまで付いているかが分からない。
+ * 濃い側になるのは、いま開いている覗き見に出ているメモの下線だけである。
+ * 区間ごとに当てると、同じ区間に重なっているだけで枠に出ていないメモの下線まで濃くなる。
  */
 const UNDERLINE_TONE = {
   active: "decoration-mark",
@@ -210,8 +210,7 @@ function SegmentText({
     return <span data-segment-index={index}>{segment.text}</span>;
   }
 
-  const isActive =
-    open?.memos.some((memo) => segment.memoIds.includes(memo.id)) ?? false;
+  const openMemoIds = open?.memos.map((memo) => memo.id) ?? [];
 
   const showPreview = (event: SyntheticEvent<HTMLElement>) =>
     openMemoPreview(
@@ -244,29 +243,30 @@ function SegmentText({
       onClick={showPreview}
       onKeyDown={showPreviewOnKey}
     >
-      {stackedUnderlines(
-        segment.text,
-        covering.length,
-        isActive ? UNDERLINE_TONE.active : UNDERLINE_TONE.idle,
-      )}
+      {stackedUnderlines(segment.text, covering, openMemoIds)}
     </span>
   );
 }
 
 /**
- * 本文を、`count` 本の下線を重ねた入れ子の span で包む。
+ * 本文を、`covering` の一件につき一本の下線を重ねた入れ子の span で包む。
+ * `openMemoIds` に居るメモの下線だけを濃く描く。
  *
  * 一本ずつ別の span が持つのは、`text-decoration` が一つの要素につき一本しか描かないため。
  * 入れ子にすると各 span の `text-underline-offset` の位置へ一本ずつ描かれ、折り返した行にも同じ本数が付く。
  */
 function stackedUnderlines(
   text: string,
-  count: number,
-  tone: string,
+  covering: Memo[],
+  openMemoIds: string[],
 ): ReactNode {
   let stacked: ReactNode = text;
 
-  for (let depth = 0; depth < count; depth += 1) {
+  covering.forEach((memo, depth) => {
+    const tone = openMemoIds.includes(memo.id)
+      ? UNDERLINE_TONE.active
+      : UNDERLINE_TONE.idle;
+
     stacked = (
       <span
         data-memo-underline=""
@@ -278,7 +278,7 @@ function stackedUnderlines(
         {stacked}
       </span>
     );
-  }
+  });
 
   return stacked;
 }
