@@ -212,6 +212,7 @@ function SegmentText({
 
   const openMemoIds = open?.memos.map((memo) => memo.id) ?? [];
 
+  /** この区間のメモを、区間の位置へ覗き見として開く。 */
   const showPreview = (event: SyntheticEvent<HTMLElement>) =>
     openMemoPreview(
       previewKey,
@@ -219,6 +220,10 @@ function SegmentText({
       event.currentTarget.getBoundingClientRect(),
     );
 
+  /**
+   * Enter と Space で覗き見を開く。
+   * 他のキーでは何もしない。
+   */
   const showPreviewOnKey = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== "Enter" && event.key !== " ") {
       return;
@@ -226,6 +231,30 @@ function SegmentText({
 
     event.preventDefault();
     showPreview(event);
+  };
+
+  /**
+   * ポインタが離れたら閉じる。
+   * フォーカスが残っているあいだは閉じない（キーボードで開いた覗き見が、マウスが通り過ぎただけで消える）。
+   */
+  const hidePreviewOnLeave = (event: SyntheticEvent<HTMLElement>) => {
+    if (document.activeElement === event.currentTarget) {
+      return;
+    }
+
+    scheduleMemoPreviewClose();
+  };
+
+  /**
+   * フォーカスが外れたら閉じる。
+   * ポインタが乗っているあいだは閉じない。
+   */
+  const hidePreviewOnBlur = (event: SyntheticEvent<HTMLElement>) => {
+    if (event.currentTarget.matches(":hover")) {
+      return;
+    }
+
+    scheduleMemoPreviewClose();
   };
 
   return (
@@ -236,10 +265,11 @@ function SegmentText({
       tabIndex={0}
       aria-controls={PREVIEW_ID}
       aria-expanded={open?.key === previewKey}
+      className="rounded-xs focus-visible:outline-2 focus-visible:outline-mark focus-visible:outline-offset-2"
       onMouseEnter={showPreview}
-      onMouseLeave={scheduleMemoPreviewClose}
+      onMouseLeave={hidePreviewOnLeave}
       onFocus={showPreview}
-      onBlur={scheduleMemoPreviewClose}
+      onBlur={hidePreviewOnBlur}
       onClick={showPreview}
       onKeyDown={showPreviewOnKey}
     >

@@ -183,9 +183,14 @@ function PreviewPanel({ open }: { open: OpenPreview }) {
     document.addEventListener("pointerdown", closeOnOutsidePointer);
     document.addEventListener("keydown", closeOnEscape);
 
+    // 枠は画面に固定して置くので、本文がスクロールすると指している下線から離れる。
+    // window で受けるので、枠の中を縦にスクロールしても閉じない（scroll は要素から伝播しない）。
+    window.addEventListener("scroll", closeMemoPreview, { passive: true });
+
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsidePointer);
       document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("scroll", closeMemoPreview);
     };
   }, []);
 
@@ -269,24 +274,52 @@ function PreviewToggle() {
  *
  * 画面の下半分にある下線には上側へ出す。
  * 下側へ出すと枠が画面の外へ出て読めない。
+ *
+ * 縦も横も、枠の縁が画面の内側に残る位置まで戻す。
+ * 折り返して数行にまたがる下線は矩形が縦に伸びるので、上下どちらへ出しても縁が画面から出うる。
  */
 function positionNear(anchor: DOMRect): CSSProperties {
-  const rightLimit = window.innerWidth - PREVIEW_MAX_WIDTH - PREVIEW_GAP;
-  const left = Math.max(PREVIEW_GAP, Math.min(anchor.left, rightLimit));
   const size = {
     maxWidth: PREVIEW_MAX_WIDTH,
     maxHeight: PREVIEW_MAX_HEIGHT,
   };
+  const left = clampToScreen(anchor.left, window.innerWidth, PREVIEW_MAX_WIDTH);
 
   if (anchor.top > window.innerHeight / 2) {
+    const bottom = window.innerHeight - anchor.top + PREVIEW_GAP;
+
     return {
       left,
-      bottom: window.innerHeight - anchor.top + PREVIEW_GAP,
+      bottom: clampToScreen(bottom, window.innerHeight, PREVIEW_MAX_HEIGHT),
       ...size,
     };
   }
 
-  return { left, top: anchor.bottom + PREVIEW_GAP, ...size };
+  const top = anchor.bottom + PREVIEW_GAP;
+
+  return {
+    left,
+    top: clampToScreen(top, window.innerHeight, PREVIEW_MAX_HEIGHT),
+    ...size,
+  };
+}
+
+/**
+ * 枠の縁の位置を、画面の内側へ戻す。
+ * 戻す先は、`extent` の枠が縁から `PREVIEW_GAP` だけ内側に収まる位置である。
+ *
+ * 大きさに実測でなく上限（`extent`）を使うのは、枠を描く前に位置を決めるため。
+ * 上限で足りるのは、枠が上限を超えたら中を自分でスクロールさせるからである。
+ */
+function clampToScreen(
+  edge: number,
+  screenSize: number,
+  extent: number,
+): number {
+  return Math.max(
+    PREVIEW_GAP,
+    Math.min(edge, screenSize - extent - PREVIEW_GAP),
+  );
 }
 
 /**

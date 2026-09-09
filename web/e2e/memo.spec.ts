@@ -53,6 +53,11 @@ const SCENARIOS = {
     // 一語目に発話の全体を選び、二語目にその内側を選ぶ。
     words: ["二つのメモ"],
   },
+  tall: {
+    question: "E2E: 長い下線でも枠は画面の中に居るのか",
+    utterance:
+      "E2E: 狭い画面で何行にも折り返す長さの発話に、その全体を覆うメモを付ける。下線の矩形は行数のぶんだけ縦に伸びるので、下端を基準に枠を置くと枠が画面の下へはみ出す。はみ出した枠は中身が読めないので、画面の内側へ戻っていなければならない。ここまでの文がすべて一つの区間に入るよう、折り返しが二十行を超える長さまで文を足しておく。行数が足りないと下線の矩形が画面の高さに届かず、はみ出す条件そのものが作れない。矩形の上端を画面の上半分へ置いたまま下端を画面の下端の近くまで伸ばすには、この程度の長さが要る。短くすると枠が画面の中へ収まってしまい、この検査は何も見なくなる。",
+  },
   lookup: {
     question: "E2E: メモから対話へ戻れるのか",
     utterance: "E2E: 語から場面を思い出せるか試す",
@@ -179,6 +184,51 @@ test("重なった区間には付いているメモの数だけ下線が出て�
   await preview(page).getByRole("link", { name: inner, exact: true }).click();
 
   await expect(page.getByRole("dialog").getByRole("heading")).toHaveText(inner);
+});
+
+test("何行にも折り返す下線でも、覗き見の枠は画面の中に収まる", async ({
+  page,
+}) => {
+  await page.setViewportSize(NARROW_VIEWPORT);
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.tall);
+  const { utterance } = SCENARIOS.tall;
+
+  await selectTextIn(page, aiA, utterance);
+  await page
+    .getByLabel("メモ")
+    .fill("下端を基準に置くと画面の外へ出る長さのノート");
+  await page.getByRole("button", { name: "メモする" }).click();
+
+  // 区間の上端を画面の上半分へ置く。
+  // 枠は上端の位置で上下どちらへ出すかを決めるので、ここが下半分だと上側へ出てはみ出さない。
+  const marked = markedSegment(aiA, utterance);
+  const top = await marked.evaluate((span) => span.getBoundingClientRect().top);
+  await page.evaluate((dy) => window.scrollBy(0, dy), top - 300);
+
+  // 触れる前に一度離れる。
+  // メモを作った直後はポインタが区間の上に居ることがあり、同じ区間の中で動かしても mouseenter が起きない。
+  await page.mouse.move(0, 0);
+
+  // hover でなく座標で触れる。
+  // Playwright の hover は要素を画面の中へ入れ直すので、置いたばかりの位置が動く。
+  const point = await marked.evaluate((span) => {
+    const rects = [...span.getClientRects()];
+    const middle = rects[Math.floor(rects.length / 2)];
+
+    return { x: middle.left + 5, y: middle.top + middle.height / 2 };
+  });
+  await page.mouse.move(point.x, point.y);
+
+  const rect = await preview(page).evaluate((panel) => {
+    const { top: y, bottom, left, right } = panel.getBoundingClientRect();
+
+    return { top: y, bottom, left, right };
+  });
+
+  expect(rect.top).toBeGreaterThanOrEqual(0);
+  expect(rect.left).toBeGreaterThanOrEqual(0);
+  expect(rect.bottom).toBeLessThanOrEqual(NARROW_VIEWPORT.height);
+  expect(rect.right).toBeLessThanOrEqual(NARROW_VIEWPORT.width);
 });
 
 test("選択を touchend で終えてもメモの小フォームが立つ", async ({ page }) => {
