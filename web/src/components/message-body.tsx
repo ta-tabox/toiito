@@ -49,24 +49,27 @@ import type { Memo, Message } from "@/lib/types";
  *
  * 触れていないあいだ琥珀を薄めるのは、読んでいる最中の下線が本文と競らないようにするため。
  */
-const UNDERLINE_STYLE = "underline decoration-1";
+const UNDERLINE_STYLE = "underline";
 
 /**
- * 下線の濃さ。
+ * 下線の濃さと太さ。
  *
  * 濃い側になるのは、いま開いている覗き見に出ているメモの下線だけである。
  * 区間ごとに当てると、同じ区間に重なっているだけで枠に出ていないメモの下線まで濃くなる。
  */
 const UNDERLINE_TONE = {
-  active: "decoration-mark",
-  idle: "decoration-mark/55",
+  active: "decoration-mark decoration-2",
+  idle: "decoration-mark/40 decoration-1",
 };
 
 /** 一本目の下線と文字の間隔（px）。 */
 const UNDERLINE_OFFSET = 4;
 
-/** 二本目以降の下線を、一本手前の下線から離す距離（px）。 */
-const UNDERLINE_SPACING = 3;
+/**
+ * 二本目以降の下線を、一本手前の下線から離す距離（px）。
+ * 触れているあいだ下線は 2px になるので、3px にすると重なった区間で線どうしが繋がって見える。
+ */
+const UNDERLINE_SPACING = 4;
 
 /** 発話一件ぶんの、選択の読み直しと下書きの取り消し。 */
 type SelectionReader = {
