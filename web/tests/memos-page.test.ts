@@ -13,7 +13,7 @@ const currentUser = vi.hoisted(() => ({ value: undefined as unknown }));
 
 // 本物の `requireCurrentUser` は Better Auth のセッションを読むので、リクエストの外では呼べない。
 // ここで見たいのは所有者を受け取った後の描画なので、セッションの読み取りごと差し替える（サインインの検査は `e2e/auth.spec.ts`）。
-vi.mock("@/lib/current-user", () => ({
+vi.mock("@/lib/auth/current-user", () => ({
   requireCurrentUser: async () => currentUser.value,
 }));
 

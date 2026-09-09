@@ -30,7 +30,7 @@ VISION の設計原理が上位。
   同期前提の呼び出しを足さない
 - **Prisma を repo 層の外へ出さない**。
   `@prisma/client` と生成型に触れてよいのは `db.ts` だけで、UI と Server Actions が受け取るのは `types.ts` のドメイン型に限る。
-  唯一の例外は `db.ts` の `authDatabaseClient` で、Better Auth のアダプタがクライアントそのものを要求するために開けてある（呼んでよいのは `lib/auth.ts` だけ）
+  唯一の例外は `db.ts` の `authDatabaseClient` で、Better Auth のアダプタがクライアントそのものを要求するために開けてある（呼んでよいのは `lib/auth/index.ts` だけ）
 - **起動に外部プロセスが要る**ことは引き受けた前提。
   ローカル完結性は捨てている
 
@@ -48,7 +48,7 @@ VISION の設計原理が上位。
   有効にすると、取り消したセッションが `maxAge` の間はキャッシュ経路で通り、DB が権威であることがその区間だけ成り立たなくなる。
   #69（管理機能）の停止が即座に効くという要件がそこで書けなくなるので、`maxAge` を短くしても戻らない（問題は区間の長さでなく、区間が存在するかどうかにある）。
   障害時の倒れ方も逆になる——キャッシュ無しは DB へ届かなければ誰も通らないが、有りは届かなくても窓の間は通る。
-  速度が要るときに先に手を付けるのは `getCurrentUser`（`lib/current-user.ts`）の `React.cache()` で、あちらは取り消しの窓を作らない
+  速度が要るときに先に手を付けるのは `getCurrentUser`（`lib/auth/current-user.ts`）の `React.cache()` で、あちらは取り消しの窓を作らない
 - **`session.deferSessionRefresh` を有効にしない**。
   この器の DB はリードレプリカを持たないので解こうとしている問題が無く、延命の POST を撃つのはクライアントの JS なのでサーバー側から呼ぶ経路には実行する主体がいない。
   加えて `disableSessionRefresh` と組み合わせると、期限切れのセッション行が DB から一度も掃除されなくなる。
@@ -119,7 +119,7 @@ memo_links     （将来）メモ間・問い間のリンキング辺
 UI 側でやらない。
 入口の `proxy.ts` は cookie の有無しか見ない楽観的な判定なので、**他人のリソースを弾く最後の層は repo 関数になる**。
 
-**現在のユーザーを返す口は `lib/current-user.ts` の `getCurrentUser` 一つ**で、RSC と Server Action は `requireCurrentUser` を通ってから repo 関数を呼ぶ。
+**現在のユーザーを返す口は `lib/auth/current-user.ts` の `getCurrentUser` 一つ**で、RSC と Server Action は `requireCurrentUser` を通ってから repo 関数を呼ぶ。
 戻り値の `id` には印（`OwnerId`）が付いており、repo 関数は所有者としてその型しか受け取らない。
 中身は Better Auth のセッションが指す `user` 行で、未サインインなら `getCurrentUser` が undefined を返し、`requireCurrentUser` が `/login` へ送る。
 入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（`adr/0022-session-security.md` 決定 8）。
@@ -233,7 +233,7 @@ toiito/
     ├── src/
     │   ├── app/           ルーティング（問い一覧 / 対話 / メモ逆引き）
     │   ├── components/    UI 部品（メモのアンダーライン表示など）
-    │   ├── lib/           db.ts（Prisma repo 層）・auth.ts（Better Auth）・current-user.ts（現在のユーザー）・ai/（AI 呼び出し）・personas.ts・anchors.ts
+    │   ├── lib/           db.ts（Prisma repo 層）・auth/（認証と現在のユーザー）・ai/（AI 呼び出し）・personas.ts・anchors.ts
     │   ├── personas/      二体のシステムプロンプト（.md で管理）
     │   └── generated/     Prisma クライアント（生成物・gitignore）
     ├── scripts/           node が直接読む開発用スクリプト（pnpm seed・コメント検査）

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAllowedEmail, readAuthConfig } from "@/lib/auth-config";
+import { isAllowedEmail, readAuthConfig } from "@/lib/auth/config";
 
 /** サインインの手段だけを差し替えられるよう、必須の 2 本を既定で埋めた環境変数。 */
 function env(overrides: Record<string, string | undefined> = {}) {

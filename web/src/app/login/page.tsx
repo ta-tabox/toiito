@@ -12,8 +12,8 @@
 import { redirect } from "next/navigation";
 import { signInAsFakeUserAction, signInWithGoogleAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
-import { readAuthConfig } from "@/lib/auth-config";
-import { getCurrentUser } from "@/lib/current-user";
+import { readAuthConfig } from "@/lib/auth/config";
+import { getCurrentUser } from "@/lib/auth/current-user";
 
 export const dynamic = "force-dynamic";
 

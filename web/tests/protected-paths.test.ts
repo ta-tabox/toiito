@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LOGIN_PATH, requiresSignIn } from "@/lib/protected-paths";
+import { LOGIN_PATH, requiresSignIn } from "@/lib/auth/protected-paths";
 
 describe("requiresSignIn", () => {
   it("画面の 3 枚はサインインを要求する", () => {

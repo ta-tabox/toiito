@@ -22,7 +22,7 @@ import {
 import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
 import { RetryForm, SpeakForm } from "@/components/speak-form";
-import { requireCurrentUser } from "@/lib/current-user";
+import { requireCurrentUser } from "@/lib/auth/current-user";
 import {
   getPendingBody,
   getQuestion,

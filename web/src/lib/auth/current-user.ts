@@ -4,10 +4,10 @@
  * RSC と Server Action は `requireCurrentUser` を経由してから `db.ts` の repo 関数を呼ぶ。
  * 「このユーザーを通してよいか」の判定を後から 1 箇所へ足せるので、経路を 1 本に絞る（`docs/adr/0022-session-security.md` 決定 9）。
  * その判定はまだ無く、いま見ているのは Better Auth のセッションが在るかどうかだけである。
- * `better-auth` と `@/lib/auth` を import してよいのはこのファイルとルートハンドラだけで、`biome.json` の `noRestrictedImports` が検査する。
+ * `@/lib/auth` を import してよいのはこのファイルとルートハンドラだけで、`biome.json` の `noRestrictedImports` が検査する。
  *
  * 誰がサインインできるかは決めない。
- * 許可リストの照合は `auth.ts` の `databaseHooks.session.create.before` が行う。
+ * 許可リストの照合は `auth/index.ts` の `databaseHooks.session.create.before` が行う。
  *
  * エントリポイントは `requireCurrentUser`。
  */
@@ -16,8 +16,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { auth } from "@/lib/auth";
+import { LOGIN_PATH } from "@/lib/auth/protected-paths";
 import { getUserById } from "@/lib/db";
-import { LOGIN_PATH } from "@/lib/protected-paths";
 import type { User } from "@/lib/types";
 
 /** サインインした後に戻る画面。 */

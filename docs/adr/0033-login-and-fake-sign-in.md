@@ -150,7 +150,7 @@ redirect が中に入っていると、その画面から呼べない。
 
 **代わりに、失敗したときの戻し方を残す。**
 ログインが本番で動かなかった場合、外周が開くのではなく本番が閉じる。
-`proxy.ts` は cookie が無ければ `/login` へ送り、`auth.ts` は設定が欠けていれば最初のリクエストで throw する。
+`proxy.ts` は cookie が無ければ `/login` へ送り、`lib/auth/index.ts` は設定が欠けていれば最初のリクエストで throw する。
 どちらも検証なしで通す側へは倒れないので、失敗の形は「誰でも入れる」ではなく「誰も入れない」になる。
 戻すのは Vercel の Instant Rollback で、これはルーティング層の切り替えなので秒で終わる（`DEPLOY.md`「切り戻し」）。
 
@@ -179,7 +179,10 @@ redirect が中に入っていると、その画面から呼べない。
   アプリと同じクライアントを返すので接続プールは 1 本のままである
 - **`auth()` は関数で、最初の呼び出しまで環境変数を読まない**。
   `next build` がルートハンドラのモジュールを評価して設定を集めるので、モジュールの評価時に読むと認証の環境変数を持たない CI でビルドが失敗する
-- `biome.json` の `noRestrictedImports` の除外が 4 ファイルになる（`auth.ts` / `auth-fake-login.ts` / `current-user.ts` / `app/api/auth/[...all]/route.ts`）
+- **認証のモジュールは `src/lib/auth/` へまとまる**（`index.ts` / `config.ts` / `fake-login.ts` / `current-user.ts` / `protected-paths.ts`）。
+  0031 の帰結が書いた `src/lib/current-user.ts` は `src/lib/auth/current-user.ts` を指す。
+  `@/lib/auth` の解決先が `auth.ts` から `auth/index.ts` へ移るだけなので、import する側の綴りは動かない
+- `biome.json` の `noRestrictedImports` の除外が 4 ファイルになる（`lib/auth/index.ts` / `lib/auth/fake-login.ts` / `lib/auth/current-user.ts` / `app/api/auth/[...all]/route.ts`）
 - **0022 の決定 8 の「移行の順序」は動かない**。
   述語が `TOIITO_ALLOWED_EMAILS` の配列から DB のフラグへ移るときの 4 段は、そのまま効く
 

@@ -1,12 +1,12 @@
 /**
  * Better Auth のインスタンス。
  *
- * 設定の読み取りは `auth-config.ts`、Google を経ないサインインは `auth-fake-login.ts` が持ち、`auth.ts` は配線だけを持つ。
+ * 設定の読み取りは `config.ts`、Google を経ないサインインは `fake-login.ts` が持ち、`auth/index.ts` は配線だけを持つ。
  * セッションを読む処理も持たない。
  * 読むのは `current-user.ts` だけで、`biome.json` の `noRestrictedImports` が `@/lib/auth` の import をそのファイルとルートハンドラへ限定する（`docs/adr/0022-session-security.md` 決定 9）。
  *
  * リソースごとの所有者の照合も持たない。
- * `auth.ts` が決めるのはサインインを許すかどうかまでで、他人のリソースを拒否するのは `db.ts` の repo 関数である。
+ * `auth/index.ts` が決めるのはサインインを許すかどうかまでで、他人のリソースを拒否するのは `db.ts` の repo 関数である。
  *
  * エントリポイントは `auth`。
  */
@@ -14,8 +14,8 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
-import { isAllowedEmail, readAuthConfig } from "@/lib/auth-config";
-import { fakeLogin } from "@/lib/auth-fake-login";
+import { isAllowedEmail, readAuthConfig } from "@/lib/auth/config";
+import { fakeLogin } from "@/lib/auth/fake-login";
 import { authDatabaseClient, getUserById } from "@/lib/db";
 
 /**

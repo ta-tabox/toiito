@@ -16,9 +16,9 @@ import {
   signInAsFakeUser,
   signOutCurrentUser,
   startGoogleSignIn,
-} from "@/lib/current-user";
+} from "@/lib/auth/current-user";
+import { LOGIN_PATH } from "@/lib/auth/protected-paths";
 import { addMemo, createQuestion, createSession } from "@/lib/db";
-import { LOGIN_PATH } from "@/lib/protected-paths";
 import { personaCalls, retryTurn, runTurn } from "@/lib/turn";
 
 /** 問いを投入し、その対話画面へ送る。 */

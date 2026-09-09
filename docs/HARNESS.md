@@ -211,9 +211,9 @@ CSRF の検査には対照を置く。
 1. **ロジックは lib 層へ寄せる**。
    UI コンポーネントや Server Actions にロジックを埋めない。
    actions.ts は「lib を呼ぶ配線」に留める
-2. **`process.env` を読むのは、その値を使う層の入口だけ**（`lib/config.ts` が DB 接続先、`lib/ai/providers.ts` が AI プロバイダ、`lib/auth.ts` が認証）。
+2. **`process.env` を読むのは、その値を使う層の入口だけ**（`lib/config.ts` が DB 接続先、`lib/ai/providers.ts` が AI プロバイダ、`lib/auth/index.ts` が認証）。
    探す側が使う場所から辿れるよう、解決済みの値は使う層に置く。
-   env から値への写像と既定値は、その値を使う側のモジュールが純関数として持つ（`lib/ai/anthropic.ts` の `readAnthropicSettings` と `ANTHROPIC_DEFAULTS`、`lib/auth-config.ts` の `readAuthConfig`）。
+   env から値への写像と既定値は、その値を使う側のモジュールが純関数として持つ（`lib/ai/anthropic.ts` の `readAnthropicSettings` と `ANTHROPIC_DEFAULTS`、`lib/auth/config.ts` の `readAuthConfig`）。
    他のモジュールは解決済みの値を参照する。
    呼び出しごとに変わりうる値は引数で受け取る。
    env の読み方そのものは、その純関数へ env を模した object を渡して検査する。

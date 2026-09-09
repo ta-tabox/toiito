@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Pill } from "@/components/ui/pill";
 import { Row } from "@/components/ui/row";
-import { requireCurrentUser } from "@/lib/current-user";
+import { requireCurrentUser } from "@/lib/auth/current-user";
 import { listQuestions, questionText } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
 

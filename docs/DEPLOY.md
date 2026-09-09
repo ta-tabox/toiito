@@ -168,7 +168,7 @@ Preview の URL は PR ごとに変わり、Google は redirect URI の事前登
 Preview のサインインは `TOIITO_FAKE_LOGIN=1` が開ける経路だけで、ログインの画面に許可リストの email がボタンとして並ぶ。
 
 **認証の 3 本を落とさない**。
-欠けていると `auth.ts` が最初のリクエストで投げ、Preview の全ページが 500 になる。
+欠けていると `lib/auth/index.ts` が最初のリクエストで投げ、Preview の全ページが 500 になる。
 `next build` は設定を読まないのでビルドは通るため、**Vercel のチェックは緑のまま中身だけ壊れる**。
 
 **Preview の露出は引き受けている**（`adr/0022-session-security.md` 決定 10）。
@@ -283,7 +283,7 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 2. すぐに Google でサインインし、下の「効きの確認」を通す
 
 **失敗したときは開くのでなく閉じる**。
-`proxy.ts` は cookie が無ければ `/login` へ送り、`auth.ts` は設定が欠けていれば最初のリクエストで throw する。
+`proxy.ts` は cookie が無ければ `/login` へ送り、`lib/auth/index.ts` は設定が欠けていれば最初のリクエストで throw する。
 それでも直らなければ Vercel の Instant Rollback で前のデプロイへ戻す（下の「切り戻し」）。
 
 Basic 認証の環境変数 2 本は、どのコードからも読まれなくなる。

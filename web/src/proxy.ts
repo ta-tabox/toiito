@@ -7,12 +7,12 @@
  *
  * matcher を書かず全リクエストを通す。
  * 除外の書き方を誤ると、その経路だけ判定の外に出たことが誰にも見えない。
- * どの経路が未サインインでも開くかは `@/lib/protected-paths` が持つ。
+ * どの経路が未サインインでも開くかは `@/lib/auth/protected-paths` が持つ。
  */
 
 import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
-import { LOGIN_PATH, requiresSignIn } from "@/lib/protected-paths";
+import { LOGIN_PATH, requiresSignIn } from "@/lib/auth/protected-paths";
 
 /** 未サインインのリクエストをログインの画面へ送る。 */
 export function proxy(request: NextRequest): NextResponse {

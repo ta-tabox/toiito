@@ -14,7 +14,7 @@ import Link from "next/link";
 import { MemoDialog } from "@/components/memo-dialog";
 import { Row } from "@/components/ui/row";
 import { excerptParts } from "@/lib/anchors";
-import { requireCurrentUser } from "@/lib/current-user";
+import { requireCurrentUser } from "@/lib/auth/current-user";
 import { listMemosWithContext } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
