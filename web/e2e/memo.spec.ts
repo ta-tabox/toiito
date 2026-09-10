@@ -43,6 +43,21 @@ const SCENARIOS = {
       "E2E: 二つの発話を続けて選んでも入力欄は一つに保たれる。やめれば何も残らない。",
     words: ["二つの発話を続けて", "やめれば何も残らない"],
   },
+  preview: {
+    question: "E2E: 下線に触れるとメモが読めるのか",
+    utterance: "E2E: 触れただけで中身が見えてほしい",
+  },
+  overlap: {
+    question: "E2E: 重なったメモは重なって見えるのか",
+    utterance: "E2E: 一つの語に二つのメモを重ねて付ける",
+    // 一語目に発話の全体を選び、二語目にその内側を選ぶ。
+    words: ["二つのメモ"],
+  },
+  tall: {
+    question: "E2E: 長い下線でも枠は画面の中に居るのか",
+    utterance:
+      "E2E: 狭い画面で何行にも折り返す長さの発話に、その全体を覆うメモを付ける。下線の矩形は行数のぶんだけ縦に伸びるので、下端を基準に枠を置くと枠が画面の下へはみ出す。はみ出した枠は中身が読めないので、画面の内側へ戻っていなければならない。ここまでの文がすべて一つの区間に入るよう、折り返しが二十行を超える長さまで文を足しておく。行数が足りないと下線の矩形が画面の高さに届かず、はみ出す条件そのものが作れない。矩形の上端を画面の上半分へ置いたまま下端を画面の下端の近くまで伸ばすには、この程度の長さが要る。短くすると枠が画面の中へ収まってしまい、この検査は何も見なくなる。",
+  },
   lookup: {
     question: "E2E: メモから対話へ戻れるのか",
     utterance: "E2E: 語から場面を思い出せるか試す",
@@ -96,15 +111,124 @@ test("発話の一部を選ぶとメモを作れ、その区間にアンダー�
   // 下線は ai_a の枠の中の、リンクになっている区間だけを見る。
   // 同じ文字列は人間の発話にも ai_b の引用にも出るので枠で絞り、
   // 選択直後はフォームの引用にも出るので role で絞る。
-  const marked = aiA.getByRole("link", {
-    name: utterance,
-    exact: true,
-  });
-  await expect(marked).toHaveCSS("text-decoration-line", "underline");
-  await expect(marked).toHaveAttribute(
-    "title",
-    `${utterance}: この言い換えが効いた`,
+  const marked = markedSegment(aiA, utterance);
+  await expect(underlinesOf(marked)).toHaveCount(1);
+  await expect(underlinesOf(marked)).toHaveCSS(
+    "text-decoration-line",
+    "underline",
   );
+});
+
+test("下線に触れるとメモが出て、切り替えを切ると出なくなる", async ({
+  page,
+}) => {
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.preview);
+  const { utterance } = SCENARIOS.preview;
+  await selectTextIn(page, aiA, utterance);
+
+  await page.getByLabel("メモ").fill("触れて読めるか見る");
+  await page.getByRole("button", { name: "メモする" }).click();
+
+  const marked = markedSegment(aiA, utterance);
+  await marked.hover();
+
+  // 出すのはキーワードとノートの両方で、title 属性では書式を持てなかった分がここに要る。
+  await expect(preview(page)).toContainText(utterance);
+  await expect(preview(page)).toContainText("触れて読めるか見る");
+
+  await page.getByRole("button", { name: /^ホバーでメモを出す/ }).click();
+  await marked.hover();
+
+  await expect(preview(page)).toHaveCount(0);
+});
+
+test("重なった区間には付いているメモの数だけ下線が出て、枠から両方のメモへ行ける", async ({
+  page,
+}) => {
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.overlap);
+  const { utterance } = SCENARIOS.overlap;
+  const [inner] = SCENARIOS.overlap.words;
+
+  await selectTextIn(page, aiA, utterance);
+  await page.getByRole("button", { name: "メモする" }).click();
+  await expect(markedSegment(aiA, utterance)).toBeVisible();
+
+  // 二件目は一件目の内側だけに付けるので、本文は三つの区間へ割れる。
+  await selectTextIn(page, aiA, inner);
+  await page.getByRole("button", { name: "メモする" }).click();
+
+  const overlapped = markedSegment(aiA, inner);
+  await expect(underlinesOf(overlapped)).toHaveCount(2);
+
+  const single = markedSegment(aiA, "E2E: 一つの語に");
+  await expect(underlinesOf(single)).toHaveCount(1);
+
+  // 外側のメモだけが付いた区間を開くと、枠に出るのはその一件だけ。
+  await single.hover();
+  await expect(preview(page).getByRole("link")).toHaveCount(1);
+
+  const [openColor] = await underlineColorsOf(single);
+  const overlappedColors = await underlineColorsOf(overlapped);
+
+  // 触れていない隣の区間でも、枠に出ているメモの下線は濃い。
+  expect(overlappedColors).toContain(openColor);
+
+  // 同じ区間に重なっているだけで枠に出ていないメモは、薄いまま置く。
+  expect(new Set(overlappedColors).size).toBe(2);
+
+  await overlapped.click();
+
+  // 枠に出るのは、その区間に付いている二件の両方。
+  await expect(preview(page).getByRole("link")).toHaveCount(2);
+
+  await preview(page).getByRole("link", { name: inner, exact: true }).click();
+
+  await expect(page.getByRole("dialog").getByRole("heading")).toHaveText(inner);
+});
+
+test("何行にも折り返す下線でも、覗き見の枠は画面の中に収まる", async ({
+  page,
+}) => {
+  await page.setViewportSize(NARROW_VIEWPORT);
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.tall);
+  const { utterance } = SCENARIOS.tall;
+
+  await selectTextIn(page, aiA, utterance);
+  await page
+    .getByLabel("メモ")
+    .fill("下端を基準に置くと画面の外へ出る長さのノート");
+  await page.getByRole("button", { name: "メモする" }).click();
+
+  // 区間の上端を画面の上半分へ置く。
+  // 枠は上端の位置で上下どちらへ出すかを決めるので、ここが下半分だと上側へ出てはみ出さない。
+  const marked = markedSegment(aiA, utterance);
+  const top = await marked.evaluate((span) => span.getBoundingClientRect().top);
+  await page.evaluate((dy) => window.scrollBy(0, dy), top - 300);
+
+  // 触れる前に一度離れる。
+  // メモを作った直後はポインタが区間の上に居ることがあり、同じ区間の中で動かしても mouseenter が起きない。
+  await page.mouse.move(0, 0);
+
+  // hover でなく座標で触れる。
+  // Playwright の hover は要素を画面の中へ入れ直すので、置いたばかりの位置が動く。
+  const point = await marked.evaluate((span) => {
+    const rects = [...span.getClientRects()];
+    const middle = rects[Math.floor(rects.length / 2)];
+
+    return { x: middle.left + 5, y: middle.top + middle.height / 2 };
+  });
+  await page.mouse.move(point.x, point.y);
+
+  const rect = await preview(page).evaluate((panel) => {
+    const { top: y, bottom, left, right } = panel.getBoundingClientRect();
+
+    return { top: y, bottom, left, right };
+  });
+
+  expect(rect.top).toBeGreaterThanOrEqual(0);
+  expect(rect.left).toBeGreaterThanOrEqual(0);
+  expect(rect.bottom).toBeLessThanOrEqual(NARROW_VIEWPORT.height);
+  expect(rect.right).toBeLessThanOrEqual(NARROW_VIEWPORT.width);
 });
 
 test("選択を touchend で終えてもメモの小フォームが立つ", async ({ page }) => {
@@ -179,9 +303,10 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
   await selectTextIn(page, aiA, utterance);
 
   await page.getByRole("button", { name: "メモする" }).click();
-  await expect(
-    aiA.getByRole("link", { name: utterance, exact: true }),
-  ).toHaveCSS("text-decoration-line", "underline");
+  await expect(underlinesOf(markedSegment(aiA, utterance))).toHaveCSS(
+    "text-decoration-line",
+    "underline",
+  );
 
   await page.goto("/memos");
   await page.getByRole("link", { name: utterance }).click();
@@ -199,13 +324,15 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
   await expect(page.locator(`#${messageId}`)).toBeInViewport();
 });
 
-test("下線を押すと、その語のメモが一覧で開く", async ({ page }) => {
+test("下線を押して出た枠から、その語のメモが一覧で開く", async ({ page }) => {
   const aiA = await postQuestionAndSpeak(page, SCENARIOS.forward);
   const { utterance } = SCENARIOS.forward;
   await selectTextIn(page, aiA, utterance);
   await page.getByRole("button", { name: "メモする" }).click();
 
-  await aiA.getByRole("link", { name: utterance, exact: true }).click();
+  // 下線そのものはリンクにしない（触って読む端末では狙って押せない）。
+  await markedSegment(aiA, utterance).click();
+  await preview(page).getByRole("link", { name: utterance }).click();
 
   // 開くのは押した下線に紐づくメモ一件で、一覧を出すだけでは足りない。
   const dialog = page.getByRole("dialog");
@@ -223,9 +350,7 @@ test("着地した発話に印が付く", async ({ page }) => {
 
   // 下線が出るまでは、メモがまだ出来ていない。
   // 待たずに移ると、そのメモが並んでいない一覧を相手にすることになる。
-  await expect(
-    aiA.getByRole("link", { name: utterance, exact: true }),
-  ).toBeVisible();
+  await expect(markedSegment(aiA, utterance)).toBeVisible();
 
   await page.goto("/memos");
   await page.getByRole("link", { name: utterance }).click();
@@ -344,6 +469,38 @@ async function formRect(page: Page): Promise<FormRect> {
   });
 }
 
+/** 下線の付いた区間。触れると覗き見の枠が開く。 */
+function markedSegment(message: Locator, text: string): Locator {
+  return message.getByRole("button", { name: text, exact: true });
+}
+
+/** 覗き見の枠。 */
+function preview(page: Page): Locator {
+  return page.getByRole("navigation", { name: "この区間のメモ" });
+}
+
+/**
+ * 区間に描かれた下線の色を、本数ぶん返す。
+ *
+ * 見るのは濃さの違いだけで、値そのものも並び順も実装が決める。
+ * どの色がどのメモのものかは、下線が入れ子である以上 DOM からは決まらない。
+ */
+async function underlineColorsOf(marked: Locator): Promise<string[]> {
+  return underlinesOf(marked).evaluateAll((spans) =>
+    spans.map((span) => getComputedStyle(span).textDecorationColor),
+  );
+}
+
+/**
+ * 区間に描かれた下線。
+ *
+ * 一本が span 一つなので、数がその区間に付いているメモの数になる。
+ * 入れ子なので、内側の一本も外側の span の子孫として数に入る。
+ */
+function underlinesOf(marked: Locator): Locator {
+  return marked.locator("[data-memo-underline]");
+}
+
 /** メモの小フォーム。発話を送る form と混ざらないよう、「メモする」を持つ側で絞る。 */
 function memoForm(page: Page): Locator {
   return page
@@ -394,6 +551,8 @@ async function selectTextInByTouch(
  *
  * Range を組んでから document へイベントを投げる。
  * Playwright のドラッグでは文字の途中で始まる範囲を安定して作れない。
+ * 端点に取るのは区間の最初のテキストノードで、区間の直下の子ではない。
+ * 既に下線の付いた区間では、本文が下線を描く span の入れ子の内側に居る。
  * touchend を素の Event で作るのは、TouchEvent の構築が実行環境のタッチ対応に依存するため。
  * 受ける側はイベントの中身を見ずに選択を読み直すだけなので、型名が合っていれば足りる。
  */
@@ -407,7 +566,9 @@ async function selectTextInEndingWith(
     );
 
     for (const span of spans) {
-      const node = span.firstChild;
+      const node = document
+        .createTreeWalker(span, NodeFilter.SHOW_TEXT)
+        .nextNode();
       const start = node?.textContent?.indexOf(text) ?? -1;
       const selection = window.getSelection();
 

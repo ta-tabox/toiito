@@ -10,13 +10,28 @@
  * 複数の発話へ跨る選択は捨てる。
  * メモのアンカーは発話一件の本文へ閉じており、跨いだ範囲を一件では表せない。
  *
- * 下線の付いた区間は `/memos?memo=<id>` へのリンクにする。
+ * 下線の付いた区間は、触れると覗き見の枠を開くだけで、それ自体はリンクにしない。
+ * 行の中の細い文字列は触って読む端末で狙って押せないので、メモ一覧の当該メモへは枠の中のリンクから辿る（枠の中身と開閉は `memo-preview.tsx`）。
  * 逆向き（メモ → 発話）は /memos が持っているので、`MessageBody` は発話 → メモを埋める側。
  */
 
-import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  type SyntheticEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
+import {
+  MemoPreviewLayer,
+  openMemoPreview,
+  PREVIEW_ID,
+  scheduleMemoPreviewClose,
+  useOpenMemoPreview,
+} from "@/components/memo-preview";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import {
@@ -27,13 +42,31 @@ import {
 import type { Memo, Message } from "@/lib/types";
 
 /**
- * メモが付いている区間の装飾。
+ * メモ一件ぶんの下線の装飾。
  *
  * 背景でなく下線で出すのは、彩度を持つ背景を人間の発話の一つに留めるため（`.claude/rules/design.md`「彩度の規律」）。
  * 画面の中で最も強い色が、自分で付けたメモになる。
+ *
+ * 触れていないあいだ琥珀を薄めるのは、読んでいる最中の下線が本文と競らないようにするため。
  */
-const MARKED_STYLE =
-  "underline decoration-mark decoration-2 underline-offset-4";
+const UNDERLINE_STYLE = "underline decoration-1";
+
+/**
+ * 下線の濃さ。
+ *
+ * 濃い側になるのは、いま開いている覗き見に出ているメモの下線だけである。
+ * 区間ごとに当てると、同じ区間に重なっているだけで枠に出ていないメモの下線まで濃くなる。
+ */
+const UNDERLINE_TONE = {
+  active: "decoration-mark",
+  idle: "decoration-mark/40",
+};
+
+/** 一本目の下線と文字の間隔（px）。 */
+const UNDERLINE_OFFSET = 4;
+
+/** 二本目以降の下線を、一本手前の下線から離す距離（px）。 */
+const UNDERLINE_SPACING = 3;
 
 /** 発話一件ぶんの、選択の読み直しと下書きの取り消し。 */
 type SelectionReader = {
@@ -125,9 +158,13 @@ export function MessageBody({
             segment={segment}
             index={index}
             memos={memos}
+            previewKey={`${message.id}:${segment.start}`}
           />
         ))}
       </div>
+
+      {/* 下線を持つ発話だけが層を申し出て、画面に描かれるのはそのうちの一つだけである（`memo-preview.tsx`）。 */}
+      {memos.length > 0 && <MemoPreviewLayer />}
 
       {/* body へ移すのは、祖先が containing block を作ると fixed の基準が画面でなくその祖先へ移るため。 */}
       {draft &&
@@ -148,38 +185,132 @@ export function MessageBody({
 /**
  * セグメント一つ分の描画。
  *
- * メモが付いていればメモ一覧の当該メモへのリンクにし、付いていなければただの span。
- * 重なっている区間はいちばん古いメモへ繋ぐ（重なりの描き分けは別 issue）。
+ * メモが付いていれば、メモの数だけ下線を重ね、触れると覗き見の枠を開く区間にする。
+ * 付いていなければただの span で、下線も覗き見も持たない。
  *
- * draggable を切るのは、下線の内側から選択を始めたときにリンクのドラッグが起きるのを防ぐため。
- * 既にメモの付いた区間へ重ねてメモを作る経路が塞がる。
+ * 区間を button 要素にしないのは、button が本文の折り返しに乗らないため。
+ * `display: inline` を当てても行の途中で始まる区間を作れず、区間が独立した箱になって前後の文から切れる。
  */
 function SegmentText({
   segment,
   index,
   memos,
+  previewKey,
 }: {
   segment: Segment;
   index: number;
   memos: Memo[];
+  previewKey: string;
 }) {
-  const [firstMemoId] = segment.memoIds;
+  const open = useOpenMemoPreview();
+  const covering = memos.filter((memo) => segment.memoIds.includes(memo.id));
+  const [firstMemo] = covering;
 
-  if (!firstMemoId) {
+  if (!firstMemo) {
     return <span data-segment-index={index}>{segment.text}</span>;
   }
 
+  const openMemoIds = open?.memos.map((memo) => memo.id) ?? [];
+
+  /** この区間のメモを、区間の位置へ覗き見として開く。 */
+  const showPreview = (event: SyntheticEvent<HTMLElement>) =>
+    openMemoPreview(
+      previewKey,
+      covering,
+      event.currentTarget.getBoundingClientRect(),
+    );
+
+  /**
+   * Enter と Space で覗き見を開く。
+   * 他のキーでは何もしない。
+   */
+  const showPreviewOnKey = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    showPreview(event);
+  };
+
+  /**
+   * ポインタが離れたら閉じる。
+   * フォーカスが残っているあいだは閉じない（キーボードで開いた覗き見が、マウスが通り過ぎただけで消える）。
+   */
+  const hidePreviewOnLeave = (event: SyntheticEvent<HTMLElement>) => {
+    if (document.activeElement === event.currentTarget) {
+      return;
+    }
+
+    scheduleMemoPreviewClose();
+  };
+
+  /**
+   * フォーカスが外れたら閉じる。
+   * ポインタが乗っているあいだは閉じない。
+   */
+  const hidePreviewOnBlur = (event: SyntheticEvent<HTMLElement>) => {
+    if (event.currentTarget.matches(":hover")) {
+      return;
+    }
+
+    scheduleMemoPreviewClose();
+  };
+
   return (
-    <Link
-      href={`/memos?memo=${firstMemoId}`}
+    // biome-ignore lint/a11y/useSemanticElements: button 要素は本文の折り返しに乗らないので、行の途中から始まる区間には使えない。
+    <span
       data-segment-index={index}
-      title={memoHint(segment, memos)}
-      draggable={false}
-      className={MARKED_STYLE}
+      role="button"
+      tabIndex={0}
+      aria-controls={PREVIEW_ID}
+      aria-expanded={open?.key === previewKey}
+      className="rounded-xs focus-visible:outline-2 focus-visible:outline-mark focus-visible:outline-offset-2"
+      onMouseEnter={showPreview}
+      onMouseLeave={hidePreviewOnLeave}
+      onFocus={showPreview}
+      onBlur={hidePreviewOnBlur}
+      onClick={showPreview}
+      onKeyDown={showPreviewOnKey}
     >
-      {segment.text}
-    </Link>
+      {stackedUnderlines(segment.text, covering, openMemoIds)}
+    </span>
   );
+}
+
+/**
+ * 本文を、`covering` の一件につき一本の下線を重ねた入れ子の span で包む。
+ * `openMemoIds` に居るメモの下線だけを濃く描く。
+ *
+ * 一本ずつ別の span が持つのは、`text-decoration` が一つの要素につき一本しか描かないため。
+ * 入れ子にすると各 span の `text-underline-offset` の位置へ一本ずつ描かれ、折り返した行にも同じ本数が付く。
+ */
+function stackedUnderlines(
+  text: string,
+  covering: Memo[],
+  openMemoIds: string[],
+): ReactNode {
+  let stacked: ReactNode = text;
+
+  covering.forEach((memo, depth) => {
+    const tone = openMemoIds.includes(memo.id)
+      ? UNDERLINE_TONE.active
+      : UNDERLINE_TONE.idle;
+
+    stacked = (
+      <span
+        data-memo-underline=""
+        className={`${UNDERLINE_STYLE} ${tone}`}
+        style={{
+          textUnderlineOffset: `${UNDERLINE_OFFSET + depth * UNDERLINE_SPACING}px`,
+        }}
+      >
+        {stacked}
+      </span>
+    );
+  });
+
+  return stacked;
 }
 
 /**
@@ -404,20 +535,4 @@ function offsetInSegment(
   }
 
   return offset === 0 ? 0 : segment.text.length;
-}
-
-/**
- * 区間に付いているメモを、hover で覗ける一つの文字列へまとめる。
- * 付いていなければ undefined（title 属性ごと出さない）。
- */
-function memoHint(segment: Segment, memos: Memo[]): string | undefined {
-  const covering = memos.filter((memo) => segment.memoIds.includes(memo.id));
-
-  if (covering.length === 0) {
-    return undefined;
-  }
-
-  return covering
-    .map((memo) => (memo.note ? `${memo.keyword}: ${memo.note}` : memo.keyword))
-    .join("\n");
 }
