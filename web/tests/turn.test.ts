@@ -2,7 +2,7 @@
  * 一往復が途中で失敗したときに何が残るかの検査。
  *
  * 見るのは `messages` と `pending_messages` の二つだけで、AI の応答の中身は見ない（呼び出し規約は `ai.test.ts` が検査する）。
- * 実 API は叩かない（HARNESS.md「実 API を自動テストで叩かない」）。
+ * 実 API は叩かない（`docs/HARNESS.md`「実 API を自動テストで叩かない」）。
  */
 
 import { createOwner } from "@tests/setup/owner";
