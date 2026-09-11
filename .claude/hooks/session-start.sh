@@ -52,6 +52,12 @@ require_git_author() {
   exit 1
 }
 
+# コミット本文の禁止語を止める commit-msg フックは `.githooks/` にある。
+# git は既定で `.git/hooks/` しか見ないので、このクローンの設定で向け先を替える。
+enable_git_hooks() {
+  git -C "$REPO_ROOT" config core.hooksPath .githooks
+}
+
 # nodejs.org のアーカイブ名に使う表記。uname の表記とは違う。
 node_arch() {
   case "$(uname -m)" in
@@ -220,6 +226,7 @@ main() {
   fi
 
   require_git_author
+  enable_git_hooks
   install_node
   install_pnpm
   link_toolchain
