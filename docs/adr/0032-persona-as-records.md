@@ -115,11 +115,14 @@ repo 層は、`user_id` が現在のユーザーかシステムのユーザー�
 - **`messages` に `user_id` を足さない**: 一つのセッションで話す人間は一人なので、人間の発話者は `sessions` → `questions.user_id` で一意に決まり、列を足しても新しい事実が入らない。
 - **ADR 0030 決定 2 の条件が同じく当たる**: 発話者としての `user_id` も値の出所が親の行なので、0030 が退けた「親の `user_id` を書き込み経路の各所でコピーし、コピーし忘れがずれになる」形になる。
 - **所有権の列と区別する手段が無い**: スキーマ上は所有権の `user_id` と同じ 1 列になり、「この列は所有権ではない」という約束を repo 層の規律だけで守ることになるので、機械が検査できない。
+- **`speaker` を NOT NULL の列として持つ**: `persona_config_id` が NULL の行が人間の発話なのか入れ忘れなのかを、check 制約が `speaker` を見て区別できる。
 - **check 制約を migration の SQL に置く**: Prisma スキーマは列の間の対応を表明できず、`memos_anchor_range_check` も同じ置き場にある。
 
 採らなかった案。
 
 - **種別 + `persona_config_id` + `user_id`**（#64 の本文にあった案）: 所有権の列と同じ 1 列が `messages` に入り、ADR 0030 決定 2 を supersede することになる。
+- **`speaker` を持たず、`persona_config_id` が NULL の行を人間の発話と読む**: NULL が「人間の発話」と「AI の発話で `persona_config_id` を入れ忘れた行」を同じ値で表し、DB が入れ忘れを拒否できない（`persona.user_id` の NULL をシステム所有と読む案を採らなかった条件と同じ）。
+- **`speaker` を持たず、`user_id` と `persona_config_id` のどちらか一方だけが値を持つ check 制約を置く**: 入れ忘れは拒否できるが、`messages` に `user_id` が入るので、ADR 0030 決定 2 を supersede することになる。
 
 ### パラメータとシステムプロンプト
 
