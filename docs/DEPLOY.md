@@ -51,7 +51,7 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 
 行を用意する道は二つあり、**本番に問いが在ったかどうか**で分かれる。
 
-**在った場合**は、所有権の migration（`20260902090000_ownership_foundation`）が受け皿の行を既に作っている。
+**在った場合**は、所有権の migration（`20260902090000_ownership_foundation`）が既定のユーザーの行を既に作っている。
 既存の問いの持ち主にするために作った行で、email は `owner@toiito.invalid` の placeholder になっている（migration ファイルは公開リポジトリに残るので、実在の宛先を書けない）。
 やることはその email を自分のものへ差し替えることだけで、**問いの持ち主も一緒に付いてくる**。
 
@@ -63,7 +63,7 @@ update "user"
 SQL
 ```
 
-**無かった場合**は受け皿が作られていないので、行を一つ入れる。
+**無かった場合**は既定のユーザーが作られていないので、行を一つ入れる。
 
 ```bash
 DIRECT_URL='<本番の直結>' pnpm exec prisma db execute --stdin <<'SQL'
@@ -195,7 +195,7 @@ DATABASE_URL='<preview のプーラー>' pnpm seed
 ```
 
 **所有権の migration（`20260902090000_ownership_foundation`）を流した後、Preview にユーザーが居なければ `pnpm seed` を流す**。
-この migration は既存の問いを消さず、受け皿のユーザーへ寄せる。
+この migration は既存の問いを消さず、既定のユーザーへ寄せる。
 `TOIITO_SINGLE_USER_EMAIL` が名指しする行だけは要るので、シードの一人目を入れるか、上の「唯一のユーザーの行を入れる」と同じ手で差し替える。
 
 接続先はシェルの環境変数が `.env.local` より優先される（`process.loadEnvFile` も `--env-file` も、既に環境にある値を上書きしない）。
