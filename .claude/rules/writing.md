@@ -112,7 +112,7 @@
 | 器 | リポジトリ／アプリ | ADR 0014 が言い換えると決めた語 |
 
 この表が禁止語の正で、`web/scripts/lint-comments.ts` と `scripts/lint-vocabulary.sh` の `BANNED_WORDS` はどちらもここを機械が読める形へ写したもの（表を直したら2本とも直す）。
-前者は TypeScript のコメントを見て、後者は git の追加行とコミット本文を見る（コミット本文は `.githooks/commit-msg` が渡す）。
+前者は TypeScript のコメントを見て、後者は git の追加行とコミット本文と PR 本文を見る（コミット本文は `.githooks/commit-msg` が、PR 本文は `.github/workflows/lint-pr-body.yml` が渡す）。
 このリポジトリだけの禁止語は直下の `.coding-standards-vocab-deny` へ、この領域で比喩でない語は `.coding-standards-vocab-allow` へ、どちらも1行1語で足す（表と機械の2本は変えない）。
 
 | 悪例 | 良例 |

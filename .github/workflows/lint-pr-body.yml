@@ -1,0 +1,30 @@
+name: Lint PR body
+
+# PR 本文の禁止語を scripts/lint-vocabulary.sh で検査する。
+# コミット本文は commit-msg フックが止めるが、PR 本文は手元を通らないのでここでしか見られない。
+
+on:
+  pull_request:
+    # 本文は後から書き直されるので edited も見る。
+    # 検査は grep 一本で数秒で終わるため、claude-code-review.yml のように契機を絞る理由が無い。
+    types: [opened, edited, reopened, ready_for_review]
+
+jobs:
+  lint-pr-body:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Scan PR body
+        env:
+          # 本文は ${{ }} でなく env 経由で渡す。
+          # run: の中へ式展開すると、PR 本文に書かれた文字列がそのままシェルの一部になる。
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s\n' "$PR_BODY" > "$RUNNER_TEMP/pr-body.txt"
+          bash scripts/lint-vocabulary.sh --text "$RUNNER_TEMP/pr-body.txt"
