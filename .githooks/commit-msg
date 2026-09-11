@@ -27,7 +27,7 @@ if bash "$LINT" --text "$MSG_FILE" >/dev/null 2>&1; then
 fi
 
 {
-  echo "commit-msg: コミットを止めた——本文に禁止語がある:"
+  echo "commit-msg: 本文に禁止語があるのでコミットを止めた:"
   # 検出があると lint は 1 で終わるので、pipefail で下の案内を出す前に抜けないよう終了状態を捨てる。
   bash "$LINT" --text "$MSG_FILE" 2>/dev/null | sed "s|^|  |" || true
   echo "  言い換え先は .claude/rules/writing.md「語彙と読み手」節の表。"
