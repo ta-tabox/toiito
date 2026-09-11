@@ -48,16 +48,16 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 
 所有権の migration（`20260902090000_ownership_foundation`）は、持ち主のいなかった問いを `owner@toiito.invalid` という email の行へ寄せている。
 実在しない email なので、Google でサインインしてもこの行には結び付かない。
-**やることは、サインインして新しくできた行へ問いを移し、置き場だった行を削除することである。**
+**やることは、サインインして新しくできた行へ問いを移し、既定のユーザーの行を削除することである。**
 
 **この節の作業より前に `owner@toiito.invalid` を自分の email へ書き換えない。**
-自動リンクを有効にしない決定（`adr/0029-auth-better-auth.md` 決定 6）の下では、同じ email の行が先に在るとサインインそのものが `account not linked` で拒否される（`adr/0033-login-and-fake-sign-in.md` 決定 6）。
+自動リンクを有効にしない決定（`adr/0029-auth-better-auth.md` 決定 6）の下では、同じ email の行が先に在るとサインインそのものが `account not linked` で拒否される（`adr/0033-login-and-fake-sign-in.md` 決定 8）。
 書き換えてしまった場合は、`owner@toiito.invalid` へ戻してからサインインする。
 
 1. `TOIITO_ALLOWED_EMAILS` に自分の Google アカウントの email を入れて本番へデプロイする
 2. 本番を開き、Google でサインインする。
    Better Auth が `user` と `account` の行を作る
-3. 問いを移して、置き場だった行を削除する
+3. 問いを移して、既定のユーザーの行を削除する
 
 ```bash
 DIRECT_URL='<本番の直結>' pnpm exec prisma db execute --stdin <<'SQL'
@@ -70,7 +70,7 @@ SQL
 ```
 
 **本番に問いが無かった場合は、この節ごと要らない**。
-migration は問いが一件も無い DB へ置き場の行を作らないので、サインインした時点で始まる。
+migration は問いが一件も無い DB へ既定のユーザーを作らないので、サインインした時点で始まる。
 
 `pnpm seed` は本番に使わない。
 開発用の問いまで入れるうえ、`NODE_ENV=production` で止まる。
@@ -199,7 +199,7 @@ DIRECT_URL='<preview の直結>' pnpm exec prisma migrate resolve --applied 2026
 DATABASE_URL='<preview のプーラー>' pnpm seed
 ```
 
-**Preview にユーザーが居なければ `pnpm seed` を流す**。
+**Preview にユーザーが居なければ `pnpm seed` を実行する**。
 Google を経ないサインインは利用者を作らないので、`TOIITO_ALLOWED_EMAILS` が挙げた email の行が `user` 表に無いと 400 になる。
 
 接続先はシェルの環境変数が `.env.local` より優先される（`process.loadEnvFile` も `--env-file` も、既に環境にある値を上書きしない）。
@@ -274,7 +274,7 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 **Basic 認証は #68 で外した**。
 `adr/0013-production-basic-auth.md` が最初から書いていた覆る条件が発火したので、`TOIITO_BASIC_AUTH_USER` と `TOIITO_BASIC_AUTH_PASSWORD` は Production と Preview の両方から消す。
 
-**Basic 認証とログインが同時に入れ替わる**（`adr/0033-login-and-fake-sign-in.md` 決定 8）。
+**Basic 認証とログインが同時に入れ替わる**（`adr/0033-login-and-fake-sign-in.md` 決定 7）。
 0031 の決定 5 が書いた三段（入れる → 確かめる → 外す）は、判定のコードが残っていることを前提にしていた。
 `src/lib/basic-auth.ts` を削除した以上、Basic 認証はデプロイした瞬間に消える。
 
@@ -321,7 +321,7 @@ cookie の名前が `__Secure-better-auth.session_token` で始まっていれ�
 名前に `__Secure-` が無ければ立っていないので、`BETTER_AUTH_URL` が `https://` で始まっているかを見る。
 
 **CSRF が効いていることも一度は叩いて確かめる。**
-別 origin を名乗ってサインインの口を叩き、拒まれることを見る（`adr/0022-session-security.md` 決定 4）。
+別 origin を名乗ってサインインのエンドポイントを叩き、拒まれることを見る（`adr/0022-session-security.md` 決定 4）。
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' -X POST 'https://<project>.vercel.app/api/auth/sign-out' \

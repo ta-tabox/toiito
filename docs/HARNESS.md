@@ -165,7 +165,7 @@ pnpm exec playwright install chromium
 
 | | `pnpm dev` | E2E |
 |---|---|---|
-| 口 | 3000 | 3100 |
+| ポート | 3000 | 3100 |
 | データベース | `toiito` | `toiito_e2e` |
 | ビルド出力先 | `.next` | `.next-e2e` |
 
@@ -232,6 +232,9 @@ CSRF の検査には対照を置く。
 check の前提は Postgres が起動していること（`docker compose up -d`）。
 「外部プロセス不要」は 2026-08-15 に捨てた前提で、代わりに開発・テスト・本番の方言が揃った。
 
+コミット本文の禁止語を止める `.githooks/commit-msg` は、git の既定の `.git/hooks/` に無いので、クローンごとに `git config core.hooksPath .githooks` で有効にする。
+リモートでは下の起動フックがこの設定を入れる。
+
 ### リモート（Claude Code on the web）
 
 docker が無いので `docker compose up -d` は使えない。
@@ -266,6 +269,7 @@ API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環
 | node / pnpm の版 | フック | 正は `mise.toml`。上げれば同じコミットでフックが追随する |
 | Postgres の起動・ロール・DB | フック | `compose.yaml` と `docker/initdb/` を復元しているだけ |
 | `web/.env.local` の接続文字列 | フック | 値が上の二つから決まる |
+| `core.hooksPath`（`.githooks` を指す） | フック | 値がリポジトリの `.githooks/` から決まる |
 | `GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` | クラウド環境変数 | 利用者に固有。リポジトリへ焼くと、他人が fork で立てたセッションのコミットが持ち主名義で積まれる |
 | `GIT_COMMITTER_*` | どこにも置かない | コンテナの global config が既に Claude 名義で、署名鍵もそこに紐づいている。上書きすると Unverified になる |
 | `ANTHROPIC_API_KEY` | どこにも置かない | 環境変数欄は「この環境を使用するすべてのユーザーに表示される」ので秘密を置けない。リモートはフェイクモードで走る |

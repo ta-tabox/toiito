@@ -56,7 +56,7 @@ const DEFAULT_TARGETS = ["src", "scripts", "tests"];
  * 語はリポジトリごとに変わるが、規則そのものは変わらない。
  *
  * 比喩と個人語彙は書き手には一意でも、このリポジトリの md を読んでいない読者には辞書が無い。
- * 語の正は skill `coding-standards`「語彙」節の表で、`BANNED_WORDS` はその一覧を機械が読める形へ写したもの。
+ * 語の正は `.claude/rules/writing.md`「語彙と読み手」節の表で、`BANNED_WORDS` はその一覧を機械が読める形へ写したもの。
  * `.claude/rules/coding.md`「コメント」節は一覧を持たず、判定手順（英語への直訳）だけを持つ。
  *
  * `allow` は、その語を含むが禁止の対象ではない複合語。
@@ -83,7 +83,7 @@ const BANNED_WORDS: ReadonlyArray<{
     allow: ["矢印", "目印", "印字", "印刷", "印象"],
   },
   { word: "登録簿", instead: "レジストリ" },
-  { word: "受け皿", instead: "既定の行" },
+  { word: "受け皿", instead: "置き場 / 行き先 / 既定の行" },
   { word: "素通し", instead: "検証なしで通す" },
   { word: "領分", instead: "担当" },
   { word: "器", instead: "リポジトリ / アプリ" },

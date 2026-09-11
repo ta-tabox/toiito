@@ -119,7 +119,7 @@ memo_links     （将来）メモ間・問い間のリンキング辺
 UI 側でやらない。
 入口の `proxy.ts` は cookie の有無しか見ない楽観的な判定なので、**他人のリソースを弾く最後の層は repo 関数になる**。
 
-**現在のユーザーを返す口は `lib/auth/current-user.ts` の `getCurrentUser` 一つ**で、RSC と Server Action は `requireCurrentUser` を通ってから repo 関数を呼ぶ。
+**現在のユーザーを返すエントリポイントは `lib/auth/current-user.ts` の `getCurrentUser` 一つ**で、RSC と Server Action は `requireCurrentUser` を通ってから repo 関数を呼ぶ。
 戻り値の `id` には印（`OwnerId`）が付いており、repo 関数は所有者としてその型しか受け取らない。
 中身は Better Auth のセッションが指す `user` 行で、未サインインなら `getCurrentUser` が undefined を返し、`requireCurrentUser` が `/login` へ送る。
 入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（`adr/0022-session-security.md` 決定 8）。

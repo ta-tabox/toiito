@@ -1,0 +1,37 @@
+#!/bin/bash
+#
+# コミット本文の禁止語を検査する。
+#
+# 語の一覧は scripts/lint-vocabulary.sh が持つ(正本は .claude/rules/writing.md「語彙と読み手」節の表)。
+# コミット本文はマージされた後に直せないので、報告でなく commit の前で止める。
+#
+# 導入は2通り。
+#   リポジトリ全体へ効かせる: このファイルを .githooks/commit-msg へ置き、git config core.hooksPath .githooks を設定する
+#   自分の手元だけ:           .git/hooks/commit-msg へコピーする(版管理の外)
+#
+# 押し切るのは git commit --no-verify。
+
+set -euo pipefail
+
+MSG_FILE="$1"
+ROOT=$(git rev-parse --show-toplevel)
+LINT="$ROOT/scripts/lint-vocabulary.sh"
+
+if [ ! -f "$LINT" ]; then
+  echo "commit-msg: $LINT が無いので語彙の検査を飛ばした。" >&2
+  exit 0
+fi
+
+if bash "$LINT" --text "$MSG_FILE" >/dev/null 2>&1; then
+  exit 0
+fi
+
+{
+  echo "commit-msg: 本文に禁止語があるのでコミットを止めた:"
+  # 検出があると lint は 1 で終わるので、pipefail で下の案内を出す前に抜けないよう終了状態を捨てる。
+  bash "$LINT" --text "$MSG_FILE" 2>/dev/null | sed "s|^|  |" || true
+  echo "  言い換え先は .claude/rules/writing.md「語彙と読み手」節の表。"
+  echo "  この領域で比喩でない語なら .coding-standards-vocab-allow へ足す。"
+  echo "  押し切る: git commit --no-verify"
+} >&2
+exit 1
