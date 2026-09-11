@@ -83,7 +83,7 @@ const BANNED_WORDS: ReadonlyArray<{
     allow: ["矢印", "目印", "印字", "印刷", "印象"],
   },
   { word: "登録簿", instead: "レジストリ" },
-  { word: "受け皿", instead: "既定の行" },
+  { word: "受け皿", instead: "置き場 / 行き先 / 既定の行" },
   { word: "素通し", instead: "検証なしで通す" },
   { word: "領分", instead: "担当" },
   { word: "器", instead: "リポジトリ / アプリ" },
