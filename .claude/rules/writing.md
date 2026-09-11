@@ -92,6 +92,29 @@
 - 書く前に、指示語・比喩・会話への参照の3種を走査して置き換える
   / Before writing, scan for demonstratives, metaphors, and references to the conversation
 
+読者は、このリポジトリの md を読んでいないエンジニアと決める。
+比喩と個人語彙は書き手には一意でも、その読者には辞書が無い。
+判定は英語への直訳で、一語が二つ以上の英語に割れたら比喩である。
+
+| 使わない | 代わりに | 割れ方 |
+|---|---|---|
+| 引く | 取得する・検索する | pull / fetch / query |
+| 落とす | throw する・削除する・拒否する | throw / drop / reject |
+| 倒す | 既定値にする・フォールバックする | fall / default |
+| 畳む | まとめる・変換する・閉じる | fold / collapse / close |
+| 流す | 適用する・デプロイする・実行する | apply / deploy / run |
+| 弾く | 拒否する・除外する | reject / filter out |
+| 握る | 保持する・無視する | hold / retain / swallow |
+| 掛ける | 設定する・適用する | set / apply / multiply |
+| 口・関門・印・登録簿・素通し | エントリポイント・検証・フラグ・レジストリ・検証なしで通す | 語ごとに定義が要る |
+| 受け皿 | 文書を指すなら 置き場・行き先、表の行を指すなら 既定の行 | tray / fallback / destination |
+| 領分・綴り・「〜の側」 | 担当・名前・主体の名（「規約の側」でなく `callPersona`） | 主体が無い。「クライアント側」のような位置の用法は可 |
+| 器 | リポジトリ／アプリ | ADR 0014 が言い換えると決めた語 |
+
+この表が禁止語の正で、`web/scripts/lint-comments.ts` と `scripts/lint-vocabulary.sh` の `BANNED_WORDS` はどちらもここを機械が読める形へ写したもの（表を直したら2本とも直す）。
+前者は TypeScript のコメントを見て、後者は git の追加行とコミット本文と PR 本文を見る（コミット本文は `.githooks/commit-msg` が、PR 本文は `.github/workflows/lint-pr-body.yml` が渡す）。
+このリポジトリだけの禁止語は直下の `.coding-standards-vocab-deny` へ、この領域で比喩でない語は `.coding-standards-vocab-allow` へ、どちらも1行1語で足す（表と機械の2本は変えない）。
+
 | 悪例 | 良例 |
 |---|---|
 | 上の議論のとおり入力経路を一本にする | 入力を `scripts/capture.ts` の1経路に限る |
