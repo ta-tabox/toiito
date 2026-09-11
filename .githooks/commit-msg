@@ -6,8 +6,7 @@
 # コミット本文はマージされた後に直せないので、報告でなく commit の前で止める。
 #
 # 導入は2通り。
-#   リポジトリ全体へ効かせる: このファイルを .githooks/commit-msg へ置き、
-#                             git config core.hooksPath .githooks を設定する
+#   リポジトリ全体へ効かせる: このファイルを .githooks/commit-msg へ置き、git config core.hooksPath .githooks を設定する
 #   自分の手元だけ:           .git/hooks/commit-msg へコピーする(版管理の外)
 #
 # 押し切るのは git commit --no-verify。
