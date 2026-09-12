@@ -85,11 +85,8 @@ migration は問いが一件も無い DB へ既定のユーザーを作らない
    Region は **AWS US East 1 (N. Virginia)** で、Vercel の関数リージョンの既定（`iad1`）と揃える。
    揃っていないと DB の往復が毎回大陸をまたぐ。
    接続文字列 2 本の違いはホスト名の `-pooler` だけ
-2. **Google Cloud で OAuth クライアントを作る**。
-   APIs & Services → Credentials → Create credentials → OAuth client ID、種類は Web application。
-   Authorized redirect URIs に `https://<project>.vercel.app/api/auth/callback/google` を入れる。
-   手元でも Google を通すなら `http://localhost:3000/api/auth/callback/google` も足す。
-   **ワイルドカードは受け付けない**ので、Preview の URL は登録できない（Preview は Google を経ないサインインを使う。下の「Preview」）
+2. **Google Cloud で本番の OAuth クライアントを作る**（下の「Google の OAuth クライアント」）。
+   Preview の URL は登録しない（Preview は Google を経ないサインインを使う。下の「Preview」）
 3. Vercel でリポジトリを import する。
    import 画面で環境変数を入れられるので、上の 8 本をそこで入れる。
    入れずに import すると最初のビルドが `prisma generate` で落ちる（落ちても、入れてから Redeploy すれば済む）
@@ -342,8 +339,69 @@ Better Auth が origin を照合するのは cookie を持つリクエストだ�
 
 独自ドメインは当てていない。
 `<project>.vercel.app` のまま使い、当てるのは Hobby から動かすときにする。
-**当てるなら `BETTER_AUTH_URL` と Google の redirect URI も一緒に動かす**。
+**当てるときは、`BETTER_AUTH_URL` と Google の redirect URI を下の「Google の OAuth クライアント」の「ドメインを変えるとき」の順で動かす**。
 Hobby は非商用限定なので、他人へ開く段では実行環境ごと決め直すことになる（`adr/0002-production-runtime.md`「覆る条件」）。
+
+## Google の OAuth クライアント
+
+本番と手元で、別々の OAuth クライアントを使う。
+二つとも同じ Google Cloud のプロジェクトに作る。
+分ける理由は `adr/README.md`「ADR にしないもの」。
+
+redirect URI は `BETTER_AUTH_URL` の値に `/api/auth/callback/google` を足したもので、一文字でも違うと Google が拒否する。
+ワイルドカードは使えない。
+`http` が許されるのは `localhost` だけである。
+
+### プロジェクトと同意画面（一度だけ）
+
+1. Google Cloud Console で、toiito 用のプロジェクトを作るか選ぶ
+2. Google Auth Platform → **Branding** で、アプリ名（`toiito`）とユーザーサポートのメールを入れる。
+   ロゴ・ホームページ・プライバシーポリシーは空でよい
+3. Google Auth Platform → **Audience** で、User type を **External** にする。
+   Internal は Google Cloud の組織に属するプロジェクトでしか選べない
+4. Publishing status は **Testing** のままでよい。
+   Better Auth が要求する scope は `openid` / `email` / `profile` の 3 つだけで、この 3 つだけを要求するアプリは、テストユーザーに載っていない Google アカウントでもサインインでき、7 日での失効も起きない（Google の「Manage App Audience」）。
+   入れる人を絞るのは `TOIITO_ALLOWED_EMAILS` で、テストユーザーの一覧ではない
+
+### 本番のクライアント
+
+1. Google Auth Platform → **Clients** → **Create client** を開き、Application type は **Web application**、Name は `toiito production` にする
+2. Authorized redirect URIs に `https://<project>.vercel.app/api/auth/callback/google` を入れる。
+   Authorized JavaScript origins は空でよい
+3. **Create** を押した直後の画面で Client ID と Client secret を控え、Vercel の Production の `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET` へ入れる。
+   **Client secret の全文を表示するのはこの画面だけである**。
+   閉じた後に見えるのは末尾の 4 文字だけで、控え損ねたら下の「シークレットを差し替える」で新しいシークレットを足す
+
+### 手元のクライアント
+
+1. 同じプロジェクトの **Clients** → **Create client** を開き、Application type は **Web application**、Name は `toiito local` にする
+2. Authorized redirect URIs に `http://localhost:3000/api/auth/callback/google` を入れる
+3. 作成直後の画面で控えた値を、手元の `web/.env.local` の `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET` へ書く。
+   `BETTER_AUTH_URL=http://localhost:3000` と、自分の Google アカウントの email を含む `TOIITO_ALLOWED_EMAILS` も要る
+4. 6 か月使われないクライアントは、Google が自動で削除する（削除から 30 日以内なら復元できる）。
+   手元のクライアントが消えていたら、同じ手順で作り直す
+
+### シークレットを差し替える
+
+1. **Clients** で対象のクライアントを開き、**Add secret** で新しいシークレットを作って控える。
+   1 つのクライアントが同時に持てるシークレットは 2 つまでである
+2. Vercel の `GOOGLE_CLIENT_SECRET`（手元なら `.env.local`）を新しい値へ替え、Redeploy する
+3. サインインできることを確かめてから、古いシークレットを無効にして削除する
+
+### ドメインを変えるとき
+
+`BETTER_AUTH_URL` と本番のクライアントの redirect URI は、利用者が開くドメインと一致させる。
+独自ドメインへ移るときは、次の順で動かす。
+
+1. Vercel の Project Settings → Domains に新しいドメインを足し、DNS の設定を終える
+2. 本番のクライアントの Authorized redirect URIs に `https://<新しいドメイン>/api/auth/callback/google` を**足す**。
+   古い URI はまだ消さない
+3. Vercel の Production の `BETTER_AUTH_URL` を `https://<新しいドメイン>` へ替え、Redeploy する
+4. 新しいドメインで Google のサインインと、上の「ログイン」の「効きの確認」を通す
+5. 古い redirect URI を、本番のクライアントから削除する
+
+新しいドメインでは、全員がサインインし直す。
+cookie は発行したホストにしか送られない。
 
 ## 引き受けている非対称
 
