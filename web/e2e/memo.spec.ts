@@ -7,7 +7,9 @@
  * E2E のデータベースは走り単位でしか作り直されないので、前のシナリオが残した行に寄りかかると順序に縛られる。
  */
 
+import { signIn } from "@e2e/setup/sign-in";
 import { expect, type Locator, type Page, test } from "@playwright/test";
+import { SEED_USERS } from "@scripts/seed/users";
 
 /** シナリオ一つ分の文言。 */
 type Scenario = { question: string; utterance: string };
@@ -93,6 +95,11 @@ const WIDE_VIEWPORT = { width: 1280, height: 800 };
  * 見たいのは縁から浮いていることと、下端から離れていないことの二つ。
  */
 const BOTTOM_GAP_LIMIT = 40;
+
+// どの画面もサインインを要求するので、シードの一人目として始める。
+test.beforeEach(async ({ page }) => {
+  await signIn(page, SEED_USERS[0].email);
+});
 
 test("発話の一部を選ぶとメモを作れ、その区間にアンダーラインが出る", async ({
   page,

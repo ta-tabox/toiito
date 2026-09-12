@@ -11,7 +11,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/current-user";
+import {
+  requireCurrentUser,
+  signInAsFakeUser,
+  signOutCurrentUser,
+  startGoogleSignIn,
+} from "@/lib/auth/current-user";
+import { LOGIN_PATH } from "@/lib/auth/protected-paths";
 import { addMemo, createQuestion, createSession } from "@/lib/db";
 import { personaCalls, retryTurn, runTurn } from "@/lib/turn";
 
@@ -21,7 +27,7 @@ export async function createQuestionAction(formData: FormData) {
   if (!body) {
     return;
   }
-  const owner = (await getCurrentUser()).id;
+  const owner = (await requireCurrentUser()).id;
   const { question } = await createQuestion(owner, body);
   redirect(`/q/${question.id}`);
 }
@@ -31,7 +37,7 @@ export async function createQuestionAction(formData: FormData) {
  * 過去のセッションは残る。
  */
 export async function newSessionAction(questionId: string) {
-  await createSession((await getCurrentUser()).id, questionId);
+  await createSession((await requireCurrentUser()).id, questionId);
   revalidatePath(`/q/${questionId}`);
 }
 
@@ -46,7 +52,7 @@ export async function speakAction(
     return;
   }
 
-  const owner = (await getCurrentUser()).id;
+  const owner = (await requireCurrentUser()).id;
   await runTurn({ owner, questionId, sessionId, body, calls: personaCalls() });
 
   revalidatePath(`/q/${questionId}`);
@@ -54,7 +60,7 @@ export async function speakAction(
 
 /** `pending_messages` に残っている発話で、一往復をもう一度実行する。 */
 export async function retryTurnAction(questionId: string, sessionId: string) {
-  const owner = (await getCurrentUser()).id;
+  const owner = (await requireCurrentUser()).id;
   await retryTurn({ owner, questionId, sessionId, calls: personaCalls() });
 
   revalidatePath(`/q/${questionId}`);
@@ -78,7 +84,7 @@ export async function createMemoAction(questionId: string, formData: FormData) {
   const note = String(formData.get("note") ?? "").trim();
 
   await addMemo(
-    (await getCurrentUser()).id,
+    (await requireCurrentUser()).id,
     messageId,
     anchorStart,
     anchorEnd,
@@ -87,4 +93,24 @@ export async function createMemoAction(questionId: string, formData: FormData) {
   );
 
   revalidatePath(`/q/${questionId}`);
+}
+
+/** Google の同意画面へ送る。 */
+export async function signInWithGoogleAction() {
+  redirect(await startGoogleSignIn());
+}
+
+/**
+ * Google を経ずに、フォームが指す email のユーザーとしてサインインする。
+ * `TOIITO_FAKE_LOGIN=1` の環境でだけ成功する。
+ */
+export async function signInAsFakeUserAction(formData: FormData) {
+  await signInAsFakeUser(String(formData.get("email") ?? ""));
+  redirect("/");
+}
+
+/** サインアウトしてサインインの画面へ送る。 */
+export async function signOutAction() {
+  await signOutCurrentUser();
+  redirect(LOGIN_PATH);
 }

@@ -43,8 +43,8 @@
           "level": "error",
           "options": {
             "paths": {
-              "better-auth": "セッションを読む経路は src/lib/current-user.ts の一本に絞る（docs/adr/0022-session-security.md 決定 9）",
-              "@/lib/auth": "セッションを読む経路は src/lib/current-user.ts の一本に絞る（docs/adr/0022-session-security.md 決定 9）"
+              "better-auth": "Better Auth を組み立ててよいのは src/lib/auth/index.ts だけ（docs/adr/0022-session-security.md 決定 9）",
+              "@/lib/auth": "セッションを読む経路は src/lib/auth/current-user.ts の一本に絞る（docs/adr/0022-session-security.md 決定 9）"
             },
             "patterns": [
               {
@@ -99,7 +99,12 @@
       }
     },
     {
-      "includes": ["src/lib/current-user.ts"],
+      "includes": [
+        "src/lib/auth/index.ts",
+        "src/lib/auth/fake-login.ts",
+        "src/lib/auth/current-user.ts",
+        "src/app/api/auth/\\[...all\\]/route.ts"
+      ],
       "linter": {
         "rules": {
           "style": {

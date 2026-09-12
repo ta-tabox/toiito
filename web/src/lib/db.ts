@@ -88,7 +88,7 @@ export function questionText(q: Question): string {
 /**
  * `user` 表から読んだ行を、ドメイン型の `User` へ写す。
  *
- * 呼ぶのは `user` 表を SELECT した直後の 2 箇所（`getUserByEmail` と `createUser`）だけである。
+ * 呼ぶのは `user` 表を SELECT した直後の 3 箇所（`getUserByEmail` と `getUserById` と `createUser`）だけである。
  * `OwnerId` へ変換してよいのは `fromUserRow` だけで、`fromUserRow` を経由したことが「その文字列は `user.id` である」の唯一の根拠になる。
  * URL やフォームから来た文字列は `fromUserRow` を経由しないので、`OwnerId` にならない。
  */
@@ -97,14 +97,41 @@ function fromUserRow(row: { id: string; email: string; name: string }): User {
 }
 
 /**
+ * Better Auth のアダプタへ渡す Prisma のクライアントを返す。
+ *
+ * 呼んでよいのは `auth.ts` だけである。
+ * Prisma を `db.ts` の外へ出さないという禁止則（`docs/ARCHITECTURE.md`「技術スタック」）の唯一の例外で、Better Auth が四表を読み書きするのにクライアントそのものを要求するために開けてある。
+ * アプリが使うのと同じクライアントを返すので、接続プールは 1 本のままになる。
+ */
+export function authDatabaseClient(): PrismaClient {
+  return db();
+}
+
+/**
  * `user` 表から email で 1 件取得する。
  *
  * 行が無ければ throw せず undefined を返す。
- * 呼び出し側（`current-user.ts`）が「行がまだ無い」と「取得できた」を分けて扱うため。
+ * 呼び出し側（開発用シード）が「行がまだ無い」と「取得できた」を分けて扱うため。
  */
 export async function getUserByEmail(email: string): Promise<User | undefined> {
   const row = await db().user.findUnique({
     where: { email },
+    select: { id: true, email: true, name: true },
+  });
+
+  return row ? fromUserRow(row) : undefined;
+}
+
+/**
+ * `user` 表から id で 1 件取得する。
+ * 行が無ければ throw せず undefined を返す。
+ *
+ * 呼ぶのは、Better Auth のセッションが名指しするユーザーを解決する 2 箇所である（`current-user.ts` と `auth.ts` の許可リストの照合）。
+ * セッションに写った値でなく `user` 表を毎回 SELECT するのは、行を書き換えれば次のリクエストから効くようにするため。
+ */
+export async function getUserById(id: string): Promise<User | undefined> {
+  const row = await db().user.findUnique({
+    where: { id },
     select: { id: true, email: true, name: true },
   });
 

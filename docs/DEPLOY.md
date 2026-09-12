@@ -21,9 +21,11 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 | `DATABASE_URL` | Vercel の Environment Variables（Production） | Neon のプーラー経由（ホスト名に `-pooler` が付く方） |
 | `DIRECT_URL` | 同上 | Neon の直結 |
 | `ANTHROPIC_API_KEY` | 同上 | Claude API のキー |
-| `TOIITO_BASIC_AUTH_USER` | 同上 | Basic 認証の利用者名（任意の文字列） |
-| `TOIITO_BASIC_AUTH_PASSWORD` | 同上 | Basic 認証のパスワード |
-| `TOIITO_SINGLE_USER_EMAIL` | 同上 | ログインが入るまでの唯一のユーザーの `user.email`。下の「唯一のユーザーの行を入れる」も要る |
+| `BETTER_AUTH_SECRET` | 同上 | セッションのトークンと OAuth の state の署名に使う秘密（`openssl rand -base64 32`） |
+| `BETTER_AUTH_URL` | 同上 | `https://<project>.vercel.app`。Google へ登録した redirect URI と同じ基点にする |
+| `GOOGLE_CLIENT_ID` | 同上 | Google Cloud で作った OAuth クライアントの ID |
+| `GOOGLE_CLIENT_SECRET` | 同上 | 同じクライアントのシークレット |
+| `TOIITO_ALLOWED_EMAILS` | 同上 | サインインを許す email のカンマ区切り |
 | `PRODUCTION_DIRECT_URL` | GitHub の Settings → Secrets and variables → Actions → **Repository secrets** | `DIRECT_URL` と同じ値。migration を流す workflow だけが読む |
 
 `pg` v9 で `sslmode=require` が libpq の意味へ変わって証明書を検証しなくなるので、**接続の 3 本は `sslmode=verify-full` で終える**。
@@ -35,50 +37,43 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 `TOIITO_ANTHROPIC_MODEL` は任意（既定 `claude-sonnet-5`）。
 `TOIITO_FAKE_AI` は**本番に入れない**。
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
-`TOIITO_SINGLE_USER_EMAIL` は**本番にも入れる**（`adr/0031-ownership-before-auth.md` 決定 5）。
-ログインが入るまで、本番のユーザーはこの変数が名指しする一人に固定される。
-**この間、外周を守っているのは Basic 認証だけである**——外す順序は下の「アクセス制限」。
+`TOIITO_FAKE_LOGIN` も**本番に入れない**。
+入れても動かず、`VERCEL_ENV=production` を見て起動時に落ちる（`adr/0033-login-and-fake-sign-in.md` 決定 3）。
 
-**6 本とも Production に入れてから最初のビルドを回す**。
+**8 本とも Production に入れてから最初のビルドを回す**。
 `postinstall` の `prisma generate` は `prisma.config.ts` 経由で `DIRECT_URL` を即時解決するので、無いとインストール段階で exit 1 になる。
 要るのは解決できることだけで、接続は要らない（`prisma generate` は DB へ繋がない）。
 
-## 唯一のユーザーの行を入れる
+## 既存の問いを、ログインした自分へ移す
 
-ログインが入るまで、このアプリは `TOIITO_SINGLE_USER_EMAIL` が名指しする一人として動く。
-`getCurrentUser` はその email で `user` 表を引き、**行が無ければ例外を投げる**（`web/src/lib/current-user.ts`）。
-だから本番には、その email を持つ行が一つ要る。
+所有権の migration（`20260902090000_ownership_foundation`）は、持ち主のいなかった問いを `owner@toiito.invalid` という email の行へ寄せている。
+実在しない email なので、Google でサインインしてもこの行には結び付かない。
+**やることは、サインインして新しくできた行へ問いを移し、既定のユーザーの行を削除することである。**
 
-行を用意する道は二つあり、**本番に問いが在ったかどうか**で分かれる。
+**この節の作業より前に `owner@toiito.invalid` を自分の email へ書き換えない。**
+自動リンクを有効にしない決定（`adr/0029-auth-better-auth.md` 決定 6）の下では、同じ email の行が先に在るとサインインそのものが `account not linked` で拒否される（`adr/0033-login-and-fake-sign-in.md` 決定 8）。
+書き換えてしまった場合は、`owner@toiito.invalid` へ戻してからサインインする。
 
-**在った場合**は、所有権の migration（`20260902090000_ownership_foundation`）が既定のユーザーの行を既に作っている。
-既存の問いの持ち主にするために作った行で、email は `owner@toiito.invalid` の placeholder になっている（migration ファイルは公開リポジトリに残るので、実在の宛先を書けない）。
-やることはその email を自分のものへ差し替えることだけで、**問いの持ち主も一緒に付いてくる**。
-
-```bash
-DIRECT_URL='<本番の直結>' pnpm exec prisma db execute --stdin <<'SQL'
-update "user"
-   set email = '<TOIITO_SINGLE_USER_EMAIL と同じ値>', name = '<表示名>', "updatedAt" = now()
- where email = 'owner@toiito.invalid';
-SQL
-```
-
-**無かった場合**は既定のユーザーが作られていないので、行を一つ入れる。
+1. `TOIITO_ALLOWED_EMAILS` に自分の Google アカウントの email を入れて本番へデプロイする
+2. 本番を開き、Google でサインインする。
+   Better Auth が `user` と `account` の行を作る
+3. 問いを移して、既定のユーザーの行を削除する
 
 ```bash
 DIRECT_URL='<本番の直結>' pnpm exec prisma db execute --stdin <<'SQL'
-insert into "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
-values (gen_random_uuid()::text, '<表示名>', '<TOIITO_SINGLE_USER_EMAIL と同じ値>', false, now(), now());
+update "questions"
+   set user_id = (select id from "user" where email = '<自分の Google アカウントの email>')
+ where user_id = (select id from "user" where email = 'owner@toiito.invalid');
+
+delete from "user" where email = 'owner@toiito.invalid';
 SQL
 ```
 
-`createdAt` と `updatedAt` を手で埋めるのは、後者に DB の DEFAULT が無いためである（`@updatedAt` は Prisma が書き込み時に埋める仕組みで、DB 側の既定値ではない）。
-`pnpm seed` は使わない。
+**本番に問いが無かった場合は、この節ごと要らない**。
+migration は問いが一件も無い DB へ既定のユーザーを作らないので、サインインした時点で始まる。
+
+`pnpm seed` は本番に使わない。
 開発用の問いまで入れるうえ、`NODE_ENV=production` で止まる。
-
-**email はログインに使う Google アカウントのものにしておく**。
-#68（ログイン（Google OAuth）とリソースの所有権）が入ると Better Auth がユーザーの行を作るが、自動リンクは既定で有効にしない決定なので（`adr/0029-auth-better-auth.md` 決定 6）、**email が違うと、いま書いた問いがログイン後の自分から見えなくなる**。
-揃えておけば、リンクされなかった場合でも `questions.user_id` の付け替え一回で済む。
 
 ## 初回のセットアップ
 
@@ -90,13 +85,15 @@ SQL
    Region は **AWS US East 1 (N. Virginia)** で、Vercel の関数リージョンの既定（`iad1`）と揃える。
    揃っていないと DB の往復が毎回大陸をまたぐ。
    接続文字列 2 本の違いはホスト名の `-pooler` だけ
-2. Vercel でリポジトリを import する。
-   import 画面で環境変数を入れられるので、上の 5 本をそこで入れる。
+2. **Google Cloud で本番の OAuth クライアントを作る**（下の「Google の OAuth クライアント」）。
+   Preview の URL は登録しない（Preview は Google を経ないサインインを使う。下の「Preview」）
+3. Vercel でリポジトリを import する。
+   import 画面で環境変数を入れられるので、上の 8 本をそこで入れる。
    入れずに import すると最初のビルドが `prisma generate` で落ちる（落ちても、入れてから Redeploy すれば済む）
-3. Project Settings → Build and Deployment → Root Directory に `web/` を入れる
-4. Project Settings → Functions → Node.js Version を 24 にする（版の正は `mise.toml`）
-5. Project Settings → Deployment Protection → Vercel Authentication を有効にする（**Standard Protection**。Hobby で選べるのはこれだけ）
-6. GitHub の Settings → Secrets and variables → Actions → **Repository secrets** に `PRODUCTION_DIRECT_URL` を入れる。
+4. Project Settings → Build and Deployment → Root Directory に `web/` を入れる
+5. Project Settings → Functions → Node.js Version を 24 にする（版の正は `mise.toml`）
+6. Project Settings → Deployment Protection → Vercel Authentication を有効にする（**Standard Protection**。Hobby で選べるのはこれだけ）
+7. GitHub の Settings → Secrets and variables → Actions → **Repository secrets** に `PRODUCTION_DIRECT_URL` を入れる。
    同じ画面にある Environment secrets ではない（下記）
 
 Install Command は `web/vercel.json` が持つので、ダッシュボードでは触らない。
@@ -157,19 +154,40 @@ PR ごとの Preview デプロイにも環境変数を 6 本入れる（Vercel �
 | `DATABASE_URL` | `preview` ブランチのプーラー経由 |
 | `DIRECT_URL` | 同ブランチの直結 |
 | `TOIITO_FAKE_AI` | `1` |
-| `TOIITO_SINGLE_USER_EMAIL` | `pnpm seed` が入れる一人目の email（`web/scripts/seed/users.ts`） |
-| `TOIITO_BASIC_AUTH_USER` | Production と同じ値 |
-| `TOIITO_BASIC_AUTH_PASSWORD` | 同上 |
+| `BETTER_AUTH_SECRET` | Production とは別に作った乱数 |
+| `TOIITO_ALLOWED_EMAILS` | `pnpm seed` が入れる二人の email（`web/scripts/seed/users.ts`） |
+| `TOIITO_FAKE_LOGIN` | `1` |
 
 接続 2 本の末尾は本番と同じく `sslmode=verify-full`。
 
-**アクセス制限の 2 本を落とさない**。
-欠けていると `proxy.ts` がモジュールの評価時に投げ、Preview の全リクエストが 500 になる。
-`next build` は proxy を実行しないのでビルドは通るため、**Vercel のチェックは緑のまま中身だけ壊れる**。
+**`BETTER_AUTH_URL` と Google の 2 本は Preview へ入れない**。
+Preview の URL は PR ごとに変わり、Google は redirect URI の事前登録を要求してワイルドカードを受け付けないので、実 OAuth を通せない（`adr/0029-auth-better-auth.md`）。
+Preview のサインインは `TOIITO_FAKE_LOGIN=1` が開ける経路だけで、ログインの画面に許可リストの email がボタンとして並ぶ。
 
-`TOIITO_SINGLE_USER_EMAIL` も同じ形で壊れる。
-欠けていれば全ページが落ち、名指しした email のユーザーが Preview の DB に居なくても落ちる。
-Preview と本番で値が違ってよい（Preview はシードの一人目、本番は「唯一のユーザーの行を入れる」で用意した行）。
+**認証の 3 本を落とさない**。
+欠けていると `lib/auth/index.ts` が最初のリクエストで投げ、Preview の全ページが 500 になる。
+`next build` は設定を読まないのでビルドは通るため、**Vercel のチェックは緑のまま中身だけ壊れる**。
+
+**Preview の露出は引き受けている**（`adr/0022-session-security.md` 決定 10）。
+外側の Vercel Authentication は共有リンク一本で抜けるので、漏れた共有リンクはログインの画面まで届く。
+そこから先はサインインが要るが、`TOIITO_ALLOWED_EMAILS` に載った email のボタンを押すだけで入れる。
+**引き受ける条件は「Preview に本番のデータが無いこと」**で、条件が崩れればこの構成も崩れる。
+
+**Preview の DB は、本番と同じ Neon プロジェクトの無料枠を使う**（2026-09-12 に Neon の Plans のページで確認）。
+上限はブランチごとに分かれず、本番のブランチと `preview` ブランチの合計に対して効く。
+
+| 上限 | 値 | 超えたとき |
+|---|---|---|
+| ストレージ | 0.5 GB/プロジェクト | insert・update・delete が失敗する |
+| 計算時間 | 100 CU-hours/プロジェクト | 次の請求期間まで compute が止まる |
+
+共有リンクを持つ人が Preview へ書き込んだ行も、本番と同じ枠に数える。
+
+Preview では次を守る。
+
+- 実際の問いを書かない
+- Vercel の共有リンクは自分が開くためだけに発行し、他人へ渡さない
+- `ANTHROPIC_API_KEY` を Preview へ入れず、`TOIITO_FAKE_AI=1` を外さない
 
 決定の経緯と採らなかった案は `adr/0015-preview-neon-branch.md`。
 
@@ -194,9 +212,8 @@ DIRECT_URL='<preview の直結>' pnpm exec prisma migrate resolve --applied 2026
 DATABASE_URL='<preview のプーラー>' pnpm seed
 ```
 
-**所有権の migration（`20260902090000_ownership_foundation`）を流した後、Preview にユーザーが居なければ `pnpm seed` を流す**。
-この migration は既存の問いを消さず、既定のユーザーへ寄せる。
-`TOIITO_SINGLE_USER_EMAIL` が名指しする行だけは要るので、シードの一人目を入れるか、上の「唯一のユーザーの行を入れる」と同じ手で差し替える。
+**Preview にユーザーが居なければ `pnpm seed` を実行する**。
+Google を経ないサインインは利用者を作らないので、`TOIITO_ALLOWED_EMAILS` が挙げた email の行が `user` 表に無いと 400 になる。
 
 接続先はシェルの環境変数が `.env.local` より優先される（`process.loadEnvFile` も `--env-file` も、既に環境にある値を上書きしない）。
 `migrate status` が `Database schema is up to date!` を返せば辻褄が合っている。
@@ -227,16 +244,15 @@ location: https://vercel.com/sso-api?url=...
 ```
 
 アプリ側まで届いているかを見るには、外側を抜けてから叩く。
-Vercel の共有リンク（`?_vercel_share=...`、23 時間で失効）で cookie を取り、その cookie のまま資格情報なしで叩く。
+Vercel の共有リンク（`?_vercel_share=...`、23 時間で失効）で cookie を取り、その cookie のままサインインせずに叩く。
 
 ```bash
 curl -s -c jar -b jar -L -o /dev/null 'https://<preview-url>/?_vercel_share=<token>'
-curl -s -b jar -D - -o /dev/null 'https://<preview-url>/no-such-page'
+curl -s -b jar -D - -o /dev/null 'https://<preview-url>/'
 ```
 
-`WWW-Authenticate: Basic realm="toiito"` を伴う 401 が返ればアプリ側の制限に届いている。
-この realm は `web/src/proxy.ts` にしかない文字列なので、どちらの層が答えたかがこれで割れる。
-アプリのルートに当たらない経路を叩くのは、制限が routing より前に掛かっていることも同時に見るため。
+`location: /login` を伴う 307 が返ればアプリ側まで届いている。
+Vercel Authentication が答えるときは 302 で `https://vercel.com/sso-api?...` へ送るので、どちらの層が答えたかが行き先で割れる。
 
 **向いている DB は、Preview のランタイムログで見る**。
 表示された問いの ID が seed のものであれば `preview` ブランチを読んでいる。
@@ -262,55 +278,146 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 ただし履歴は **6 時間・変更 1 GB-month** までで、戻せるのは root ブランチだけ。
 枠を超えた時点より前へは戻せないので、これを常用の安全網と見なさない。
 
-## アクセス制限
+## ログイン
 
-#65（認証と所有権の方式を決める）/ #68（ログイン（Google OAuth）とリソースの所有権）が入るまでの繋ぎとして、**アプリ側の Basic 認証**で本番を囲う。
-`web/src/proxy.ts` が全リクエストを見て、`TOIITO_BASIC_AUTH_USER` と `TOIITO_BASIC_AUTH_PASSWORD` に一致しなければ 401 を返す。
+本番の外周を守るのは**アプリのログイン**である（`adr/0033-login-and-fake-sign-in.md`）。
+`web/src/proxy.ts` が全リクエストを見て、セッションの cookie が無ければ `/login` へ送る。
+入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（`adr/0022-session-security.md` 決定 8）。
 
-**本番で二本が欠けていれば、リクエストを捌く前に落ちる**。
-掛けたつもりの制限が掛かっていない状態を作らないための設計で、経緯は `adr/0013-production-basic-auth.md`。
+**Basic 認証は #68 で外した**。
+`adr/0013-production-basic-auth.md` が最初から書いていた覆る条件が発火したので、`TOIITO_BASIC_AUTH_USER` と `TOIITO_BASIC_AUTH_PASSWORD` は Production と Preview の両方から消す。
+
+**Basic 認証とログインが同時に入れ替わる**（`adr/0033-login-and-fake-sign-in.md` 決定 7）。
+0031 の決定 5 が書いた三段（入れる → 確かめる → 外す）は、判定のコードが残っていることを前提にしていた。
+`src/lib/basic-auth.ts` を削除した以上、Basic 認証はデプロイした瞬間に消える。
+
+1. 認証の 5 本を Production へ入れ、main へマージする。
+   デプロイが終わった時点で Basic 認証は掛かっていない
+2. すぐに Google でサインインし、下の「効きの確認」を通す
+
+**失敗したときは開くのでなく閉じる**。
+`proxy.ts` は cookie が無ければ `/login` へ送り、`lib/auth/index.ts` は設定が欠けていれば最初のリクエストで throw する。
+それでも直らなければ Vercel の Instant Rollback で前のデプロイへ戻す（下の「切り戻し」）。
+
+Basic 認証の環境変数 2 本は、どのコードからも読まれなくなる。
+残っていても害は無いが、読まれない値が残っていると次に見た人が掛かっていると誤読するので、Vercel から削除する。
 
 **ホスティング側のアクセス制限は本番に効かない**（2026-08-29 に実測）。
 Hobby で選べる Vercel Authentication の Standard Protection は、API 上の名前が `prod_deployment_urls_and_all_previews` で、守るのは production の**デプロイ URL**（`<project>-<hash>-<team>.vercel.app`）と Preview だけである。
-production の domain（`<project>.vercel.app`）は素通しになる。
+production の domain（`<project>.vercel.app`）は検証なしで通る。
 シークレットウィンドウでも Safari でもログインを求められずアプリへ到達することを確認した。
 囲える All Deployments は Pro の Advanced Deployment Protection（月 150 ドル）が要る。
 
 **Vercel Authentication は無効化しない**。
 デプロイ URL と Preview はあちらが守り続ける。
 
-**Basic 認証を外す順序は決めてある**（`adr/0031-ownership-before-auth.md` 決定 5）。
-
-1. #68 でログインを入れる。この時点では Basic 認証を残したままなので、ログイン画面へ辿り着くのに Basic を一度通る（二重になる）
-2. 本番へ出して、ログインと所有権が実際に動くことを確かめる
-3. **確かめた後で** Basic 認証を外す（`proxy.ts` と `src/lib/basic-auth.ts` ごと）
-
-順序を守るのは運用の規律で、機械は止めない。
-**逆順にすると、ログインが動かないまま外周だけが外れる**——`TOIITO_SINGLE_USER_EMAIL` が名指しする一人として誰でも入れる状態になる。
-引き受けた条件（開発者が一人で、URL を公開していない）と、その条件が変わったときの倒し先は `adr/0031-ownership-before-auth.md` の決定 5。
-
 ### 効きの確認
 
 **設定した後、本番の URL を直接叩いて確かめる。**
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' https://<project>.vercel.app/
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://<project>.vercel.app/
 ```
 
-401 が返れば掛かっている。
-200 が返ったら効いていないので、環境変数が Production に入っているかを見る。
+`307 https://<project>.vercel.app/login` が返れば掛かっている。
+200 が返ったら効いていないので、`proxy.ts` が本番で走っているかを見る。
+
+**cookie に `Secure` が乗っていることも、この層が見る。**
+アプリは `secure` を明示しない（明示すると手元の http でも立ってサインインできなくなる）ので、本番で立っていることは応答でしか確かめられない（`adr/0022-session-security.md` 決定 2）。
+サインインした後の `Set-Cookie` を読む。
+
+```bash
+curl -s -D - -o /dev/null 'https://<project>.vercel.app/api/auth/get-session' -H 'cookie: <ブラウザからコピーしたセッションの cookie>'
+```
+
+cookie の名前が `__Secure-better-auth.session_token` で始まっていれば、Better Auth が本番と判断して `Secure` を立てている。
+名前に `__Secure-` が無ければ立っていないので、`BETTER_AUTH_URL` が `https://` で始まっているかを見る。
+
+**CSRF が効いていることも一度は叩いて確かめる。**
+別 origin を名乗ってサインインのエンドポイントを叩き、拒まれることを見る（`adr/0022-session-security.md` 決定 4）。
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST 'https://<project>.vercel.app/api/auth/sign-out' \
+  -H 'origin: https://example.invalid' \
+  -H 'cookie: <ブラウザからコピーしたセッションの cookie>'
+```
+
+403 が返れば効いている。
+**cookie を付けずに叩くと通る**ので、この確認では cookie を必ず付ける。
+Better Auth が origin を照合するのは cookie を持つリクエストだけである。
 
 **この確認を省かない。**
 2026-08-29 に二度、設定上は掛かっているはずの制限が実際には通っていた（一度目は Vercel Authentication の適用範囲、二度目は Edge ランタイムで環境変数が読めない件）。
 どちらもリクエストを一度投げるまで誰にも見えなかった。
 
-ローカルの `pnpm e2e` にも制限の spec があるが、**あちらは Vercel のランタイム差を再現しない**（`HARNESS.md`「E2E」）。
+ローカルの `pnpm e2e` にも認証の spec があるが、**あちらは Vercel のランタイム差を再現しない**（`HARNESS.md`「E2E」）。
 退行を見るための層で、本番が閉じている証拠にはならない。
 
 独自ドメインは当てていない。
-`<project>.vercel.app` のまま使い、当てるのは #68 が入るか Hobby から動かすときにする。
-アクセス制限はアプリ側にあるので、当てても保護は付いてくる。
+`<project>.vercel.app` のまま使い、当てるのは Hobby から動かすときにする。
+**当てるときは、`BETTER_AUTH_URL` と Google の redirect URI を下の「Google の OAuth クライアント」の「ドメインを変えるとき」の順で動かす**。
 Hobby は非商用限定なので、他人へ開く段では実行環境ごと決め直すことになる（`adr/0002-production-runtime.md`「覆る条件」）。
+
+## Google の OAuth クライアント
+
+本番と手元で、別々の OAuth クライアントを使う。
+二つとも同じ Google Cloud のプロジェクトに作る。
+分ける理由は `adr/README.md`「ADR にしないもの」。
+
+redirect URI は `BETTER_AUTH_URL` の値に `/api/auth/callback/google` を足したもので、一文字でも違うと Google が拒否する。
+ワイルドカードは使えない。
+`http` が許されるのは `localhost` だけである。
+
+### プロジェクトと同意画面（一度だけ）
+
+1. Google Cloud Console で、toiito 用のプロジェクトを作るか選ぶ
+2. Google Auth Platform → **Branding** で、アプリ名（`toiito`）とユーザーサポートのメールを入れる。
+   ロゴ・ホームページ・プライバシーポリシーは空でよい
+3. Google Auth Platform → **Audience** で、User type を **External** にする。
+   Internal は Google Cloud の組織に属するプロジェクトでしか選べない
+4. Publishing status は **Testing** のままでよい。
+   Better Auth が要求する scope は `openid` / `email` / `profile` の 3 つだけで、この 3 つだけを要求するアプリは、テストユーザーに載っていない Google アカウントでもサインインでき、7 日での失効も起きない（Google の「Manage App Audience」）。
+   入れる人を絞るのは `TOIITO_ALLOWED_EMAILS` で、テストユーザーの一覧ではない
+
+### 本番のクライアント
+
+1. Google Auth Platform → **Clients** → **Create client** を開き、Application type は **Web application**、Name は `toiito production` にする
+2. Authorized redirect URIs に `https://<project>.vercel.app/api/auth/callback/google` を入れる。
+   Authorized JavaScript origins は空でよい
+3. **Create** を押した直後の画面で Client ID と Client secret を控え、Vercel の Production の `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET` へ入れる。
+   **Client secret の全文を表示するのはこの画面だけである**。
+   閉じた後に見えるのは末尾の 4 文字だけで、控え損ねたら下の「シークレットを差し替える」で新しいシークレットを足す
+
+### 手元のクライアント
+
+1. 同じプロジェクトの **Clients** → **Create client** を開き、Application type は **Web application**、Name は `toiito local` にする
+2. Authorized redirect URIs に `http://localhost:3000/api/auth/callback/google` を入れる
+3. 作成直後の画面で控えた値を、手元の `web/.env.local` の `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET` へ書く。
+   `BETTER_AUTH_URL=http://localhost:3000` と、自分の Google アカウントの email を含む `TOIITO_ALLOWED_EMAILS` も要る
+4. 6 か月使われないクライアントは、Google が自動で削除する（削除から 30 日以内なら復元できる）。
+   手元のクライアントが消えていたら、同じ手順で作り直す
+
+### シークレットを差し替える
+
+1. **Clients** で対象のクライアントを開き、**Add secret** で新しいシークレットを作って控える。
+   1 つのクライアントが同時に持てるシークレットは 2 つまでである
+2. Vercel の `GOOGLE_CLIENT_SECRET`（手元なら `.env.local`）を新しい値へ替え、Redeploy する
+3. サインインできることを確かめてから、古いシークレットを無効にして削除する
+
+### ドメインを変えるとき
+
+`BETTER_AUTH_URL` と本番のクライアントの redirect URI は、利用者が開くドメインと一致させる。
+独自ドメインへ移るときは、次の順で動かす。
+
+1. Vercel の Project Settings → Domains に新しいドメインを足し、DNS の設定を終える
+2. 本番のクライアントの Authorized redirect URIs に `https://<新しいドメイン>/api/auth/callback/google` を**足す**。
+   古い URI はまだ消さない
+3. Vercel の Production の `BETTER_AUTH_URL` を `https://<新しいドメイン>` へ替え、Redeploy する
+4. 新しいドメインで Google のサインインと、上の「ログイン」の「効きの確認」を通す
+5. 古い redirect URI を、本番のクライアントから削除する
+
+新しいドメインでは、全員がサインインし直す。
+cookie は発行したホストにしか送られない。
 
 ## 引き受けている非対称
 
@@ -325,6 +432,7 @@ Neon 無料の **Scale to Zero は 5 分のアイドルで停止し、無効化�
 DB 側の枠の問題として別に立てる条件は満たさなかったので、この非対称は引き受けたままにする。
 
 ストレージは 0.5 GB／プロジェクトで、超えると書き込みが失敗する。
+Preview のブランチも同じ枠を使う（上の「Preview」）。
 
 Vercel Hobby の関数実行時間の上限は 300 秒で、変更できない。
 **一往復の実測は 15〜27 秒**（2026-08-29・実キー・本番で 2 回）。
