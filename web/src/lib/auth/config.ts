@@ -10,15 +10,33 @@
  * エントリポイントは `readAuthConfig`。
  */
 
-/** 認証の設定を読むときに見る環境変数。 */
+/**
+ * 認証の設定を読むときに見る環境変数。
+ * 値の書き方の正は `web/README.md`「環境変数」。
+ */
 type AuthEnv = {
+  /** セッションのトークンと OAuth の state の署名に使う秘密。 */
   readonly BETTER_AUTH_SECRET?: string;
+
+  /** cookie と OAuth の callback の URL を組み立てる基点で、Google を使うときは必須。 */
   readonly BETTER_AUTH_URL?: string;
+
+  /** Google OAuth のクライアント ID で、`GOOGLE_CLIENT_SECRET` と揃えて設定する。 */
   readonly GOOGLE_CLIENT_ID?: string;
+
+  /** Google OAuth のクライアントシークレット。 */
   readonly GOOGLE_CLIENT_SECRET?: string;
+
+  /** サインインを許す email のカンマ区切り。 */
   readonly TOIITO_ALLOWED_EMAILS?: string;
+
+  /** `1` のとき、Google を経ないサインイン（Preview と E2E 用）を有効にする。 */
   readonly TOIITO_FAKE_LOGIN?: string;
+
+  /** Vercel が渡す実行環境の名前で、`production` のときは `TOIITO_FAKE_LOGIN` を拒否する。 */
   readonly VERCEL_ENV?: string;
+
+  /** 省略可能なプロパティだけの型は weak type 検出で `ProcessEnv` を代入できないので、`process.env` をそのまま渡せるようにインデックスシグネチャを持たせる。 */
   readonly [key: string]: string | undefined;
 };
 
