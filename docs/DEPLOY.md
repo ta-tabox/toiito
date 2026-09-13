@@ -29,7 +29,7 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 | `PRODUCTION_DIRECT_URL` | GitHub の Settings → Secrets and variables → Actions → **Repository secrets** | `DIRECT_URL` と同じ値。migration を流す workflow だけが読む |
 
 `pg` v9 で `sslmode=require` が libpq の意味へ変わって証明書を検証しなくなるので、**接続の 3 本は `sslmode=verify-full` で終える**。
-Neon は直結・プーラーのどちらのホストでもこのパラメータを通す（2026-08-29 に `pg` 8.23.0 で実測）。
+Neon は直結・プーラーのどちらのホストでもこのパラメータを通す。
 ADR を立てていない理由は `adr/README.md`「ADR にしないもの」。
 
 ローカルと CI の接続文字列は `sslmode` を持たない（`localhost` へ TLS を張っていないので関係が無い）。
@@ -48,9 +48,7 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 
 1. **Neon 側で自分の組織を切り**、その下に本番プロジェクトを作って接続文字列を 2 本控える。
    Vercel Marketplace の Neon 統合は使わない（`adr/0012-neon-outside-vercel-marketplace.md`）。
-   Marketplace 経由で作ると Neon プロジェクトが Vercel 所有の組織の配下に入り、そこから自分のアカウントへ移すセルフサービスの経路が無い。
    **Postgres は 18 を選ぶ**（ローカルと CI も 18。`adr/0009-postgres-18.md`）。
-   Neon はメジャーの in-place upgrade を持たず、後から変えるにはプロジェクトごと作り直すことになる。
    Region は **AWS US East 1 (N. Virginia)** で、Vercel の関数リージョンの既定（`iad1`）と揃える。
    揃っていないと DB の往復が毎回大陸をまたぐ。
    接続文字列 2 本の違いはホスト名の `-pooler` だけ
@@ -73,9 +71,6 @@ Environment secrets は `environment:` を宣言した job にしか渡らず、
 
 **secret は migration の workflow が main へ入る前に入れる**。
 `migrate.yml` は main への push で走るので、secret が無いまま入れると空文字が渡って最初の job が赤くなる。
-
-**import は main へマージした後に回す**。
-Vercel の production ビルドが見るのは main なので、`web/vercel.json` の無い main を先に import すると、下の pnpm の版の失敗を初回ビルドで一度踏むことになる。
 
 ## pnpm の版
 
@@ -142,7 +137,7 @@ Preview のサインインは `TOIITO_FAKE_LOGIN=1` が開ける経路だけで�
 そこから先はサインインが要るが、`TOIITO_ALLOWED_EMAILS` に載った email のボタンを押すだけで入れる。
 **引き受ける条件は「Preview に本番のデータが無いこと」**で、条件が崩れればこの構成も崩れる。
 
-**Preview の DB は、本番と同じ Neon プロジェクトの無料枠を使う**（2026-09-12 に Neon の Plans のページで確認）。
+**Preview の DB は、本番と同じ Neon プロジェクトの無料枠を使う**。
 上限はブランチごとに分かれず、本番のブランチと `preview` ブランチの合計に対して効く。
 
 | 上限 | 値 | 超えたとき |
@@ -171,13 +166,13 @@ Neon の toiito → Branches → Create branch。
 **auto-delete は付けない**。
 全 PR が共有する 1 本なので、期限で消えると Preview のビルドが黙って赤へ戻る。
 
-**schema only は `_prisma_migrations` も空にする**（2026-08-29 に実測）。
-テーブルは在るのに Prisma からは migration が一つも当たっていないと見えるので、そのまま `migrate deploy` を流すと同じ migration を二重に当てにいって落ちる。
+**schema only は `_prisma_migrations` も空にする**。
+テーブルは在るのに Prisma からは migration が一つも当たっていないと見えるので、そのまま `migrate deploy` を実行すると同じ migration を二重に当てにいって失敗する。
 辻褄を合わせてから開発用データを入れる。
-`web/` で叩き、`prisma/migrations/` に在る分をすべて `--applied` で入れる（いまは init の一本だけ）。
+`web/` で叩き、`prisma/migrations/` に在るディレクトリをすべて `--applied` で入れる。
 
 ```bash
-DIRECT_URL='<preview の直結>' pnpm exec prisma migrate resolve --applied 20260816090000_init
+for m in $(ls prisma/migrations | grep -v migration_lock.toml); do DIRECT_URL='<preview の直結>' pnpm exec prisma migrate resolve --applied "$m"; done
 DATABASE_URL='<preview のプーラー>' pnpm seed
 ```
 
@@ -205,7 +200,7 @@ pnpm migrate:preview
 ### 効きの確認
 
 **Preview は制限が二重になる**ので、素で叩いた応答をアプリ側の証拠として読まない。
-外側の Vercel Authentication が先に答え、**401 ですらなく 302 で SSO へ飛ばす**（2026-08-29 に実測）。
+外側の Vercel Authentication が先に答え、**401 ですらなく 302 で SSO へ飛ばす**。
 
 ```
 HTTP/2 302
@@ -243,7 +238,7 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 `prisma migrate deploy` に取り消しは無いので、スキーマを戻すには打ち消す migration を書いて流すことになる。
 コードだけ戻して直る範囲に収めるのが、上の三段階に割る規律の目的。
 
-データごと巻き戻すなら Neon の point-in-time restore を使う（2026-08-28 時点で無料プランでも使える）。
+データごと巻き戻すなら Neon の point-in-time restore を使う（無料プランでも使える）。
 ただし履歴は **6 時間・変更 1 GB-month** までで、戻せるのは root ブランチだけ。
 枠を超えた時点より前へは戻せないので、これを常用の安全網と見なさない。
 
@@ -253,10 +248,9 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 `web/src/proxy.ts` が全リクエストを見て、セッションの cookie が無ければ `/login` へ送る。
 入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（`adr/0022-session-security.md` 決定 8）。
 
-**ホスティング側のアクセス制限は本番に効かない**（2026-08-29 に実測）。
+**ホスティング側のアクセス制限は本番に効かない**。
 Hobby で選べる Vercel Authentication の Standard Protection は、API 上の名前が `prod_deployment_urls_and_all_previews` で、守るのは production の**デプロイ URL**（`<project>-<hash>-<team>.vercel.app`）と Preview だけである。
 production の domain（`<project>.vercel.app`）は検証なしで通る。
-シークレットウィンドウでも Safari でもログインを求められずアプリへ到達することを確認した。
 囲える All Deployments は Pro の Advanced Deployment Protection（月 150 ドル）が要る。
 
 **Vercel Authentication は無効化しない**。
@@ -304,11 +298,10 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST 'https://<project>.vercel.app/a
 | cookie ヘッダ（値はダミーの `probe=1` でよい） | Better Auth が origin を照合せず、別 origin でも通る |
 | `content-type: application/json` と本文 | origin を照合する前に 415 で拒否され、CSRF を確かめたことにならない |
 
-Better Auth は cookie ヘッダが在るかどうかで照合を始め、cookie の値は見ない（2026-09-14 に本番で実測）。
+Better Auth は cookie ヘッダが在るかどうかで照合を始め、cookie の値は見ない。
 
 **この確認を省かない。**
-2026-08-29 に二度、設定上は掛かっているはずの制限が実際には通っていた（一度目は Vercel Authentication の適用範囲、二度目は Edge ランタイムで環境変数が読めない件）。
-どちらもリクエストを一度投げるまで誰にも見えなかった。
+設定上は掛かっているはずの制限が実際には通っていないことは、リクエストを一度投げるまで誰にも見えない。
 
 ローカルの `pnpm e2e` にも認証の spec があるが、**あちらは Vercel のランタイム差を再現しない**（`HARNESS.md`「E2E」）。
 退行を見るための層で、本番が閉じている証拠にはならない。
@@ -383,22 +376,13 @@ cookie は発行したホストにしか送られない。
 
 Neon 無料の **Scale to Zero は 5 分のアイドルで停止し、無効化できない**。
 「思いついたときに投げる」使い方だと、ほぼ毎回停止から復帰することになる。
-
-**実測で約 10 秒**（2026-08-29。停止するだけ空けてから `/` を開いた）。
-問い一覧は DB を読むだけで AI を呼ばないので、この 10 秒は Vercel の関数のコールドスタートと Neon の復帰の合計になる。
-どちらに寄っているかは分けていない（どちらも「アイドル後の一発目」の費用で、分ける実益が薄い）。
-
-**人間の判定は「遅延として感じない」**（同日）。
-DB 側の枠の問題として別に立てる条件は満たさなかったので、この非対称は引き受けたままにする。
+アイドル後の一発目は、Vercel の関数のコールドスタートと Neon の復帰を合わせて約 10 秒かかる。
+問い一覧は DB を読むだけで AI を呼ばないので、この 10 秒に AI の生成は含まれない。
+人間の判定は「遅延として感じない」で、この非対称は引き受けたままにする。
 
 ストレージは 0.5 GB／プロジェクトで、超えると書き込みが失敗する。
 Preview のブランチも同じ枠を使う（上の「Preview」）。
 
 Vercel Hobby の関数実行時間の上限は 300 秒で、変更できない。
-**一往復の実測は 15〜27 秒**（2026-08-29・実キー・本番で 2 回）。
-上限の 5〜9% なので、当面ここが効いてくることは無い。
-近づいたら実行環境を決め直す（`adr/0002-production-runtime.md`「覆る条件」）。
-
-内訳は上の 10 秒と合わせて読める。
-**AI の生成が 14〜17 秒、アイドル後の立ち上がりが約 10 秒**。
-一往復は `max_tokens: 1024` を二回逐次で待つ形なので、幅を作っているのは主に出力の長さである。
+一往復は二体分の生成を逐次で待つので、実行時間は主に出力の長さで決まる（上限は `TOIITO_ANTHROPIC_MAX_TOKENS`。既定は `web/README.md` の表）。
+一往復が数十秒に収まる間は上限に届かず、近づいたら実行環境を決め直す（`adr/0002-production-runtime.md`「覆る条件」）。

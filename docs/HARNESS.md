@@ -11,7 +11,7 @@ AI（Claude Code / Cowork セッション）が自律的に実装を進めるた
 |----|--------------|------|------|
 | L0 型 | 契約の整合（repo 関数シグネチャ等） | `tsc --noEmit` | 秒 |
 | L1 静的 | 明白な誤り・作法・書式 | `biome check` + `scripts/lint-comments.ts` | 秒 |
-| L2 ユニット | lib 層のロジック（db / claude / personas / anchors） | Vitest（+ ローカル Postgres） | 秒 |
+| L2 ユニット | lib 層のロジック（db / ai / personas / anchors） | Vitest（+ ローカル Postgres） | 秒 |
 | L3 ビルド | ルーティング・Server Actions の結線 | `next build` | 十秒台 |
 | L4 E2E | 縦一本（投入→対話→メモ→逆引き）のブラウザ実挙動 | Playwright（`pnpm e2e`） | 分 |
 | L5 官能 | 対話の質・「答えを与えない」制約の遵守 | 人間（将来 LLM-judge 補助） | — |
@@ -24,11 +24,11 @@ check が赤のままコミットしない（コミットゲート）。
 止める力は main の ruleset に置く（GitHub の Settings → Rules → Rulesets、名前は `main: via PR + check green`）。
 設定は GitHub 側の状態で diff に残らないので、何をどういう理由で有効にしたかの記録はここが正。
 **`enforcement` は `active`、bypass list は空**（最終確認 2026-09-01）。
-設定の内容だけを書いても掛かっているかどうかは書けないので、実際の値と確かめた日付をここへ置く（8/22 から 8/31 まで `disabled` のまま誰も気付かなかったのが #152（main の ruleset が誰にも効いていない）である）。
+設定の内容だけを書いても掛かっているかどうかは書けないので、実際の値と確かめた日付をここへ置く。
 
 - **Require a pull request before merging** — 有効、承認は 0 件。
   main への直 push を塞ぐ。
-  文書の一行だけを直す変更も PR を通る（先例: cd10a6f は main へ直接入っている）。
+  文書の一行だけを直す変更も PR を通る。
   bypass が空なので、例外は誰も持たない。
   承認を 1 件以上にすると GitHub は自分の PR を自分で承認させないので、全ての PR が bypass 頼みになる
 - **Require status checks to pass before merging** — 有効。
@@ -38,8 +38,8 @@ check が赤のままコミットしない（コミットゲート）。
   main の差分を取り込んだ状態で CI を通さないと、緑の PR がマージ後に初めて壊れる組み合わせを取り逃がす。
   main が進むたび PR 側の取り込みが要るが、Update branch 一つで済むので手間として引き受ける
 - **Bypass list** — 空。
-  手元の Claude も人間と同じアカウントで叩くため名義で逃げ道を分けられず、管理者を入れると全ての push とマージが常時そこを通ってしまうので、誰も入れない（2026-09-01・#152。それまでは Repository admin を Always で入れていた）。
-  CI 自体が壊れて緑にできないときは ruleset を一時的に `disabled` へ倒して回すが、**戻すところまでを一続きにする**——倒したまま忘れたのが #152 の事故である
+  手元の Claude も人間と同じアカウントで叩くため名義で逃げ道を分けられず、管理者を入れると全ての push とマージが常時そこを通ってしまうので、誰も入れない。
+  CI 自体が壊れて緑にできないときは ruleset を一時的に `disabled` にして回すが、**戻すところまでを一続きにする**
 
 ruleset が enforce されるのは public であることが前提。
 Free プランの private では保存はできても止まらない（GitHub Pro 以上なら private でも効く）。
@@ -47,9 +47,8 @@ Free プランの private では保存はできても止まらない（GitHub Pr
 
 claude-code-action は、走っているワークフローファイルが default branch のものと内容一致しないと本体を実行せず自己スキップする。
 出るのは `Workflow validation failed. The workflow file must exist and have identical content to the version on the repository's default branch.` の一行だけ。
-スキップは job の失敗でなく成功として畳まれるので、**そのファイル自身を変える PR では、その job の緑が意味を持たない**。
-`claude-code-review.yml` を触った PR には `claude-review` の緑が十数秒で付き、レビューは一行も走っていない（実測 2026-08-23・PR #77）。
-判定するのは走っている当のファイルだけなので、`claude.yml` だけを触った PR で `claude-review` を疑う必要は無い（`claude.yml` 側の症状は `@claude` を呼んだときの `claude` job に出るはずだが、そちらは測っていない）。
+スキップは job の失敗でなく成功として扱われるので、**そのファイル自身を変える PR では、その job の緑が意味を持たない**。
+判定するのは走っている当のファイルだけなので、`claude.yml` だけを触った PR で `claude-review` を疑う必要は無い。
 効きの確認はマージ後に main で行う。
 
 L1 は lint と書式を Biome 一本で見る。
@@ -92,8 +91,7 @@ DATABASE_URL=postgresql://toiito:toiito@localhost:5433/toiito
 DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
 ```
 
-スキーマを変えたら `pnpm exec prisma migrate dev --name <変更の名前>`。
-check 制約は Prisma スキーマで表現できないので、生成された migration の SQL へ直接書き足す。
+スキーマの変え方は `web/README.md`「スキーマを変えるとき」。
 
 テストの隔離は三層。
 走り間はテスト用 DB を落として作り直し（`web/tests/setup/database.ts`）、ケース間は全テーブルを空にする（`web/tests/setup/truncate.ts`）。
@@ -178,19 +176,10 @@ pnpm exec playwright install chromium
 
 ### 入っているもの
 
-| spec | 見るもの |
-|---|---|
-| `dialogue.spec.ts` | 問い投入 → 発話 → 二体が ai_a → ai_b の順に応答 |
-| `memo.spec.ts` | 発話の選択とメモの作成、下線と `/memos` からの逆引き、再訪を挟んでも着地が切れないこと |
-| `auth.spec.ts` | 未サインインがログインの画面へ送られること、ログインとログアウトの導線、cookie の属性、別 origin からの POST が拒まれること |
-| `ownership.spec.ts` | 他人の問いが一覧に出ず、URL を直接叩いても 404 になること |
+spec は `web/e2e/` の 4 本で、何を見るかは各 spec の冒頭コメントが言う。
 
 `auth.spec.ts` だけはサインイン済みで始めない。
 未サインインの状態そのものを見るので、他の spec が共有する前提（`signIn` の `beforeEach`）を使わない。
-
-`auth.spec.ts` の Server Action の CSRF の検査は、同じ multipart の POST を 2 回送る。
-1 回目は E2E のサーバー自身の origin（`http://localhost:3100`）を名乗って成功することを見て、2 回目は `https://toiito.example` を名乗って失敗することを見る。
-1 回目が無いと、2 回目の失敗が origin の照合で拒否されたものか、フォームの組み立て違いのような別の理由で失敗したものかを区別できない。
 
 **この層は Vercel のランタイム差を再現しない**。
 `next dev` も `next start` も Node で走るので、Edge でだけ環境変数が読めない類の失敗はここに出ない。
@@ -231,7 +220,6 @@ pnpm exec playwright install chromium
 それ以外の非対称は仕様として引き受ける。
 
 check の前提は Postgres が起動していること（`docker compose up -d`）。
-「外部プロセス不要」は 2026-08-15 に捨てた前提で、代わりに開発・テスト・本番の方言が揃った。
 
 コミット本文の禁止語を止める `.githooks/commit-msg` は、git の既定の `.git/hooks/` に無いので、クローンごとに `git config core.hooksPath .githooks` で有効にする。
 リモートでは下の起動フックがこの設定を入れる。
@@ -250,9 +238,9 @@ API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環
 - 版の管理が mise でなく直置き（mise.run へ出られない）。
   版の正は `mise.toml` のままで、フックはそれを読む側
 - L4 の実走は手元（macOS）が担う。
-  三つ目だけは通信の話ではない——ブラウザは `/opt/pw-browsers` に同梱されており、2026-08-23 のセッションで E2E 7 本がリモートで緑になっている。
-  ただし同梱の `chromium-1194` と `@playwright/test` 1.62.1 が要求する版（1234）がずれており、`executablePath` を差さないと起動しない。
-  **その設定は常設しない**（下の表の最終行）ので、リモートで書けるのは設定と spec までという段取りは変わらない
+  三つ目だけは通信の話ではない。
+  ブラウザは `/opt/pw-browsers` に同梱されているが、その版が `@playwright/test` の要求する版と一致しないので、`executablePath` を差さないと起動しない。
+  **その設定は常設しない**（下の表の最終行）ので、リモートで書けるのは設定と spec までになる
 
 #### 設定の置き場
 
@@ -281,15 +269,6 @@ API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環
 黙って Claude 名義のコミットが積まれるより、セッションが立たない方が気づけるため（`CLAUDE.md`「git」）。
 
 環境を新しく作るときの順序は、環境変数を入れる → セッションを立てて `env | grep GIT_AUTHOR` で届くのを見る → 作業を始める。
-
-## フェーズ
-
-- **P0（今回）**: Vitest + フェイクモード + lib 層テスト + `pnpm check`
-- **P1**: 済み。
-  シードスクリプト（`pnpm seed`）、Playwright の足場（webServer・専用 DB・`pnpm e2e` / `pnpm check:full`）、7 シナリオが揃っている
-- **P2**: ペルソナ逸脱検査 — 「答えを与えない」制約を LLM-as-judge でサンプリング検査。
-  L5 の一部自動化（完全自動化はしない。官能は人間の領分）
-- **CI**: リモート環境構築タスクと同時（GitHub Actions で check を回すだけ。先回りして作らない）
 
 ## 意図的にやらないこと
 
