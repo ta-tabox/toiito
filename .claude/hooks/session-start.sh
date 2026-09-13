@@ -5,7 +5,7 @@
 # 手元の環境は docker compose + mise が正なので、このフックはリモートでしか走らない。
 #
 # リモート特有の非対称は二つ。どちらも外向きの通信が許可制で塞げないもの（docs/HARNESS.md「実行環境」）:
-#   - Postgres は 17 でなく、イメージに同梱の 16（apt.postgresql.org へ出られない）
+#   - Postgres は 18 でなく、イメージに同梱の 16（apt.postgresql.org へ出られない）
 #   - mise は使わず、node と pnpm を mise.toml の版に合わせて直接置く（mise.run へ出られない）
 # 版の正は mise.toml のままにして、ここは読む側に徹する。
 
