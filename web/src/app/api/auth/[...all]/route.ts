@@ -4,7 +4,7 @@
  * 判断は持たない。
  * サインインの可否・セッションの寿命・cookie の属性はすべて `auth.ts` の設定が決め、`route.ts` は Next の規約へ繋ぐだけにする。
  *
- * `@/lib/auth` を import してよいのはこのファイルと `current-user.ts` だけで、`biome.json` の `noRestrictedImports` が検査する。
+ * `@/lib/auth` を import してよいのはこのファイルと `current-user.ts` と `sign-in.ts` だけで、`biome.json` の `noRestrictedImports` が検査する。
  */
 
 import { toNextJsHandler } from "better-auth/next-js";

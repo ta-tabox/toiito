@@ -171,9 +171,9 @@
   アプリと同じクライアントを返すので、接続プールは 1 本のままである
 - `auth()` は関数で、最初の呼び出しまで環境変数を読まない。
   `next build` がルートハンドラのモジュールを評価して設定を集めるので、モジュールの評価時に読むと、認証の環境変数を持たない CI でビルドが失敗する
-- 認証のモジュールは `src/lib/auth/` へまとまる（`index.ts` / `config.ts` / `fake-login.ts` / `current-user.ts` / `protected-paths.ts`）。
+- 認証のモジュールは `src/lib/auth/` へまとまる（`index.ts` / `config.ts` / `fake-login.ts` / `current-user.ts` / `sign-in.ts` / `protected-paths.ts`）。
   `@/lib/auth` の解決先が `auth.ts` から `auth/index.ts` へ移るだけなので、import する側の指定は変わらない
-- `biome.json` の `noRestrictedImports` の除外は 4 ファイルになる（`lib/auth/index.ts` / `lib/auth/fake-login.ts` / `lib/auth/current-user.ts` / `app/api/auth/[...all]/route.ts`）
+- `biome.json` の `noRestrictedImports` の除外は 5 ファイルになる（`lib/auth/index.ts` / `lib/auth/fake-login.ts` / `lib/auth/current-user.ts` / `lib/auth/sign-in.ts` / `app/api/auth/[...all]/route.ts`）
 
 ## 覆る条件
 

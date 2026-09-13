@@ -11,13 +11,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { requireCurrentUser } from "@/lib/auth/current-user";
+import { LOGIN_PATH } from "@/lib/auth/protected-paths";
 import {
-  requireCurrentUser,
   signInAsFakeUser,
   signOutCurrentUser,
   startGoogleSignIn,
-} from "@/lib/auth/current-user";
-import { LOGIN_PATH } from "@/lib/auth/protected-paths";
+} from "@/lib/auth/sign-in";
 import { addMemo, createQuestion, createSession } from "@/lib/db";
 import { personaCalls, retryTurn, runTurn } from "@/lib/turn";
 

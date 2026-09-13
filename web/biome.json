@@ -103,6 +103,7 @@
         "src/lib/auth/index.ts",
         "src/lib/auth/fake-login.ts",
         "src/lib/auth/current-user.ts",
+        "src/lib/auth/sign-in.ts",
         "src/app/api/auth/\\[...all\\]/route.ts"
       ],
       "linter": {

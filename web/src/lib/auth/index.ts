@@ -3,7 +3,7 @@
  *
  * 設定の読み取りは `config.ts`、Google を経ないサインインは `fake-login.ts` が持ち、`auth/index.ts` は配線だけを持つ。
  * セッションを読む処理も持たない。
- * 読むのは `current-user.ts` だけで、`biome.json` の `noRestrictedImports` が `@/lib/auth` の import をそのファイルとルートハンドラへ限定する（`docs/adr/0022-session-security.md` 決定 9）。
+ * 読むのは `current-user.ts` だけで、`biome.json` の `noRestrictedImports` が `@/lib/auth` の import をそのファイルと `sign-in.ts` とルートハンドラへ限定する（`docs/adr/0022-session-security.md` 決定 9）。
  *
  * リソースごとの所有者の照合も持たない。
  * `auth/index.ts` が決めるのはサインインを許すかどうかまでで、他人のリソースを拒否するのは `db.ts` の repo 関数である。
