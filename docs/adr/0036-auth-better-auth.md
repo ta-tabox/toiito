@@ -109,7 +109,7 @@ Google を経ない経路が本番で有効だと、許可リストに載った 
 - migration の経路は動かない。
   Prisma Migrate が運び、main への push で GitHub Actions が流す（0008）
 - 本番と Preview の環境変数が増える（Better Auth の秘密・Google のクライアント ID と秘密・許可リスト。Preview は `TOIITO_FAKE_LOGIN` の 1 本）。
-  綴りと本数は 0033 の帰結の表が持つ
+  変数の名前と本数は 0033 の帰結の表が持つ
 - #133（捨てアカウント枠）を足す回に、決定 6（自動リンク）へ戻ることになる
 
 ## 覆る条件
