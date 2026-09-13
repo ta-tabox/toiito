@@ -85,7 +85,7 @@ ADR にしない側へ倒す。
 | [0010](0010-prisma-major-hold.md) | Prisma は 7 系で止め、三つのパッケージの版を明示で指定する | 2026-08-29 | 採用 |
 | [0011](0011-typescript-7-parser.md) | TypeScript は 7 へ上げ、コメント検査器のパーサだけ 6 系を別名で持つ | 2026-08-29 | 採用 |
 | [0012](0012-neon-outside-vercel-marketplace.md) | Neon は Vercel Marketplace 経由で作らず、自分の組織の下に置く | 2026-08-29 | 採用 |
-| [0013](0013-production-basic-auth.md) | 本番へのアクセス制限を、ホスティングでなくアプリ側の Basic 認証で持つ | 2026-08-29 | 採用 |
+| [0013](0013-production-basic-auth.md) | 本番へのアクセス制限を、ホスティングでなくアプリ側の Basic 認証で持つ | 2026-08-29 | supersede 済み（→ 0033） |
 | [0014](0014-local-vocabulary-split.md) | 手元の環境に固有の語彙と接続を、追跡しない CLAUDE.local.md へ分離する | 2026-08-29 | 採用 |
 | [0015](0015-preview-neon-branch.md) | Preview に Neon のブランチを当てた専用の DB を持たせる | 2026-08-29 | 採用 |
 | [0016](0016-central-metaphor-brewing.md) | 中心メタファーをコンポスターから醸造（発酵槽）へ移す | 2026-08-30 | 採用 |
