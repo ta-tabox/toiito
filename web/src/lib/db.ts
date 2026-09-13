@@ -99,7 +99,7 @@ function fromUserRow(row: { id: string; email: string; name: string }): User {
 /**
  * Better Auth のアダプタへ渡す Prisma のクライアントを返す。
  *
- * 呼んでよいのは `auth.ts` だけである。
+ * 呼んでよいのは `lib/auth/index.ts` だけである。
  * Prisma を `db.ts` の外へ出さないという禁止則（`docs/ARCHITECTURE.md`「技術スタック」）の唯一の例外で、Better Auth が四表を読み書きするのにクライアントそのものを要求するために開けてある。
  * アプリが使うのと同じクライアントを返すので、接続プールは 1 本のままになる。
  */
@@ -126,7 +126,7 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
  * `user` 表から id で 1 件取得する。
  * 行が無ければ throw せず undefined を返す。
  *
- * 呼ぶのは、Better Auth のセッションが名指しするユーザーを解決する 2 箇所である（`current-user.ts` と `auth.ts` の許可リストの照合）。
+ * 呼ぶのは、Better Auth のセッションが名指しするユーザーを解決する 2 箇所である（`current-user.ts` と `lib/auth/index.ts` の許可リストの照合）。
  * セッションに写った値でなく `user` 表を毎回 SELECT するのは、行を書き換えれば次のリクエストから効くようにするため。
  */
 export async function getUserById(id: string): Promise<User | undefined> {
