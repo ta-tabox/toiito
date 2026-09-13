@@ -285,17 +285,26 @@ cookie の名前が `__Secure-better-auth.session_token` で始まっていれ�
 名前に `__Secure-` が無ければ立っていないので、`BETTER_AUTH_URL` が `https://` で始まっているかを見る。
 
 **CSRF が効いていることも一度は叩いて確かめる。**
-別 origin を名乗ってサインインのエンドポイントを叩き、拒まれることを見る（`adr/0022-session-security.md` 決定 4）。
+同じ POST を、別 origin と自分の origin の 2 通りで送る（`adr/0022-session-security.md` 決定 4）。
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' -X POST 'https://<project>.vercel.app/api/auth/sign-out' \
-  -H 'origin: https://example.invalid' \
-  -H 'cookie: <ブラウザからコピーしたセッションの cookie>'
+  -H 'origin: https://example.invalid' -H 'cookie: probe=1' \
+  -H 'content-type: application/json' -d '{}'
+curl -s -o /dev/null -w '%{http_code}\n' -X POST 'https://<project>.vercel.app/api/auth/sign-out' \
+  -H 'origin: https://<project>.vercel.app' -H 'cookie: probe=1' \
+  -H 'content-type: application/json' -d '{}'
 ```
 
-403 が返れば効いている。
-**cookie を付けずに叩くと通る**ので、この確認では cookie を必ず付ける。
-Better Auth が origin を照合するのは cookie を持つリクエストだけである。
+1 本目が 403、2 本目が 200 なら効いている。
+2 本目が 200 にならないときは、1 本目の 403 も origin の照合によるものとは言えない。
+
+| 付けるもの | 付けないと |
+|---|---|
+| cookie ヘッダ（値はダミーの `probe=1` でよい） | Better Auth が origin を照合せず、別 origin でも通る |
+| `content-type: application/json` と本文 | origin を照合する前に 415 で拒否され、CSRF を確かめたことにならない |
+
+Better Auth は cookie ヘッダが在るかどうかで照合を始め、cookie の値は見ない（2026-09-14 に本番で実測）。
 
 **この確認を省かない。**
 2026-08-29 に二度、設定上は掛かっているはずの制限が実際には通っていた（一度目は Vercel Authentication の適用範囲、二度目は Edge ランタイムで環境変数が読めない件）。
