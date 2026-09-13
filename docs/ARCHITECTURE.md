@@ -18,8 +18,8 @@ VISION の設計原理が上位。
   呼び出し規約は `lib/ai/` がプロバイダ非依存の形で持ち、固有の値域と API の作法は `lib/ai/anthropic.ts` に閉じる（`adr/0021-ai-provider-scope.md`）
 - **Better Auth（自前ホスト）** — 認証。
   Google OAuth 一本で、パスワードも OAuth のトークンも持たない。
-  入れるのは `TOIITO_ALLOWED_EMAILS` に載ったメールアドレスだけ（選定の経緯は `adr/0029-auth-better-auth.md`、開き方は `adr/0018-invite-only-multi-user.md`）。
-  セッションはログインから 1 日で必ず切れる（使っても延ばさない。cookie の属性と併せて `adr/0022-session-security.md`）
+  入れるのは `TOIITO_ALLOWED_EMAILS` に載ったメールアドレスだけ（経緯は `adr/0029-auth-better-auth.md`）。
+  セッションはログインから 1 日で必ず切れ、使っても延びない
 - **固定ペルソナ二体** — MVP は可変化しない（発酵後に再検討）
 
 永続化について今も効く禁止則（経緯は `adr/0003-persistence-prisma-postgres.md`）。
