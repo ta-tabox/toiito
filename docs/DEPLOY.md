@@ -44,37 +44,6 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 `postinstall` の `prisma generate` は `prisma.config.ts` 経由で `DIRECT_URL` を即時解決するので、無いとインストール段階で exit 1 になる。
 要るのは解決できることだけで、接続は要らない（`prisma generate` は DB へ繋がない）。
 
-## 既存の問いを、ログインした自分へ移す
-
-所有権の migration（`20260902090000_ownership_foundation`）は、持ち主のいなかった問いを `owner@toiito.invalid` という email の行へ寄せている。
-実在しない email なので、Google でサインインしてもこの行には結び付かない。
-**やることは、サインインして新しくできた行へ問いを移し、既定のユーザーの行を削除することである。**
-
-**この節の作業より前に `owner@toiito.invalid` を自分の email へ書き換えない。**
-自動リンクを有効にしない決定（`adr/0029-auth-better-auth.md` 決定 6）の下では、同じ email の行が先に在るとサインインそのものが `account not linked` で拒否される（`adr/0033-login-and-fake-sign-in.md` 決定 8）。
-書き換えてしまった場合は、`owner@toiito.invalid` へ戻してからサインインする。
-
-1. `TOIITO_ALLOWED_EMAILS` に自分の Google アカウントの email を入れて本番へデプロイする
-2. 本番を開き、Google でサインインする。
-   Better Auth が `user` と `account` の行を作る
-3. 問いを移して、既定のユーザーの行を削除する
-
-```bash
-DIRECT_URL='<本番の直結>' pnpm exec prisma db execute --stdin <<'SQL'
-update "questions"
-   set user_id = (select id from "user" where email = '<自分の Google アカウントの email>')
- where user_id = (select id from "user" where email = 'owner@toiito.invalid');
-
-delete from "user" where email = 'owner@toiito.invalid';
-SQL
-```
-
-**本番に問いが無かった場合は、この節ごと要らない**。
-migration は問いが一件も無い DB へ既定のユーザーを作らないので、サインインした時点で始まる。
-
-`pnpm seed` は本番に使わない。
-開発用の問いまで入れるうえ、`NODE_ENV=production` で止まる。
-
 ## 初回のセットアップ
 
 1. **Neon 側で自分の組織を切り**、その下に本番プロジェクトを作って接続文字列を 2 本控える。
@@ -283,24 +252,6 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 本番の外周を守るのは**アプリのログイン**である（`adr/0033-login-and-fake-sign-in.md`）。
 `web/src/proxy.ts` が全リクエストを見て、セッションの cookie が無ければ `/login` へ送る。
 入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（`adr/0022-session-security.md` 決定 8）。
-
-**Basic 認証は #68 で外した**。
-`adr/0013-production-basic-auth.md` が最初から書いていた覆る条件が発火したので、`TOIITO_BASIC_AUTH_USER` と `TOIITO_BASIC_AUTH_PASSWORD` は Production と Preview の両方から消す。
-
-**Basic 認証とログインが同時に入れ替わる**（`adr/0033-login-and-fake-sign-in.md` 決定 7）。
-0031 の決定 5 が書いた三段（入れる → 確かめる → 外す）は、判定のコードが残っていることを前提にしていた。
-`src/lib/basic-auth.ts` を削除した以上、Basic 認証はデプロイした瞬間に消える。
-
-1. 認証の 5 本を Production へ入れ、main へマージする。
-   デプロイが終わった時点で Basic 認証は掛かっていない
-2. すぐに Google でサインインし、下の「効きの確認」を通す
-
-**失敗したときは開くのでなく閉じる**。
-`proxy.ts` は cookie が無ければ `/login` へ送り、`lib/auth/index.ts` は設定が欠けていれば最初のリクエストで throw する。
-それでも直らなければ Vercel の Instant Rollback で前のデプロイへ戻す（下の「切り戻し」）。
-
-Basic 認証の環境変数 2 本は、どのコードからも読まれなくなる。
-残っていても害は無いが、読まれない値が残っていると次に見た人が掛かっていると誤読するので、Vercel から削除する。
 
 **ホスティング側のアクセス制限は本番に効かない**（2026-08-29 に実測）。
 Hobby で選べる Vercel Authentication の Standard Protection は、API 上の名前が `prod_deployment_urls_and_all_previews` で、守るのは production の**デプロイ URL**（`<project>-<hash>-<team>.vercel.app`）と Preview だけである。
