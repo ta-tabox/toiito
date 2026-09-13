@@ -188,8 +188,9 @@ pnpm exec playwright install chromium
 `auth.spec.ts` だけはサインイン済みで始めない。
 未サインインの状態そのものを見るので、他の spec が共有する前提（`signIn` の `beforeEach`）を使わない。
 
-CSRF の検査には対照を置く。
-同じ multipart の POST が自分の origin からは通ることを見ないと、別 origin での失敗が origin の照合によるものだと言えない。
+`auth.spec.ts` の Server Action の CSRF の検査は、同じ multipart の POST を 2 回送る。
+1 回目は E2E のサーバー自身の origin（`http://localhost:3100`）を名乗って成功することを見て、2 回目は `https://toiito.example` を名乗って失敗することを見る。
+1 回目が無いと、2 回目の失敗が origin の照合で拒否されたものか、フォームの組み立て違いのような別の理由で失敗したものかを区別できない。
 
 **この層は Vercel のランタイム差を再現しない**。
 `next dev` も `next start` も Node で走るので、Edge でだけ環境変数が読めない類の失敗はここに出ない。

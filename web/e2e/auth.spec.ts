@@ -112,8 +112,8 @@ test("別 origin を名乗る Server Action は拒まれる", async ({ page }) =
       },
     });
 
-  // 対照。
-  // 同じ形が自分の origin からは通ることを見ないと、下の拒否が origin の照合によるものだと言えない。
+  // 同じ POST を E2E のサーバー自身の origin から送り、成功することを先に見る。
+  // 成功を見ないと、下の失敗が origin の照合で拒否されたものか、フォームの組み立て違いで失敗したものかを区別できない。
   expect((await submit(E2E_BASE_URL)).ok()).toBe(true);
 
   // Next は origin と x-forwarded-host の食い違いを「Invalid Server Actions request」として中断し、応答は 500 になる。
