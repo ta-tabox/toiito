@@ -22,7 +22,7 @@ AI は答えを与えない。
 - **逆引き** — メモの一覧から、それが生まれた当時のセッションへ戻れる。
   対話は流れて消えるものではなく、堆積して振り返れるもの
 
-なぜ作るかの正は [docs/VISION.md](docs/VISION.md)。
+ここが持つのは、何を作っているかの紹介と現況で、なぜ作るかは [docs/VISION.md](docs/VISION.md)、どう作るかは [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) が持つ。
 
 ## 現況
 
