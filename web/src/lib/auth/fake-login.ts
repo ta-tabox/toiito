@@ -2,7 +2,7 @@
  * Google を経ないサインインのエンドポイント（`POST /api/auth/sign-in/fake`）を足す Better Auth プラグイン。
  *
  * Preview と E2E だけが有効にする。
- * Preview の URL は PR ごとに変わり、Google は redirect URI の事前登録を要求してワイルドカードを受け付けないので、Preview では本物の OAuth を通せない（`docs/adr/0029-auth-better-auth.md` 決定 7）。
+ * Preview の URL は PR ごとに変わり、Google は redirect URI の事前登録を要求してワイルドカードを受け付けないので、Preview では本物の OAuth を通せない（`docs/adr/0036-auth-better-auth.md` 決定 7）。
  * E2E は 2 人分のユーザーと未サインインの状態を作る必要があり、実 OAuth ではどちらも自動化できない。
  *
  * 誰を通すかは判定しない。
