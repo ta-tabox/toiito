@@ -76,7 +76,7 @@ function createAuth() {
     },
 
     account: {
-      // 同じ email の別プロバイダが 1 人のユーザーへまとめられる形を、相手が実在しないうちは開けない（`docs/adr/0029-auth-better-auth.md` 決定 6）。
+      // 同じ email の別プロバイダが 1 人のユーザーへまとめられる形を、相手が実在しないうちは開けない（`docs/adr/0036-auth-better-auth.md` 決定 6）。
       // 無効から有効へは後で動かせるが、一度まとめた行は分けられない。
       accountLinking: { enabled: false },
 

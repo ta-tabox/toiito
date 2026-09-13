@@ -125,7 +125,7 @@ PR ごとの Preview デプロイにも環境変数を 6 本入れる（Vercel �
 接続 2 本の末尾は本番と同じく `sslmode=verify-full`。
 
 **`BETTER_AUTH_URL` と Google の 2 本は Preview へ入れない**。
-Preview の URL は PR ごとに変わり、Google は redirect URI の事前登録を要求してワイルドカードを受け付けないので、実 OAuth を通せない（`adr/0029-auth-better-auth.md`）。
+Preview の URL は PR ごとに変わり、Google は redirect URI の事前登録を要求してワイルドカードを受け付けないので、実 OAuth を通せない（`adr/0036-auth-better-auth.md`）。
 Preview のサインインは `TOIITO_FAKE_LOGIN=1` が開ける経路だけで、ログインの画面に許可リストの email がボタンとして並ぶ。
 
 **認証の 3 本を落とさない**。
