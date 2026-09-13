@@ -65,7 +65,7 @@
   散文は値ひとつにつき一文を要求するので、値が増えるほど読み手が拾えなくなる
 - 同じ規範を二つの文書へ書かない。
   片方には「正は X」の一行だけを置く
-- 現況の文書（`README.md`・`web/README.md`・`docs/ARCHITECTURE.md`・`docs/DESIGN.md`・`docs/HARNESS.md`・`docs/DEPLOY.md`）は、コードとリポジトリの設定のいまの形だけを書く（決定は ADR 0036）。
+- 現況の文書（`README.md`・`web/README.md`・`docs/ARCHITECTURE.md`・`docs/DESIGN.md`・`docs/HARNESS.md`・`docs/DEPLOY.md`）は、コードとリポジトリの設定のいまの形だけを書く。
   判定は一行につき一つ。
   コードと設定から復元できる行は書かない／コードが語れない制約・手順・値は書く／過去の出来事は ADR か git／予定は issue
 - 見出しに日付を付けない。
