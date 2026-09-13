@@ -26,15 +26,11 @@ AI は答えを与えない。
 
 ## 現況
 
-開発中。
-MVP の縦一本——問い投入 → 二視点 AI との対話 → キーワードメモ → メモからのセッション逆引き——は実装として動く。
+MVP の縦一本（問い投入 → 二視点 AI との対話 → キーワードメモ → メモからのセッション逆引き）は動き、作者が常用している。
 
-**他人が試せる URL は無い**。
-本番は Vercel に立っているが（[ADR-0002](docs/adr/0002-production-runtime.md)）、作者だけが通れるようアクセスを制限してある（[ADR-0013](docs/adr/0013-production-basic-auth.md)）。
-自分専用の道具なので、当面その形は変えない。
+本番は Vercel に立っている（[ADR-0002](docs/adr/0002-production-runtime.md)）。
+サインインできるのは許可リストに載った Google アカウントだけで、公開登録は無い（[ADR-0018](docs/adr/0018-invite-only-multi-user.md)、[ADR-0033](docs/adr/0033-login-and-fake-sign-in.md)）。
 出す手順は [docs/DEPLOY.md](docs/DEPLOY.md)。
-
-残っているのは作者自身が常用できるかの判定で、それが済むまで機能を足さない。
 
 どの順で何を作るかは [docs/ROADMAP.md](docs/ROADMAP.md)、いま何に着手しているかは GitHub Issues が持つ。
 
@@ -56,7 +52,7 @@ Next.js (App Router) + TypeScript。
 - [docs/VISION.md](docs/VISION.md) — なぜ作るか。問題意識・中心メタファー・設計原理
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — いまどうなっているか。技術スタック・データモデル・二体 AI のオーケストレーション
 - [docs/DESIGN.md](docs/DESIGN.md) — どう見えて、どう触れるか。色・書体・余白・状態の見せ方・残す摩擦
-- [docs/ROADMAP.md](docs/ROADMAP.md) — 作る順序と、その理由と、完了条件
+- [docs/ROADMAP.md](docs/ROADMAP.md) — 作る順序と、その理由
 - [docs/HARNESS.md](docs/HARNESS.md) — 何をもって「動いた」と言うか。L0〜L5 の検証層
 - [docs/DEPLOY.md](docs/DEPLOY.md) — 本番へどう出すか。秘密の置き場・セットアップ・切り戻し
 - [docs/adr/](docs/adr/) — なぜそう決めたか。1決定1レコードで追記のみ
