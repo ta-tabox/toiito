@@ -15,8 +15,7 @@ import type { OwnerId } from "@/lib/types";
 /**
  * 所有者を一人作り、その ID を返す。
  *
- * 既定の email はシードの一人目で、`TOIITO_SINGLE_USER_EMAIL` が名指しするのと同じ人になる（`vitest.config.ts`）。
- * ページを描くテストは `getCurrentUser` がこの email で `user` 表を SELECT するので、既定から動かすと画面が空になる。
+ * 既定の email はシードの一人目で、E2E が現在のユーザーとして使うのと同じ人になる（`e2e/setup/sign-in.ts`）。
  * アクセス権を分けたい相手を作るときだけ email を渡す。
  */
 export async function createOwner(

@@ -39,15 +39,18 @@ pnpm dev
 | `DATABASE_URL` | 必須 | — | アプリからの接続先。本番 Neon ではプーラー経由 |
 | `DIRECT_URL` | 必須 | — | Prisma Migrate 用の直結。プーラー越しには Migrate が動かないので分ける |
 | `ANTHROPIC_API_KEY` | 実 AI を使うなら必須 | — | Claude API のキー。**サーバー側のみ**で使い、クライアントへ露出させない |
-| `TOIITO_BASIC_AUTH_USER` | 本番では必須 | — | Basic 認証の利用者名。development では未設定なら認証を掛けない |
-| `TOIITO_BASIC_AUTH_PASSWORD` | 本番では必須 | — | 同じ Basic 認証のパスワード。片方だけ設定すると起動時に落ちる |
+| `BETTER_AUTH_SECRET` | 必須 | — | セッションのトークンと OAuth の state の署名に使う秘密。32 文字以上の乱数 |
+| `TOIITO_ALLOWED_EMAILS` | 必須 | — | サインインを許す email のカンマ区切り。空だと起動時に落ちる |
+| `BETTER_AUTH_URL` | Google を使うなら必須 | — | アプリの公開 URL。cookie と OAuth の callback を組み立て、信頼する origin もこの値で決まる |
+| `GOOGLE_CLIENT_ID` | Google を使うなら必須 | — | Google OAuth のクライアント ID。片方だけ設定すると落ちる |
+| `GOOGLE_CLIENT_SECRET` | 同上 | — | 同じクライアントのシークレット |
+| `TOIITO_FAKE_LOGIN` | Google を使わないなら必須 | 未設定 | `1` で Google を経ないサインイン（`POST /api/auth/sign-in/fake`）を有効にする。`VERCEL_ENV=production` では設定できない |
 | `TOIITO_ANTHROPIC_MODEL` | 任意 | `claude-sonnet-5` | 二体 AI が使うモデルの上書き |
 | `TOIITO_ANTHROPIC_MAX_TOKENS` | 任意 | `16000` | 一回の応答に許すトークン数の上書き。thinking のトークンもここから引かれるので、下げすぎると本文が途中で切れる |
 | `TOIITO_ANTHROPIC_TIMEOUT_MS` | 任意 | `120000` | 一回の呼び出しを待つ上限（ミリ秒）。超えたら打ち切り・空本文と同じく例外にする。実行環境（Vercel Hobby）が関数を殺す 300 秒より手前に置く |
 | `TOIITO_ANTHROPIC_EFFORT_CONCRETE` | 任意 | 未設定（API の既定） | 具体さんの思考の深さ。`low` / `medium` / `high` / `xhigh` / `max`。値域の外は既定へ倒す |
 | `TOIITO_ANTHROPIC_EFFORT_ABSTRACT` | 任意 | `medium` | 抽象さんの思考の深さ。値域は同上 |
 | `TOIITO_FAKE_AI` | 任意 | 未設定 | `1` でネットワークに出ず決定的な応答を返す。API キー無しで縦一本を通すためのハーネス |
-| `TOIITO_SINGLE_USER_EMAIL` | ログインが入るまで必須（本番も） | — | 唯一のユーザーとして扱う `user.email`。未設定だと画面が落ちる。指した email のユーザーが DB に居ない場合も落ちる |
 | `TOIITO_TEST_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_test` | テストの接続先。CI で差し替える口 |
 | `TOIITO_E2E_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_e2e` | E2E の接続先。変えてよいのはサーバーの側だけで、データベース名は `toiito_e2e` から動かせない |
 | `DIRECT_URL_PROD` | `pnpm migrate:prod` を叩くなら必須 | — | 本番 Neon の直結。手元から migration を流す先 |
@@ -71,18 +74,33 @@ E2E は worktree をまたいで `toiito_e2e` 一本を共有するので、こ�
 `TOIITO_FAKE_AI=1` は AI 呼び出しを伴う動作確認で使う。
 実 API を自動テストで叩かない（遅い・非決定的・金がかかる）。
 
-`TOIITO_SINGLE_USER_EMAIL` は、ログインが入るまでの唯一のユーザーを名指しする（`docs/adr/0031-ownership-before-auth.md` 決定 5）。
-`pnpm seed` が入れる一人目の email をそのまま書けばよい（`scripts/seed/users.ts`）。
-シードを流す前や、名指しした email のユーザーが居ない DB では落ちる。
+認証は 3 通りの組み合わせがあり、どれも `TOIITO_ALLOWED_EMAILS` と `BETTER_AUTH_SECRET` は要る。
+サインインの手段が一つも無い設定は起動時に落ちる。
+
+**手元で Google を使わない**のがいちばん軽い。
+`pnpm seed` が入れる二人を許可リストへ置き、Google を経ないサインインを開ける。
+ログインの画面に許可リストの email が並ぶので、押せばその人になる。
+
+```
+BETTER_AUTH_SECRET=<openssl rand -base64 32 で作った値>
+TOIITO_ALLOWED_EMAILS=first@example.com,second@example.com
+TOIITO_FAKE_LOGIN=1
+```
+
+**手元で Google を使う**なら、Google Cloud で OAuth クライアントを作り、redirect URI に `http://localhost:3000/api/auth/callback/google` を登録する。
+`TOIITO_FAKE_LOGIN` は外してよい。
+
+```
+BETTER_AUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=<クライアント ID>
+GOOGLE_CLIENT_SECRET=<クライアントシークレット>
+TOIITO_ALLOWED_EMAILS=<自分の Google アカウントの email>
+```
+
+**本番と Preview**の値は `docs/DEPLOY.md`「秘密の置き場」と「Preview」が持つ。
+`TOIITO_FAKE_LOGIN` は本番へ入れられない（`VERCEL_ENV=production` で起動時に落ちる）。
+
 テストと E2E は設定を自分で渡すので、手で書くのは `.env.local` の一箇所だけである。
-
-```
-TOIITO_SINGLE_USER_EMAIL=first@example.com
-```
-
-**本番にも同じ変数が要る**（値は `docs/DEPLOY.md`「秘密の置き場」）。
-本番でこれを許している間、外周を守っているのは Basic 認証だけになる。
-外す順序——ログインを入れて本番で確かめてから Basic 認証を外す——は `docs/DEPLOY.md`「アクセス制限」が持つ。
 
 `DIRECT_URL_PROD` と `DIRECT_URL_PREVIEW` は、手元から本番と Preview へ migration を流す口（`pnpm migrate:prod` / `pnpm migrate:preview`）。
 `DIRECT_URL` を書き換えて使い回さないのは、直前に何を入れたかで流し先が変わるため。

@@ -22,7 +22,7 @@ import {
 import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
 import { RetryForm, SpeakForm } from "@/components/speak-form";
-import { getCurrentUser } from "@/lib/current-user";
+import { requireCurrentUser } from "@/lib/auth/current-user";
 import {
   getPendingBody,
   getQuestion,
@@ -83,7 +83,7 @@ export default async function QuestionPage({
 }) {
   const { id } = await params;
   const { s: selectedId } = await searchParams;
-  const owner = (await getCurrentUser()).id;
+  const owner = (await requireCurrentUser()).id;
   const question = await getQuestion(owner, id);
   if (!question) {
     notFound();
