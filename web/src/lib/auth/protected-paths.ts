@@ -5,7 +5,7 @@
  * next にも better-auth にも依存しないので、経路の判定を単体テストから直に呼べる。
  *
  * 他人のリソースを拒否する層ではない。
- * `requiresSignIn` が true を返す経路でも、誰が何を読めるかを決めるのは `db.ts` の repo 関数である（`docs/adr/0029-auth-better-auth.md` 決定 5）。
+ * `requiresSignIn` が true を返す経路でも、誰が何を読めるかを決めるのは `db.ts` の repo 関数である。
  */
 
 /**
