@@ -144,7 +144,7 @@ ADR にしない側へ倒す。
 - **Vercel Authentication を Standard Protection のまま有効にしておく**（2026-08-28 決定・2026-08-29 に位置づけを訂正・#90（本番環境へデプロイする））。
   Hobby で選べるのはこれだけで、All Deployments は Pro の Advanced Deployment Protection（月 150 ドル）が要る。
   そして 2026-08-29 の実測で、**Standard Protection は本番の URL を守らない**ことが分かった（守るのは production のデプロイ URL と Preview だけで、`<project>.vercel.app` は素通し）。
-  **本番のアクセス制限はアプリ側の Basic 認証が持つ**（0013）ので、これは残る二つ——デプロイ URL と Preview——を守るためだけに有効なままにしてある。
+  **本番のアクセス制限はアプリのログインが持つ**（0033）ので、これは残る二つ——デプロイ URL と Preview——を守るためだけに有効なままにしてある。
   無効化しない理由がそれで、決定というより据え置きになる。
   現況は `docs/DEPLOY.md`
 - **独自ドメインを当てない**（2026-08-28・#90（本番環境へデプロイする））。
