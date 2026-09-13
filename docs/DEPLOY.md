@@ -213,7 +213,7 @@ DATABASE_URL='<preview のプーラー>' pnpm seed
 ```
 
 **Preview にユーザーが居なければ `pnpm seed` を実行する**。
-Google を経ないサインインは利用者を作らないので、`TOIITO_ALLOWED_EMAILS` が挙げた email の行が `user` 表に無いと 400 になる。
+Google を経ないサインインはユーザーを作らないので、`TOIITO_ALLOWED_EMAILS` が挙げた email の行が `user` 表に無いと 400 になる。
 
 接続先はシェルの環境変数が `.env.local` より優先される（`process.loadEnvFile` も `--env-file` も、既に環境にある値を上書きしない）。
 `migrate status` が `Database schema is up to date!` を返せば辻褄が合っている。
@@ -406,7 +406,7 @@ redirect URI は `BETTER_AUTH_URL` の値に `/api/auth/callback/google` を足�
 
 ### ドメインを変えるとき
 
-`BETTER_AUTH_URL` と本番のクライアントの redirect URI は、利用者が開くドメインと一致させる。
+`BETTER_AUTH_URL` と本番のクライアントの redirect URI は、ユーザーが開くドメインと一致させる。
 独自ドメインへ移るときは、次の順で動かす。
 
 1. Vercel の Project Settings → Domains に新しいドメインを足し、DNS の設定を終える

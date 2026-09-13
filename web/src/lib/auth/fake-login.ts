@@ -3,11 +3,11 @@
  *
  * Preview と E2E だけが有効にする。
  * Preview の URL は PR ごとに変わり、Google は redirect URI の事前登録を要求してワイルドカードを受け付けないので、Preview では本物の OAuth を通せない（`docs/adr/0029-auth-better-auth.md` 決定 7）。
- * E2E は 2 人分の利用者と未サインインの状態を作る必要があり、実 OAuth ではどちらも自動化できない。
+ * E2E は 2 人分のユーザーと未サインインの状態を作る必要があり、実 OAuth ではどちらも自動化できない。
  *
  * 誰を通すかは判定しない。
  * 許可リストの照合は `auth/index.ts` の `databaseHooks.session.create.before` が行うので、このエンドポイントを通っても許可リストに無い email はセッションを作れない。
- * 利用者も作らない。
+ * ユーザーも作らない。
  * `user` 表に行が無い email は 400 になるので、Preview と E2E は先に `pnpm seed` を実行する。
  *
  * エントリポイントは `fakeLogin`。
