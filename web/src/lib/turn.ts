@@ -4,8 +4,9 @@
  * ai_a と ai_b が両方返ってから、`commitTurn` が三行をまとめて `messages` へ入れる。
  * AI 呼び出しが失敗しても throw せず、`pending_messages` に人間の発話を残して戻る（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
  *
- * 呼び出すプロバイダは引数で受け取る。
- * `lib/ai/providers.ts` を直接 import すると、テストが失敗経路を作れなくなる。
+ * 呼び出す二体（`PersonaCalls`）は引数で受け取る。
+ * `runTurn` が `AI_PROVIDERS` を直接参照すると、テストが失敗経路を作れなくなる。
+ * `AI_PROVIDERS` を参照するのは `personaCalls` だけである。
  */
 
 import { callPersona, type PersonaCall } from "@/lib/ai";

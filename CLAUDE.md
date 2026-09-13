@@ -24,7 +24,7 @@ lint/format は **Biome 一本**（`biome.json` が正。ESLint/Prettier は使�
 AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自動テストで叩かない）。
 ロジックは lib 層へ寄せ、「lib 関数 + テスト → UI 配線」の順で作る。
 
-コーディング規約は `.claude/rules/`（`writing.md` は常時、`coding.md`・`languages/typescript.md`・`design.md` は該当ファイルの Read で読み込まれる）。
+コーディング規約は `.claude/rules/`（`writing.md` は常時、`coding.md`・`languages/typescript.md`・`languages/prisma.md`・`design.md` は該当ファイルの Read で読み込まれる）。
 隣接ファイルを読まずに新規ファイルを書くときは、先に `.claude/rules/coding.md` と `.claude/rules/languages/typescript.md` を Read する（画面へ触るなら `.claude/rules/design.md` も）。
 **コードを書く前に**、次の二つを開く（レビューやリファクタに限らない。実装・テスト追加・バグ修正でも同じ）。
 

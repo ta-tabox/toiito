@@ -30,7 +30,8 @@ VISION の設計原理が上位。
   同期前提の呼び出しを足さない
 - **Prisma を repo 層の外へ出さない**。
   `@prisma/client` と生成型に触れてよいのは `db.ts` だけで、UI と Server Actions が受け取るのは `types.ts` のドメイン型に限る。
-  唯一の例外は `db.ts` の `authDatabaseClient` で、Better Auth のアダプタがクライアントそのものを要求するために開けてある（呼んでよいのは `lib/auth/index.ts` だけ）
+  唯一の例外は `db.ts` の `authDatabaseClient` で、Better Auth のアダプタがクライアントそのものを要求するために開けてある（呼んでよいのは `lib/auth/index.ts` だけ）。
+  テストの後始末（`tests/setup/truncate.ts`）と検査用 DB の掃除（`scripts/prune-test-databases.ts`）は生成型を直に触るが、アプリの経路の外なのでこの禁止則の対象ではない
 - **起動に外部プロセスが要る**ことは引き受けた前提。
   ローカル完結性は捨てている
 

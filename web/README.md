@@ -64,6 +64,7 @@ DIRECT_URL=postgresql://toiito:toiito@localhost:5433/toiito
 ```
 
 `TOIITO_TEST_DATABASE_URL` は既定のままでよい（`compose.yaml` が `toiito_test` を作る）。
+worktree では既定の名前が `toiito_wt_<ディレクトリ名>_test` へ派生する（`docs/HARNESS.md`「ローカル Postgres」）。
 テストは走るたびにこのデータベースを空にするので、**開発用の接続先を渡さないこと**。
 名前が `_test` で終わらなければ止まるようにしてある。
 

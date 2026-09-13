@@ -44,7 +44,7 @@ jobs:
       id-token: write
       actions: read # Claude が PR 上で CI の結果を読むのに要る
 
-    # ここから下の実行環境は check.yml の複製。
+    # ここから下の実行環境は check.yml と同じ services と env に、テスト用 DB の作成と TOIITO_FAKE_AI を足したもの。
     # 二本しか無いので共通化しない（合成アクションに切り出すと、この job が何を持っているかが読めなくなる）。
     services:
       postgres:

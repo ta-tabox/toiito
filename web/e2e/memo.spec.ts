@@ -325,7 +325,7 @@ test("作ったメモは /memos に並び、そこから出所の発話へ着地
   await dialog.getByRole("link", { name: "この発話へ" }).click();
 
   // 着地の強調は三箇所が同じ書式を共有して初めて出る。
-  // /memos が組み立てるリンク、発話へ付けた id、globals.css の [id^="msg-"]:target。
+  // /memos が組み立てるリンク、発話へ付けた id、LandingMark が付ける data-landed（見た目は globals.css の [id^="msg-"][data-landed]）。
   await expect(page).toHaveURL(new RegExp(`/q/[^#]+#${messageId}$`));
 
   await expect(page.locator(`#${messageId}`)).toBeInViewport();

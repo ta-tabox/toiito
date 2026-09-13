@@ -85,7 +85,7 @@ ADR にしない側へ倒す。
 | [0010](0010-prisma-major-hold.md) | Prisma は 7 系で止め、三つのパッケージの版を明示で指定する | 2026-08-29 | 採用 |
 | [0011](0011-typescript-7-parser.md) | TypeScript は 7 へ上げ、コメント検査器のパーサだけ 6 系を別名で持つ | 2026-08-29 | 採用 |
 | [0012](0012-neon-outside-vercel-marketplace.md) | Neon は Vercel Marketplace 経由で作らず、自分の組織の下に置く | 2026-08-29 | 採用 |
-| [0013](0013-production-basic-auth.md) | 本番へのアクセス制限を、ホスティングでなくアプリ側の Basic 認証で持つ | 2026-08-29 | 採用 |
+| [0013](0013-production-basic-auth.md) | 本番へのアクセス制限を、ホスティングでなくアプリ側の Basic 認証で持つ | 2026-08-29 | supersede 済み（→ 0033） |
 | [0014](0014-local-vocabulary-split.md) | 手元の環境に固有の語彙と接続を、追跡しない CLAUDE.local.md へ分離する | 2026-08-29 | 採用 |
 | [0015](0015-preview-neon-branch.md) | Preview に Neon のブランチを当てた専用の DB を持たせる | 2026-08-29 | 採用 |
 | [0016](0016-central-metaphor-brewing.md) | 中心メタファーをコンポスターから醸造（発酵槽）へ移す | 2026-08-30 | 採用 |
@@ -101,17 +101,20 @@ ADR にしない側へ倒す。
 | [0026](0026-defer-streaming.md) | AI 応答のストリーミング化を、残す摩擦の側に立って見送る | 2026-09-03 | 採用 |
 | [0027](0027-rules-under-claude.md) | コーディング規約は `.claude/rules/` に置き、`CODING.md` はルートから消す | 2026-09-06 | 採用 |
 | [0028](0028-docs-under-docs.md) | 器自身の文書を `docs/` へ寄せ、`DESIGN.md` を規範と記述に分ける | 2026-09-06 | 採用 |
-| [0029](0029-auth-better-auth.md) | 認証基盤を Better Auth の自前ホストにし、Google OAuth 一本で始める（0019 の改訂） | 2026-09-06 | 採用 |
+| [0029](0029-auth-better-auth.md) | 認証基盤を Better Auth の自前ホストにし、Google OAuth 一本で始める（0019 の改訂） | 2026-09-06 | supersede 済み（→ 0036） |
 | [0030](0030-ownership-granularity.md) | 所有権を、所有のルートにだけ持たせる（0020 の改訂） | 2026-09-06 | 採用 |
-| [0031](0031-ownership-before-auth.md) | 所有者を認証より先にデータ層へ入れ、Better Auth の四表はモデル名も列名も生成されたまま同居させる | 2026-09-02 | 採用 |
+| [0031](0031-ownership-before-auth.md) | 所有者を認証より先にデータ層へ入れ、Better Auth の四表はモデル名も列名も生成されたまま同居させる | 2026-09-02 | supersede 済み（→ 0037） |
 | [0032](0032-persona-as-records.md) | ペルソナをテーブルにし、当時の設定を発話が指す | 2026-09-09 | 採用 |
 | [0033](0033-login-and-fake-sign-in.md) | ログインを入れ、固定のユーザーを「Google を経ないサインイン」へ置き換える | 2026-09-09 | 採用 |
 | [0034](0034-original-form-and-current-form.md) | 問いの原型を不変に持ち、言い直しは `current_form` に持つ | 2026-07-19 | 採用 |
 | [0035](0035-no-one-sided-material.md) | 「答えを与えない」を「一方向に閉じた材料を出さない」として検査可能にする | 2026-07-19 | 採用 |
+| [0036](0036-auth-better-auth.md) | 認証基盤を Better Auth の自前ホストにし、Google OAuth 一本で始める（0029 の改訂） | 2026-09-09 | 採用 |
+| [0037](0037-ownership-before-auth.md) | 所有者を認証より先にデータ層へ入れ、Better Auth の四表はモデル名も列名も生成されたまま同居させる（0031 の改訂） | 2026-09-09 | 採用 |
 
 決定日は元の決定日で、番号順とは揃わない。
 0003〜0006 は #92 でこの受け皿を作る前の散文から後から割ったものなので、`docs/adr/` の新設（0001）より前の日付を持つ。
 0034〜0035 も #198 で `docs/ARCHITECTURE.md` の散文から後から割ったもので、同じく前の日付を持つ。
+0036〜0037 は 0033 が動かした決定を規約 4 に従って複写した版なので、0033 と同じ日付を持つ。
 
 **0026 までのレコードは `CODING.md` をルートの一枚として指している。**
 [0027](0027-rules-under-claude.md) で `.claude/rules/` へ分けたので、それより前のレコードにある `CODING.md` は `coding.md`（コード）か `writing.md`（文章・コミット）と読む。
@@ -141,7 +144,7 @@ ADR にしない側へ倒す。
 - **Vercel Authentication を Standard Protection のまま有効にしておく**（2026-08-28 決定・2026-08-29 に位置づけを訂正・#90（本番環境へデプロイする））。
   Hobby で選べるのはこれだけで、All Deployments は Pro の Advanced Deployment Protection（月 150 ドル）が要る。
   そして 2026-08-29 の実測で、**Standard Protection は本番の URL を守らない**ことが分かった（守るのは production のデプロイ URL と Preview だけで、`<project>.vercel.app` は素通し）。
-  **本番のアクセス制限はアプリ側の Basic 認証が持つ**（0013）ので、これは残る二つ——デプロイ URL と Preview——を守るためだけに有効なままにしてある。
+  **本番のアクセス制限はアプリのログインが持つ**（0033）ので、これは残る二つ——デプロイ URL と Preview——を守るためだけに有効なままにしてある。
   無効化しない理由がそれで、決定というより据え置きになる。
   現況は `docs/DEPLOY.md`
 - **独自ドメインを当てない**（2026-08-28・#90（本番環境へデプロイする））。
