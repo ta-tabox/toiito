@@ -5,9 +5,9 @@
  * cookie が在っても中身が有効とは限らないので、`proxy` を通ったことは認可の根拠にならない。
  * 他人のリソースを拒否するのは `db.ts` の repo 関数で、期限切れのセッションを拒否するのは `getCurrentUser` である。
  *
- * matcher を書かず全リクエストを通す。
- * 除外の書き方を誤ると、その経路だけ判定の外に出たことが誰にも見えない。
- * どの経路が未サインインでも開くかは `@/lib/auth/protected-paths` が持つ。
+ * Next の `config.matcher` で経路を除外しない。
+ * matcher で除外した経路では `proxy` そのものが呼ばれないので、除外を書き誤るとその経路は未サインインのまま開き、`proxy()` を直接呼ぶ `tests/proxy.test.ts` でも検出できない。
+ * 未サインインで開く経路は `@/lib/auth/protected-paths` の一覧だけで決める。
  */
 
 import { getSessionCookie } from "better-auth/cookies";
