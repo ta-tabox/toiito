@@ -220,6 +220,8 @@ docker が無いので `docker compose up -d` は使えない。
 代わりに `.claude/hooks/session-start.sh` がセッション起動時に走り、イメージ同梱の Postgres を `compose.yaml` と同じ `localhost:5433` に立て、node と pnpm を `mise.toml` の版で置き、`web/.env.local` を書いて `pnpm install` と `migrate deploy` まで済ませる。
 接続文字列も `pnpm check` の意味もローカルと同じで、人手の準備は要らない。
 API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環境変数で `ANTHROPIC_API_KEY` が渡っていればフェイクは入れない）。
+Google の OAuth クライアントも無いので、`.env.local` には `TOIITO_FAKE_LOGIN=1` とシードの二人を載せた `TOIITO_ALLOWED_EMAILS` が入る（環境変数で `GOOGLE_CLIENT_ID` が渡っていれば入れない）。
+`BETTER_AUTH_SECRET` はコンテナごとに `openssl rand -base64 32` で作る（環境変数で渡っていれば入れない）。
 
 引き受ける非対称は三つ。
 最初の二つは外向きの通信が許可制で、塞ぐ手段がこの環境に無いことから来る:
@@ -248,6 +250,7 @@ API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環
 | node / pnpm の版 | フック | 正は `mise.toml`。上げれば同じコミットでフックが追随する |
 | Postgres の起動・ロール・DB | フック | `compose.yaml` と `docker/initdb/` を復元しているだけ |
 | `web/.env.local` の接続文字列 | フック | 値が上の二つから決まる |
+| `web/.env.local` の認証の 3 本（`BETTER_AUTH_SECRET`・`TOIITO_ALLOWED_EMAILS`・`TOIITO_FAKE_LOGIN`） | フック | 許可リストは `web/scripts/seed/users.ts` から決まり、秘密は本番と Preview の値と無関係な乱数で足りる |
 | `core.hooksPath`（`.githooks` を指す） | フック | 値がリポジトリの `.githooks/` から決まる |
 | `GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` | クラウド環境変数 | 利用者に固有。リポジトリへ焼くと、他人が fork で立てたセッションのコミットが持ち主名義で積まれる |
 | `GIT_COMMITTER_*` | どこにも置かない | コンテナの global config が既に Claude 名義で、署名鍵もそこに紐づいている。上書きすると Unverified になる |
