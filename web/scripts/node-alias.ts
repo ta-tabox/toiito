@@ -7,6 +7,8 @@
  *
  * エントリポイントは `registerSrcAlias`。
  * 静的 import は本体より先に解決されるため、呼び出し側は src の読み込みを登録後の動的 import へ回す。
+ *
+ * src には node の型の除去だけでは実行できない構文（`anchors.ts` のコンストラクタのパラメータプロパティ）があるので、src を読むスクリプトは node を `--experimental-transform-types` 付きで起動する。
  */
 
 import { existsSync } from "node:fs";

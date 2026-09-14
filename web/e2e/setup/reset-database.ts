@@ -132,11 +132,16 @@ function migrateAndSeed(): void {
     env,
   });
 
-  execFileSync(process.execPath, ["scripts/seed/index.ts"], {
-    cwd: webRoot,
-    stdio: "inherit",
-    env,
-  });
+  // フラグが要る理由は `scripts/node-alias.ts` の冒頭コメントが持つ。
+  execFileSync(
+    process.execPath,
+    ["--experimental-transform-types", "scripts/seed/index.ts"],
+    {
+      cwd: webRoot,
+      stdio: "inherit",
+      env,
+    },
+  );
 }
 
 console.log(`E2E 用データベースを作り直す: ${databaseName}`);
