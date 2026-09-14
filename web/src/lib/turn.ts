@@ -2,7 +2,7 @@
  * 一往復（human → ai_a → ai_b）を実行する。
  *
  * ai_a と ai_b が両方返ってから、`commitTurn` が三行をまとめて `messages` へ入れる。
- * AI 呼び出しが失敗しても throw せず、`pending_messages` に人間の発話を残して戻る（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+ * AI 呼び出しが失敗しても throw せず、`pending_messages` に人間の発話を残して戻る（理由は `docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
  *
  * 呼び出す二体（`PersonaCalls`）は引数で受け取る。
  * `runTurn` が `AI_PROVIDERS` を直接参照すると、テストが失敗経路を作れなくなる。

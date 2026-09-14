@@ -4,7 +4,7 @@
  * Biome はコメント本体へ届く経路を持たないので、このリンタが引き受けるのはその穴だけである。
  * コメント以外の作法は biome.json へ置き、対象から外すものは .gitignore を正とする（Biome も vcs.useIgnoreFile で同じ正を見る）。
  * 判定は行単位の正規表現でなく TypeScript の API に任せる（正規表現では文字列リテラル中の記号と本物のコメントを区別できない）。
- * パーサの `@typescript/typescript6` を `typescript` へ戻さない（TypeScript 7 は既定 export から `createSourceFile` を外している。`docs/adr/0011-typescript-7-parser.md`）。
+ * パーサの `@typescript/typescript6` を `typescript` へ戻さない（TypeScript 7 は既定 export から `createSourceFile` を外している）。
  *
  * エントリポイントは lintSource。
  * このファイルは複数のリポジトリで同じ内容を保つ共有物なので、このリポジトリ固有の逸脱を足すときはこのコメントの直下に理由を書く。

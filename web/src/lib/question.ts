@@ -9,7 +9,6 @@
  * 型・DB の enum・UI ラベルは `QUESTION_STATUSES` から派生する。
  * 各値の意味と 7 値である理由は docs/ARCHITECTURE.md「問いの状態機械」。
  *
- * 値は比喩を持たない一般語で持つ（`docs/adr/0017-status-value-set.md`）。
  * 比喩を担うのは表示側のラベルだけなので、`QUESTION_STATUSES` へ比喩由来の語を足さない。
  */
 export const QUESTION_STATUSES = [

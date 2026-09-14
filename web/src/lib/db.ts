@@ -6,7 +6,7 @@
  * `@prisma/client` と生成型（`@/generated/prisma`）に触れてよいのは `db.ts` だけで、UI と Server Actions が受け取るのは `types.ts` のドメイン型に限る。
  * DB 非依存の計算を `db.ts` へ積まない（`anchors.ts` のような純関数層へ置く）。
  *
- * **アクセス権のないリソースを拒否するのは `db.ts` で、DB の制約（RLS）ではない**（`docs/adr/0030-ownership-granularity.md`）。
+ * **アクセス権のないリソースを拒否するのは `db.ts` で、DB の制約（RLS）ではない**（理由は `docs/adr/0030-ownership-granularity.md`）。
  * 所有者を受け取る repo 関数は、読みも書きも所有者の条件を必ず where に置く（取得してから user_id を比べる形は、比べ忘れても `tsc` が通ってしまう）。
  * 所有者の列を持つのは `questions` だけで、下位のテーブルは親を辿って判定する。
  */
@@ -298,7 +298,7 @@ export async function setQuestionStatus(
 /**
  * id でセッションを 1 件取得する。
  *
- * `sessions` は所有者の列を持たないので、親の問いの `user_id` を辿って判定する（`docs/adr/0030-ownership-granularity.md` 決定 2）。
+ * `sessions` は所有者の列を持たないので、親の問いの `user_id` を辿って判定する。
  * `id` に一致する行が無ければ undefined を返し、owner 以外が所有するセッションも同じ undefined になる（同じ応答にする理由と findFirst の理由は `getQuestion` と同じ）。
  */
 export async function getSession(
@@ -429,7 +429,7 @@ export async function addMessage(
 /**
  * human / ai_a / ai_b の三行を `messages` へ追記し、`pending_messages` の行を削除する。
  *
- * 三行が揃わない turn を残さないため、一トランザクションで行う（`docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+ * 三行が揃わない turn を残さないため、一トランザクションで行う。
  * 削除を `body` でも絞り、一致しなければ何もしない `deleteMany` を使うのは、再送を待つあいだに次の発話が送られて `pending_messages` の行が差し替わったとき、その行まで削除しないため。
  */
 export async function commitTurn(

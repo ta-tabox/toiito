@@ -116,7 +116,7 @@ describe("/memos", () => {
       await memoInLongMessage("逆引き対象");
 
     // 再訪を挟む。
-    // セッションを名指ししていないと、着地先が最新セッションになって発話が DOM に無い（issue #57）。
+    // セッションを名指ししていないと、着地先が最新セッションになって発話が DOM に無い。
     await db.createSession(owner, question.id);
 
     const opened = await MemosPage({

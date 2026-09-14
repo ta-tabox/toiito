@@ -3,7 +3,7 @@
  *
  * 設定の読み取りは `config.ts`、Google を経ないサインインは `fake-login.ts` が持ち、`auth/index.ts` は配線だけを持つ。
  * セッションを読む処理も持たない。
- * 読むのは `current-user.ts` だけで、`biome.json` の `noRestrictedImports` が `@/lib/auth` の import をそのファイルと `sign-in.ts` とルートハンドラへ限定する（`docs/adr/0022-session-security.md` 決定 9）。
+ * 読むのは `current-user.ts` だけで、`biome.json` の `noRestrictedImports` が `@/lib/auth` の import をそのファイルと `sign-in.ts` とルートハンドラへ限定する。
  *
  * リソースごとの所有者の照合も持たない。
  * `auth/index.ts` が決めるのはサインインを許すかどうかまでで、他人のリソースを拒否するのは `db.ts` の repo 関数である。
@@ -22,7 +22,7 @@ import { authDatabaseClient, getUserById } from "@/lib/db";
  * セッションの寿命（秒）。
  *
  * 既定の 7 日は「最後に使ってから 7 日」なので、常用すると実質的に無期限になる。
- * 共有端末に開いたままのブラウザを無期限では引き受けないので、1 日で必ず切れる形にする（`docs/adr/0022-session-security.md` 決定 3）。
+ * 共有端末に開いたままのブラウザを無期限では引き受けないので、1 日で必ず切れる形にする。
  */
 const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24;
 
@@ -76,7 +76,7 @@ function createAuth() {
     },
 
     account: {
-      // 同じ email の別プロバイダが 1 人のユーザーへまとめられる形を、相手が実在しないうちは開けない（`docs/adr/0036-auth-better-auth.md` 決定 6）。
+      // 同じ email の別プロバイダが 1 人のユーザーへまとめられる形を、相手が実在しないうちは開けない。
       // 無効から有効へは後で動かせるが、一度まとめた行は分けられない。
       accountLinking: { enabled: false },
 
@@ -86,7 +86,7 @@ function createAuth() {
     },
 
     advanced: {
-      // 環境で値が変わらない 2 つだけを明示する（`docs/adr/0022-session-security.md` 決定 1）。
+      // 環境で値が変わらない 2 つだけを明示する。
       // `secure` は書かない。
       // `defaultCookieAttributes` は Better Auth が算出した既定を上書きするので、`secure: true` と書くと手元の `pnpm dev`（http）でも設定されてサインインできなくなる。
       // 本番で設定されていることは `docs/DEPLOY.md`「ログイン」の curl が確認する。

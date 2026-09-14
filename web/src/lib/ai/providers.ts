@@ -10,7 +10,7 @@ import { readFakeMode } from "@/lib/ai/provider";
 
 /**
  * 系統ごとの AI プロバイダ。
- * プロバイダはアプリ全体で一つで、系統で分かれるのは思考の深さだけ（ADR-0021）。
+ * プロバイダはアプリ全体で一つで、系統で分かれるのは思考の深さだけ。
  */
 export const AI_PROVIDERS = readAnthropicProviders(
   process.env,
