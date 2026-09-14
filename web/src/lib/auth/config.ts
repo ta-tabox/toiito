@@ -10,6 +10,8 @@
  * エントリポイントは `readAuthConfig`。
  */
 
+import { isProduction } from "@/lib/config";
+
 /**
  * 認証の設定を読むときに見る環境変数。
  * 値の書き方の正は `web/README.md`「環境変数」。
@@ -179,7 +181,7 @@ function readGoogleClient(
 function readFakeLoginEnabled(env: AuthEnv): boolean {
   const isEnabled = env.TOIITO_FAKE_LOGIN === "1";
 
-  if (isEnabled && env.VERCEL_ENV === "production") {
+  if (isEnabled && isProduction(env)) {
     throw new Error(
       "TOIITO_FAKE_LOGIN は本番（VERCEL_ENV=production）では設定できない。Preview と E2E だけが使う",
     );
