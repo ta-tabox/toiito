@@ -21,7 +21,7 @@
 ## 進め方の横断規約（全 issue 共通）
 
 - 心拍: 変更 → `web/` で `pnpm check` → 緑ならコミット。**赤のままコミットしない**
-- 作る順: **lib 関数 + テスト → UI 配線**（HARNESS.md 設計制約 4）
+- 作る順: **lib 関数 + テスト → UI 配線**（`.claude/rules/coding.md`「置き場と依存の向き」）
 - AI を伴う動作確認は `TOIITO_FAKE_AI=1`。実 API は自動テストで叩かない
 - 1 issue = 1 セッション = 1 PR。PR 本文に `closes #N`。CI 緑 + マージで閉じる
 - コミット規約・署名は `CLAUDE.md` の git 節が正（prefix は変更の型、author は人間名義）
