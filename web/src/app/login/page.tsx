@@ -12,8 +12,8 @@
 import { redirect } from "next/navigation";
 import { signInAsFakeUserAction, signInWithGoogleAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
-import { readAuthConfig } from "@/lib/auth/config";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { readSignInMethods } from "@/lib/auth/sign-in";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ export default async function LoginPage() {
     redirect("/");
   }
 
-  const config = readAuthConfig(process.env);
+  const signInMethods = readSignInMethods();
 
   return (
     <main className="mx-auto w-full max-w-reading flex-1 px-5 py-10">
@@ -39,7 +39,7 @@ export default async function LoginPage() {
         自分の問いを読み書きするには、ログインが要る。
       </p>
 
-      {config.google && (
+      {signInMethods.isGoogleEnabled && (
         <form action={signInWithGoogleAction} className="mt-8">
           <Button type="submit" tone="solid">
             Google でログイン
@@ -47,14 +47,14 @@ export default async function LoginPage() {
         </form>
       )}
 
-      {config.isFakeLoginEnabled && (
+      {signInMethods.isFakeLoginEnabled && (
         <section className="mt-8 border-rule border-t pt-8">
           <h2 className="text-meta text-ink-weak">
             Google を経ないログイン（Preview と E2E だけ）
           </h2>
 
           <ul className="mt-2 flex flex-col items-start gap-2">
-            {config.allowedEmails.map((email) => (
+            {signInMethods.allowedEmails.map((email) => (
               <li key={email}>
                 <form action={signInAsFakeUserAction}>
                   <input type="hidden" name="email" value={email} />
