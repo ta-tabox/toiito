@@ -246,7 +246,7 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 
 本番の外周を守るのは**アプリのログイン**である（経緯は `adr/0033-login-and-fake-sign-in.md`）。
 `web/src/proxy.ts` が全リクエストを見て、セッションの cookie が無ければ `/login` へ送る。
-入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る。
+入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（理由は `adr/0022-session-security.md`）。
 
 **ホスティング側のアクセス制限は本番に効かない**。
 Hobby で選べる Vercel Authentication の Standard Protection は、API 上の名前が `prod_deployment_urls_and_all_previews` で、守るのは production の**デプロイ URL**（`<project>-<hash>-<team>.vercel.app`）と Preview だけである。
