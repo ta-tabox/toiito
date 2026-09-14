@@ -106,14 +106,14 @@ ADR にしない側へ倒す。
 | [0031](0031-ownership-before-auth.md) | 所有者を認証より先にデータ層へ入れ、Better Auth の四表はモデル名も列名も生成されたまま同居させる | 2026-09-02 | supersede 済み（→ 0037） |
 | [0032](0032-persona-as-records.md) | ペルソナをテーブルにし、当時の設定を発話が指す | 2026-09-09 | 採用 |
 | [0033](0033-login-and-fake-sign-in.md) | ログインを入れ、固定のユーザーを「Google を経ないサインイン」へ置き換える | 2026-09-09 | 採用 |
-| [0034](0034-original-form-and-current-form.md) | 問いの原型を不変に持ち、言い直しは `current_form` に持つ | 2026-07-19 | supersede 済み（→ 0042） |
+| [0034](0034-original-form-and-current-form.md) | 問いの原型を不変に持ち、言い直しは `current_form` に持つ | 2026-07-19 | supersede 済み（→ 0040） |
 | [0035](0035-no-one-sided-material.md) | 「答えを与えない」を「一方向に閉じた材料を出さない」として検査可能にする | 2026-07-19 | 採用 |
 | [0036](0036-auth-better-auth.md) | 認証基盤を Better Auth の自前ホストにし、Google OAuth 一本で始める（0029 の改訂） | 2026-09-09 | 採用 |
 | [0037](0037-ownership-before-auth.md) | 所有者を認証より先にデータ層へ入れ、Better Auth の四表はモデル名も列名も生成されたまま同居させる（0031 の改訂） | 2026-09-09 | 採用 |
-| [0040](0040-question-status-transitions.md) | `status` は培地が付いたときに機械が `new` から `stocked` へ上げ、残る 5 値は人間が対話画面で選ぶ | 2026-09-14 | 採用 |
-| [0041](0041-current-form-input-and-display.md) | 問いの言い直しは対話画面の見出しで人間が書き、履歴は対話画面に並べ、`/memos` も問いの文を `questionText()` で出す | 2026-09-14 | 採用 |
-| [0042](0042-question-form-history.md) | 問いの原型を不変に持ち、言い直しは履歴の表へ追記する（0034 の改訂） | 2026-09-14 | 採用 |
-| [0043](0043-memo-edit-and-soft-delete.md) | メモは `keyword` と `note` を直せるようにし、削除は論理削除にする | 2026-09-14 | 採用 |
+| [0038](0038-question-status-transitions.md) | `status` は培地が付いたときに機械が `new` から `stocked` へ上げ、残る 5 値は人間が対話画面で選ぶ | 2026-09-14 | 採用 |
+| [0039](0039-current-form-input-and-display.md) | 問いの言い直しは対話画面の見出しで人間が書き、履歴は対話画面に並べ、`/memos` も問いの文を `questionText()` で出す | 2026-09-14 | 採用 |
+| [0040](0040-question-form-history.md) | 問いの原型を不変に持ち、言い直しは履歴の表へ追記する（0034 の改訂） | 2026-09-14 | 採用 |
+| [0041](0041-memo-edit-and-soft-delete.md) | メモは `keyword` と `note` を直せるようにし、削除は論理削除にする | 2026-09-14 | 採用 |
 
 決定日は元の決定日で、番号順とは揃わない。
 0003〜0006 は #92 でこの受け皿を作る前の散文から後から割ったものなので、`docs/adr/` の新設（0001）より前の日付を持つ。
