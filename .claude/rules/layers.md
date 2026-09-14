@@ -36,6 +36,8 @@ paths:
   無い行とアクセス権の無い行は同じ応答（undefined か同じ文面の throw）にする
 - `OwnerId` を作るのは `user` 表を SELECT した `db.ts` の `fromUserRow` だけにする。
   RSC と Server Action は `requireCurrentUser` から受け取った `id` を repo 関数へ渡す
+- `Anchor` を作るのは `anchors.ts` の `parseAnchor` だけにする。
+  フォームの値・DOM の選択・DB の行から範囲を作るときは `parseAnchor` を通してから、`addMemo` と `excerptParts` へ渡す
 - `process.env` を読むのは `lib/config.ts`・`lib/ai/providers.ts`・`lib/auth/index.ts` と、別プロセスで走る `scripts/`・`e2e/setup/` だけにする。
   写像と既定値は `readAnthropicSettings`・`ANTHROPIC_DEFAULTS`・`readAuthConfig` の純関数が持ち、テストは `process.env` を書き換えずに env を模した値を渡す
 - アプリに入れるのは実行環境に依らない道具だけにする。

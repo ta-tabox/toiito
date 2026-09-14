@@ -264,7 +264,8 @@ test("メモの小フォームは、選んだ位置でもスクロールでも�
   expectNearBottom(atHead, NARROW_VIEWPORT);
 
   await selectTextIn(page, aiA, tail);
-  expect(await formRect(page)).toEqual(atHead);
+  const atTail = await formRect(page);
+  expect(atTail).toEqual(atHead);
 
   // 書いている途中に発話を読み返せる（背面を止めない）。
   await page.mouse.wheel(0, 300);
@@ -272,7 +273,8 @@ test("メモの小フォームは、選んだ位置でもスクロールでも�
     .poll(() => page.evaluate(() => window.scrollY))
     .toBeGreaterThan(0);
 
-  expect(await formRect(page)).toEqual(atHead);
+  const whileScrolled = await formRect(page);
+  expect(whileScrolled).toEqual(atHead);
 
   // 出したまま画面を広げても、基準は画面のまま。
   await page.setViewportSize(WIDE_VIEWPORT);
@@ -303,7 +305,8 @@ test("別の発話を選ぶと下書きはそちらへ移り、やめれば選�
   await page.getByRole("button", { name: "やめる" }).click();
 
   await expect(memoForm(page)).toHaveCount(0);
-  expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("");
+  const selected = await page.evaluate(() => window.getSelection()?.toString());
+  expect(selected).toBe("");
 });
 
 test("作ったメモは /memos に並び、そこから出所の発話へ着地する", async ({
@@ -432,8 +435,8 @@ test("再訪すると切り替え口が出て、過去セッションを読み�
 
 /**
  * 問いを投入して一度発話し、二体の応答が出るまで待つ。
- *
  * 返すのは ai_a の応答が入った枠で、メモを付ける対象になる。
+ *
  * どの体かの判定は `[fake:` の行に寄せる。
  * 見出しの言い回しはペルソナ文書の改稿で動くが、`[fake:` という前置きは動かない。
  */
@@ -565,14 +568,11 @@ async function selectTextInByTouch(
 }
 
 /**
- * 枠の中の文字列を選び、指定したイベントで選択を終える。
+ * 枠の中の文字列を Range で選び、`endWith` のイベントを document へ投げて選択を終える。
+ * Range の端点は、既に下線の付いた区間でも下線を描く span の入れ子の内側に居る本文へ届くよう、区間の直下の子でなく最初のテキストノードに取る。
  *
- * Range を組んでから document へイベントを投げる。
- * Playwright のドラッグでは文字の途中で始まる範囲を安定して作れない。
- * 端点に取るのは区間の最初のテキストノードで、区間の直下の子ではない。
- * 既に下線の付いた区間では、本文が下線を描く span の入れ子の内側に居る。
- * touchend を素の Event で作るのは、TouchEvent の構築が実行環境のタッチ対応に依存するため。
- * 受ける側はイベントの中身を見ずに選択を読み直すだけなので、型名が合っていれば足りる。
+ * Playwright のドラッグでは、文字の途中で始まる範囲を安定して作れない。
+ * TouchEvent の構築は実行環境のタッチ対応に依存し、受ける側はイベントの中身を見ずに選択を読み直すので、touchend は型名が合う素の Event で作る。
  */
 async function selectTextInEndingWith(
   page: Page,

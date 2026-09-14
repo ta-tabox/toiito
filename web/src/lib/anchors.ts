@@ -9,7 +9,31 @@
  * アンカーは messages が immutable（追記のみ）であることを前提にしている。
  */
 
+import type { Anchor } from "@/lib/types";
+
 type AnchorRange = { id: string; anchor_start: number; anchor_end: number };
+
+/**
+ * `start` と `end` を検査して `Anchor` にする。
+ * `start` と `end` が整数で、`start >= 0` かつ `end > start` でなければ throw する。
+ *
+ * `Anchor` を作るのは `parseAnchor` だけなので、フォームの値・DOM の選択・DB の行のどこから範囲を作るときも、ここを通す。
+ */
+export function parseAnchor(start: number, end: number): Anchor {
+  const isValid =
+    Number.isInteger(start) &&
+    Number.isInteger(end) &&
+    start >= 0 &&
+    end > start;
+
+  if (!isValid) {
+    throw new Error(
+      `アンカーの範囲が不正: start ${start}、end ${end}（start は 0 以上の整数、end は start より大きい整数）`,
+    );
+  }
+
+  return { start, end } as Anchor;
+}
 
 /**
  * 本文を切り分けた一区間。
@@ -33,16 +57,13 @@ export class Segment {
 }
 
 /**
- * 本文をセグメント（下線の付き方が変わらない最大の連続範囲）へ切り分ける。
- *
- * メモは本文の一部に付く下線で、複数のメモが同じ範囲に重なりうる。
- * UI は重なりの有無が切り替わるたびに描き分けたいので、切り替わる位置＝全メモの端点で本文を割る。
+ * 本文を、全メモの端点で切ったセグメント（下線の付き方が変わらない最大の連続範囲）へ切り分ける。
  * 各セグメントは自分に付いているメモの id を全部持つ（重なりなら複数、メモの無い範囲なら空）。
  *
  * 例: 本文 "abcdef" にメモ m1(0-4) と m2(2-6) が付く場合
  *   → "ab"[m1] / "cd"[m1,m2] / "ef"[m2]
  *
- * 重なりの部分でテキストを複製しないのは、複製するとセグメント内オフセットから本文の絶対オフセットへ戻せなくなるため。
+ * 重なりの部分でテキストを複製すると、セグメント内オフセットから本文の絶対オフセットへ戻せなくなるので、複製しない。
  */
 export function segmentBody(body: string, memos: AnchorRange[]): Segment[] {
   const cuts = new Set<number>([0, body.length]);
@@ -70,12 +91,10 @@ const graphemeSegmenter = new Intl.Segmenter("ja", { granularity: "grapheme" });
 
 /**
  * 人が「一文字」と見る単位＝書記素クラスタの途中を指すインデックスを、その手前の境界へ丸める。
- *
- * コードポイント境界では足りない。
- * 異体字セレクタ（神︀ = U+795E + U+FE00）や結合文字はサロゲートペアを含まないので判定を通り抜けてしまい、肌色修飾や ZWJ 連結の絵文字（👨‍👩‍👧 = 8 code unit）は内部の境界で割れる。
- * いずれも分断すると字体や絵柄が変わる。
- *
  * 丸め方向は常に手前なので、start / end どちらに使っても元の index を超えない。
+ *
+ * コードポイント境界で丸めると、サロゲートペアを含まない異体字セレクタ（神︀ = U+795E + U+FE00）や結合文字が判定を通り抜け、肌色修飾や ZWJ 連結の絵文字（👨‍👩‍👧 = 8 code unit）は内部の境界で割れる。
+ * いずれも分断すると字体や絵柄が変わる。
  */
 export function clampToGraphemeBoundary(body: string, index: number): number {
   if (index <= 0 || index >= body.length) {
@@ -100,7 +119,7 @@ export type ExcerptParts = {
 
 /**
  * メモの引用を、アンカーの手前・本体・後ろの三つに切って作る。
- * アンカー区間（`anchorStart` / `anchorEnd`）の前後へ margin 文字ずつ広げ、本文の端と書記素境界で止める。
+ * `anchor` の前後へ `margin` 文字ずつ広げ、本文の端と書記素境界で止める。
  * 連結すれば引用の全文になる。
  *
  * 三つに割るのは、UI がアンカー本体だけを描き分けるため。
@@ -108,19 +127,21 @@ export type ExcerptParts = {
  */
 export function excerptParts(
   body: string,
-  anchorStart: number,
-  anchorEnd: number,
+  anchor: Anchor,
   margin: number,
 ): ExcerptParts {
-  const from = clampToGraphemeBoundary(body, Math.max(0, anchorStart - margin));
+  const from = clampToGraphemeBoundary(
+    body,
+    Math.max(0, anchor.start - margin),
+  );
   const to = clampToGraphemeBoundary(
     body,
-    Math.min(body.length, anchorEnd + margin),
+    Math.min(body.length, anchor.end + margin),
   );
 
   return {
-    before: body.slice(from, anchorStart),
-    anchor: body.slice(anchorStart, anchorEnd),
-    after: body.slice(anchorEnd, to),
+    before: body.slice(from, anchor.start),
+    anchor: body.slice(anchor.start, anchor.end),
+    after: body.slice(anchor.end, to),
   };
 }

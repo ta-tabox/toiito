@@ -61,7 +61,7 @@
           "options": { "maxAllowedComplexity": 15 }
         },
         "useMaxParams": {
-          "level": "warn",
+          "level": "error",
           "options": { "max": 3 }
         }
       },

@@ -28,7 +28,8 @@ import type { User } from "@/lib/types";
  * セッションを取り消せる状態を保ったまま往復を減らせるので、Better Auth の `cookieCache` でなく `React.cache()` を使う。
  */
 export const getCurrentUser = cache(async (): Promise<User | undefined> => {
-  const session = await auth().api.getSession({ headers: await headers() });
+  const requestHeaders = await headers();
+  const session = await auth().api.getSession({ headers: requestHeaders });
 
   if (!session) {
     return undefined;

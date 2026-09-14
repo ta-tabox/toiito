@@ -109,15 +109,13 @@ export async function runTurn(
 
   const question = await getQuestion(owner, questionId);
   if (!question) {
-    throw new Error(`runTurn: question not found: ${questionId}`);
+    throw new Error(`問いが見つからない: ${questionId}`);
   }
 
   await savePendingBody(owner, sessionId, body);
 
-  const transcript: Transcript = [
-    ...(await listMessages(owner, sessionId)),
-    { speaker: "human", body },
-  ];
+  const messages = await listMessages(owner, sessionId);
+  const transcript: Transcript = [...messages, { speaker: "human", body }];
   const responses = await callBoth({
     calls,
     question,

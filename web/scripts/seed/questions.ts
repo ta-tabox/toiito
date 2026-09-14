@@ -9,6 +9,7 @@
  * 誰が持つかを決めるのは `seed/index.ts` で、`questions.ts` は本文とメモだけを持つ。
  */
 
+import { parseAnchor } from "@/lib/anchors";
 import type { MemoInput, QuestionInput } from "@/lib/db";
 import type { QuestionStatus } from "@/lib/question";
 import type { Speaker } from "@/lib/types";
@@ -144,10 +145,10 @@ const SEED_QUESTIONS: QuestionSeed[] = [
 
 /**
  * 宣言したメモを、範囲付きの入力へ写す。
- *
- * オフセットを直書きすると本文を一文字直すたびに全部ずれる。
- * 単位は JS の string index（UTF-16 code unit）で、anchors.ts と揃える。
+ * 範囲の単位は JS の string index（UTF-16 code unit）で、anchors.ts と揃える。
  * 本文に `keyword` が無ければ throw する。
+ *
+ * オフセットを直書きすると、本文を一文字直すたびに全部ずれる。
  * ずれたまま投入すると、UI では無関係な語に下線が付く。
  */
 function toMemoInput(body: string, memoSeed: MemoSeed): MemoInput {
@@ -158,8 +159,7 @@ function toMemoInput(body: string, memoSeed: MemoSeed): MemoInput {
   }
 
   return {
-    anchorStart: start,
-    anchorEnd: start + memoSeed.keyword.length,
+    anchor: parseAnchor(start, start + memoSeed.keyword.length),
     keyword: memoSeed.keyword,
     note: memoSeed.note,
   };

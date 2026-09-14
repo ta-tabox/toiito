@@ -98,9 +98,10 @@ describe("フェイクモード", () => {
 
   it("同じ入力には同じ応答（決定性）", async () => {
     const t = [{ speaker: "human" as const, body: "同じ入力" }];
-    expect(await callPersona(fakeCall("ai_b"), { body: "q" }, t)).toBe(
-      await callPersona(fakeCall("ai_b"), { body: "q" }, t),
-    );
+    const first = await callPersona(fakeCall("ai_b"), { body: "q" }, t);
+    const second = await callPersona(fakeCall("ai_b"), { body: "q" }, t);
+
+    expect(first).toBe(second);
   });
 });
 

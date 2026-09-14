@@ -8,6 +8,7 @@
  *
  * エントリポイントは lintSource。
  * このファイルは複数のリポジトリで同じ内容を保つ共有物なので、このリポジトリ固有の逸脱を足すときはこのコメントの直下に理由を書く。
+ * このリポジトリ固有の逸脱は `REASON_LIMIT_EXCEPTION` で、理由はその JSDoc が持つ。
  */
 
 import { spawnSync } from "node:child_process";
@@ -78,11 +79,21 @@ const DEFAULT_TARGETS = ["src", "scripts", "tests", "e2e"];
 const MAX_REASON_SENTENCES = 2;
 
 /**
+ * 関数の JSDoc の理由を `MAX_REASON_SENTENCES` の上限から外す宣言。
+ * JSDoc と宣言の間に置き、コロンの後ろにその関数の呼び手が実際に踏んだ誤りを書く。
+ * 誤りを書かない宣言では外さない。
+ *
+ * このリポジトリは `comments/maxReasonSentences` を error にしているので、例外を宣言できないと、呼び手が実際に踏んだ誤りを残すべき関数まで文を詰め込んで上限へ収めることになる。
+ */
+const REASON_LIMIT_EXCEPTION =
+  /^\/\/\s*lint-comments-allow\s+comments\/maxReasonSentences:\s*\S/;
+
+/**
  * 宣言の直前に置かれても説明ではない行コメント。
  * リンタとコンパイラへの指示で、JSDoc の代用として書かれたものではない。
  */
 const DIRECTIVE_LINE_COMMENT =
-  /^\/\/\s*(?:biome-ignore|eslint-|@ts-|prettier-ignore)/;
+  /^\/\/\s*(?:biome-ignore|eslint-|@ts-|prettier-ignore|lint-comments-allow)/;
 
 /**
  * 識別子として実在を確かめる字面。
@@ -714,6 +725,7 @@ function isDeclarationStatement(statement: ts.Statement): boolean {
 
 /**
  * 関数の JSDoc で、空行の下に置いた理由の文が `MAX_REASON_SENTENCES` を超えていないかを見る。
+ * `REASON_LIMIT_EXCEPTION` の宣言が付いた関数は見ない。
  *
  * 数えるのは最初の空行より下の散文の行で、箇条の行とコードフェンスの内側は数えない。
  * 1 行 1 文が別の規則で効いているので、行の数が文の数になる。
@@ -757,19 +769,31 @@ function checkReasonSentences(
       .slice(blankIndex + 1)
       .filter((entry) => entry.text !== "" && !LIST_MARKER.test(entry.text));
 
-    if (reasons.length <= MAX_REASON_SENTENCES) {
+    if (
+      reasons.length <= MAX_REASON_SENTENCES ||
+      hasReasonLimitException(text, node)
+    ) {
       continue;
     }
 
     violations.push({
       line: reasons[MAX_REASON_SENTENCES].line,
       rule: "comments/maxReasonSentences",
-      message: `理由が ${reasons.length} 文ある。理由は 1 関数 ${MAX_REASON_SENTENCES} 文までにし、3 文目からは ADR へ移してリンク一行を残す`,
-      severity: "warn",
+      message: `理由が ${reasons.length} 文ある。理由は 1 関数 ${MAX_REASON_SENTENCES} 文までにし、3 文目からは ADR へ移してリンク一行を残す。呼び手が実際に踏んだ誤りを挙げられる関数だけは、JSDoc と宣言の間に // lint-comments-allow comments/maxReasonSentences: <その誤り> を置いて上限から外せる`,
+      severity: "error",
     });
   }
 
   return violations;
+}
+
+/** `node` の直前のコメントに `REASON_LIMIT_EXCEPTION` の宣言があるかを返す。 */
+function hasReasonLimitException(text: string, node: ts.Node): boolean {
+  const ranges = ts.getLeadingCommentRanges(text, node.getFullStart()) ?? [];
+
+  return ranges.some((range) =>
+    REASON_LIMIT_EXCEPTION.test(text.slice(range.pos, range.end)),
+  );
 }
 
 /**

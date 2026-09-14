@@ -39,10 +39,10 @@ export type SeedSummary = {
 
 /**
  * 本番の DB への投入を止める。
+ * 意図して実行するときだけ `ALLOW_PROD_SEED` を渡す。
  *
  * `user` 表が空でなければ `seed` は何もせずに終わるが、その検査は行が在る DB にしか効かない。
  * 立ち上げ直後の空の本番 DB は素通りするので、環境変数でも止める。
- * 意図して実行するときだけ `ALLOW_PROD_SEED` を渡す。
  */
 function assertNotProduction(): void {
   if (process.env.NODE_ENV === "production" && !process.env.ALLOW_PROD_SEED) {
@@ -55,14 +55,10 @@ function assertNotProduction(): void {
 /**
  * シードを投入する。
  * 接続先は DATABASE_URL。
+ * 一人目が既に居る DB へは何も入れずに戻り、接続は閉じない（呼び出し側の CLI・テストが閉じる）。
  *
- * 一人目が問いの大半を持ち、二人目は一件だけ持つ。
- * 二人目の一件は、一人目の画面のどこにも出てはいけない側として在る（絞り込みが抜けたら、二人目の問いが一人目の画面に出る）。
- *
- * 一人目が既に居る DB へは何も入れずに戻る。
- * 投入先の取り違えを、行が増えてから気付く形にしないため。
- * 接続は閉じない。
- * 呼び出し側（CLI・テスト）が自分の都合で閉じる。
+ * 二人目が持つ一件は、一人目の画面のどこにも出てはいけない側として在る（絞り込みが抜けたら、二人目の問いが一人目の画面に出る）。
+ * 一人目が居る DB で何も入れずに戻るのは、投入先の取り違えに行が増えてから気付く形にしないためである。
  */
 export async function seed(): Promise<SeedSummary> {
   assertNotProduction();
@@ -77,8 +73,9 @@ export async function seed(): Promise<SeedSummary> {
 
   try {
     const [first, second] = SEED_USERS;
+    const existing = await repo.getUserByEmail(first.email);
 
-    if (await repo.getUserByEmail(first.email)) {
+    if (existing) {
       console.warn(
         `既に ${first.email} が居る DB なので、何も入れずに終わる。空の DB へ入れるか、投入先（DATABASE_URL）を確かめる`,
       );

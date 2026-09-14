@@ -24,8 +24,10 @@ export async function signIn(page: Page, email: string): Promise<void> {
   });
 
   if (!response.ok()) {
+    const detail = await response.text();
+
     throw new Error(
-      `Google を経ないサインインに失敗した（${email}）: ${response.status()} ${await response.text()}`,
+      `Google を経ないサインインに失敗した（${email}）: ${response.status()} ${detail}`,
     );
   }
 }

@@ -23,7 +23,8 @@ export const dynamic = "force-dynamic";
  * 投入フォームと問いの一覧。
  */
 export default async function Home() {
-  const questions = await listQuestions((await requireCurrentUser()).id);
+  const { id: owner } = await requireCurrentUser();
+  const questions = await listQuestions(owner);
 
   return (
     <main className="mx-auto w-full max-w-reading flex-1 px-5 py-10">

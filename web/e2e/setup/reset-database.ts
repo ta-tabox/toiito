@@ -60,12 +60,10 @@ function adminUrl(): string {
 
 /**
  * SQL を一文実行する。
+ * 接続先は Prisma CLI が prisma.config.ts 越しに DIRECT_URL から読み、stderr は端末へ出さずに捕捉する。
  *
- * 接続先は Prisma CLI が prisma.config.ts 越しに DIRECT_URL から読む。
  * drop / create database はトランザクションの内側で走れないので、複数文をまとめて渡さない。
- *
- * stderr は流さずに掴む。
- * 失敗の理由を語るのは Postgres が返す一行だけなので、呼び出し側の説明へ添える。
+ * 失敗の理由を語るのは Postgres が返す一行だけなので、捕捉した stderr を呼び出し側の説明へ添える。
  */
 function execute(sql: string, url: string): void {
   execFileSync("pnpm", ["exec", "prisma", "db", "execute", "--stdin"], {
@@ -91,10 +89,10 @@ function stderrOf(cause: unknown): string {
 
 /**
  * E2E 用データベースを削除して作り直す。
+ * 繋いだままの相手が居れば drop が失敗し、`recreateDatabase` が throw する。
  *
  * `with (force)` は付けない。
  * 付けると接続している相手ごとデータベースを削除できてしまい、一本を共有する運用で二つ目の実行が先の実行を黙って壊す（docs/HARNESS.md「E2E（L4）」）。
- * 繋いだままの相手が居れば drop が失敗し、削除する側のこのスクリプトが止まる。
  */
 function recreateDatabase(): void {
   const admin = adminUrl();

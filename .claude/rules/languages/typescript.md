@@ -100,14 +100,18 @@ error は赤にし、warn は報告だけにする。
 | 関数の JSDoc の有無（雛形は warn） | 同上 | error |
 | 宣言に接した `//`（雛形は warn） | 同上 | error |
 | 言い切った文への `——` の後置き（雛形は warn） | 同上 | error |
-| 関数の JSDoc の理由が 2 文以内か | 同上 | warn |
+| 関数の JSDoc の理由が 2 文以内か（雛形は warn） | 同上 | error |
 | バッククォートで名指した識別子・ファイルの実在 | 同上 | warn |
 | import は `@` 起点（`.css` と、下の例外の 3 箇所は除外） | biome `style/noRestrictedImports` | error |
 | 1 行 if を分ける | biome `style/useBlockStatements` | error |
 | 三項の多重ネスト・複数代入・多重宣言 | biome `noNestedTernary` / `noMultiAssign` / `useSingleVarDeclarator` | error |
 | floating promise | biome `nursery/noFloatingPromises` | error |
 | 関数の認知的複雑度（分割の合図） | biome `noExcessiveCognitiveComplexity` | error |
-| 引数 3 つ超 | biome `complexity/useMaxParams` | warn |
+| 引数 3 つ超 | biome `complexity/useMaxParams` | error |
+
+関数の JSDoc の理由の上限は、その関数の呼び手が実際に踏んだ誤りを挙げられるときに限って外せる。
+外すときは JSDoc と宣言の間に `// lint-comments-allow comments/maxReasonSentences: <その誤り>` を置く。
+誤りを書かない宣言では上限から外れない。
 
 対象から外すものは `.gitignore` が正で、リンタも Biome も同じ正を見る（`src/generated` の Prisma 生成物はここで落ちる）。
 リンタの対象は `web/src` `web/scripts` `web/tests` `web/e2e` と `web/` 直下の `*.ts`。
