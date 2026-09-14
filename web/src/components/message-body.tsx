@@ -36,10 +36,11 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import {
   clampToGraphemeBoundary,
+  parseAnchor,
   type Segment,
   segmentBody,
 } from "@/lib/anchors";
-import type { Memo, Message } from "@/lib/types";
+import type { Anchor, Memo, Message } from "@/lib/types";
 
 /**
  * メモ一件ぶんの下線の装飾。
@@ -83,11 +84,7 @@ type SelectionReader = {
 const readers = new Map<Element, SelectionReader>();
 
 /** 選択が確定してから、メモとして送られるまでの下書き。 */
-type MemoDraft = {
-  anchorStart: number;
-  anchorEnd: number;
-  keyword: string;
-};
+type MemoDraft = { anchor: Anchor; keyword: string };
 
 /**
  * 発話本文。
@@ -170,7 +167,7 @@ export function MessageBody({
       {draft &&
         createPortal(
           <MemoForm
-            key={`${draft.anchorStart}-${draft.anchorEnd}`}
+            key={`${draft.anchor.start}-${draft.anchor.end}`}
             messageId={message.id}
             draft={draft}
             action={action}
@@ -338,8 +335,8 @@ function MemoForm({
       className="fixed inset-x-4 bottom-4 z-10 mx-auto flex max-w-reading flex-col gap-2 rounded border border-rule bg-surface-mid p-3 shadow-[0_0_16px_rgba(0,0,0,0.12)]"
     >
       <input type="hidden" name="message_id" value={messageId} />
-      <input type="hidden" name="anchor_start" value={draft.anchorStart} />
-      <input type="hidden" name="anchor_end" value={draft.anchorEnd} />
+      <input type="hidden" name="anchor_start" value={draft.anchor.start} />
+      <input type="hidden" name="anchor_end" value={draft.anchor.end} />
       <input type="hidden" name="keyword" value={draft.keyword} />
 
       <blockquote className="border-rule border-l-2 pl-3 text-aux text-ink-weak">
@@ -465,17 +462,15 @@ function draftFromSelection(
     return undefined;
   }
 
-  const anchorStart = clampToGraphemeBoundary(body, start);
-  const anchorEnd = clampToGraphemeBoundary(body, end);
-  if (anchorEnd <= anchorStart) {
+  const clampedStart = clampToGraphemeBoundary(body, start);
+  const clampedEnd = clampToGraphemeBoundary(body, end);
+  if (clampedEnd <= clampedStart) {
     return undefined;
   }
 
-  return {
-    anchorStart,
-    anchorEnd,
-    keyword: body.slice(anchorStart, anchorEnd),
-  };
+  const anchor = parseAnchor(clampedStart, clampedEnd);
+
+  return { anchor, keyword: body.slice(anchor.start, anchor.end) };
 }
 
 /**

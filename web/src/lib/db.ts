@@ -18,6 +18,7 @@ import { DATABASE_URL } from "@/lib/config";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
 import type {
+  Anchor,
   Memo,
   MemoWithContext,
   Message,
@@ -491,9 +492,9 @@ export async function getPendingBody(
 
 /**
  * メッセージ本文の一部にメモを付ける。
- * 発話が無いか owner 以外が所有する発話なら throw し、`anchorEnd` が本文長を超えても throw する。
+ * 発話が無いか owner 以外が所有する発話なら throw し、`input.anchor` の終端が本文長を超えても throw する。
  *
- * DB の check は本文長を知らず `start >= 0 && end > start` しか守れないので、`anchor_end <= 本文長` は挿入前に `addMemo` が検査する。
+ * 範囲の形は `Anchor` が保証するが、本文長は発話を取得するまで分からないので、`anchor.end <= 本文長` は挿入前に `addMemo` が検査する。
  * 所有者の条件は本文を取得する SELECT の where に含めてあるので、`requireOwnedSession` をもう一度呼ばない。
  */
 export async function addMemo(
@@ -501,7 +502,7 @@ export async function addMemo(
   messageId: string,
   input: MemoInput,
 ): Promise<Memo> {
-  const { anchorStart, anchorEnd, keyword, note } = input;
+  const { anchor, keyword, note } = input;
 
   const message = await db().message.findFirst({
     where: { id: messageId, session: { question: { user_id: owner } } },
@@ -511,17 +512,17 @@ export async function addMemo(
     throw new Error(`発話が見つからない: ${messageId}`);
   }
 
-  if (anchorEnd > message.body.length) {
+  if (anchor.end > message.body.length) {
     throw new Error(
-      `anchor_end が本文長を超えている: ${anchorEnd}（本文長 ${message.body.length}、発話 ${messageId}）`,
+      `anchor_end が本文長を超えている: ${anchor.end}（本文長 ${message.body.length}、発話 ${messageId}）`,
     );
   }
 
   return db().memo.create({
     data: {
       message_id: messageId,
-      anchor_start: anchorStart,
-      anchor_end: anchorEnd,
+      anchor_start: anchor.start,
+      anchor_end: anchor.end,
       keyword,
       note: note ?? null,
     },
@@ -577,12 +578,7 @@ export async function listMemosWithContext(
 }
 
 /** `addMemo` と `createQuestionWithTranscript` が受け取る、一件のメモ。 */
-export type MemoInput = {
-  anchorStart: number;
-  anchorEnd: number;
-  keyword: string;
-  note?: string;
-};
+export type MemoInput = { anchor: Anchor; keyword: string; note?: string };
 
 /** 対話とメモをまとめて作るときの、一件の発話と、その発話に付けるメモ。 */
 export type MessageInput = Utterance & { memos?: MemoInput[] };
@@ -591,7 +587,7 @@ export type MessageInput = Utterance & { memos?: MemoInput[] };
  * 問いを対話ごと作るときの入力。
  *
  * currentForm と status は、既定（原型のまま・new）から動かすときだけ渡す。
- * メモの範囲（anchorStart / anchorEnd）は呼び出し側が決める。
+ * メモの範囲（`anchor`）は呼び出し側が決める。
  * 本文中の位置を求めるのは DB 非依存の計算で、この層の仕事ではない。
  */
 export type QuestionInput = {

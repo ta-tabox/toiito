@@ -9,7 +9,31 @@
  * アンカーは messages が immutable（追記のみ）であることを前提にしている。
  */
 
+import type { Anchor } from "@/lib/types";
+
 type AnchorRange = { id: string; anchor_start: number; anchor_end: number };
+
+/**
+ * `start` と `end` を検査して `Anchor` にする。
+ * `start` と `end` が整数で、`start >= 0` かつ `end > start` でなければ throw する。
+ *
+ * `Anchor` を作るのは `parseAnchor` だけなので、フォームの値・DOM の選択・DB の行のどこから範囲を作るときも、ここを通す。
+ */
+export function parseAnchor(start: number, end: number): Anchor {
+  const isValid =
+    Number.isInteger(start) &&
+    Number.isInteger(end) &&
+    start >= 0 &&
+    end > start;
+
+  if (!isValid) {
+    throw new Error(
+      `アンカーの範囲が不正: start ${start}、end ${end}（start は 0 以上の整数、end は start より大きい整数）`,
+    );
+  }
+
+  return { start, end } as Anchor;
+}
 
 /**
  * 本文を切り分けた一区間。
@@ -95,7 +119,7 @@ export type ExcerptParts = {
 
 /**
  * メモの引用を、アンカーの手前・本体・後ろの三つに切って作る。
- * アンカー区間（`anchorStart` / `anchorEnd`）の前後へ margin 文字ずつ広げ、本文の端と書記素境界で止める。
+ * `anchor` の前後へ `margin` 文字ずつ広げ、本文の端と書記素境界で止める。
  * 連結すれば引用の全文になる。
  *
  * 三つに割るのは、UI がアンカー本体だけを描き分けるため。
@@ -103,23 +127,21 @@ export type ExcerptParts = {
  */
 export function excerptParts(
   body: string,
-  input: {
-    readonly anchorStart: number;
-    readonly anchorEnd: number;
-    readonly margin: number;
-  },
+  anchor: Anchor,
+  margin: number,
 ): ExcerptParts {
-  const { anchorStart, anchorEnd, margin } = input;
-
-  const from = clampToGraphemeBoundary(body, Math.max(0, anchorStart - margin));
+  const from = clampToGraphemeBoundary(
+    body,
+    Math.max(0, anchor.start - margin),
+  );
   const to = clampToGraphemeBoundary(
     body,
-    Math.min(body.length, anchorEnd + margin),
+    Math.min(body.length, anchor.end + margin),
   );
 
   return {
-    before: body.slice(from, anchorStart),
-    anchor: body.slice(anchorStart, anchorEnd),
-    after: body.slice(anchorEnd, to),
+    before: body.slice(from, anchor.start),
+    anchor: body.slice(anchor.start, anchor.end),
+    after: body.slice(anchor.end, to),
   };
 }

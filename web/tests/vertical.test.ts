@@ -8,6 +8,7 @@ import { createOwner } from "@tests/setup/owner";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { callPersona } from "@/lib/ai";
 import { ANTHROPIC_DEFAULTS, AnthropicProvider } from "@/lib/ai/anthropic";
+import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
 import { loadPersona, type PersonaId } from "@/lib/personas";
 import type { OwnerId } from "@/lib/types";
@@ -75,8 +76,7 @@ describe("縦一本", () => {
     // 応答本文の一部を選択してメモを残す
     const target = messages[1];
     const memo = await db.addMemo(owner, target.id, {
-      anchorStart: 0,
-      anchorEnd: 4,
+      anchor: parseAnchor(0, 4),
       keyword: target.body.slice(0, 4),
     });
 

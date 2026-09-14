@@ -11,6 +11,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { parseAnchor } from "@/lib/anchors";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { LOGIN_PATH } from "@/lib/auth/protected-paths";
 import {
@@ -71,7 +72,7 @@ export async function retryTurnAction(questionId: string, sessionId: string) {
  * 発話本文の一部にメモを付ける。
  *
  * アンカー（anchor_start / anchor_end）は呼び出し側が確定させたものを受け取る。
- * 本文中の位置を求めるのは DOM と `anchors.ts` の担当で、`createMemoAction` は数値を通すだけ。
+ * 本文中の位置を求めるのは DOM と `anchors.ts` の担当で、`createMemoAction` はフォームの数値を `parseAnchor` に通すだけ。
  */
 export async function createMemoAction(questionId: string, formData: FormData) {
   const keyword = String(formData.get("keyword") ?? "").trim();
@@ -80,17 +81,14 @@ export async function createMemoAction(questionId: string, formData: FormData) {
   }
 
   const messageId = String(formData.get("message_id") ?? "");
-  const anchorStart = Number(formData.get("anchor_start"));
-  const anchorEnd = Number(formData.get("anchor_end"));
+  const anchor = parseAnchor(
+    Number(formData.get("anchor_start")),
+    Number(formData.get("anchor_end")),
+  );
   const note = String(formData.get("note") ?? "").trim();
 
   const { id: owner } = await requireCurrentUser();
-  await addMemo(owner, messageId, {
-    anchorStart,
-    anchorEnd,
-    keyword,
-    note: note || undefined,
-  });
+  await addMemo(owner, messageId, { anchor, keyword, note: note || undefined });
 
   revalidatePath(`/q/${questionId}`);
 }

@@ -9,6 +9,7 @@
  * 誰が持つかを決めるのは `seed/index.ts` で、`questions.ts` は本文とメモだけを持つ。
  */
 
+import { parseAnchor } from "@/lib/anchors";
 import type { MemoInput, QuestionInput } from "@/lib/db";
 import type { QuestionStatus } from "@/lib/question";
 import type { Speaker } from "@/lib/types";
@@ -158,8 +159,7 @@ function toMemoInput(body: string, memoSeed: MemoSeed): MemoInput {
   }
 
   return {
-    anchorStart: start,
-    anchorEnd: start + memoSeed.keyword.length,
+    anchor: parseAnchor(start, start + memoSeed.keyword.length),
     keyword: memoSeed.keyword,
     note: memoSeed.note,
   };

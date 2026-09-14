@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import QuestionPage from "@/app/q/[id]/page";
 import { MessageBody } from "@/components/message-body";
 import { SpeakForm } from "@/components/speak-form";
+import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
 import type { Memo, Message, OwnerId } from "@/lib/types";
 
@@ -59,7 +60,7 @@ async function questionWithMemoOnSecondMessage() {
       {
         speaker: "ai_a",
         body: "具体の応答",
-        memos: [{ anchorStart: 0, anchorEnd: 2, keyword: "具体" }],
+        memos: [{ anchor: parseAnchor(0, 2), keyword: "具体" }],
       },
     ],
   });

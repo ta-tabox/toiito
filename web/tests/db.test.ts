@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { createOwner } from "@tests/setup/owner";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
 import { QUESTION_STATUSES } from "@/lib/question";
-import type { OwnerId } from "@/lib/types";
+import type { Anchor, OwnerId } from "@/lib/types";
 
 afterAll(async () => {
   await db.disconnect();
@@ -66,7 +67,7 @@ describe("questions / sessions", () => {
           {
             speaker: "ai_a",
             body: "一度目の応答",
-            memos: [{ anchorStart: 0, anchorEnd: 2, keyword: "一度" }],
+            memos: [{ anchor: parseAnchor(0, 2), keyword: "一度" }],
           },
         ],
       },
@@ -77,8 +78,7 @@ describe("questions / sessions", () => {
       body: "二度目の応答",
     });
     await db.addMemo(owner, laterMessage.id, {
-      anchorStart: 0,
-      anchorEnd: 2,
+      anchor: parseAnchor(0, 2),
       keyword: "二度",
     });
 
@@ -100,13 +100,11 @@ describe("questions / sessions", () => {
       },
     );
     await db.addMemo(owner, messages[0].id, {
-      anchorStart: 0,
-      anchorEnd: 2,
+      anchor: parseAnchor(0, 2),
       keyword: "惰性",
     });
     await db.addMemo(owner, messages[0].id, {
-      anchorStart: 3,
-      anchorEnd: 5,
+      anchor: parseAnchor(3, 5),
       keyword: "惰性",
     });
     await db.createSession(owner, question.id);
@@ -248,8 +246,7 @@ describe("memos", () => {
       body: "これは本文である",
     });
     const memo = await db.addMemo(owner, message.id, {
-      anchorStart: 2,
-      anchorEnd: 4,
+      anchor: parseAnchor(2, 4),
       keyword: "本文",
       note: "気になる語",
     });
@@ -268,8 +265,7 @@ describe("memos", () => {
       body: "省略のテスト文",
     });
     const memo = await db.addMemo(owner, message.id, {
-      anchorStart: 0,
-      anchorEnd: 2,
+      anchor: parseAnchor(0, 2),
       keyword: "省略",
     });
 
@@ -286,8 +282,7 @@ describe("memos", () => {
     expect(message.body.length).toBe(5);
     await expect(
       db.addMemo(owner, message.id, {
-        anchorStart: 0,
-        anchorEnd: 100,
+        anchor: parseAnchor(0, 100),
         keyword: "はみ出し",
       }),
     ).rejects.toThrow(/anchor_end が本文長を超えている/);
@@ -300,17 +295,16 @@ describe("memos", () => {
       body: "区間の検査文",
     });
 
+    // `parseAnchor` を通らない範囲を型の変換で作り、DB の check 制約が単独でも範囲を拒否することを見る。
     await expect(
       db.addMemo(owner, message.id, {
-        anchorStart: 2,
-        anchorEnd: 2,
+        anchor: { start: 2, end: 2 } as Anchor,
         keyword: "空区間",
       }),
     ).rejects.toThrow();
     await expect(
       db.addMemo(owner, message.id, {
-        anchorStart: -1,
-        anchorEnd: 3,
+        anchor: { start: -1, end: 3 } as Anchor,
         keyword: "負の開始",
       }),
     ).rejects.toThrow();
@@ -319,8 +313,7 @@ describe("memos", () => {
   it("存在しない message にはメモを付けられない", async () => {
     await expect(
       db.addMemo(owner, randomUUID(), {
-        anchorStart: 0,
-        anchorEnd: 1,
+        anchor: parseAnchor(0, 1),
         keyword: "不整合",
       }),
     ).rejects.toThrow(/発話が見つからない/);
@@ -338,13 +331,11 @@ describe("memos", () => {
       body: "セッションBの本文",
     });
     const memoA = await db.addMemo(owner, msgA.id, {
-      anchorStart: 0,
-      anchorEnd: 3,
+      anchor: parseAnchor(0, 3),
       keyword: "A",
     });
     await db.addMemo(owner, msgB.id, {
-      anchorStart: 0,
-      anchorEnd: 3,
+      anchor: parseAnchor(0, 3),
       keyword: "B",
     });
 
@@ -363,8 +354,7 @@ describe("memos", () => {
       body: "逆引き対象の本文",
     });
     const memo = await db.addMemo(owner, message.id, {
-      anchorStart: 0,
-      anchorEnd: 4,
+      anchor: parseAnchor(0, 4),
       keyword: "逆引き",
     });
 
@@ -385,13 +375,11 @@ describe("memos", () => {
       body: "先の語と後の語",
     });
     const older = await db.addMemo(owner, message.id, {
-      anchorStart: 0,
-      anchorEnd: 2,
+      anchor: parseAnchor(0, 2),
       keyword: "先の語",
     });
     const newer = await db.addMemo(owner, message.id, {
-      anchorStart: 4,
-      anchorEnd: 6,
+      anchor: parseAnchor(4, 6),
       keyword: "後の語",
     });
 
@@ -413,7 +401,7 @@ describe("所有権", () => {
           {
             speaker: "ai_a",
             body: "アクセス権の無い発話",
-            memos: [{ anchorStart: 0, anchorEnd: 2, keyword: "アクセス" }],
+            memos: [{ anchor: parseAnchor(0, 2), keyword: "アクセス" }],
           },
         ],
       });
@@ -478,8 +466,7 @@ describe("所有権", () => {
     ).rejects.toThrow(/セッションが見つからない/);
     await expect(
       db.addMemo(owner, message.id, {
-        anchorStart: 0,
-        anchorEnd: 2,
+        anchor: parseAnchor(0, 2),
         keyword: "横取り",
       }),
     ).rejects.toThrow(/発話が見つからない/);

@@ -37,7 +37,7 @@ describe("シードの宣言", () => {
 
     for (const memo of memos) {
       // ずれたまま投入すると、UI では無関係な語に下線が付く。
-      expect(memo.body.slice(memo.anchorStart, memo.anchorEnd)).toBe(
+      expect(memo.body.slice(memo.anchor.start, memo.anchor.end)).toBe(
         memo.keyword,
       );
     }

@@ -63,6 +63,16 @@ export type Message = {
 };
 
 /**
+ * 発話本文の中の範囲。
+ * `start` と `end` は本文先頭からの文字オフセット（JS の string index）で、`start` を含み `end` を含まない。
+ *
+ * 作れるのは `anchors.ts` の `parseAnchor` だけなので、`Anchor` を受け取る関数は `start >= 0` かつ `end > start` の整数であることを検証し直さない。
+ */
+export type Anchor = { readonly start: number; readonly end: number } & {
+  readonly __brand: "Anchor";
+};
+
+/**
  * キーワードメモ。
  * メッセージ本文の一部（anchor_start〜anchor_end）に付く。
  */

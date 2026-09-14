@@ -2,6 +2,7 @@ import { createOwner } from "@tests/setup/owner";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import MemosPage from "@/app/memos/page";
+import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
 import type { OwnerId } from "@/lib/types";
 
@@ -84,8 +85,7 @@ async function memoInLongMessage(keyword: string, note?: string) {
     body: `${before}${keyword}${after}`,
   });
   const memo = await db.addMemo(owner, message.id, {
-    anchorStart: before.length,
-    anchorEnd: before.length + keyword.length,
+    anchor: parseAnchor(before.length, before.length + keyword.length),
     keyword,
     note,
   });
