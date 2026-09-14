@@ -2,5 +2,4 @@
 # scripts/lint-vocabulary.sh は writing.md の表に加えて、ここの語も報告する。
 # レビューで差し戻された語だけを足す。
 預かり
-淡
 述語
