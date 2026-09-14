@@ -27,7 +27,7 @@ export async function createQuestionAction(formData: FormData) {
   if (!body) {
     return;
   }
-  const owner = (await requireCurrentUser()).id;
+  const { id: owner } = await requireCurrentUser();
   const { question } = await createQuestion(owner, body);
   redirect(`/q/${question.id}`);
 }
@@ -37,7 +37,8 @@ export async function createQuestionAction(formData: FormData) {
  * 過去のセッションは残る。
  */
 export async function newSessionAction(questionId: string) {
-  await createSession((await requireCurrentUser()).id, questionId);
+  const { id: owner } = await requireCurrentUser();
+  await createSession(owner, questionId);
   revalidatePath(`/q/${questionId}`);
 }
 
@@ -52,7 +53,7 @@ export async function speakAction(
     return;
   }
 
-  const owner = (await requireCurrentUser()).id;
+  const { id: owner } = await requireCurrentUser();
   await runTurn({ owner, questionId, sessionId, body, calls: personaCalls() });
 
   revalidatePath(`/q/${questionId}`);
@@ -60,7 +61,7 @@ export async function speakAction(
 
 /** `pending_messages` に残っている発話で、一往復をもう一度実行する。 */
 export async function retryTurnAction(questionId: string, sessionId: string) {
-  const owner = (await requireCurrentUser()).id;
+  const { id: owner } = await requireCurrentUser();
   await retryTurn({ owner, questionId, sessionId, calls: personaCalls() });
 
   revalidatePath(`/q/${questionId}`);
@@ -83,7 +84,8 @@ export async function createMemoAction(questionId: string, formData: FormData) {
   const anchorEnd = Number(formData.get("anchor_end"));
   const note = String(formData.get("note") ?? "").trim();
 
-  await addMemo((await requireCurrentUser()).id, messageId, {
+  const { id: owner } = await requireCurrentUser();
+  await addMemo(owner, messageId, {
     anchorStart,
     anchorEnd,
     keyword,
@@ -95,7 +97,8 @@ export async function createMemoAction(questionId: string, formData: FormData) {
 
 /** Google の同意画面へ送る。 */
 export async function signInWithGoogleAction() {
-  redirect(await startGoogleSignIn());
+  const url = await startGoogleSignIn();
+  redirect(url);
 }
 
 /**

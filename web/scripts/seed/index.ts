@@ -77,8 +77,9 @@ export async function seed(): Promise<SeedSummary> {
 
   try {
     const [first, second] = SEED_USERS;
+    const existing = await repo.getUserByEmail(first.email);
 
-    if (await repo.getUserByEmail(first.email)) {
+    if (existing) {
       console.warn(
         `既に ${first.email} が居る DB なので、何も入れずに終わる。空の DB へ入れるか、投入先（DATABASE_URL）を確かめる`,
       );

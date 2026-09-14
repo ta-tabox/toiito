@@ -102,7 +102,8 @@ describe("/memos", () => {
   it("各行はそのメモの拡大表示へリンクする", async () => {
     const { memo } = await memoInLongMessage("拡大表示の対象");
 
-    const hrefs = hrefsOf(await listPage());
+    const listed = await listPage();
+    const hrefs = hrefsOf(listed);
 
     expect(hrefs).toContain(`/memos?memo=${memo.id}`);
   });
@@ -128,7 +129,8 @@ describe("/memos", () => {
     const { question, session, message } =
       await memoInLongMessage("開かない対象");
 
-    const hrefs = hrefsOf(await listPage());
+    const listed = await listPage();
+    const hrefs = hrefsOf(listed);
 
     // 逆引きのリンクは拡大表示の中にしか無い。
     expect(hrefs).not.toContain(
@@ -143,7 +145,8 @@ describe("/memos", () => {
       "この言い換えが効いた",
     );
 
-    const text = textOf(await listPage());
+    const listed = await listPage();
+    const text = textOf(listed);
 
     expect(text).toContain(keyword);
     expect(text).toContain("この言い換えが効いた");
@@ -160,7 +163,8 @@ describe("/memos", () => {
     await memoInLongMessage(older);
     await memoInLongMessage(newer);
 
-    const text = textOf(await listPage());
+    const listed = await listPage();
+    const text = textOf(listed);
 
     expect(text.indexOf(newer)).toBeLessThan(text.indexOf(older));
   });

@@ -205,10 +205,11 @@ export async function getQuestion(
   owner: OwnerId,
   id: string,
 ): Promise<Question | undefined> {
-  return (
-    (await db().question.findFirst({ where: { id, user_id: owner } })) ??
-    undefined
-  );
+  const question = await db().question.findFirst({
+    where: { id, user_id: owner },
+  });
+
+  return question ?? undefined;
 }
 
 /**
@@ -307,11 +308,11 @@ export async function getSession(
   owner: OwnerId,
   id: string,
 ): Promise<Session | undefined> {
-  return (
-    (await db().dialogueSession.findFirst({
-      where: { id, question: { user_id: owner } },
-    })) ?? undefined
-  );
+  const session = await db().dialogueSession.findFirst({
+    where: { id, question: { user_id: owner } },
+  });
+
+  return session ?? undefined;
 }
 
 /**
@@ -324,12 +325,12 @@ export async function latestSession(
   owner: OwnerId,
   questionId: string,
 ): Promise<Session | undefined> {
-  return (
-    (await db().dialogueSession.findFirst({
-      where: { question_id: questionId, question: { user_id: owner } },
-      orderBy: [{ started_at: "desc" }, { seq: "desc" }],
-    })) ?? undefined
-  );
+  const session = await db().dialogueSession.findFirst({
+    where: { question_id: questionId, question: { user_id: owner } },
+    orderBy: [{ started_at: "desc" }, { seq: "desc" }],
+  });
+
+  return session ?? undefined;
 }
 
 /**

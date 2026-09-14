@@ -264,7 +264,8 @@ test("メモの小フォームは、選んだ位置でもスクロールでも�
   expectNearBottom(atHead, NARROW_VIEWPORT);
 
   await selectTextIn(page, aiA, tail);
-  expect(await formRect(page)).toEqual(atHead);
+  const atTail = await formRect(page);
+  expect(atTail).toEqual(atHead);
 
   // 書いている途中に発話を読み返せる（背面を止めない）。
   await page.mouse.wheel(0, 300);
@@ -272,7 +273,8 @@ test("メモの小フォームは、選んだ位置でもスクロールでも�
     .poll(() => page.evaluate(() => window.scrollY))
     .toBeGreaterThan(0);
 
-  expect(await formRect(page)).toEqual(atHead);
+  const whileScrolled = await formRect(page);
+  expect(whileScrolled).toEqual(atHead);
 
   // 出したまま画面を広げても、基準は画面のまま。
   await page.setViewportSize(WIDE_VIEWPORT);
@@ -303,7 +305,8 @@ test("別の発話を選ぶと下書きはそちらへ移り、やめれば選�
   await page.getByRole("button", { name: "やめる" }).click();
 
   await expect(memoForm(page)).toHaveCount(0);
-  expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("");
+  const selected = await page.evaluate(() => window.getSelection()?.toString());
+  expect(selected).toBe("");
 });
 
 test("作ったメモは /memos に並び、そこから出所の発話へ着地する", async ({

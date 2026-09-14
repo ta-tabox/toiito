@@ -21,12 +21,13 @@ describe("questions / sessions", () => {
       owner,
       "なぜ速さを求めるのか",
     );
+    const latest = await db.latestSession(owner, question.id);
 
     expect(question.body).toBe("なぜ速さを求めるのか");
     expect(question.status).toBe("new");
     expect(question.current_form).toBeNull();
     expect(session.question_id).toBe(question.id);
-    expect((await db.latestSession(owner, question.id))?.id).toBe(session.id);
+    expect(latest?.id).toBe(session.id);
   });
 
   it("再訪で新セッションを作ると latestSession が入れ替わる", async () => {
@@ -35,8 +36,9 @@ describe("questions / sessions", () => {
       "問い2",
     );
     const second = await db.createSession(owner, question.id);
+    const latest = await db.latestSession(owner, question.id);
 
-    expect((await db.latestSession(owner, question.id))?.id).toBe(second.id);
+    expect(latest?.id).toBe(second.id);
     expect(first.id).not.toBe(second.id);
   });
 
@@ -174,9 +176,8 @@ describe("問いの状態機械", () => {
     const { question } = await db.createQuestion(owner, "状態の問い");
 
     for (const s of QUESTION_STATUSES) {
-      expect((await db.setQuestionStatus(owner, question.id, s)).status).toBe(
-        s,
-      );
+      const updated = await db.setQuestionStatus(owner, question.id, s);
+      expect(updated.status).toBe(s);
     }
   });
 
@@ -202,7 +203,9 @@ describe("問いの状態機械", () => {
       // @ts-expect-error 値域は型でもスキーマでも表明している
       db.setQuestionStatus(owner, question.id, "fermenting"),
     ).rejects.toThrow(/問いの状態が QUESTION_STATUSES に無い/);
-    expect((await db.getQuestion(owner, question.id))?.status).toBe("new");
+
+    const unchanged = await db.getQuestion(owner, question.id);
+    expect(unchanged?.status).toBe("new");
   });
 });
 
@@ -392,7 +395,8 @@ describe("memos", () => {
       keyword: "後の語",
     });
 
-    const ids = (await db.listMemosWithContext(owner)).map((m) => m.id);
+    const listed = await db.listMemosWithContext(owner);
+    const ids = listed.map((m) => m.id);
 
     expect(ids).toEqual([newer.id, older.id]);
   });
@@ -424,19 +428,27 @@ describe("所有権", () => {
     // 行が在るときだけ意味のある検査になるので、`other` に一件作ってから読む。
     await db.savePendingBody(other, session.id, "アクセス権の無い未送信の発話");
 
-    expect((await db.listQuestions(owner)).map((q) => q.body)).toEqual([
-      "自分の問い",
-    ]);
-    expect(await db.getQuestion(owner, question.id)).toBeUndefined();
-    expect(await db.getSession(owner, session.id)).toBeUndefined();
-    expect(await db.latestSession(owner, question.id)).toBeUndefined();
-    expect(await db.listSessionsWithKeywords(owner, question.id)).toEqual([]);
-    expect(await db.listMessages(owner, session.id)).toEqual([]);
-    expect(await db.listMemosForSession(owner, session.id)).toEqual([]);
-    expect(await db.getPendingBody(owner, session.id)).toBeUndefined();
-    expect(
-      (await db.listMemosWithContext(owner)).map((m) => m.message_body),
-    ).not.toContain(message.body);
+    const questions = await db.listQuestions(owner);
+    const othersQuestion = await db.getQuestion(owner, question.id);
+    const othersSession = await db.getSession(owner, session.id);
+    const latest = await db.latestSession(owner, question.id);
+    const sessions = await db.listSessionsWithKeywords(owner, question.id);
+    const messages = await db.listMessages(owner, session.id);
+    const memosInSession = await db.listMemosForSession(owner, session.id);
+    const pending = await db.getPendingBody(owner, session.id);
+    const memosWithContext = await db.listMemosWithContext(owner);
+
+    expect(questions.map((q) => q.body)).toEqual(["自分の問い"]);
+    expect(othersQuestion).toBeUndefined();
+    expect(othersSession).toBeUndefined();
+    expect(latest).toBeUndefined();
+    expect(sessions).toEqual([]);
+    expect(messages).toEqual([]);
+    expect(memosInSession).toEqual([]);
+    expect(pending).toBeUndefined();
+    expect(memosWithContext.map((m) => m.message_body)).not.toContain(
+      message.body,
+    );
   });
 
   it("書き込みは、アクセス権の無い問い・セッション・発話のどれへも届かない", async () => {

@@ -86,7 +86,8 @@ describe("一往復", () => {
     const messages = await db.listMessages(owner, target.sessionId);
     expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
     expect(messages[0].body).toBe("急ぐほど問いが痩せる気がする");
-    expect(await db.getPendingBody(owner, target.sessionId)).toBeUndefined();
+    const pending = await db.getPendingBody(owner, target.sessionId);
+    expect(pending).toBeUndefined();
   });
 
   it("ai_b が失敗すると messages は空のままで、pending_messages に本文が残る", async () => {
@@ -98,11 +99,12 @@ describe("一往復", () => {
       calls: calls("ai_b"),
     });
 
+    const messages = await db.listMessages(owner, target.sessionId);
+    const pending = await db.getPendingBody(owner, target.sessionId);
+
     // ai_a は成功しているが、成立していない一往復の断片は置かない。
-    expect(await db.listMessages(owner, target.sessionId)).toEqual([]);
-    expect(await db.getPendingBody(owner, target.sessionId)).toBe(
-      "急ぐほど問いが痩せる気がする",
-    );
+    expect(messages).toEqual([]);
+    expect(pending).toBe("急ぐほど問いが痩せる気がする");
   });
 
   it("ai_a が落ちたときも同じ", async () => {
@@ -114,10 +116,11 @@ describe("一往復", () => {
       calls: calls("ai_a"),
     });
 
-    expect(await db.listMessages(owner, target.sessionId)).toEqual([]);
-    expect(await db.getPendingBody(owner, target.sessionId)).toBe(
-      "急ぐほど問いが痩せる気がする",
-    );
+    const messages = await db.listMessages(owner, target.sessionId);
+    const pending = await db.getPendingBody(owner, target.sessionId);
+
+    expect(messages).toEqual([]);
+    expect(pending).toBe("急ぐほど問いが痩せる気がする");
   });
 
   it("失敗のあとに同じ文言を送り直しても、human が二重に積まれない", async () => {
@@ -159,7 +162,8 @@ describe("一往復", () => {
         calls: calls(),
       }),
     ).rejects.toThrow();
-    expect(await db.getPendingBody(owner, target.sessionId)).toBeUndefined();
+    const pending = await db.getPendingBody(owner, target.sessionId);
+    expect(pending).toBeUndefined();
   });
 });
 
@@ -177,7 +181,8 @@ describe("再送", () => {
     const messages = await db.listMessages(owner, target.sessionId);
     expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
     expect(messages[0].body).toBe("急ぐほど問いが痩せる気がする");
-    expect(await db.getPendingBody(owner, target.sessionId)).toBeUndefined();
+    const pending = await db.getPendingBody(owner, target.sessionId);
+    expect(pending).toBeUndefined();
   });
 
   it("もう一度失敗すれば pending_messages の行は残る", async () => {
@@ -190,10 +195,11 @@ describe("再送", () => {
     });
     await retryTurn({ ...target, calls: calls("ai_b") });
 
-    expect(await db.listMessages(owner, target.sessionId)).toEqual([]);
-    expect(await db.getPendingBody(owner, target.sessionId)).toBe(
-      "急ぐほど問いが痩せる気がする",
-    );
+    const messages = await db.listMessages(owner, target.sessionId);
+    const pending = await db.getPendingBody(owner, target.sessionId);
+
+    expect(messages).toEqual([]);
+    expect(pending).toBe("急ぐほど問いが痩せる気がする");
   });
 
   it("pending_messages に行が無ければ何もしない", async () => {
@@ -201,7 +207,8 @@ describe("再送", () => {
 
     await retryTurn({ ...target, calls: calls() });
 
-    expect(await db.listMessages(owner, target.sessionId)).toEqual([]);
+    const messages = await db.listMessages(owner, target.sessionId);
+    expect(messages).toEqual([]);
   });
 
   it("待つあいだに新しい発話が来ていたら、その行は削除しない", async () => {
@@ -216,9 +223,8 @@ describe("再送", () => {
       ai_b: "抽象の応答",
     });
 
-    expect(await db.getPendingBody(owner, target.sessionId)).toBe(
-      "あとから送った発話",
-    );
+    const pending = await db.getPendingBody(owner, target.sessionId);
+    expect(pending).toBe("あとから送った発話");
   });
 
   it("pending_messages に行が無いまま commitTurn しても throw しない", async () => {
@@ -249,6 +255,7 @@ describe("再訪", () => {
     await db.createSession(owner, target.questionId);
 
     // 再送の UI は最新のセッションにしか出ないので、残すと再送できない行になる。
-    expect(await db.getPendingBody(owner, target.sessionId)).toBeUndefined();
+    const pending = await db.getPendingBody(owner, target.sessionId);
+    expect(pending).toBeUndefined();
   });
 });

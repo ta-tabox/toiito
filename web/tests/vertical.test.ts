@@ -49,10 +49,11 @@ describe("縦一本", () => {
       body: "急ぐほど問いが痩せる気がする",
     });
 
+    const transcriptForA = await db.listMessages(owner, session.id);
     const aiA = await callPersona(
       personaCall("ai_a"),
       question,
-      await db.listMessages(owner, session.id),
+      transcriptForA,
     );
     await db.addMessage(owner, session.id, { speaker: "ai_a", body: aiA });
 
@@ -79,7 +80,8 @@ describe("縦一本", () => {
       keyword: target.body.slice(0, 4),
     });
 
-    expect(await db.listMemosForSession(owner, session.id)).toHaveLength(1);
+    const memosInSession = await db.listMemosForSession(owner, session.id);
+    expect(memosInSession).toHaveLength(1);
 
     // メモからセッションと問いへ逆引きできる
     const [found] = await db.listMemosWithContext(owner);

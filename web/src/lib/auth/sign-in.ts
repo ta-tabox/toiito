@@ -21,9 +21,10 @@ const AFTER_SIGN_IN_PATH = "/";
  * Google を設定していない環境では URL が返らないので throw する。
  */
 export async function startGoogleSignIn(): Promise<string> {
+  const requestHeaders = await headers();
   const { url } = await auth().api.signInSocial({
     body: { provider: "google", callbackURL: AFTER_SIGN_IN_PATH },
-    headers: await headers(),
+    headers: requestHeaders,
   });
 
   if (!url) {
@@ -42,7 +43,8 @@ export async function startGoogleSignIn(): Promise<string> {
  * 許可リストに無い email と、`user` 表に行が無い email は throw する。
  */
 export async function signInAsFakeUser(email: string): Promise<void> {
-  await auth().api.signInFake({ body: { email }, headers: await headers() });
+  const requestHeaders = await headers();
+  await auth().api.signInFake({ body: { email }, headers: requestHeaders });
 }
 
 /**
@@ -50,5 +52,6 @@ export async function signInAsFakeUser(email: string): Promise<void> {
  * 未サインインで呼んでも成功する。
  */
 export async function signOutCurrentUser(): Promise<void> {
-  await auth().api.signOut({ headers: await headers() });
+  const requestHeaders = await headers();
+  await auth().api.signOut({ headers: requestHeaders });
 }

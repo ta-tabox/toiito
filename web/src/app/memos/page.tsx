@@ -50,7 +50,8 @@ export default async function MemosPage({
   searchParams: Promise<{ memo?: string }>;
 }) {
   const { memo: openedId } = await searchParams;
-  const memos = await listMemosWithContext((await requireCurrentUser()).id);
+  const { id: owner } = await requireCurrentUser();
+  const memos = await listMemosWithContext(owner);
   const opened = memos.find((memo) => memo.id === openedId);
   const openedQuote =
     opened &&

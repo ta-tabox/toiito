@@ -81,12 +81,14 @@ describe("シードの投入", () => {
     const other = await seededOwner(SEED_USERS[1].email);
 
     const [ownQuestion] = await db.listQuestions(other);
+    const seenByOwner = await db.getQuestion(owner, ownQuestion.id);
+    const ownerQuestions = await db.listQuestions(owner);
 
     expect(ownQuestion.body).toBe(OTHER_USER_INPUT.body);
-    expect(await db.getQuestion(owner, ownQuestion.id)).toBeUndefined();
-    expect(
-      (await db.listQuestions(owner)).map((question) => question.body),
-    ).not.toContain(OTHER_USER_INPUT.body);
+    expect(seenByOwner).toBeUndefined();
+    expect(ownerQuestions.map((question) => question.body)).not.toContain(
+      OTHER_USER_INPUT.body,
+    );
   });
 
   it("NODE_ENV=production では投入せず落ちる", async () => {
@@ -110,7 +112,8 @@ describe("シードの投入", () => {
       expect(warn).toHaveBeenCalled();
 
       const owner = await seededOwner(SEED_USERS[0].email);
-      expect(await db.listQuestions(owner)).toHaveLength(SEED_INPUTS.length);
+      const ownerQuestions = await db.listQuestions(owner);
+      expect(ownerQuestions).toHaveLength(SEED_INPUTS.length);
     } finally {
       warn.mockRestore();
     }

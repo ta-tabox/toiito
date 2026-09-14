@@ -114,10 +114,8 @@ export async function runTurn(
 
   await savePendingBody(owner, sessionId, body);
 
-  const transcript: Transcript = [
-    ...(await listMessages(owner, sessionId)),
-    { speaker: "human", body },
-  ];
+  const messages = await listMessages(owner, sessionId);
+  const transcript: Transcript = [...messages, { speaker: "human", body }];
   const responses = await callBoth({
     calls,
     question,

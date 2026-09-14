@@ -179,11 +179,11 @@ export class AnthropicProvider extends AiProvider {
       );
     }
 
-    const data = (await res.json()) as {
+    const data: {
       content: { type: string; text?: string }[];
       stop_reason: string | null;
       usage?: { input_tokens: number; output_tokens: number };
-    };
+    } = await res.json();
 
     // thinking だけで応答が終わると text ブロックが一つも来ない。
     const body = data.content

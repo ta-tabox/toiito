@@ -83,7 +83,7 @@ export default async function QuestionPage({
 }) {
   const { id } = await params;
   const { s: selectedId } = await searchParams;
-  const owner = (await requireCurrentUser()).id;
+  const { id: owner } = await requireCurrentUser();
   const question = await getQuestion(owner, id);
   if (!question) {
     notFound();
