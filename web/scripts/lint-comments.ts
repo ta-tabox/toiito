@@ -92,12 +92,6 @@ const DIRECTIVE_LINE_COMMENT =
 const IDENTIFIER_TOKEN = /^[A-Za-z_$][\w$]*$/;
 
 /**
- * ファイル名として実在を確かめる字面。
- * 拡張子は検査の対象に集める種類だけで、集めない種類（`.css`・`.md`）は実在を確かめようがない。
- */
-const FILE_TOKEN = /^[\w./-]+\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
-
-/**
  * 例として挙げた名前の書き出し。
  * `foo.test.ts` のような例示は実在しなくてよい。
  */
@@ -150,6 +144,14 @@ const BANNED_WORDS: ReadonlyArray<{
  * `SOURCE_EXTENSIONS` に無い拡張子は、ディレクトリを名指しで渡されても集めない。
  */
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
+
+/**
+ * ファイル名として実在を確かめる字面。
+ * 拡張子は `SOURCE_EXTENSIONS` から作り、検査の対象に集めない種類（`.css`・`.md`）は実在を確かめようがないので見ない。
+ */
+const FILE_TOKEN = new RegExp(
+  `^[\\w./-]+(?:${SOURCE_EXTENSIONS.map((ext) => `\\${ext}`).join("|")})$`,
+);
 
 /**
  * テストファイルの命名。

@@ -869,6 +869,16 @@ export function f() {
   });
 });
 
+  it("検査の対象に集めない拡張子のファイル名は見ない", () => {
+    const source = `${header}/** 設定は \`postcss.config.mjs\` と \`globals.css\` が持つ。 */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
 describe("継ぎ足しの ——", () => {
   const header = "/**\n * 冒頭。\n */\n\n";
 
