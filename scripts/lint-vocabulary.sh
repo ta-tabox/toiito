@@ -2,7 +2,8 @@
 #
 # 禁止語を、git の変更行またはテキストから grep して報告する。
 #
-# 語の一覧の正本は `.claude/rules/writing.md`「語彙と読み手」節の表で、`BANNED_WORDS` はそれを機械が読める形へ写したもの(表を直したらここも直す)。
+# 語の一覧の正本は `.claude/rules/writing.md`「語彙と読み手」節の表。
+# `BANNED_WORDS` はそれを機械が読める形へ写したもので、表を直したらここも直す。
 # `scripts/lint-comments.ts` は同じ表を TS のコメントへ当てる。
 # こちらは見る面が違い、git の追加行・コミット本文・PR 本文を対象にする。
 #
@@ -11,10 +12,14 @@
 #
 # 出力は報告だけで、置換も合否判定もしない(判定は人間)。
 #
-# リポジトリごとの増減は2つのファイルで行い、この雛形は書き換えない。
-#   .coding-standards-vocab-deny   そのリポジトリだけの禁止語を1行1語で足す
-#   .coding-standards-vocab-allow  その領域で比喩でない語を1行1語で足す(判定から外れる)
-# 単漢字の語(器・口・印)が無関係な複合語に埋もれる誤検出は、代表例を STRIP_COMPOUNDS が判定用のコピーからだけ取り除く(報告する本文は取り除く前の原文のまま)。
+# リポジトリごとの設定は3つのファイルで行い、この検査そのものは書き換えない。
+#   .coding-standards-vocab-deny    そのリポジトリだけの禁止語を1行1語で足す
+#   .coding-standards-vocab-allow   その領域で比喩でない語を1行1語で足す(判定から外れる)
+#   .coding-standards-vocab-ignore  走査しないパスを1行1つの pathspec で足す(生ログ・原文保持の退避先など)
+# 単漢字の語(器・口・印)は無関係な複合語に埋もれて誤検出になるので、代表例を STRIP_COMPOUNDS が判定用のコピーからだけ取り除く。
+# 報告する本文は取り除く前の原文のまま。
+# 一覧をそのまま別のリポジトリへ配ると、その領域で普通の語を機械が潰す。
+# 配る前に、配布先の実コードでその語が比喩でなく技術用語として使われていないかを確かめる。
 #
 # 使い方:
 #   lint-vocabulary.sh [<git diff への引数...>]   追加行だけを見る(引数を省略すると --cached)
@@ -33,11 +38,19 @@ fi
 
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo .)
 
-# 一覧そのものを持つファイルは対象から外す(語を足す変更が毎回自分を報告する)。
+# 一覧そのものを持つファイルは常に外す(語を足す変更が毎回自分を報告する)。
+# リポジトリ固有の除外は .coding-standards-vocab-ignore が持つ。
 EXCLUDE_PATHSPECS=(
-  ':!.coding-standards-vocab-deny' ':!.coding-standards-vocab-allow'
+  ':!.coding-standards-vocab-deny' ':!.coding-standards-vocab-allow' ':!.coding-standards-vocab-ignore'
   ':!**/lint-vocabulary.sh' ':!**/lint-comments.ts' ':!**/lint-comments.test.ts'
 )
+if [ -f "$REPO_ROOT/.coding-standards-vocab-ignore" ]; then
+  while IFS= read -r pathspec; do
+    [ -z "$pathspec" ] && continue
+    case "$pathspec" in \#*) continue ;; esac
+    EXCLUDE_PATHSPECS+=(":!$pathspec")
+  done < "$REPO_ROOT/.coding-standards-vocab-ignore"
+fi
 
 # 禁止語(`.claude/rules/writing.md`「語彙と読み手」節の表を写したもの。17語)。
 BANNED_WORDS=(
@@ -79,14 +92,19 @@ function hits(content,   check, i) {
 BEGIN { nb = split(banned, bwords, "|"); ns = split(strip, swords, "|") }
 '
 
+# ファイル名を持つ `+++ b/...` の行は、`diff --git` から最初の `@@` までのヘッダにしか現れない。
+# hunk の中で `+++` や `---` から始まる行は、内容が `++` や `--` で始まる追加行・削除行なので、ヘッダと区別する。
 DIFF_AWK=$SCAN_AWK'
-/^\+\+\+ / { file = substr($0, 5); sub(/^b\//, "", file); next }
+/^diff --git / { in_header = 1; next }
+in_header && /^@@/ { in_header = 0 }
+in_header && /^\+\+\+ / { file = substr($0, 5); sub(/^b\//, "", file); next }
+in_header { next }
 /^@@/ {
   match($0, /\+[0-9]+/)
   lineno = substr($0, RSTART + 1, RLENGTH - 1) + 0
   next
 }
-/^\+/ && !/^\+\+\+/ {
+/^\+/ {
   content = substr($0, 2)
   if (hits(content)) print file ":" lineno ": " content
   lineno++
