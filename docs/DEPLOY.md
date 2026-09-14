@@ -36,7 +36,7 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 
 `TOIITO_ANTHROPIC_MODEL` は任意（既定 `claude-sonnet-5`）。
 `TOIITO_FAKE_AI` は**本番に入れない**。
-入れると本番が実 API を叩かず、決定的なダミー応答を返す。
+入れても動かず、`VERCEL_ENV=production` を見て発話を送ったときに throw する。
 `TOIITO_FAKE_LOGIN` も**本番に入れない**。
 入れても動かず、`VERCEL_ENV=production` を見て最初のリクエストで throw する。
 
