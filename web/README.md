@@ -40,7 +40,7 @@ pnpm dev
 | `DIRECT_URL` | 必須 | — | Prisma Migrate 用の直結。プーラー越しには Migrate が動かないので分ける |
 | `ANTHROPIC_API_KEY` | 実 AI を使うなら必須 | — | Claude API のキー。**サーバー側のみ**で使い、クライアントへ露出させない |
 | `BETTER_AUTH_SECRET` | 必須 | — | セッションのトークンと OAuth の state の署名に使う秘密。32 文字以上の乱数 |
-| `TOIITO_ALLOWED_EMAILS` | 必須 | — | サインインを許す email のカンマ区切り。空だと起動時に落ちる |
+| `TOIITO_ALLOWED_EMAILS` | 必須 | — | サインインを許す email のカンマ区切り。空だと最初のリクエストで throw する |
 | `BETTER_AUTH_URL` | Google を使うなら必須 | — | アプリの公開 URL。cookie と OAuth の callback を組み立て、信頼する origin もこの値で決まる |
 | `GOOGLE_CLIENT_ID` | Google を使うなら必須 | — | Google OAuth のクライアント ID。片方だけ設定すると落ちる |
 | `GOOGLE_CLIENT_SECRET` | 同上 | — | 同じクライアントのシークレット |
@@ -76,7 +76,7 @@ E2E は worktree をまたいで `toiito_e2e` 一本を共有するので、こ�
 実 API を自動テストで叩かない（遅い・非決定的・金がかかる）。
 
 認証は 3 通りの組み合わせがあり、どれも `TOIITO_ALLOWED_EMAILS` と `BETTER_AUTH_SECRET` は要る。
-サインインの手段が一つも無い設定は起動時に落ちる。
+サインインの手段が一つも無い設定は、最初のリクエストで throw する。
 
 **手元で Google を使わない**のがいちばん軽い。
 `pnpm seed` が入れる二人を許可リストへ置き、Google を経ないサインインを開ける。
@@ -99,7 +99,7 @@ TOIITO_ALLOWED_EMAILS=<自分の Google アカウントの email>
 ```
 
 **本番と Preview**の値は `docs/DEPLOY.md`「秘密の置き場」と「Preview」が持つ。
-`TOIITO_FAKE_LOGIN` は本番へ入れられない（`VERCEL_ENV=production` で起動時に落ちる）。
+`TOIITO_FAKE_LOGIN` は本番へ入れられない（`VERCEL_ENV=production` を見て、最初のリクエストで throw する）。
 
 テストと E2E は設定を自分で渡すので、手で書くのは `.env.local` の一箇所だけである。
 

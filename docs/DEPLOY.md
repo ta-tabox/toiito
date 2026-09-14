@@ -38,7 +38,7 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 `TOIITO_FAKE_AI` は**本番に入れない**。
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
 `TOIITO_FAKE_LOGIN` も**本番に入れない**。
-入れても動かず、`VERCEL_ENV=production` を見て起動時に落ちる。
+入れても動かず、`VERCEL_ENV=production` を見て最初のリクエストで throw する。
 
 **8 本とも Production に入れてから最初のビルドを回す**。
 `postinstall` の `prisma generate` は `prisma.config.ts` 経由で `DIRECT_URL` を即時解決するので、無いとインストール段階で exit 1 になる。
