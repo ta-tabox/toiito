@@ -107,7 +107,7 @@ error は赤にし、warn は報告だけにする。
 | 三項の多重ネスト・複数代入・多重宣言 | biome `noNestedTernary` / `noMultiAssign` / `useSingleVarDeclarator` | error |
 | floating promise | biome `nursery/noFloatingPromises` | error |
 | 関数の認知的複雑度（分割の合図） | biome `noExcessiveCognitiveComplexity` | error |
-| 引数 3 つ超 | biome `complexity/useMaxParams` | warn |
+| 引数 3 つ超 | biome `complexity/useMaxParams` | error |
 
 対象から外すものは `.gitignore` が正で、リンタも Biome も同じ正を見る（`src/generated` の Prisma 生成物はここで落ちる）。
 リンタの対象は `web/src` `web/scripts` `web/tests` `web/e2e` と `web/` 直下の `*.ts`。
