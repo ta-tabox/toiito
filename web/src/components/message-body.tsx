@@ -366,11 +366,19 @@ function MemoForm({
 
 /**
  * 発話の `SelectionReader` を `readers` へ登録し、外し方を返す。
- * document の mouseup・keyup・touchend のリスナは、`readers` が空でなくなったときに一組だけ張り、空に戻ったときに外す。
  *
- * 本文の div へ付けた onMouseUp は本文の途中から枠の外までドラッグして離した mouseup を受け取らず、shift + 矢印で伸ばした選択は keyup でしか終わらないので、リスナは document に置いて keyup も見る。
- * iOS で長押しから選択ハンドルを動かして離す一連は touchend で終わって mouseup が来ず、pointerup は同じ実機で touchend が来る回の半分ほどにしか来ないので、touchend を見る。
+ * document のリスナは `readers` が空でなくなったときに一組だけ張り、空に戻ったときに外す。
+ * 本文の途中から下へドラッグして選ぶとボタンを離す位置が本文の枠の外になるので、リスナは document に置く。
+ * 本文の div へ onMouseUp を付けると、React のハンドラは自分の部分木の外で起きた mouseup を受け取らないので、枠の外で離した選択が丸ごと取れない。
+ * 静的な div へマウスのハンドラを付けること自体も biome が止める（a11y/noStaticElementInteractions）。
+ * keyup も見るのは、shift + 矢印で伸ばした選択を取りこぼさないため。
+ *
+ * iOS は選択のジェスチャの終わりに mouseup を撃たないので、touchend も見る。
+ * 長押しから選択ハンドルを動かして離す一連は touchend で終わり、mouseup はその一連に来ない。
+ * mouseup が来るのはただのタップのときだけで、その時点では選択が既に潰れている。
+ * pointerup を採らないのは、同じ実機で touchend が来た回のうち半分ほどしか来なかったため。
  */
+// lint-comments-allow comments/maxReasonSentences: 本文の div の onMouseUp で枠の外の選択を取りこぼし、mouseup だけを見て iOS の選択で下書きが立たなかった
 function subscribeSelection(
   container: Element,
   reader: SelectionReader,
