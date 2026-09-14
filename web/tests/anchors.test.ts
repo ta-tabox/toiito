@@ -9,7 +9,34 @@ import {
   excerptParts,
   parseAnchor,
   segmentBody,
+  toTrimmedAnchor,
 } from "@/lib/anchors";
+
+describe("toTrimmedAnchor", () => {
+  it("範囲の前後にある半角・全角の空白と改行を除いた範囲を返す", () => {
+    const body = "前置き 　問いの形\n後ろ";
+
+    const trimmed = toTrimmedAnchor(body, parseAnchor(3, 10));
+
+    expect(trimmed).toEqual({ start: 5, end: 9 });
+    expect(body.slice(5, 9)).toBe("問いの形");
+  });
+
+  it("前後に空白の無い範囲と、語の内側の空白は変えない", () => {
+    const body = "問い の形";
+
+    expect(toTrimmedAnchor(body, parseAnchor(0, 5))).toEqual({
+      start: 0,
+      end: 5,
+    });
+  });
+
+  it("空白と改行だけの範囲は undefined を返す", () => {
+    const body = "a 　\nb";
+
+    expect(toTrimmedAnchor(body, parseAnchor(1, 4))).toBeUndefined();
+  });
+});
 
 describe("segmentBody", () => {
   it("メモなしは本文全体が1セグメント", () => {
