@@ -6,10 +6,15 @@
  *
  * 誰がサインインできるかは決めない。
  * 許可リストの照合は `auth/index.ts` の `databaseHooks.session.create.before` が行う。
+ *
+ * ログインの画面に並べるサインインの手段（`readSignInMethods`）は `auth/index.ts` が環境変数から解決し、このファイルが再 export する。
+ * `biome.json` が `@/lib/auth` の import をこのファイルと `current-user.ts` とルートハンドラへ限定するので、ログインの画面はこのファイルから import する。
  */
 
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+
+export { readSignInMethods } from "@/lib/auth";
 
 /** サインインした後に戻る画面。 */
 const AFTER_SIGN_IN_PATH = "/";
