@@ -48,6 +48,12 @@ export type SessionWithKeywords = Session & { keywords: string[] };
 
 export type Speaker = "human" | "ai_a" | "ai_b";
 
+/**
+ * 発話の話者と本文の組。
+ * `messages` へ追記する前の発話で、AI へ渡す transcript の一行でもある。
+ */
+export type Utterance = { speaker: Speaker; body: string };
+
 export type Message = {
   id: string;
   session_id: string;

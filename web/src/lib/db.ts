@@ -25,8 +25,8 @@ import type {
   Question,
   Session,
   SessionWithKeywords,
-  Speaker,
   User,
+  Utterance,
 } from "@/lib/types";
 
 /**
@@ -409,12 +409,16 @@ export async function listMessages(
 export async function addMessage(
   owner: OwnerId,
   sessionId: string,
-  input: { readonly speaker: Speaker; readonly body: string },
+  utterance: Utterance,
 ): Promise<Message> {
   await requireOwnedSession(owner, sessionId);
 
   return db().message.create({
-    data: { session_id: sessionId, speaker: input.speaker, body: input.body },
+    data: {
+      session_id: sessionId,
+      speaker: utterance.speaker,
+      body: utterance.body,
+    },
   });
 }
 
@@ -580,12 +584,8 @@ export type MemoInput = {
   note?: string;
 };
 
-/** 対話とメモをまとめて作るときの、一件の発話。 */
-export type MessageInput = {
-  speaker: Speaker;
-  body: string;
-  memos?: MemoInput[];
-};
+/** 対話とメモをまとめて作るときの、一件の発話と、その発話に付けるメモ。 */
+export type MessageInput = Utterance & { memos?: MemoInput[] };
 
 /**
  * 問いを対話ごと作るときの入力。
