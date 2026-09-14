@@ -31,7 +31,7 @@ const SETTINGS: AnthropicSettings = {
 
 /**
  * 実 API を叩く側の env が必ず持つ変数。
- * env の読み取りを見るケースは、これに見たい一点だけを足す。
+ * env の読み取りを見るケースは、`KEY_ENV` に見たい一点だけを足す。
  */
 const KEY_ENV = { ANTHROPIC_API_KEY: "test-key" };
 
