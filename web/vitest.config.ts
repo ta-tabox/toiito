@@ -1,3 +1,9 @@
+/**
+ * vitest の設定。
+ * `@` 系のエイリアスと、テスト用データベースへの接続を持つ。
+ * E2E（`e2e/`）はここでは走らせず、`playwright.config.ts` が持つ。
+ */
+
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 import { TEST_DATABASE_URL } from "./tests/setup/test-database-url";
