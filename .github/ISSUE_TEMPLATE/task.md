@@ -1,6 +1,6 @@
 ---
 name: Task
-about: 1 issue = 1 セッション = 1 PR
+about: 作業単位の issue。進め方の横断規約は docs/ROADMAP.md が持つ
 title: ''
 labels: ''
 ---

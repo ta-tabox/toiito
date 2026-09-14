@@ -1,6 +1,5 @@
 # `pnpm check`（L0 型 → L1 静的 → L2 ユニット → L3 ビルド）を PR と main で機械的に回す。
-# 「1 issue = 1 セッション = 1 PR。CI 緑 + マージで閉じる」（docs/ROADMAP.md）の緑を、
-# ローカルの自己申告でなくマージの条件として持つための一本。
+# docs/ROADMAP.md「進め方の横断規約」が issue を閉じる条件に置く CI の緑を、ローカルの自己申告でなくマージの条件として持つための一本。
 #
 # 設計の芯はローカルとの対称——ハーネスが保証するのは「どこで走らせても pnpm check が同じ意味を持つ」ことなので、
 # Postgres は compose.yaml と同じ postgres:18 を同じ 5433 に置き、ランタイムの版は mise が mise.toml から読む。
