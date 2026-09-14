@@ -33,6 +33,7 @@ class FailingProvider extends AiProvider {
   readonly name = "failing";
   readonly settings = { ...FAKE_PROVIDER.settings, fake: false };
 
+  /** 本文を送らずに throw する。 */
   async send(): Promise<ProviderResponse> {
     throw new Error("failing: 応答が返らない");
   }
