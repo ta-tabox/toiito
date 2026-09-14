@@ -9,7 +9,7 @@ AI をスピードアップではなくスローダウン（自分の問いを�
 
 ## 正はどこにあるか
 **作業単位と状態の正は GitHub Issues**、順序と横断規約の正は `docs/ROADMAP.md`、決定の正は `docs/adr/`。
-**この三つの外に申し送りの層を持たない**（ADR-0023。手で保守する写しは状態を抱えて腐るため）。
+**この三つの外に申し送りの層を持たない**（手で保守する写しは状態を抱えて腐るため。経緯は ADR-0023（`NEXT.md` の廃止））。
 続きは open の issue から拾う。
 現在地の一枚が要るときは、写しを保守するのでなく三つから取り直して作る。
 
@@ -47,7 +47,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 1決定1レコード・追記のみ・覆すときは書き換えず supersede（規約は `docs/adr/README.md`）。
 
 ## 環境変数（`.env*`）
-**秘密を含む `.env*` は Claude が読めず、`.env*` はどれも Claude が書けない**（`.claude/settings.json` の `deny`。決定と経緯は ADR-0024）。
+**秘密を含む `.env*` は Claude が読めず、`.env*` はどれも Claude が書けない**（`.claude/settings.json` の `deny`。決定と経緯は ADR-0024（`.env*` を Claude が触ってよい範囲））。
 書いて漏れうるのは追跡対象の `.env.example` だけなので書き側に例外を置かず、読んで漏れるのは秘密を持つ側だけなので `.env.example` は読める。
 - **env に足すものが出たら、自分で書かず人間へ渡す**（変数の一覧と意味は `web/README.md`）。
   `web/.env.example` の更新も人間の手に入る
@@ -102,7 +102,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   ask は前方一致なので `git push origin --force main` のような並びを拾えないが、その語順は `.claude/hooks/guard-force-push.sh` がコマンド全文を見て ask へ回す。
 - **issue と PR の起票・コメント・close は Claude が叩いてよい**（閲覧・`gh run` の確認も同じ）。
   どれも reopen で戻るので、他人の作業を消さない側に入る。
-  **マージだけは、その都度人間に諾否を訊く**——main への push が本番デプロイと migration を起こす（ADR-0008）ので、reopen で戻る操作と同じには扱えない。
+  **マージだけは、その都度人間に諾否を訊く**——main への push が本番デプロイと migration を起こす（経緯は ADR-0008（本番の migration の経路））ので、reopen で戻る操作と同じには扱えない。
   repo の削除・public 化（`gh repo edit`）・secret・`gh auth` は `permissions.deny` で落としてある——承認を挟めば通る類ではなく、判じる場面がそもそも来ない。
   ただし deny が効くのはコマンド文字列の前方一致にだけで、`gh api -X PATCH repos/…` は `gh repo edit` を経由せず同じ操作へ届く。
   `gh api` はコマンド名が一つしか無く前方一致では層を分けられないので、受け止めるのは `.claude/hooks/guard-gh-api.sh` がコマンド全文を見る側にある。
