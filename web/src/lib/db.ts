@@ -374,6 +374,21 @@ export async function getSession(
 }
 
 /**
+ * `sessionId` のセッションが属する問いを 1 件取得する。
+ * セッションが無いか owner 以外が所有するセッションなら undefined を返す。
+ */
+export async function getQuestionOfSession(
+  owner: OwnerId,
+  sessionId: string,
+): Promise<Question | undefined> {
+  const question = await db().question.findFirst({
+    where: { user_id: owner, sessions: { some: { id: sessionId } } },
+  });
+
+  return question ?? undefined;
+}
+
+/**
  * owner が所有する問いの、最新セッションを 1 件取得する。
  *
  * 対話画面が表示するのは最新セッション一つ。

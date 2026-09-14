@@ -106,10 +106,9 @@ export default async function QuestionPage({
   const memos = await listMemosForSession(owner, session.id);
   const pendingBody = await getPendingBody(owner, session.id);
 
-  const speak = speakAction.bind(null, question.id, session.id);
-  const retry = retryTurnAction.bind(null, question.id, session.id);
+  const speak = speakAction.bind(null, session.id);
+  const retry = retryTurnAction.bind(null, session.id);
   const newSession = newSessionAction.bind(null, question.id);
-  const createMemo = createMemoAction.bind(null, question.id);
 
   return (
     <main className="mx-auto w-full max-w-reading flex-1 px-5 py-10">
@@ -187,7 +186,7 @@ export default async function QuestionPage({
             <MessageBody
               message={m}
               memos={memos.filter((memo) => memo.message_id === m.id)}
-              action={createMemo}
+              action={createMemoAction}
             />
           </div>
         ))}

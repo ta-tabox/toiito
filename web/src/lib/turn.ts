@@ -16,7 +16,7 @@ import { AI_PROVIDERS } from "@/lib/ai/providers";
 import {
   commitTurn,
   getPendingBody,
-  getQuestion,
+  getQuestionOfSession,
   listMessages,
   savePendingBody,
 } from "@/lib/db";
@@ -26,10 +26,14 @@ import type { OwnerId } from "@/lib/types";
 /** 一往復で呼ぶ二体。 */
 export type PersonaCalls = Record<PersonaId, PersonaCall>;
 
-/** 誰の、どの問いのどのセッションを、どの二体で回すか。 */
+/**
+ * 誰の、どのセッションを、どの二体で回すか。
+ *
+ * 問いはセッションから辿るので受け取らない。
+ * 問いとセッションを別々に受け取ると、別の問いのセッションを組み合わせて渡せる。
+ */
 type TurnTarget = {
   readonly owner: OwnerId;
-  readonly questionId: string;
   readonly sessionId: string;
   readonly calls: PersonaCalls;
 };
@@ -107,11 +111,11 @@ async function callBoth(input: {
 export async function runTurn(
   target: TurnTarget & { readonly body: string },
 ): Promise<void> {
-  const { owner, questionId, sessionId, calls, body } = target;
+  const { owner, sessionId, calls, body } = target;
 
-  const question = await getQuestion(owner, questionId);
+  const question = await getQuestionOfSession(owner, sessionId);
   if (!question) {
-    throw new Error(`問いが見つからない: ${questionId}`);
+    throw new Error(`セッションが見つからない: ${sessionId}`);
   }
 
   await savePendingBody(owner, sessionId, body);
