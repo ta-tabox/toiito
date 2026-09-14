@@ -287,7 +287,9 @@ export async function setQuestionStatus(
   status: QuestionStatus,
 ): Promise<Question> {
   if (!isQuestionStatus(status)) {
-    throw new Error(`unknown question status: ${status}`);
+    throw new Error(
+      `問いの状態が QUESTION_STATUSES に無い: ${status}（問い ${questionId}）`,
+    );
   }
 
   await requireOwnedQuestion(owner, questionId);
@@ -466,7 +468,7 @@ export async function savePendingBody(
 
   if (body.length > MESSAGE_BODY_MAX_LENGTH) {
     throw new Error(
-      `savePendingBody: body length (${body.length}) exceeds limit (${MESSAGE_BODY_MAX_LENGTH}) for session ${sessionId}`,
+      `本文が上限を超えている: ${body.length} 字（上限 ${MESSAGE_BODY_MAX_LENGTH}、セッション ${sessionId}）`,
     );
   }
 
@@ -513,12 +515,12 @@ export async function addMemo(
   });
 
   if (!message) {
-    throw new Error(`addMemo: message not found: ${messageId}`);
+    throw new Error(`発話が見つからない: ${messageId}`);
   }
 
   if (anchorEnd > message.body.length) {
     throw new Error(
-      `addMemo: anchor_end (${anchorEnd}) exceeds body length (${message.body.length}) of message ${messageId}`,
+      `anchor_end が本文長を超えている: ${anchorEnd}（本文長 ${message.body.length}、発話 ${messageId}）`,
     );
   }
 

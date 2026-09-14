@@ -109,7 +109,7 @@ export async function runTurn(
 
   const question = await getQuestion(owner, questionId);
   if (!question) {
-    throw new Error(`runTurn: question not found: ${questionId}`);
+    throw new Error(`問いが見つからない: ${questionId}`);
   }
 
   await savePendingBody(owner, sessionId, body);

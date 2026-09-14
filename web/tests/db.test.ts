@@ -201,7 +201,7 @@ describe("問いの状態機械", () => {
     await expect(
       // @ts-expect-error 値域は型でもスキーマでも表明している
       db.setQuestionStatus(owner, question.id, "fermenting"),
-    ).rejects.toThrow(/unknown question status/);
+    ).rejects.toThrow(/問いの状態が QUESTION_STATUSES に無い/);
     expect((await db.getQuestion(owner, question.id))?.status).toBe("new");
   });
 });
@@ -287,7 +287,7 @@ describe("memos", () => {
         anchorEnd: 100,
         keyword: "はみ出し",
       }),
-    ).rejects.toThrow(/anchor_end/);
+    ).rejects.toThrow(/anchor_end が本文長を超えている/);
   });
 
   it("空区間・負のアンカーは check 制約で弾かれる", async () => {
@@ -320,7 +320,7 @@ describe("memos", () => {
         anchorEnd: 1,
         keyword: "不整合",
       }),
-    ).rejects.toThrow(/message not found/);
+    ).rejects.toThrow(/発話が見つからない/);
   });
 
   it("listMemosForSession はそのセッションのメモだけを返す", async () => {
@@ -470,7 +470,7 @@ describe("所有権", () => {
         anchorEnd: 2,
         keyword: "横取り",
       }),
-    ).rejects.toThrow(/message not found/);
+    ).rejects.toThrow(/発話が見つからない/);
   });
 
   it("アクセス権の無い問いと存在しない問いは、同じ失敗になる", async () => {
