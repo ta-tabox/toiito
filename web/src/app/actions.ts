@@ -83,14 +83,12 @@ export async function createMemoAction(questionId: string, formData: FormData) {
   const anchorEnd = Number(formData.get("anchor_end"));
   const note = String(formData.get("note") ?? "").trim();
 
-  await addMemo(
-    (await requireCurrentUser()).id,
-    messageId,
+  await addMemo((await requireCurrentUser()).id, messageId, {
     anchorStart,
     anchorEnd,
     keyword,
-    note || undefined,
-  );
+    note: note || undefined,
+  });
 
   revalidatePath(`/q/${questionId}`);
 }

@@ -54,12 +54,11 @@ export default async function MemosPage({
   const opened = memos.find((memo) => memo.id === openedId);
   const openedQuote =
     opened &&
-    excerptParts(
-      opened.message_body,
-      opened.anchor_start,
-      opened.anchor_end,
-      DIALOG_EXCERPT_MARGIN,
-    );
+    excerptParts(opened.message_body, {
+      anchorStart: opened.anchor_start,
+      anchorEnd: opened.anchor_end,
+      margin: DIALOG_EXCERPT_MARGIN,
+    });
 
   return (
     <main className="mx-auto w-full max-w-reading flex-1 px-5 py-10">
@@ -76,12 +75,11 @@ export default async function MemosPage({
 
       <ul className="mt-8 space-y-4">
         {memos.map((memo) => {
-          const quote = excerptParts(
-            memo.message_body,
-            memo.anchor_start,
-            memo.anchor_end,
-            EXCERPT_MARGIN,
-          );
+          const quote = excerptParts(memo.message_body, {
+            anchorStart: memo.anchor_start,
+            anchorEnd: memo.anchor_end,
+            margin: EXCERPT_MARGIN,
+          });
 
           return (
             <Row key={memo.id} href={`/memos?memo=${memo.id}`}>

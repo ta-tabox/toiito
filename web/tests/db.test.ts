@@ -70,13 +70,15 @@ describe("questions / sessions", () => {
       },
     );
     const second = await db.createSession(owner, question.id);
-    const laterMessage = await db.addMessage(
-      owner,
-      second.id,
-      "ai_a",
-      "二度目の応答",
-    );
-    await db.addMemo(owner, laterMessage.id, 0, 2, "二度");
+    const laterMessage = await db.addMessage(owner, second.id, {
+      speaker: "ai_a",
+      body: "二度目の応答",
+    });
+    await db.addMemo(owner, laterMessage.id, {
+      anchorStart: 0,
+      anchorEnd: 2,
+      keyword: "二度",
+    });
 
     const sessions = await db.listSessionsWithKeywords(owner, question.id);
 
@@ -95,8 +97,16 @@ describe("questions / sessions", () => {
         messages: [{ speaker: "ai_a", body: "惰性と惰性" }],
       },
     );
-    await db.addMemo(owner, messages[0].id, 0, 2, "惰性");
-    await db.addMemo(owner, messages[0].id, 3, 5, "惰性");
+    await db.addMemo(owner, messages[0].id, {
+      anchorStart: 0,
+      anchorEnd: 2,
+      keyword: "惰性",
+    });
+    await db.addMemo(owner, messages[0].id, {
+      anchorStart: 3,
+      anchorEnd: 5,
+      keyword: "惰性",
+    });
     await db.createSession(owner, question.id);
 
     const sessions = await db.listSessionsWithKeywords(owner, question.id);
@@ -200,9 +210,15 @@ describe("messages", () => {
   it("三者の発話が投稿順で取れる", async () => {
     const { session } = await db.createQuestion(owner, "問い3");
 
-    await db.addMessage(owner, session.id, "human", "口火");
-    await db.addMessage(owner, session.id, "ai_a", "具体の応答");
-    await db.addMessage(owner, session.id, "ai_b", "抽象の応答");
+    await db.addMessage(owner, session.id, { speaker: "human", body: "口火" });
+    await db.addMessage(owner, session.id, {
+      speaker: "ai_a",
+      body: "具体の応答",
+    });
+    await db.addMessage(owner, session.id, {
+      speaker: "ai_b",
+      body: "抽象の応答",
+    });
     const msgs = await db.listMessages(owner, session.id);
 
     expect(msgs.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
@@ -212,8 +228,11 @@ describe("messages", () => {
     const { session } = await db.createQuestion(owner, "問い4");
 
     await expect(
-      // @ts-expect-error 不変条件をスキーマ側でも表明していることの検証
-      db.addMessage(owner, session.id, "ai_c", "三体目はいない"),
+      db.addMessage(owner, session.id, {
+        // @ts-expect-error 不変条件をスキーマ側でも表明していることの検証
+        speaker: "ai_c",
+        body: "三体目はいない",
+      }),
     ).rejects.toThrow();
   });
 });
@@ -221,20 +240,16 @@ describe("messages", () => {
 describe("memos", () => {
   it("正常系: 選択区間から作れて note は保存される", async () => {
     const { session } = await db.createQuestion(owner, "問い5");
-    const message = await db.addMessage(
-      owner,
-      session.id,
-      "ai_a",
-      "これは本文である",
-    );
-    const memo = await db.addMemo(
-      owner,
-      message.id,
-      2,
-      4,
-      "本文",
-      "気になる語",
-    );
+    const message = await db.addMessage(owner, session.id, {
+      speaker: "ai_a",
+      body: "これは本文である",
+    });
+    const memo = await db.addMemo(owner, message.id, {
+      anchorStart: 2,
+      anchorEnd: 4,
+      keyword: "本文",
+      note: "気になる語",
+    });
 
     expect(memo.message_id).toBe(message.id);
     expect(memo.anchor_start).toBe(2);
@@ -245,72 +260,90 @@ describe("memos", () => {
 
   it("note は省略可で、省略時は null になる", async () => {
     const { session } = await db.createQuestion(owner, "問い6");
-    const message = await db.addMessage(
-      owner,
-      session.id,
-      "ai_b",
-      "省略のテスト文",
-    );
-    const memo = await db.addMemo(owner, message.id, 0, 2, "省略");
+    const message = await db.addMessage(owner, session.id, {
+      speaker: "ai_b",
+      body: "省略のテスト文",
+    });
+    const memo = await db.addMemo(owner, message.id, {
+      anchorStart: 0,
+      anchorEnd: 2,
+      keyword: "省略",
+    });
 
     expect(memo.note).toBeNull();
   });
 
   it("anchor_end が本文長を超える場合は lib 側で拒否する", async () => {
     const { session } = await db.createQuestion(owner, "問い7");
-    const message = await db.addMessage(
-      owner,
-      session.id,
-      "human",
-      "五文字の文",
-    );
+    const message = await db.addMessage(owner, session.id, {
+      speaker: "human",
+      body: "五文字の文",
+    });
 
     expect(message.body.length).toBe(5);
     await expect(
-      db.addMemo(owner, message.id, 0, 100, "はみ出し"),
+      db.addMemo(owner, message.id, {
+        anchorStart: 0,
+        anchorEnd: 100,
+        keyword: "はみ出し",
+      }),
     ).rejects.toThrow(/anchor_end/);
   });
 
   it("空区間・負のアンカーは check 制約で弾かれる", async () => {
     const { session } = await db.createQuestion(owner, "問い7b");
-    const message = await db.addMessage(
-      owner,
-      session.id,
-      "human",
-      "区間の検査文",
-    );
+    const message = await db.addMessage(owner, session.id, {
+      speaker: "human",
+      body: "区間の検査文",
+    });
 
     await expect(
-      db.addMemo(owner, message.id, 2, 2, "空区間"),
+      db.addMemo(owner, message.id, {
+        anchorStart: 2,
+        anchorEnd: 2,
+        keyword: "空区間",
+      }),
     ).rejects.toThrow();
     await expect(
-      db.addMemo(owner, message.id, -1, 3, "負の開始"),
+      db.addMemo(owner, message.id, {
+        anchorStart: -1,
+        anchorEnd: 3,
+        keyword: "負の開始",
+      }),
     ).rejects.toThrow();
   });
 
   it("存在しない message にはメモを付けられない", async () => {
     await expect(
-      db.addMemo(owner, randomUUID(), 0, 1, "不整合"),
+      db.addMemo(owner, randomUUID(), {
+        anchorStart: 0,
+        anchorEnd: 1,
+        keyword: "不整合",
+      }),
     ).rejects.toThrow(/message not found/);
   });
 
   it("listMemosForSession はそのセッションのメモだけを返す", async () => {
     const { session: sessionA } = await db.createQuestion(owner, "問い8-A");
     const { session: sessionB } = await db.createQuestion(owner, "問い8-B");
-    const msgA = await db.addMessage(
-      owner,
-      sessionA.id,
-      "ai_a",
-      "セッションAの本文",
-    );
-    const msgB = await db.addMessage(
-      owner,
-      sessionB.id,
-      "ai_a",
-      "セッションBの本文",
-    );
-    const memoA = await db.addMemo(owner, msgA.id, 0, 3, "A");
-    await db.addMemo(owner, msgB.id, 0, 3, "B");
+    const msgA = await db.addMessage(owner, sessionA.id, {
+      speaker: "ai_a",
+      body: "セッションAの本文",
+    });
+    const msgB = await db.addMessage(owner, sessionB.id, {
+      speaker: "ai_a",
+      body: "セッションBの本文",
+    });
+    const memoA = await db.addMemo(owner, msgA.id, {
+      anchorStart: 0,
+      anchorEnd: 3,
+      keyword: "A",
+    });
+    await db.addMemo(owner, msgB.id, {
+      anchorStart: 0,
+      anchorEnd: 3,
+      keyword: "B",
+    });
 
     const listed = await db.listMemosForSession(owner, sessionA.id);
 
@@ -322,13 +355,15 @@ describe("memos", () => {
       owner,
       "問い9: 逆引き元の問い",
     );
-    const message = await db.addMessage(
-      owner,
-      session.id,
-      "ai_b",
-      "逆引き対象の本文",
-    );
-    const memo = await db.addMemo(owner, message.id, 0, 4, "逆引き");
+    const message = await db.addMessage(owner, session.id, {
+      speaker: "ai_b",
+      body: "逆引き対象の本文",
+    });
+    const memo = await db.addMemo(owner, message.id, {
+      anchorStart: 0,
+      anchorEnd: 4,
+      keyword: "逆引き",
+    });
 
     const [found] = await db.listMemosWithContext(owner);
 
@@ -342,14 +377,20 @@ describe("memos", () => {
 
   it("listMemosWithContext は新しい順に返す", async () => {
     const { session } = await db.createQuestion(owner, "問い10: 並びの検査");
-    const message = await db.addMessage(
-      owner,
-      session.id,
-      "ai_a",
-      "先の語と後の語",
-    );
-    const older = await db.addMemo(owner, message.id, 0, 2, "先の語");
-    const newer = await db.addMemo(owner, message.id, 4, 6, "後の語");
+    const message = await db.addMessage(owner, session.id, {
+      speaker: "ai_a",
+      body: "先の語と後の語",
+    });
+    const older = await db.addMemo(owner, message.id, {
+      anchorStart: 0,
+      anchorEnd: 2,
+      keyword: "先の語",
+    });
+    const newer = await db.addMemo(owner, message.id, {
+      anchorStart: 4,
+      anchorEnd: 6,
+      keyword: "後の語",
+    });
 
     const ids = (await db.listMemosWithContext(owner)).map((m) => m.id);
 
@@ -411,7 +452,7 @@ describe("所有権", () => {
       db.setQuestionStatus(owner, question.id, "stocked"),
     ).rejects.toThrow(/問いが見つからない/);
     await expect(
-      db.addMessage(owner, session.id, "human", "割り込み"),
+      db.addMessage(owner, session.id, { speaker: "human", body: "割り込み" }),
     ).rejects.toThrow(/セッションが見つからない/);
     await expect(
       db.savePendingBody(owner, session.id, "割り込み"),
@@ -423,9 +464,13 @@ describe("所有権", () => {
         ai_b: "抽象の応答",
       }),
     ).rejects.toThrow(/セッションが見つからない/);
-    await expect(db.addMemo(owner, message.id, 0, 2, "横取り")).rejects.toThrow(
-      /message not found/,
-    );
+    await expect(
+      db.addMemo(owner, message.id, {
+        anchorStart: 0,
+        anchorEnd: 2,
+        keyword: "横取り",
+      }),
+    ).rejects.toThrow(/message not found/);
   });
 
   it("アクセス権の無い問いと存在しない問いは、同じ失敗になる", async () => {

@@ -108,10 +108,14 @@ export type ExcerptParts = {
  */
 export function excerptParts(
   body: string,
-  anchorStart: number,
-  anchorEnd: number,
-  margin: number,
+  input: {
+    readonly anchorStart: number;
+    readonly anchorEnd: number;
+    readonly margin: number;
+  },
 ): ExcerptParts {
+  const { anchorStart, anchorEnd, margin } = input;
+
   const from = clampToGraphemeBoundary(body, Math.max(0, anchorStart - margin));
   const to = clampToGraphemeBoundary(
     body,

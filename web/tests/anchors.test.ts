@@ -140,7 +140,13 @@ describe("excerptParts", () => {
     `${parts.before}${parts.anchor}${parts.after}`;
 
   it("アンカー本体と、その前後を切り分ける", () => {
-    expect(excerptParts("前置き。ここが焦点。後置き。", 4, 9, 3)).toEqual({
+    expect(
+      excerptParts("前置き。ここが焦点。後置き。", {
+        anchorStart: 4,
+        anchorEnd: 9,
+        margin: 3,
+      }),
+    ).toEqual({
       before: "置き。",
       anchor: "ここが焦点",
       after: "。後置",
@@ -148,17 +154,35 @@ describe("excerptParts", () => {
   });
 
   it("margin が本文外へはみ出す場合は本文端で止まる", () => {
-    expect(joined(excerptParts("hello", 1, 3, 10))).toBe("hello");
+    const parts = excerptParts("hello", {
+      anchorStart: 1,
+      anchorEnd: 3,
+      margin: 10,
+    });
+
+    expect(joined(parts)).toBe("hello");
   });
 
   it("マルチバイト境界にかかる margin は書記素単位に丸められる", () => {
     // "ab😀cd" の添字は a=0,b=1,high=2,low=3,c=4,d=5 で length=6。
     // start(4) - margin(1) = 3 はペアの途中なので、2 まで丸めて絵文字ごと含める。
-    expect(joined(excerptParts("ab😀cd", 4, 5, 1))).toBe("😀cd");
+    const parts = excerptParts("ab😀cd", {
+      anchorStart: 4,
+      anchorEnd: 5,
+      margin: 1,
+    });
+
+    expect(joined(parts)).toBe("😀cd");
   });
 
   it("異体字セレクタ付きの文字も欠けない", () => {
     // "神︀" は U+795E + U+FE00 の 2 code unit で 1 文字
-    expect(joined(excerptParts("x神︀y", 3, 4, 1))).toBe("神︀y");
+    const parts = excerptParts("x神︀y", {
+      anchorStart: 3,
+      anchorEnd: 4,
+      margin: 1,
+    });
+
+    expect(joined(parts)).toBe("神︀y");
   });
 });

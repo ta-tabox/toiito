@@ -44,19 +44,17 @@ describe("縦一本", () => {
 
     // 人間の発話 → ai_a（具体）→ ai_b（抽象）の逐次。
     // ai_b は ai_a の発話も含む transcript を受け取る（並列にしない理由）。
-    await db.addMessage(
-      owner,
-      session.id,
-      "human",
-      "急ぐほど問いが痩せる気がする",
-    );
+    await db.addMessage(owner, session.id, {
+      speaker: "human",
+      body: "急ぐほど問いが痩せる気がする",
+    });
 
     const aiA = await callPersona(
       personaCall("ai_a"),
       question,
       await db.listMessages(owner, session.id),
     );
-    await db.addMessage(owner, session.id, "ai_a", aiA);
+    await db.addMessage(owner, session.id, { speaker: "ai_a", body: aiA });
 
     const transcriptForB = await db.listMessages(owner, session.id);
     const aiB = await callPersona(
@@ -64,7 +62,7 @@ describe("縦一本", () => {
       question,
       transcriptForB,
     );
-    await db.addMessage(owner, session.id, "ai_b", aiB);
+    await db.addMessage(owner, session.id, { speaker: "ai_b", body: aiB });
 
     expect(transcriptForB.map((m) => m.speaker)).toEqual(["human", "ai_a"]);
 
@@ -75,13 +73,11 @@ describe("縦一本", () => {
 
     // 応答本文の一部を選択してメモを残す
     const target = messages[1];
-    const memo = await db.addMemo(
-      owner,
-      target.id,
-      0,
-      4,
-      target.body.slice(0, 4),
-    );
+    const memo = await db.addMemo(owner, target.id, {
+      anchorStart: 0,
+      anchorEnd: 4,
+      keyword: target.body.slice(0, 4),
+    });
 
     expect(await db.listMemosForSession(owner, session.id)).toHaveLength(1);
 

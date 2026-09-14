@@ -96,12 +96,10 @@ describe("/q/[id]", () => {
   it("?s が指すセッションを描く（再訪しても当時の発話が残る）", async () => {
     const { question, messages } = await questionWithMemoOnSecondMessage();
     const revisit = await db.createSession(owner, question.id);
-    const later = await db.addMessage(
-      owner,
-      revisit.id,
-      "human",
-      "日を空けてまた話す",
-    );
+    const later = await db.addMessage(owner, revisit.id, {
+      speaker: "human",
+      body: "日を空けてまた話す",
+    });
 
     const ids = (id?: string) =>
       renderTree(question.id, id).then((tree) =>

@@ -79,20 +79,16 @@ async function memoInLongMessage(keyword: string, note?: string) {
   const before = "前".repeat(100);
   const after = "後".repeat(100);
   const { question, session } = await db.createQuestion(owner, "逆引きの検査");
-  const message = await db.addMessage(
-    owner,
-    session.id,
-    "ai_a",
-    `${before}${keyword}${after}`,
-  );
-  const memo = await db.addMemo(
-    owner,
-    message.id,
-    before.length,
-    before.length + keyword.length,
+  const message = await db.addMessage(owner, session.id, {
+    speaker: "ai_a",
+    body: `${before}${keyword}${after}`,
+  });
+  const memo = await db.addMemo(owner, message.id, {
+    anchorStart: before.length,
+    anchorEnd: before.length + keyword.length,
     keyword,
     note,
-  );
+  });
 
   return { question, session, message, memo, before, after };
 }

@@ -416,13 +416,12 @@ export async function listMessages(
 export async function addMessage(
   owner: OwnerId,
   sessionId: string,
-  speaker: Speaker,
-  body: string,
+  input: { readonly speaker: Speaker; readonly body: string },
 ): Promise<Message> {
   await requireOwnedSession(owner, sessionId);
 
   return db().message.create({
-    data: { session_id: sessionId, speaker, body },
+    data: { session_id: sessionId, speaker: input.speaker, body: input.body },
   });
 }
 
@@ -505,11 +504,10 @@ export async function getPendingBody(
 export async function addMemo(
   owner: OwnerId,
   messageId: string,
-  anchorStart: number,
-  anchorEnd: number,
-  keyword: string,
-  note?: string,
+  input: MemoInput,
 ): Promise<Memo> {
+  const { anchorStart, anchorEnd, keyword, note } = input;
+
   const message = await db().message.findFirst({
     where: { id: messageId, session: { question: { user_id: owner } } },
   });
@@ -586,7 +584,7 @@ export async function listMemosWithContext(
   }));
 }
 
-/** 対話とメモをまとめて作るときの、一件のメモ。 */
+/** `addMemo` と `createQuestionWithTranscript` が受け取る、一件のメモ。 */
 export type MemoInput = {
   anchorStart: number;
   anchorEnd: number;
@@ -646,25 +644,15 @@ export async function createQuestionWithTranscript(
   const memos: Memo[] = [];
 
   for (const messageInput of input.messages) {
-    const message = await addMessage(
-      owner,
-      session.id,
-      messageInput.speaker,
-      messageInput.body,
-    );
+    const message = await addMessage(owner, session.id, {
+      speaker: messageInput.speaker,
+      body: messageInput.body,
+    });
     messages.push(message);
 
     for (const memoInput of messageInput.memos ?? []) {
-      memos.push(
-        await addMemo(
-          owner,
-          message.id,
-          memoInput.anchorStart,
-          memoInput.anchorEnd,
-          memoInput.keyword,
-          memoInput.note,
-        ),
-      );
+      const memo = await addMemo(owner, message.id, memoInput);
+      memos.push(memo);
     }
   }
 
