@@ -8,7 +8,7 @@
  *
  * エントリポイントは lintSource。
  * このファイルは複数のリポジトリで同じ内容を保つ共有物なので、このリポジトリ固有の逸脱を足すときはこのコメントの直下に理由を書く。
- * このリポジトリ固有の逸脱は `REASON_LIMIT_EXCEPTION` で、理由はその JSDoc が持つ。
+ * このリポジトリ固有の逸脱は `REASON_LIMIT_EXCEPTION` と `RepositoryVocabulary` で、理由はそれぞれの JSDoc が持つ。
  */
 
 import { spawnSync } from "node:child_process";
@@ -62,6 +62,28 @@ export type SourceText = {
 export type KnownNames = {
   identifiers: ReadonlySet<string>;
   files: readonly string[];
+};
+
+/**
+ * `BANNED_WORDS` の外からリポジトリごとに足す語。
+ * `deny` は禁止語として報告し、`allow` はどの禁止語の判定の前にもコメントの本文から取り除く。
+ *
+ * 語のファイルを読まないと、`VOCAB_ALLOW_FILE` に足した語（`検査器`・`口調`）がコメントでは単漢字の禁止語として報告され、`scripts/lint-vocabulary.sh` と判定が食い違う。
+ */
+export type RepositoryVocabulary = {
+  deny: readonly string[];
+  allow: readonly string[];
+};
+
+/**
+ * `lintSource` が検査する 1 ファイルの外から受け取る値。
+ *
+ * `known` を省くと、名指した識別子の実在はそのファイル 1 件の中だけで確かめる。
+ * `vocabulary` を省くと、禁止語は `BANNED_WORDS` だけで判定する。
+ */
+export type LintContext = {
+  known?: KnownNames;
+  vocabulary?: RepositoryVocabulary;
 };
 
 /**
@@ -121,6 +143,7 @@ const EM_DASH = "——";
  *
  * `allow` は、その語を含むが禁止の対象ではない複合語。
  * 判定の前に本文から取り除くので、`入口` の `口` は報告しない。
+ * リポジトリだけの禁止語と除外語は、`BANNED_WORDS` を書き換えずに `RepositoryVocabulary` で足す。
  */
 const BANNED_WORDS: ReadonlyArray<{
   word: string;
@@ -226,17 +249,30 @@ const BRACKET_CLOSE = "）)」】";
 const TRAILING_DECORATION = /^[*_`）)」】\s]*$/;
 
 /**
+ * リポジトリだけの禁止語を 1 行 1 語で持つファイルの名前。
+ * リポジトリのルートに置き、`scripts/lint-vocabulary.sh` も同じファイルを読む。
+ */
+const VOCAB_DENY_FILE = ".coding-standards-vocab-deny";
+
+/**
+ * そのリポジトリの領域で比喩でない語を 1 行 1 語で持つファイルの名前。
+ * 置き場と、同じファイルを読む検査は `VOCAB_DENY_FILE` と同じ。
+ */
+const VOCAB_ALLOW_FILE = ".coding-standards-vocab-allow";
+
+/**
  * リンタのエントリポイント。
  * ソース 1 ファイル分を受け取り、規則ごとの検査を束ねて違反の一覧を返す。
  *
- * `known` を省くと、名指した識別子の実在はそのファイル 1 件の中だけで確かめる。
- * CLI は全ファイルから `collectKnownNames` で集めた集合を渡す。
+ * CLI は全ファイルから `collectKnownNames` で集めた集合と、`loadRepositoryVocabulary` が読んだ語を渡す。
  */
 export function lintSource(
   fileName: string,
   text: string,
-  known: KnownNames = collectKnownNames([{ fileName, text }]),
+  context: LintContext = {},
 ): Violation[] {
+  const known = context.known ?? collectKnownNames([{ fileName, text }]);
+  const vocabulary = context.vocabulary ?? { deny: [], allow: [] };
   const source = ts.createSourceFile(
     fileName,
     text,
@@ -250,7 +286,7 @@ export function lintSource(
     ...checkJsDocTypeAnnotations(source, comments),
     ...checkSentenceEndLineBreaks(source, comments),
     ...checkOneSentencePerLine(source, comments),
-    ...checkBannedWords(source, comments),
+    ...checkBannedWords(source, comments, vocabulary),
     ...checkJsDocOnFunctions(source, text),
     ...checkLineCommentBeforeDeclaration(source, text, comments),
     ...checkReasonSentences(source, text),
@@ -491,19 +527,30 @@ function stripAllowed(text: string, allow: readonly string[]): string {
  * 規約が禁じた語をコメントが使っていないかを見る。
  *
  * 判定は語の部分一致で、活用は見ない。
- * 語を含むが対象ではない複合語は `allow` へ列挙し、`stripAllowed` が判定の前に取り除く。
+ * 語を含むが対象ではない複合語は、語ごとの `allow` とリポジトリの `vocabulary.allow` に並べ、`stripAllowed` が判定の前に取り除く。
  */
 function checkBannedWords(
   source: ts.SourceFile,
   comments: CommentRange[],
+  vocabulary: RepositoryVocabulary,
 ): Violation[] {
   const violations: Violation[] = [];
+  const bannedWords: ReadonlyArray<(typeof BANNED_WORDS)[number]> = [
+    ...BANNED_WORDS,
+    ...vocabulary.deny.map((word) => ({
+      word,
+      instead: `直叙な語（${VOCAB_DENY_FILE} が足した語）`,
+    })),
+  ];
 
   for (const block of toCommentBlocks(source, comments)) {
     for (const line of block) {
-      const prose = line.text.replace(INLINE_CODE, "");
+      const prose = stripAllowed(
+        line.text.replace(INLINE_CODE, ""),
+        vocabulary.allow,
+      );
 
-      for (const banned of BANNED_WORDS) {
+      for (const banned of bannedWords) {
         const scanned = banned.allow
           ? stripAllowed(prose, banned.allow)
           : prose;
@@ -1196,6 +1243,47 @@ function resolveTargets(argv: string[]): string[] {
 }
 
 /**
+ * リポジトリのルートにある `VOCAB_DENY_FILE` と `VOCAB_ALLOW_FILE` を読み、語の配列にして返す。
+ * ファイルが無い側は空の配列にする。
+ *
+ * ルートは `git rev-parse --show-toplevel` で求め、git を実行できない環境ではカレントディレクトリをルートと見なす。
+ * `pnpm lint` はルートでなく `web/` で走るので、カレントディレクトリから語のファイルを探すと見つからない。
+ */
+export function loadRepositoryVocabulary(): RepositoryVocabulary {
+  const topLevel = spawnSync("git", ["rev-parse", "--show-toplevel"], {
+    encoding: "utf8",
+  });
+  const root = topLevel.status === 0 ? topLevel.stdout.trim() : ".";
+
+  return {
+    deny: loadWordFile(path.join(root, VOCAB_DENY_FILE)),
+    allow: loadWordFile(path.join(root, VOCAB_ALLOW_FILE)),
+  };
+}
+
+/**
+ * 1 行 1 語のファイル `file` を読み、語の配列にして返す。
+ * `file` が無ければ空の配列を返す。
+ */
+function loadWordFile(file: string): string[] {
+  if (!fs.existsSync(file)) {
+    return [];
+  }
+
+  return toWordList(fs.readFileSync(file, "utf8"));
+}
+
+/**
+ * 1 行 1 語のテキスト `text` を語の配列にする。
+ * 空行と `#` で始まる行は語に数えず、`scripts/lint-vocabulary.sh` と同じ行を語として読む。
+ */
+export function toWordList(text: string): string[] {
+  return text
+    .split("\n")
+    .filter((line) => line !== "" && !line.startsWith("#"));
+}
+
+/**
  * CLI の本体。
  * 違反を 1 件ずつ標準エラーへ書き、error の件数を終了コードにする。
  *
@@ -1208,12 +1296,15 @@ function main(argv: string[]): number {
     fileName: file,
     text: fs.readFileSync(file, "utf8"),
   }));
-  const known = collectKnownNames(sources);
+  const context = {
+    known: collectKnownNames(sources),
+    vocabulary: loadRepositoryVocabulary(),
+  };
   let errors = 0;
   let warnings = 0;
 
   for (const { fileName, text } of sources) {
-    for (const violation of lintSource(fileName, text, known)) {
+    for (const violation of lintSource(fileName, text, context)) {
       console.error(
         `${fileName}:${violation.line} ${violation.rule}\n  ${violation.message}`,
       );

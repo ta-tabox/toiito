@@ -1,5 +1,5 @@
 # この領域で比喩でない語を1行1語で書く。
-# scripts/lint-vocabulary.sh は判定の前に、ここの語を検査対象の文から取り除く。
+# scripts/lint-vocabulary.sh と web/scripts/lint-comments.ts は、判定の前にここの語を検査対象の文から取り除く。
 検査器
 観測器
 口調
