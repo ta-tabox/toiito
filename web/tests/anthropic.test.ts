@@ -30,6 +30,12 @@ const SETTINGS: AnthropicSettings = {
 };
 
 /**
+ * 実 API を叩く側の env が必ず持つ変数。
+ * env の読み取りを見るケースは、これに見たい一点だけを足す。
+ */
+const KEY_ENV = { ANTHROPIC_API_KEY: "test-key" };
+
+/**
  * 渡した値が載ることを見るための上書き。
  * 既定と違うことだけに意味がある。
  */
@@ -92,34 +98,41 @@ describe("既定値", () => {
 
 describe("readAnthropicSettings", () => {
   it("未設定なら既定へ倒す", () => {
-    expect(readAnthropicSettings({}, false)).toEqual({
+    expect(readAnthropicSettings(KEY_ENV, false)).toEqual({
       model: ANTHROPIC_DEFAULTS.model,
       maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
       timeoutMs: ANTHROPIC_DEFAULTS.timeoutMs,
       fake: false,
-      apiKey: undefined,
+      apiKey: KEY_ENV.ANTHROPIC_API_KEY,
     });
   });
 
   it("モデルの上書きが効く", () => {
-    const env = { TOIITO_ANTHROPIC_MODEL: OVERRIDE.model };
+    const env = { ...KEY_ENV, TOIITO_ANTHROPIC_MODEL: OVERRIDE.model };
 
     expect(readAnthropicSettings(env, false).model).toBe(OVERRIDE.model);
   });
 
   it("数として読めない TOIITO_ANTHROPIC_MAX_TOKENS は既定へ倒す", () => {
     expect(
-      readAnthropicSettings({ TOIITO_ANTHROPIC_MAX_TOKENS: "" }, false)
-        .maxTokens,
+      readAnthropicSettings(
+        { ...KEY_ENV, TOIITO_ANTHROPIC_MAX_TOKENS: "" },
+        false,
+      ).maxTokens,
     ).toBe(ANTHROPIC_DEFAULTS.maxTokens);
     expect(
-      readAnthropicSettings({ TOIITO_ANTHROPIC_MAX_TOKENS: "たくさん" }, false)
-        .maxTokens,
+      readAnthropicSettings(
+        { ...KEY_ENV, TOIITO_ANTHROPIC_MAX_TOKENS: "たくさん" },
+        false,
+      ).maxTokens,
     ).toBe(ANTHROPIC_DEFAULTS.maxTokens);
   });
 
   it("上限の上書きが効く", () => {
-    const env = { TOIITO_ANTHROPIC_TIMEOUT_MS: String(OVERRIDE.timeoutMs) };
+    const env = {
+      ...KEY_ENV,
+      TOIITO_ANTHROPIC_TIMEOUT_MS: String(OVERRIDE.timeoutMs),
+    };
 
     expect(readAnthropicSettings(env, false).timeoutMs).toBe(
       OVERRIDE.timeoutMs,
@@ -128,12 +141,16 @@ describe("readAnthropicSettings", () => {
 
   it("数として読めない TOIITO_ANTHROPIC_TIMEOUT_MS は既定へ倒す", () => {
     expect(
-      readAnthropicSettings({ TOIITO_ANTHROPIC_TIMEOUT_MS: "" }, false)
-        .timeoutMs,
+      readAnthropicSettings(
+        { ...KEY_ENV, TOIITO_ANTHROPIC_TIMEOUT_MS: "" },
+        false,
+      ).timeoutMs,
     ).toBe(ANTHROPIC_DEFAULTS.timeoutMs);
     expect(
-      readAnthropicSettings({ TOIITO_ANTHROPIC_TIMEOUT_MS: "すぐ" }, false)
-        .timeoutMs,
+      readAnthropicSettings(
+        { ...KEY_ENV, TOIITO_ANTHROPIC_TIMEOUT_MS: "すぐ" },
+        false,
+      ).timeoutMs,
     ).toBe(ANTHROPIC_DEFAULTS.timeoutMs);
   });
 
@@ -142,7 +159,10 @@ describe("readAnthropicSettings", () => {
   });
 
   it("深さは読まない（系統ごとに分かれるため）", () => {
-    const env = { TOIITO_ANTHROPIC_EFFORT_ABSTRACT: OVERRIDE.effort };
+    const env = {
+      ...KEY_ENV,
+      TOIITO_ANTHROPIC_EFFORT_ABSTRACT: OVERRIDE.effort,
+    };
 
     expect(readAnthropicSettings(env, false).effort).toBeUndefined();
   });
@@ -151,6 +171,7 @@ describe("readAnthropicSettings", () => {
 describe("readAnthropicProviders", () => {
   it("深さ以外は全系統に同じ設定が載る", () => {
     const env = {
+      ...KEY_ENV,
       TOIITO_ANTHROPIC_MODEL: OVERRIDE.model,
       TOIITO_ANTHROPIC_MAX_TOKENS: String(OVERRIDE.maxTokens),
     };
@@ -165,7 +186,7 @@ describe("readAnthropicProviders", () => {
 
   it("深さは系統ごとに分かれる", () => {
     const providers = readAnthropicProviders(
-      { TOIITO_ANTHROPIC_EFFORT_ABSTRACT: OVERRIDE.effort },
+      { ...KEY_ENV, TOIITO_ANTHROPIC_EFFORT_ABSTRACT: OVERRIDE.effort },
       false,
     );
 
@@ -178,6 +199,7 @@ describe("readAnthropicProviders", () => {
   it("深さの値域の外は既定へ倒す", () => {
     const providers = readAnthropicProviders(
       {
+        ...KEY_ENV,
         TOIITO_ANTHROPIC_EFFORT_CONCRETE: "middle",
         TOIITO_ANTHROPIC_EFFORT_ABSTRACT: "middle",
       },
@@ -190,6 +212,19 @@ describe("readAnthropicProviders", () => {
     expect(providers.abstract.settings.effort).toBe(
       ANTHROPIC_DEFAULTS.effort.abstract,
     );
+  });
+
+  it("フェイクでなく ANTHROPIC_API_KEY が無ければ、プロバイダを作る時点で投げる", () => {
+    expect(() => readAnthropicProviders({}, false)).toThrow(
+      /ANTHROPIC_API_KEY/,
+    );
+  });
+
+  it("フェイクなら ANTHROPIC_API_KEY が無くてもプロバイダを作れる", () => {
+    const providers = readAnthropicProviders({}, true);
+
+    expect(providers.concrete.settings.fake).toBe(true);
+    expect(providers.abstract.settings.fake).toBe(true);
   });
 });
 
