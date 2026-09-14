@@ -22,7 +22,9 @@ export const dynamic = "force-dynamic";
  * Google のボタンと、`TOIITO_FAKE_LOGIN=1` のときだけ出る許可リストのボタンを並べる。
  */
 export default async function LoginPage() {
-  if (await getCurrentUser()) {
+  const currentUser = await getCurrentUser();
+
+  if (currentUser) {
     redirect("/");
   }
 
