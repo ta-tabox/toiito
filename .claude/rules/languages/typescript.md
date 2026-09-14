@@ -100,7 +100,7 @@ error は赤にし、warn は報告だけにする。
 | 関数の JSDoc の有無（雛形は warn） | 同上 | error |
 | 宣言に接した `//`（雛形は warn） | 同上 | error |
 | 言い切った文への `——` の後置き（雛形は warn） | 同上 | error |
-| 関数の JSDoc の理由が 2 文以内か | 同上 | warn |
+| 関数の JSDoc の理由が 2 文以内か（雛形は warn） | 同上 | error |
 | バッククォートで名指した識別子・ファイルの実在 | 同上 | warn |
 | import は `@` 起点（`.css` と、下の例外の 3 箇所は除外） | biome `style/noRestrictedImports` | error |
 | 1 行 if を分ける | biome `style/useBlockStatements` | error |

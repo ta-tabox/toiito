@@ -765,7 +765,7 @@ function checkReasonSentences(
       line: reasons[MAX_REASON_SENTENCES].line,
       rule: "comments/maxReasonSentences",
       message: `理由が ${reasons.length} 文ある。理由は 1 関数 ${MAX_REASON_SENTENCES} 文までにし、3 文目からは ADR へ移してリンク一行を残す`,
-      severity: "warn",
+      severity: "error",
     });
   }
 
