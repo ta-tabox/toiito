@@ -1,3 +1,8 @@
+/**
+ * Next の設定。
+ * 持つのは既定から動かす二つ（`agentRules`・`distDir`）だけで、経路の保護は `src/proxy.ts`、認証は `src/lib/auth/` が持つ。
+ */
+
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {

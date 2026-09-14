@@ -215,7 +215,7 @@ export async function getQuestion(
  * その問いが所有者のものであることを確かめ、違えば投げる。
  * アクセス権のない問いと存在しない問いを、同じ失敗にする。
  *
- * 呼ぶのは、その問いにセッションを足す前（createSession）と、問いの列を更新する前（updateCurrentForm・updateQuestionStatus）である。
+ * 呼ぶのは、その問いにセッションを足す前（`createSession`）と、問いの列を更新する前（`setCurrentForm`・`setQuestionStatus`）である。
  * 読み出しは where に条件を置けば済むが、`create` と `update` は所有者の条件を where へ入れられないので先に確かめる。
  */
 async function requireOwnedQuestion(

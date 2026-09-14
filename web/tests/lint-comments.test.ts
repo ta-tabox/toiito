@@ -1,6 +1,7 @@
-import { lintSource } from "@scripts/lint-comments.ts";
+import { collectKnownNames, lintSource } from "@scripts/lint-comments.ts";
 import { describe, expect, it } from "vitest";
 
+/** `source` を検査し、違反した規則の ID だけを並べて返す。 */
 function rulesOf(source: string, fileName = "sample.ts"): string[] {
   return lintSource(fileName, source).map((violation) => violation.rule);
 }
@@ -75,6 +76,7 @@ export function createQuestion() {}
  * 問い投入の Server Action。
  */
 
+/** 問いを投入する。 */
 export async function act() {}
 `;
 
@@ -175,8 +177,9 @@ export function f(offset: number) {
   });
 
   it("// コメント内の記述は JSDoc として扱わない", () => {
-    const source = `${header}// @param {string} name
+    const source = `${header}/** 名前を返す。 */
 export function f(name: string) {
+  // @param {string} name
   return name;
 }
 `;
@@ -202,6 +205,7 @@ export const a = url;
  * 一覧画面。
  */
 
+/** 一覧を描画する。 */
 export default function Page() {
   return <p>https://example.com</p>;
 }
@@ -343,9 +347,12 @@ export function f() {}
   });
 
   it("連続する行コメントも一つの塊として見る", () => {
-    const source = `${header}// テストの主題は、対応する実装のファイル名が
-// 既に名指している。
-export const a = 1;
+    const source = `${header}/** 1 を返す。 */
+export function f() {
+  // テストの主題は、対応する実装のファイル名が
+  // 既に名指している。
+  return 1;
+}
 `;
 
     expect(rulesOf(source)).toEqual(["comments/useSentenceEndLineBreak"]);
@@ -464,7 +471,8 @@ export function f() {}
   });
 
   it("行コメントも見る", () => {
-    const source = `${header}export function f() {
+    const source = `${header}/** 1 を返す。 */
+export function f() {
   // 隣り合う切断点の間が 1 セグメント。端点そのものなので途中で切れない。
   return 1;
 }
@@ -553,6 +561,381 @@ export function f() {}
 
   it("コメントの外の文字列リテラルでは報告しない", () => {
     const source = `${header}export const a = "落とす";
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+});
+
+describe("関数の JSDoc", () => {
+  const header = "/**\n * 冒頭。\n */\n\n";
+
+  it("JSDoc の付いた関数は通る", () => {
+    const source = `${header}/** 1 を返す。 */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("JSDoc の無い関数宣言は useJsDocOnFunction", () => {
+    const source = `${header}export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useJsDocOnFunction"]);
+  });
+
+  it("関数を初期化子に持つ変数と、関数を包む呼び出しも見る", () => {
+    const source = `${header}const f = () => 1;
+
+export const g = cache(async () => 2);
+`;
+
+    expect(rulesOf(source)).toEqual([
+      "comments/useJsDocOnFunction",
+      "comments/useJsDocOnFunction",
+    ]);
+  });
+
+  it("クラスのメソッドも見る", () => {
+    const source = `${header}/** 送信元。 */
+class Sender {
+  send() {
+    return 1;
+  }
+}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useJsDocOnFunction"]);
+  });
+
+  it("JSDoc と宣言の間にリンタへの指示が挟まっても、JSDoc があると見なす", () => {
+    const source = `${header}/** 1 を返す。 */
+// biome-ignore lint/style/useNamingConvention: 外部の名前に合わせる
+export function limit_value() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("関数の中で作る関数は見ない", () => {
+    const source = `${header}/** 1 を返す。 */
+export function f() {
+  const inner = () => 1;
+
+  return inner();
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+});
+
+describe("宣言の直前の行コメント", () => {
+  const header = "/**\n * 冒頭。\n */\n\n";
+
+  it("宣言に接した // は noLineCommentBeforeDeclaration", () => {
+    const source = `${header}// 上限の値。
+export const LIMIT = 1;
+`;
+
+    expect(rulesOf(source)).toEqual([
+      "comments/noLineCommentBeforeDeclaration",
+    ]);
+  });
+
+  it("空行を挟んだ // は宣言の説明ではないので通る", () => {
+    const source = `${header}// ここから定数。
+
+/** 上限の値。 */
+export const LIMIT = 1;
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("リンタへの指示は説明ではないので通る", () => {
+    const source = `${header}/** 上限の値。 */
+// biome-ignore lint/style/useNamingConvention: 外部の名前に合わせる
+export const limit_value = 1;
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("関数本体の中の // は見ない", () => {
+    const source = `${header}/** 1 を返す。 */
+export function f() {
+  // 準備。
+  const value = 1;
+
+  return value;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+});
+
+describe("理由の文数", () => {
+  const header = "/**\n * 冒頭。\n */\n\n";
+
+  it("空行の下が 2 文までなら通る", () => {
+    const source = `${header}/**
+ * 1 を返す。
+ *
+ * 呼び手が値を検証しないので、ここで検証する。
+ * 検証は一度で足りる。
+ */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("3 文あれば maxReasonSentences", () => {
+    const source = `${header}/**
+ * 1 を返す。
+ *
+ * 一文目。
+ * 二文目。
+ * 三文目。
+ */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/maxReasonSentences"]);
+  });
+
+  it("空行より上の要約は数えない", () => {
+    const source = `${header}/**
+ * 1 を返す。
+ * 引数は取らない。
+ * 副作用も無い。
+ */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("箇条の行は数えない", () => {
+    const source = `${header}/**
+ * 1 を返す。
+ *
+ * 見るのは次の三つ。
+ * - 先頭
+ * - 末尾
+ * - 中央
+ */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("定数の JSDoc は数えない", () => {
+    const source = `${header}/**
+ * 上限の値。
+ *
+ * 一文目。
+ * 二文目。
+ * 三文目。
+ */
+export const LIMIT = 1;
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("3 文目の行番号を報告する", () => {
+    const source = `${header}/**
+ * 1 を返す。
+ *
+ * 一文目。
+ * 二文目。
+ * 三文目。
+ */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(lintSource("sample.ts", source)[0].line).toBe(10);
+  });
+});
+
+describe("名指した識別子の実在", () => {
+  const header = "/**\n * 冒頭。\n */\n\n";
+
+  it("同じファイルに現れる識別子は通る", () => {
+    const source = `${header}/** \`limitOf\` の結果を返す。 */
+export function f() {
+  return limitOf(1);
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("どこにも現れない識別子は useExistingIdentifier", () => {
+    const source = `${header}/** \`oldName\` の結果を返す。 */
+export function f() {
+  return newName(1);
+}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useExistingIdentifier"]);
+  });
+
+  it("他のファイルに現れる識別子は、集めた名前を渡せば通る", () => {
+    const other = {
+      fileName: "src/lib/other.ts",
+      text: "export function helperOf() {}\n",
+    };
+    const source = `${header}/** \`helperOf\` を呼ぶ。 */
+export function f() {
+  return 1;
+}
+`;
+    const known = collectKnownNames([
+      other,
+      { fileName: "sample.ts", text: source },
+    ]);
+
+    expect(lintSource("sample.ts", source, known).map((v) => v.rule)).toEqual(
+      [],
+    );
+  });
+
+  it("文字列リテラルに現れる名前も通る", () => {
+    const source = `${header}/** \`TOIITO_FAKE_AI\` を読む。 */
+export function f() {
+  return process.env["TOIITO_FAKE_AI"];
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("小文字だけの語と、識別子でない字面は見ない", () => {
+    const source = `${header}/** \`git\` と \`pnpm check\` と \`a.b()\` を書く。 */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("実在しないファイル名は useExistingIdentifier", () => {
+    const source = `${header}/** 正は \`auth.ts\` が持つ。 */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useExistingIdentifier"]);
+  });
+
+  it("検査対象のファイルの末尾に一致するパスは通る", () => {
+    const other = { fileName: "src/lib/auth/index.ts", text: "" };
+    const source = `${header}/** 正は \`lib/auth/index.ts\` が持つ。 */
+export function f() {
+  return 1;
+}
+`;
+    const known = collectKnownNames([
+      other,
+      { fileName: "sample.ts", text: source },
+    ]);
+
+    expect(lintSource("sample.ts", source, known).map((v) => v.rule)).toEqual(
+      [],
+    );
+  });
+
+  it("検査の対象に集めない拡張子のファイル名は見ない", () => {
+    const source = `${header}/** 設定は \`postcss.config.mjs\` と \`globals.css\` が持つ。 */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("例として挙げた名前は実在しなくてよい", () => {
+    const source = `${header}/** \`foo.test.ts\` のような名前を指す。 */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+});
+
+describe("継ぎ足しの ——", () => {
+  const header = "/**\n * 冒頭。\n */\n\n";
+
+  it("文の末尾へ —— で継ぎ足していれば noDanglingEmDash", () => {
+    const source = `${header}/**
+ * 1 を返す——引数は取らない。
+ */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/noDanglingEmDash"]);
+  });
+
+  it("対で挟む挿入は通る", () => {
+    const source = `${header}/**
+ * 戻せない操作——force push・履歴の書き換え——は人間に訊く。
+ */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("括弧の内側の —— は通る", () => {
+    const source = `${header}/**
+ * 二体は逐次に呼ぶ（並列にしない——ai_b は ai_a への応答である）。
+ */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("コード片の中の —— は見ない", () => {
+    const source = `${header}/**
+ * 区切りは \`——\` で書く。
+ */
+export function f() {
+  return 1;
+}
 `;
 
     expect(rulesOf(source)).toEqual([]);

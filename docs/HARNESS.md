@@ -198,20 +198,10 @@ spec は `web/e2e/` の 4 本で、何を見るかは各 spec の冒頭コメン
 
 ## テスト可能性の設計制約（コードの書き方に課すルール)
 
-1. **ロジックは lib 層へ寄せる**。
-   UI コンポーネントや Server Actions にロジックを埋めない。
-   actions.ts は「lib を呼ぶ配線」に留める
-2. **`process.env` を読むのは、その値を使う層の入口だけ**（`lib/config.ts` が DB 接続先、`lib/ai/providers.ts` が AI プロバイダ、`lib/auth/index.ts` が認証）。
-   探す側が使う場所から辿れるよう、解決済みの値は使う層に置く。
-   env から値への写像と既定値は、その値を使う側のモジュールが純関数として持つ（`lib/ai/anthropic.ts` の `readAnthropicSettings` と `ANTHROPIC_DEFAULTS`、`lib/auth/config.ts` の `readAuthConfig`）。
-   他のモジュールは解決済みの値を参照する。
-   呼び出しごとに変わりうる値は引数で受け取る。
-   env の読み方そのものは、その純関数へ env を模した object を渡して検査する。
-   テストは `process.env` を書き換えない。
-   別プロセスで起動する `web/scripts/` と `web/e2e/setup/` は、env が入口なのでこの限りでない。
-   プロセス自身の挙動を切り替える `TZ` も設定ではないので同じく外れる
-3. **messages は immutable** 等の不変条件は、スキーマの check 制約とテストの両方で表明する（片方に頼らない）
-4. 新機能は「lib 関数 + テスト」→「UI 配線」の順で作る
+コードの書き方に課す制約の正は `.claude/rules/coding.md`「置き場と依存の向き」と、それをこのリポジトリのモジュールに当てた `.claude/rules/layers.md`。
+ここに残すのは、ハーネスの側が持つ一項だけである。
+
+- **messages は immutable** 等の不変条件は、スキーマの check 制約とテストの両方で表明する（片方に頼らない）
 
 ## 実行環境
 

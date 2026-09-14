@@ -2,7 +2,7 @@
  * 環境変数から作る設定。
  *
  * `config.ts` が持つのは DB への接続先だけで、AI プロバイダは `lib/ai/providers.ts`、認証は `lib/auth/index.ts` が自分で解決する。
- * env はその値を使う層のエントリポイントで読む（docs/HARNESS.md「テスト可能性の設計制約」2）。
+ * env はその値を使う層のエントリポイントで読む（`.claude/rules/layers.md`「境界の禁止則」）。
  *
  * 変数の名前と既定値の正は web/README.md の表。
  */

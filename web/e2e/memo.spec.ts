@@ -82,10 +82,16 @@ const SCENARIOS = {
   },
 } as const;
 
-/** スマホと同じ狭さ。画面の下端へ寄せるのは、狭い画面で視界の外に出さないための形。 */
+/**
+ * スマホと同じ狭さ。
+ * 画面の下端へ寄せるのは、狭い画面で視界の外に出さないための形。
+ */
 const NARROW_VIEWPORT = { width: 375, height: 812 };
 
-/** 出したまま広げる先。画面を基準に置いているなら、幅が変わっても画面の中に居る。 */
+/**
+ * 出したまま広げる先。
+ * 画面を基準に置いているなら、幅が変わっても画面の中に居る。
+ */
 const WIDE_VIEWPORT = { width: 1280, height: 800 };
 
 /**
@@ -116,8 +122,7 @@ test("発話の一部を選ぶとメモを作れ、その区間にアンダー�
   await page.getByRole("button", { name: "メモする" }).click();
 
   // 下線は ai_a の枠の中の、リンクになっている区間だけを見る。
-  // 同じ文字列は人間の発話にも ai_b の引用にも出るので枠で絞り、
-  // 選択直後はフォームの引用にも出るので role で絞る。
+  // 同じ文字列は人間の発話にも ai_b の引用にも出るので枠で絞り、選択直後はフォームの引用にも出るので role で絞る。
   const marked = markedSegment(aiA, utterance);
   await expect(underlinesOf(marked)).toHaveCount(1);
   await expect(underlinesOf(marked)).toHaveCSS(
@@ -476,7 +481,10 @@ async function formRect(page: Page): Promise<FormRect> {
   });
 }
 
-/** 下線の付いた区間。触れると覗き見の枠が開く。 */
+/**
+ * 下線の付いた区間。
+ * 触れると覗き見の枠が開く。
+ */
 function markedSegment(message: Locator, text: string): Locator {
   return message.getByRole("button", { name: text, exact: true });
 }
@@ -508,7 +516,10 @@ function underlinesOf(marked: Locator): Locator {
   return marked.locator("[data-memo-underline]");
 }
 
-/** メモの小フォーム。発話を送る form と混ざらないよう、「メモする」を持つ側で絞る。 */
+/**
+ * メモの小フォーム。
+ * 発話を送る form と混ざらないよう、「メモする」を持つ側で絞る。
+ */
 function memoForm(page: Page): Locator {
   return page
     .locator("form")

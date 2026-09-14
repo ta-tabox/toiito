@@ -22,37 +22,9 @@ VISION の設計原理が上位。
   セッションはログインから 1 日で必ず切れ、使っても延びない
 - **固定ペルソナ二体** — 定義は `web/src/personas/` の二枚
 
-永続化について今も効く禁止則（経緯は `adr/0003-persistence-prisma-postgres.md`）。
-
-- **方言を二重に持たない**。
-  スキーマの正は `prisma/schema.prisma` 一箇所で、DDL を別ファイルに書き写さない
-- **repo 関数はすべて `async`**。
-  同期前提の呼び出しを足さない
-- **Prisma を repo 層の外へ出さない**。
-  `@prisma/client` と生成型に触れてよいのは `db.ts` だけで、UI と Server Actions が受け取るのは `types.ts` のドメイン型に限る。
-  唯一の例外は `db.ts` の `authDatabaseClient` で、Better Auth のアダプタがクライアントそのものを要求するために開けてある（呼んでよいのは `lib/auth/index.ts` だけ）。
-  テストの後始末（`tests/setup/truncate.ts`）と検査用 DB の掃除（`scripts/prune-test-databases.ts`）は生成型を直に触るが、アプリの経路の外なのでこの禁止則の対象ではない
-- **起動に外部プロセスが要る**ことは引き受けた前提。
-  ローカル完結性は捨てている
-
-実行環境について今も効く禁止則。
-
-- **Vercel 固有の口をアプリへ入れない**。
-  移植性を決めるのは実行環境の選択ではなくアプリが何に触っているかなので、`@vercel/*` の import・ISR のオンデマンド再検証・Edge Config・Cron Jobs を入れない。
-  ホスティング側の設定だけで閉じるもの（暫定の門に使う Vercel Authentication など）はアプリのコードに現れないので、この禁止則の対象ではない。
-  入れたくなったら、それは実行環境を決め直す合図として一度戻る
-
-セッションについて今も効く禁止則（経緯は `adr/0022-session-security.md`）。
-
-- **`session.cookieCache` を有効にしない**。
-  有効にすると、取り消したセッションが `maxAge` の間はキャッシュ経路で通り、DB が権威であることがその区間だけ成り立たなくなる。
-  速度が要るときに先に手を付けるのは `getCurrentUser`（`lib/auth/current-user.ts`）の `React.cache()` である
-- **`session.deferSessionRefresh` を有効にしない**。
-  このアプリの DB はリードレプリカを持たないので解こうとしている問題が無く、`disableSessionRefresh` と組み合わせると期限切れのセッション行が DB から一度も掃除されなくなる
-- **ログインをまたぐ自前の識別子を作らない**。
-  Better Auth はログインのたびにセッションのトークンを新規発行し、既存の cookie の値を引き継ぐ経路を持たないので、仕込める識別子がそもそも存在しない。
-  匿名セッション・未ログインの下書きの引き継ぎ・自前の「戻り先」cookie に識別子を載せる実装は、この性質を壊してセッション固定の経路を開ける。
-  未ログインで何かを書かせたくなったら、ログインをまたがない形（下書きをサーバーへ持たない）で解けるかを先に見る
+境界の禁止則（Prisma を触るモジュール・`process.env` を読むモジュール・所有者の判定・セッションの設定・実行環境に依存しない道具）の正は `.claude/rules/layers.md`。
+理由と経緯は `adr/0003-persistence-prisma-postgres.md`（永続化）・`adr/0022-session-security.md`（セッション）・`adr/0030-ownership-granularity.md`（所有権）が持つ。
+起動に外部プロセス（Postgres）が要ることは引き受けた前提で、ローカル完結性は捨てている。
 
 ## システム全体像
 

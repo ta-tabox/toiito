@@ -44,12 +44,61 @@ type CommentLine = {
 };
 
 /**
+ * 検査するソース 1 件。
+ * `collectKnownNames` と `lintSource` が同じ形で受け取る。
+ */
+export type SourceText = {
+  fileName: string;
+  text: string;
+};
+
+/**
+ * コメントがバッククォートで名指しうる、実在する名前の集合。
+ *
+ * `identifiers` は検査対象の全ファイルに現れる識別子と文字列リテラルの中身、`files` は検査対象のファイルのパス。
+ * 一つのファイルだけでは自分が import した相手の名前しか分からないので、全ファイルから先に集める。
+ */
+export type KnownNames = {
+  identifiers: ReadonlySet<string>;
+  files: readonly string[];
+};
+
+/**
  * リポジトリごとに変える唯一の箇所。
  * ソースの置き場所はリポジトリの構成で変わるが、規則そのものは変わらない。
  *
  * tests を併置するリポジトリにはこのディレクトリが無いので、既定の対象に限り存在しないディレクトリを飛ばす。
  */
-const DEFAULT_TARGETS = ["src", "scripts", "tests"];
+const DEFAULT_TARGETS = ["src", "scripts", "tests", "e2e"];
+
+/**
+ * 関数の JSDoc で、空行の下に置く理由の文の上限。
+ * 3 文目は ADR へ移し、コメントにはリンク一行を残す。
+ */
+const MAX_REASON_SENTENCES = 2;
+
+/**
+ * 宣言の直前に置かれても説明ではない行コメント。
+ * リンタとコンパイラへの指示で、JSDoc の代用として書かれたものではない。
+ */
+const DIRECTIVE_LINE_COMMENT =
+  /^\/\/\s*(?:biome-ignore|eslint-|@ts-|prettier-ignore)/;
+
+/**
+ * 識別子として実在を確かめる字面。
+ * camelCase・PascalCase（小文字と大文字の両方を含む）か、UPPER_SNAKE（下線を含む大文字の並び）に限る。
+ * 小文字だけの語（`git`・`lint`）は道具や一般語と区別が付かないので見ない。
+ */
+const IDENTIFIER_TOKEN = /^[A-Za-z_$][\w$]*$/;
+
+/**
+ * 例として挙げた名前の書き出し。
+ * `foo.test.ts` のような例示は実在しなくてよい。
+ */
+const EXAMPLE_NAME = /^(?:foo|bar|baz|sample|example)\b/;
+
+/** 言い切った文の末尾へ補足を継ぎ足す記号。 */
+const EM_DASH = "——";
 
 /**
  * コメントに書かない語と、代わりに書く語。
@@ -95,6 +144,14 @@ const BANNED_WORDS: ReadonlyArray<{
  * `SOURCE_EXTENSIONS` に無い拡張子は、ディレクトリを名指しで渡されても集めない。
  */
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts"];
+
+/**
+ * ファイル名として実在を確かめる字面。
+ * 拡張子は `SOURCE_EXTENSIONS` から作り、検査の対象に集めない種類（`.css`・`.md`）は実在を確かめようがないので見ない。
+ */
+const FILE_TOKEN = new RegExp(
+  `^[\\w./-]+(?:${SOURCE_EXTENSIONS.map((ext) => `\\${ext}`).join("|")})$`,
+);
 
 /**
  * テストファイルの命名。
@@ -160,8 +217,15 @@ const TRAILING_DECORATION = /^[*_`）)」】\s]*$/;
 /**
  * リンタのエントリポイント。
  * ソース 1 ファイル分を受け取り、規則ごとの検査を束ねて違反の一覧を返す。
+ *
+ * `known` を省くと、名指した識別子の実在はそのファイル 1 件の中だけで確かめる。
+ * CLI は全ファイルから `collectKnownNames` で集めた集合を渡す。
  */
-export function lintSource(fileName: string, text: string): Violation[] {
+export function lintSource(
+  fileName: string,
+  text: string,
+  known: KnownNames = collectKnownNames([{ fileName, text }]),
+): Violation[] {
   const source = ts.createSourceFile(
     fileName,
     text,
@@ -176,7 +240,56 @@ export function lintSource(fileName: string, text: string): Violation[] {
     ...checkSentenceEndLineBreaks(source, comments),
     ...checkOneSentencePerLine(source, comments),
     ...checkBannedWords(source, comments),
+    ...checkJsDocOnFunctions(source, text),
+    ...checkLineCommentBeforeDeclaration(source, text, comments),
+    ...checkReasonSentences(source, text),
+    ...checkExistingIdentifiers(source, comments, known),
+    ...checkDanglingEmDash(source, comments),
   ];
+}
+
+/**
+ * 検査対象の全ファイルから、コメントが名指しうる名前を集める。
+ *
+ * ライブラリの関数はこのリポジトリで宣言されないので、識別子は参照も含めて集める。
+ * 環境変数の名前は `env["NAME"]` の形でしか現れないことがあるので、文字列リテラルの中身も含める。
+ */
+export function collectKnownNames(sources: readonly SourceText[]): KnownNames {
+  const identifiers = new Set<string>();
+
+  for (const { fileName, text } of sources) {
+    const source = ts.createSourceFile(
+      fileName,
+      text,
+      ts.ScriptTarget.Latest,
+      true,
+    );
+
+    const visit = (node: ts.Node): void => {
+      if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) {
+        identifiers.add(node.text);
+      }
+
+      if (
+        ts.isStringLiteral(node) ||
+        ts.isNoSubstitutionTemplateLiteral(node)
+      ) {
+        identifiers.add(node.text);
+
+        // `comments/useModuleHeader` のような規則 ID は、コメントでは末尾の名前だけで呼ばれる。
+        const lastSegment = node.text.split("/").pop();
+
+        if (lastSegment !== undefined) {
+          identifiers.add(lastSegment);
+        }
+      }
+
+      node.forEachChild(visit);
+    };
+    visit(source);
+  }
+
+  return { identifiers, files: sources.map(({ fileName }) => fileName) };
 }
 
 /**
@@ -402,6 +515,396 @@ function checkBannedWords(
 }
 
 /**
+ * JSDoc を要求する宣言を集める。
+ * 対象はトップレベルの関数宣言、関数を初期化子に持つトップレベルの変数宣言、クラスのメソッドとアクセサである。
+ *
+ * 局所の補助関数まで要求するとコンポーネントのイベントハンドラごとに JSDoc が付くので、関数の中で作る関数は対象にしない。
+ */
+function documentedDeclarations(source: ts.SourceFile): ts.Node[] {
+  return source.statements.flatMap((statement): ts.Node[] => {
+    if (ts.isFunctionDeclaration(statement) || isFunctionVariable(statement)) {
+      return [statement];
+    }
+
+    if (ts.isClassDeclaration(statement)) {
+      return statement.members.filter(
+        (member) =>
+          ts.isMethodDeclaration(member) || ts.isGetAccessorDeclaration(member),
+      );
+    }
+
+    return [];
+  });
+}
+
+/** 関数を初期化子に持つ変数宣言か。 */
+function isFunctionVariable(statement: ts.Statement): boolean {
+  return (
+    ts.isVariableStatement(statement) &&
+    statement.declarationList.declarations.some(
+      (declaration) =>
+        declaration.initializer !== undefined &&
+        isFunctionLike(declaration.initializer),
+    )
+  );
+}
+
+/**
+ * 初期化子が関数か。
+ *
+ * 関数そのものに加えて、関数を第一引数に受ける呼び出し（`cache(async () => …)`・`memo(() => …)`）も関数と見なす。
+ * 包んだ関数の説明は、包んでいる呼び出しの宣言にしか付けられない。
+ */
+function isFunctionLike(expression: ts.Expression): boolean {
+  if (ts.isArrowFunction(expression) || ts.isFunctionExpression(expression)) {
+    return true;
+  }
+
+  if (!ts.isCallExpression(expression)) {
+    return false;
+  }
+
+  const [first] = expression.arguments;
+
+  return (
+    first !== undefined &&
+    (ts.isArrowFunction(first) || ts.isFunctionExpression(first))
+  );
+}
+
+/**
+ * ノードの直前に付いたコメントのうち、いちばん近い 1 件を返す。
+ * 無ければ undefined。
+ *
+ * リンタとコンパイラへの指示（`DIRECTIVE_LINE_COMMENT`）は説明ではないので、JSDoc と宣言の間に挟まっていても飛ばす。
+ */
+function closestLeadingComment(
+  text: string,
+  node: ts.Node,
+): ts.CommentRange | undefined {
+  const ranges = ts.getLeadingCommentRanges(text, node.getFullStart()) ?? [];
+
+  return ranges
+    .filter(
+      (range) => !DIRECTIVE_LINE_COMMENT.test(text.slice(range.pos, range.end)),
+    )
+    .at(-1);
+}
+
+/**
+ * 宣言に付いた JSDoc を返す。
+ * 無ければ undefined。
+ *
+ * 直前のコメントが `/**` で始まっていても、空行を挟んでいれば宣言の説明ではなくモジュールへの注釈である。
+ */
+function jsDocOf(text: string, node: ts.Node): ts.CommentRange | undefined {
+  const closest = closestLeadingComment(text, node);
+
+  if (
+    closest === undefined ||
+    !text.startsWith("/**", closest.pos) ||
+    isFollowedByBlankLine(text, closest.end)
+  ) {
+    return undefined;
+  }
+
+  return closest;
+}
+
+/**
+ * 関数に JSDoc が付いているかを見る。
+ *
+ * `//` で書いた説明は `noLineCommentBeforeDeclaration` が別に報告する。
+ */
+function checkJsDocOnFunctions(
+  source: ts.SourceFile,
+  text: string,
+): Violation[] {
+  const violations: Violation[] = [];
+
+  for (const node of documentedDeclarations(source)) {
+    if (jsDocOf(text, node) !== undefined) {
+      continue;
+    }
+
+    violations.push({
+      line: lineOf(source, node.getStart(source)),
+      rule: "comments/useJsDocOnFunction",
+      message:
+        "関数に JSDoc が無い。1 行目に what を完全な文で書く（export の有無・行数を問わない）",
+      severity: "error",
+    });
+  }
+
+  return violations;
+}
+
+/**
+ * 宣言の直前に `//` の説明を置いていないかを見る。
+ *
+ * 対象はトップレベルの関数・変数・クラス・型・enum の宣言と、クラスのメンバである。
+ * 空行を挟んだ `//` は宣言に付いた説明ではなく、ファイルの最初のコメントは `useJsDocModuleHeader` が見る冒頭コメントの候補なので、どちらも見ない。
+ */
+function checkLineCommentBeforeDeclaration(
+  source: ts.SourceFile,
+  text: string,
+  comments: CommentRange[],
+): Violation[] {
+  const violations: Violation[] = [];
+  const headerCandidate = comments[0];
+
+  const nodes: ts.Node[] = [];
+
+  for (const statement of source.statements) {
+    if (!isDeclarationStatement(statement)) {
+      continue;
+    }
+
+    nodes.push(statement);
+
+    if (ts.isClassDeclaration(statement)) {
+      nodes.push(...statement.members);
+    }
+  }
+
+  for (const node of nodes) {
+    const closest = closestLeadingComment(text, node);
+
+    if (closest === undefined || !text.startsWith("//", closest.pos)) {
+      continue;
+    }
+
+    if (
+      headerCandidate !== undefined &&
+      closest.pos === headerCandidate.start
+    ) {
+      continue;
+    }
+
+    if (isFollowedByBlankLine(text, closest.end)) {
+      continue;
+    }
+
+    violations.push({
+      line: lineOf(source, closest.pos),
+      rule: "comments/noLineCommentBeforeDeclaration",
+      message:
+        "宣言に付く説明は JSDoc（/** */）で書く。// は関数本体の中だけに使う",
+      severity: "error",
+    });
+  }
+
+  return violations;
+}
+
+/**
+ * その文が説明を持つ宣言か。
+ * 関数・変数・クラス・型・interface・enum を指す。
+ */
+function isDeclarationStatement(statement: ts.Statement): boolean {
+  return (
+    ts.isFunctionDeclaration(statement) ||
+    ts.isVariableStatement(statement) ||
+    ts.isClassDeclaration(statement) ||
+    ts.isTypeAliasDeclaration(statement) ||
+    ts.isInterfaceDeclaration(statement) ||
+    ts.isEnumDeclaration(statement)
+  );
+}
+
+/**
+ * 関数の JSDoc で、空行の下に置いた理由の文が `MAX_REASON_SENTENCES` を超えていないかを見る。
+ *
+ * 数えるのは最初の空行より下の散文の行で、箇条の行とコードフェンスの内側は数えない。
+ * 1 行 1 文が別の規則で効いているので、行の数が文の数になる。
+ */
+function checkReasonSentences(
+  source: ts.SourceFile,
+  text: string,
+): Violation[] {
+  const violations: Violation[] = [];
+
+  for (const node of documentedDeclarations(source)) {
+    const closest = jsDocOf(text, node);
+
+    if (closest === undefined) {
+      continue;
+    }
+
+    const first = lineOf(source, closest.pos);
+    const lines = maskFencedRegions(
+      text
+        .slice(closest.pos, closest.end)
+        .split("\n")
+        .map((line, offset) => ({
+          line: first + offset,
+          text: stripDecoration(line),
+        })),
+    );
+
+    // 開きの `/**` と閉じの `*/` だけの行は本文ではないので、空行の探索から外す。
+    const body = lines.slice(
+      lines.findIndex((entry) => entry.text !== ""),
+      lines.findLastIndex((entry) => entry.text !== "") + 1,
+    );
+    const blankIndex = body.findIndex((entry) => entry.text === "");
+
+    if (blankIndex === -1) {
+      continue;
+    }
+
+    const reasons = body
+      .slice(blankIndex + 1)
+      .filter((entry) => entry.text !== "" && !LIST_MARKER.test(entry.text));
+
+    if (reasons.length <= MAX_REASON_SENTENCES) {
+      continue;
+    }
+
+    violations.push({
+      line: reasons[MAX_REASON_SENTENCES].line,
+      rule: "comments/maxReasonSentences",
+      message: `理由が ${reasons.length} 文ある。理由は 1 関数 ${MAX_REASON_SENTENCES} 文までにし、3 文目からは ADR へ移してリンク一行を残す`,
+      severity: "warn",
+    });
+  }
+
+  return violations;
+}
+
+/**
+ * バッククォートで名指した識別子とファイルが実在するかを見る。
+ *
+ * 改名した相手をコメントが古い名前のまま指している形を捕まえる。
+ * 見るのは識別子の字面（`IDENTIFIER_TOKEN`）とファイル名の字面（`FILE_TOKEN`）だけで、小文字だけの語やパスでない名前は見ない。
+ */
+function checkExistingIdentifiers(
+  source: ts.SourceFile,
+  comments: CommentRange[],
+  known: KnownNames,
+): Violation[] {
+  const violations: Violation[] = [];
+
+  for (const block of toCommentBlocks(source, comments)) {
+    for (const line of block) {
+      for (const match of line.text.matchAll(/`([^`]+)`/g)) {
+        const token = match[1];
+
+        if (isKnownName(token, known)) {
+          continue;
+        }
+
+        violations.push({
+          line: line.line,
+          rule: "comments/useExistingIdentifier",
+          message: `\`${token}\` はコード中に存在しない識別子かファイルである。改名した相手を名指し直す`,
+          severity: "warn",
+        });
+      }
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * 名指した字面が実在するか。
+ * 実在を確かめる形でない字面（小文字だけの語・式・パスでない文字列）は実在するものとして通す。
+ */
+function isKnownName(token: string, known: KnownNames): boolean {
+  if (IDENTIFIER_TOKEN.test(token)) {
+    const isMixedCase = /[a-z]/.test(token) && /[A-Z]/.test(token);
+    const isUpperSnake = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$/.test(token);
+
+    if (!isMixedCase && !isUpperSnake) {
+      return true;
+    }
+
+    return known.identifiers.has(token);
+  }
+
+  if (FILE_TOKEN.test(token) && !EXAMPLE_NAME.test(token)) {
+    return known.files.some((file) => isSamePath(file, token));
+  }
+
+  return true;
+}
+
+/**
+ * 二つのパスが同じファイルを指すか。
+ * どちらかがもう一方の末尾（ディレクトリの境界から）に一致すれば同じと見なす。
+ */
+function isSamePath(file: string, token: string): boolean {
+  const normalized = file.split(path.sep).join("/");
+
+  return (
+    normalized === token ||
+    normalized.endsWith(`/${token}`) ||
+    token.endsWith(`/${normalized}`)
+  );
+}
+
+/**
+ * 言い切った文の末尾へ `——` で補足を継ぎ足していないかを見る。
+ *
+ * 括弧の内側と、対で挟む挿入（1 行に 2 つ）は文が閉じていないので数えない。
+ * 括弧の外に 1 行 1 つだけ現れた `——` を、後置きの継ぎ足しと見なす。
+ */
+function checkDanglingEmDash(
+  source: ts.SourceFile,
+  comments: CommentRange[],
+): Violation[] {
+  const violations: Violation[] = [];
+
+  for (const block of toCommentBlocks(source, comments)) {
+    for (const line of block) {
+      if (
+        countEmDashesOutsideBrackets(line.text.replace(INLINE_CODE, "")) !== 1
+      ) {
+        continue;
+      }
+
+      violations.push({
+        line: line.line,
+        rule: "comments/noDanglingEmDash",
+        message:
+          "言い切った文の末尾へ —— で補足を継ぎ足している。補足は次の行の独立した文にする（括弧の内側と、対で挟む挿入は除く）",
+        severity: "error",
+      });
+    }
+  }
+
+  return violations;
+}
+
+/** 括弧の外にある `——` の数を返す。 */
+function countEmDashesOutsideBrackets(text: string): number {
+  let depth = 0;
+  let count = 0;
+
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index];
+
+    if (BRACKET_OPEN.includes(char)) {
+      depth++;
+      continue;
+    }
+
+    if (BRACKET_CLOSE.includes(char)) {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+
+    if (depth === 0 && text.startsWith(EM_DASH, index)) {
+      count++;
+      index += EM_DASH.length - 1;
+    }
+  }
+
+  return count;
+}
+
+/**
  * 行末より手前に文の切れ目があるか。
  * 括弧の内側の句点と、飾りしか後ろに続かない句点は数えない。
  */
@@ -437,8 +940,7 @@ function hasSentenceBreakInside(text: string): boolean {
  * コメントを、一つの文が跨りうる範囲＝塊へまとめる。
  *
  * ブロックコメント 1 つが 1 塊で、連続する行コメントの並びも 1 塊。
- * getLeadingCommentRanges は直前に改行が無いコメントを leading と見なさないので、行末コメントは収集の時点で落ちている。
- * 拾うように変えると、値ごとに注釈を添えた配列がまるごと違反になる。
+ * 行末コメントを拾うと値ごとに注釈を添えた配列がまるごと違反になるので、直前に改行が無いコメントを leading と見なさない getLeadingCommentRanges の挙動をそのまま使う。
  */
 function toCommentBlocks(
   source: ts.SourceFile,
@@ -488,8 +990,7 @@ function toCommentBlocks(
 /**
  * コードフェンスに挟まれた区間を、フェンスの行ごと空行に見せる。
  *
- * 空行は塊の切れ目なので、区間の内側だけでなく前後の隣接判定も同時に落ちる。
- * コードは散文ではないから行末の記号に意味が無く、フェンスの行そのものも散文ではない。
+ * コードもフェンスの行も散文ではないので、空行に見せて塊の切れ目にし、区間の内側と前後の隣接判定を同時に外す。
  * 閉じないまま塊が終わる場合は、開いた行から末尾までを区間として扱う。
  */
 function maskFencedRegions(lines: CommentLine[]): CommentLine[] {
@@ -648,11 +1149,27 @@ function excludeIgnored(files: string[]): string[] {
 /**
  * 既定の対象はリポジトリの構成に対する見込みなので、無いディレクトリは黙って飛ばす。
  * 引数で名指しされた場所が無いのは打ち間違いなので、collectSourceFiles に throw させる。
+ *
+ * 設定ファイルも規約の対象で、コメントが名指す設定のキーはそこにしか現れないので、既定ではカレントディレクトリ直下の設定ファイル（`*.config.ts` など）も対象に含める。
  */
 function resolveTargets(argv: string[]): string[] {
-  return argv.length > 0
-    ? argv
-    : DEFAULT_TARGETS.filter((target) => fs.existsSync(target));
+  if (argv.length > 0) {
+    return argv;
+  }
+
+  const rootFiles = fs
+    .readdirSync(".", { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        SOURCE_EXTENSIONS.some((ext) => entry.name.endsWith(ext)),
+    )
+    .map((entry) => entry.name);
+
+  return [
+    ...DEFAULT_TARGETS.filter((target) => fs.existsSync(target)),
+    ...rootFiles,
+  ];
 }
 
 /**
@@ -664,13 +1181,18 @@ function resolveTargets(argv: string[]): string[] {
 function main(argv: string[]): number {
   const targets = resolveTargets(argv);
   const files = excludeIgnored(targets.flatMap(collectSourceFiles));
+  const sources = files.map((file) => ({
+    fileName: file,
+    text: fs.readFileSync(file, "utf8"),
+  }));
+  const known = collectKnownNames(sources);
   let errors = 0;
   let warnings = 0;
 
-  for (const file of files) {
-    for (const violation of lintSource(file, fs.readFileSync(file, "utf8"))) {
+  for (const { fileName, text } of sources) {
+    for (const violation of lintSource(fileName, text, known)) {
       console.error(
-        `${file}:${violation.line} ${violation.rule}\n  ${violation.message}`,
+        `${fileName}:${violation.line} ${violation.rule}\n  ${violation.message}`,
       );
 
       if (violation.severity === "warn") {
