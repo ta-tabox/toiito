@@ -575,6 +575,8 @@ function isFunctionLike(expression: ts.Expression): boolean {
 /**
  * ノードの直前に付いたコメントのうち、いちばん近い 1 件を返す。
  * 無ければ undefined。
+ *
+ * リンタとコンパイラへの指示（`DIRECTIVE_LINE_COMMENT`）は説明ではないので、JSDoc と宣言の間に挟まっていても飛ばす。
  */
 function closestLeadingComment(
   text: string,
@@ -582,7 +584,11 @@ function closestLeadingComment(
 ): ts.CommentRange | undefined {
   const ranges = ts.getLeadingCommentRanges(text, node.getFullStart()) ?? [];
 
-  return ranges[ranges.length - 1];
+  return ranges
+    .filter(
+      (range) => !DIRECTIVE_LINE_COMMENT.test(text.slice(range.pos, range.end)),
+    )
+    .at(-1);
 }
 
 /**
@@ -675,12 +681,7 @@ function checkLineCommentBeforeDeclaration(
       continue;
     }
 
-    const comment = text.slice(closest.pos, closest.end);
-
-    if (
-      DIRECTIVE_LINE_COMMENT.test(comment) ||
-      isFollowedByBlankLine(text, closest.end)
-    ) {
+    if (isFollowedByBlankLine(text, closest.end)) {
       continue;
     }
 

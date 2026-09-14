@@ -613,6 +613,17 @@ class Sender {
     expect(rulesOf(source)).toEqual(["comments/useJsDocOnFunction"]);
   });
 
+  it("JSDoc と宣言の間にリンタへの指示が挟まっても、JSDoc があると見なす", () => {
+    const source = `${header}/** 1 を返す。 */
+// biome-ignore lint/style/useNamingConvention: 外部の名前に合わせる
+export function limit_value() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
   it("関数の中で作る関数は見ない", () => {
     const source = `${header}/** 1 を返す。 */
 export function f() {
@@ -858,6 +869,16 @@ export function f() {
     );
   });
 
+  it("検査の対象に集めない拡張子のファイル名は見ない", () => {
+    const source = `${header}/** 設定は \`postcss.config.mjs\` と \`globals.css\` が持つ。 */
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
   it("例として挙げた名前は実在しなくてよい", () => {
     const source = `${header}/** \`foo.test.ts\` のような名前を指す。 */
 export function f() {
@@ -868,16 +889,6 @@ export function f() {
     expect(rulesOf(source)).toEqual([]);
   });
 });
-
-  it("検査の対象に集めない拡張子のファイル名は見ない", () => {
-    const source = `${header}/** 設定は \`postcss.config.mjs\` と \`globals.css\` が持つ。 */
-export function f() {
-  return 1;
-}
-`;
-
-    expect(rulesOf(source)).toEqual([]);
-  });
 
 describe("継ぎ足しの ——", () => {
   const header = "/**\n * 冒頭。\n */\n\n";
