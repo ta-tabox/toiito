@@ -109,6 +109,10 @@ error は赤にし、warn は報告だけにする。
 | 関数の認知的複雑度（分割の合図） | biome `noExcessiveCognitiveComplexity` | error |
 | 引数 3 つ超 | biome `complexity/useMaxParams` | error |
 
+関数の JSDoc の理由の上限は、その関数の呼び手が実際に踏んだ誤りを挙げられるときに限って外せる。
+外すときは JSDoc と宣言の間に `// lint-comments-allow comments/maxReasonSentences: <その誤り>` を置く。
+誤りを書かない宣言では上限から外れない。
+
 対象から外すものは `.gitignore` が正で、リンタも Biome も同じ正を見る（`src/generated` の Prisma 生成物はここで落ちる）。
 リンタの対象は `web/src` `web/scripts` `web/tests` `web/e2e` と `web/` 直下の `*.ts`。
 

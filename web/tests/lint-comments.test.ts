@@ -717,6 +717,40 @@ export function f() {
     expect(rulesOf(source)).toEqual(["comments/maxReasonSentences"]);
   });
 
+  it("呼び手が踏んだ誤りを添えた例外の宣言があれば、3 文あっても通る", () => {
+    const source = `${header}/**
+ * 1 を返す。
+ *
+ * 一文目。
+ * 二文目。
+ * 三文目。
+ */
+// lint-comments-allow comments/maxReasonSentences: 呼び手が戻り値を検証せずに渡した
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("誤りを書かない例外の宣言では、上限から外さない", () => {
+    const source = `${header}/**
+ * 1 を返す。
+ *
+ * 一文目。
+ * 二文目。
+ * 三文目。
+ */
+// lint-comments-allow comments/maxReasonSentences:
+export function f() {
+  return 1;
+}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/maxReasonSentences"]);
+  });
+
   it("空行より上の要約は数えない", () => {
     const source = `${header}/**
  * 1 を返す。
