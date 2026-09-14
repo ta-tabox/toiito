@@ -901,10 +901,12 @@ function checkDanglingEmDash(
   return violations;
 }
 
-/** 括弧の外にある `——` の数を返す。 */
-function countEmDashesOutsideBrackets(text: string): number {
+/**
+ * 括弧の外にある位置を順に返す。
+ * 括弧の文字そのものは返さず、閉じ括弧が開き括弧より多い部分は深さ 0 として扱う。
+ */
+function* indicesOutsideBrackets(text: string): Generator<number> {
   let depth = 0;
-  let count = 0;
 
   for (let index = 0; index < text.length; index++) {
     const char = text[index];
@@ -919,9 +921,21 @@ function countEmDashesOutsideBrackets(text: string): number {
       continue;
     }
 
-    if (depth === 0 && text.startsWith(EM_DASH, index)) {
+    if (depth === 0) {
+      yield index;
+    }
+  }
+}
+
+/** 括弧の外にある `——` の数を返す。 */
+function countEmDashesOutsideBrackets(text: string): number {
+  let count = 0;
+  let nextStart = 0;
+
+  for (const index of indicesOutsideBrackets(text)) {
+    if (index >= nextStart && text.startsWith(EM_DASH, index)) {
       count++;
-      index += EM_DASH.length - 1;
+      nextStart = index + EM_DASH.length;
     }
   }
 
@@ -933,24 +947,9 @@ function countEmDashesOutsideBrackets(text: string): number {
  * 括弧の内側の句点と、飾りしか後ろに続かない句点は数えない。
  */
 function hasSentenceBreakInside(text: string): boolean {
-  let depth = 0;
-
-  for (let index = 0; index < text.length; index++) {
-    const char = text[index];
-
-    if (BRACKET_OPEN.includes(char)) {
-      depth++;
-      continue;
-    }
-
-    if (BRACKET_CLOSE.includes(char)) {
-      depth = Math.max(0, depth - 1);
-      continue;
-    }
-
+  for (const index of indicesOutsideBrackets(text)) {
     if (
-      char === "。" &&
-      depth === 0 &&
+      text[index] === "。" &&
       !TRAILING_DECORATION.test(text.slice(index + 1))
     ) {
       return true;
