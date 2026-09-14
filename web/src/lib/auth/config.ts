@@ -92,7 +92,7 @@ export function readAuthConfig(env: AuthEnv): AuthConfig {
 /**
  * `email` が許可リストに含まれるかを判定する。
  *
- * 比較の前に前後の空白を取り除いて小文字へ揃える。
+ * 比較の前に前後の空白を取り除いて小文字へ揃えるのは `email` だけなので、`allowedEmails` には `readAuthConfig` が小文字へ揃えた配列を渡す。
  * Better Auth は IdP から受け取った email を小文字にして `user` 表へ書き込むので、揃えないと大文字を含む設定値が一致しなくなる。
  */
 export function isAllowedEmail(
