@@ -20,6 +20,7 @@ import {
   startGoogleSignIn,
 } from "@/lib/auth/sign-in";
 import { addMemo, createQuestion, createSession } from "@/lib/db";
+import { parseMemoKeyword } from "@/lib/memo";
 import { personaCalls, retryTurn, runTurn } from "@/lib/turn";
 
 /**
@@ -75,14 +76,10 @@ export async function retryTurnAction(sessionId: string) {
  * 発話本文の一部にメモを付ける。
  *
  * アンカー（anchor_start / anchor_end）は呼び出し側が確定させたものを受け取る。
- * 本文中の位置を求めるのは DOM と `anchors.ts` の担当で、`createMemoAction` はフォームの数値を `parseAnchor` に通すだけ。
+ * 本文中の位置を求めるのは DOM と `anchors.ts` の担当で、`createMemoAction` はフォームの値を `parseMemoKeyword` と `parseAnchor` に通すだけ。
  */
 export async function createMemoAction(formData: FormData) {
-  const keyword = String(formData.get("keyword") ?? "").trim();
-  if (!keyword) {
-    return;
-  }
-
+  const keyword = parseMemoKeyword(String(formData.get("keyword") ?? ""));
   const messageId = String(formData.get("message_id") ?? "");
   const anchor = parseAnchor(
     Number(formData.get("anchor_start")),
