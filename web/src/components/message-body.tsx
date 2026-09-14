@@ -34,6 +34,7 @@ import {
 } from "@/components/memo-preview";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { SubmitButton } from "@/components/ui/submit-button";
 import {
   clampToGraphemeBoundary,
   parseAnchor,
@@ -353,9 +354,9 @@ function MemoForm({
         <Button type="button" onClick={onClose}>
           やめる
         </Button>
-        <Button type="submit" tone="solid">
+        <SubmitButton tone="solid" pendingLabel="メモしている">
           メモする
-        </Button>
+        </SubmitButton>
       </div>
     </form>
   );

@@ -15,6 +15,9 @@ const QUESTION = "E2E: 速さを求めることは何を削ることなのか";
 
 const UTTERANCE = "E2E: 急ぐほど問いが痩せる気がする";
 
+/** 送信中のボタンを見るシナリオの問い。 */
+const PENDING_QUESTION = "E2E: 待たされているあいだに何を考えるのか";
+
 // どの画面もサインインを要求するので、シードの一人目として始める。
 test.beforeEach(async ({ page }) => {
   await signIn(page, SEED_USERS[0].email);
@@ -45,4 +48,31 @@ test("問いを投入して発話すると、ai_a → ai_b の順にフェイク
   await expect(responses.nth(1)).toContainText("[fake:ai_b");
 
   await expect(responses.nth(1)).toContainText(`「${UTTERANCE}」`);
+});
+
+test("仕込むを押すと、対話画面へ移るまでボタンは押せない", async ({ page }) => {
+  await page.goto("/");
+
+  // 問いの作成はすぐ終わるので、そのままでは表明より先に送信が終わる。
+  // Server Action の POST をここで止め、送信中の状態を観測できるあいだ保つ。
+  const held = Promise.withResolvers<void>();
+  await page.route("/", async (route) => {
+    if (route.request().method() === "POST") {
+      await held.promise;
+    }
+
+    await route.continue();
+  });
+
+  await page.getByPlaceholder("問いをポイっと").fill(PENDING_QUESTION);
+  await page.getByRole("button", { name: "仕込む" }).click();
+
+  await expect(
+    page.getByRole("button", { name: "仕込んでいる" }),
+  ).toBeDisabled();
+
+  held.resolve();
+  await expect(
+    page.getByRole("heading", { name: PENDING_QUESTION }),
+  ).toBeVisible();
 });

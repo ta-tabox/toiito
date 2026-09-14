@@ -22,6 +22,7 @@ import {
 import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
 import { RetryForm, SpeakForm } from "@/components/speak-form";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import {
   getPendingBody,
@@ -118,12 +119,9 @@ export default async function QuestionPage({
         </Link>
         {isLatest ? (
           <form action={newSession}>
-            <button
-              type="submit"
-              className="text-aux text-ink-weak hover:underline"
-            >
+            <SubmitButton pendingLabel="セッションを始めている">
               新しいセッションで再訪
-            </button>
+            </SubmitButton>
           </form>
         ) : (
           <Link

@@ -8,10 +8,10 @@
 
 import Link from "next/link";
 import { createQuestionAction, signOutAction } from "@/app/actions";
-import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Pill } from "@/components/ui/pill";
 import { Row } from "@/components/ui/row";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { listQuestions, questionText } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
@@ -54,9 +54,9 @@ export default async function Home() {
           className="flex-1"
           autoComplete="off"
         />
-        <Button type="submit" tone="solid">
+        <SubmitButton tone="solid" pendingLabel="仕込んでいる">
           仕込む
-        </Button>
+        </SubmitButton>
       </form>
 
       <ul className="mt-8 space-y-4">
