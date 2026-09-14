@@ -58,6 +58,31 @@ enum Speaker {
   @@map("speaker")
 }
 
+/// 問いに付随する材料（`cultures` の行）の種類。
+/// `internal` は自分の過去の問いとメモ、`external` は外部の調査、`isomorph` は別領域と同じ形に見える候補を指す。
+///
+/// TS 側の対応は `src/lib/culture.ts` の `CULTURE_KINDS`。
+/// ずれの検出は QuestionStatus と同じなので、この enum に値を足したら `CULTURE_KINDS` にも足す。
+enum CultureKind {
+  internal
+  external
+  isomorph
+
+  @@map("culture_kind")
+}
+
+/// 問いに付随する材料を作った主体。
+/// `auto` は AI が寄せた材料、`human` は人間が足した材料を指す。
+///
+/// TS 側の対応は `src/lib/culture.ts` の `CULTURE_CREATORS`。
+/// この enum に値を足したら `CULTURE_CREATORS` にも足す。
+enum CultureCreator {
+  auto
+  human
+
+  @@map("culture_creator")
+}
+
 /// 問い。投入された一件と、その現在の状態。
 /// body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、
 /// current_form は対話の中で言い直された焦点。
@@ -76,6 +101,7 @@ model Question {
 
   user     User              @relation(fields: [user_id], references: [id])
   sessions DialogueSession[]
+  cultures Culture[]
 
   @@index([user_id])
   @@map("questions")
@@ -185,6 +211,34 @@ model MemoLink {
   to_memo   Memo @relation("MemoLinkTo", fields: [to_memo_id], references: [id])
 
   @@map("memo_links")
+}
+
+/// 問いに付随する材料。
+/// 誰の発話でもなく、対話の前に問いへ付く。
+///
+/// 読むのは人間だけなので、二体の AI へ渡すプロンプトに含めない。
+/// 行が 1 件でも入った問いは、`status` が `new` なら `stocked` へ上がる（`db.ts` の `addCultures`）。
+model Culture {
+  id          String         @id @default(uuid(4)) @db.Uuid
+  question_id String         @db.Uuid
+  kind        CultureKind
+  /// 材料が扱う論点。
+  /// 同じ値を持つ行どうしが、一つの論点について立場の違う材料の組になる。
+  topic       String
+  body        String
+  /// 材料の出典の URL。
+  /// 出典を持たない材料（自分の過去の問いなど）は NULL になる。
+  source_url  String?
+  created_by  CultureCreator
+  created_at  DateTime       @default(now()) @db.Timestamptz(6)
+  /// 挿入順の通し番号。
+  /// 一回の付与で入る行は同じトランザクションの `now()` を共有して `created_at` が並ぶので、並びをこの列で決める。
+  seq         BigInt         @default(autoincrement()) @unique
+
+  question Question @relation(fields: [question_id], references: [id])
+
+  @@index([question_id])
+  @@map("cultures")
 }
 
 /// ユーザー。Better Auth が使う四表の一つ。

@@ -4,7 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
 import { QUESTION_STATUSES } from "@/lib/question";
-import type { Anchor, OwnerId } from "@/lib/types";
+import type { Anchor, CultureDraft, OwnerId } from "@/lib/types";
 
 afterAll(async () => {
   await db.disconnect();
@@ -484,5 +484,80 @@ describe("所有権", () => {
       .catch((error: Error) => error.message);
 
     expect(others).toBe(String(missing).replace(/: .*$/, `: ${question.id}`));
+  });
+});
+
+describe("cultures", () => {
+  /** 一つの論点について、立場の違う外部の材料が二件ある下書き。 */
+  const drafts: CultureDraft[] = [
+    {
+      kind: "external",
+      topic: "速さと余白",
+      body: "速さは余白を生むとする調査",
+      source_url: "https://example.com/speed-creates-slack",
+      created_by: "auto",
+    },
+    {
+      kind: "external",
+      topic: "速さと余白",
+      body: "速さは余白を削るとする調査",
+      source_url: "https://example.com/speed-consumes-slack",
+      created_by: "auto",
+    },
+  ];
+
+  it("status が new の問いに培地を付けると、行が付与の順で入り、status が stocked になる", async () => {
+    const { question } = await db.createQuestion(owner, "なぜ速さを求めるのか");
+
+    await db.addCultures(owner, question.id, drafts);
+
+    const cultures = await db.listCultures(owner, question.id);
+    const reread = await db.getQuestion(owner, question.id);
+
+    expect(cultures.map((culture) => culture.body)).toEqual(
+      drafts.map((draft) => draft.body),
+    );
+    expect(reread?.status).toBe("stocked");
+  });
+
+  it("status が holding の問いに培地を付けても、status は holding のまま変わらない", async () => {
+    const { question } = await db.createQuestion(owner, "持ち続ける問い");
+    await db.setQuestionStatus(owner, question.id, "holding");
+
+    await db.addCultures(owner, question.id, drafts);
+
+    const cultures = await db.listCultures(owner, question.id);
+    const reread = await db.getQuestion(owner, question.id);
+
+    expect(cultures).toHaveLength(drafts.length);
+    expect(reread?.status).toBe("holding");
+  });
+
+  it("owner 以外が所有する問いへの付与は throw し、行も status も変わらない", async () => {
+    const other = await createOwner("other@example.com");
+    const { question } = await db.createQuestion(other, "アクセス権の無い問い");
+
+    await expect(db.addCultures(owner, question.id, drafts)).rejects.toThrow(
+      /問いが見つからない/,
+    );
+
+    const cultures = await db.listCultures(other, question.id);
+    const reread = await db.getQuestion(other, question.id);
+
+    expect(cultures).toEqual([]);
+    expect(reread?.status).toBe("new");
+  });
+
+  it("空配列を渡すと、培地の行は入らず、status も new のまま変わらない", async () => {
+    const { question } = await db.createQuestion(owner, "材料の無い問い");
+
+    const added = await db.addCultures(owner, question.id, []);
+
+    const cultures = await db.listCultures(owner, question.id);
+    const reread = await db.getQuestion(owner, question.id);
+
+    expect(added).toEqual([]);
+    expect(cultures).toEqual([]);
+    expect(reread?.status).toBe("new");
   });
 });
