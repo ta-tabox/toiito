@@ -187,15 +187,35 @@ create_databases() {
   done
 }
 
+# シードが作るユーザーの email を web/scripts/seed/users.ts から読み、カンマ区切りで返す。
+# Google を経ないサインインが指せるのはシードが作った user 行だけなので、許可リストはシードの値を正として読む。
+read_seed_emails() {
+  local emails
+  emails="$(sed -n 's/.*email: "\([^"]*\)".*/\1/p' "$REPO_ROOT/web/scripts/seed/users.ts" | paste -sd, -)"
+
+  if [ -z "$emails" ]; then
+    echo "web/scripts/seed/users.ts からシードの email を読めなかった。書式が変わっていないか確認する" >&2
+    return 1
+  fi
+
+  echo "$emails"
+}
+
 # .env.local は git 管理外なので、リモートのコンテナには存在しない。
 # 人間が手を入れた後のセッションで上書きしないよう、無いときだけ書く。
 write_env_local() {
   local env_file="$REPO_ROOT/web/.env.local"
   local url="postgresql://toiito:toiito@localhost:$PG_PORT/toiito"
+  local seed_emails secret
 
   if [ -f "$env_file" ]; then
     return
   fi
+
+  # 書き始める前に値を揃える。
+  # 書く途中で失敗すると書きかけのファイルが残り、次のセッションは上の条件でそれを書き直さない。
+  seed_emails="$(read_seed_emails)"
+  secret="$(openssl rand -base64 32)"
 
   log "web/.env.local を書く"
   {
@@ -205,6 +225,17 @@ write_env_local() {
     # 実キーが環境変数で渡っているなら、フェイクで上書きしない。
     if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
       echo "TOIITO_FAKE_AI=1"
+    fi
+
+    # Google の OAuth クライアントが環境変数で渡っているなら、Google を経ないサインインを開けない。
+    if [ -z "${GOOGLE_CLIENT_ID:-}" ]; then
+      echo "TOIITO_ALLOWED_EMAILS=$seed_emails"
+      echo "TOIITO_FAKE_LOGIN=1"
+    fi
+
+    # 秘密が環境変数で渡っているなら、コンテナで作った乱数を並べて書かない。
+    if [ -z "${BETTER_AUTH_SECRET:-}" ]; then
+      echo "BETTER_AUTH_SECRET=$secret"
     fi
   } > "$env_file"
 }
