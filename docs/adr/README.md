@@ -197,3 +197,8 @@ ADR にしない側へ倒す。
   Google はシークレットの全文を作成時にしか表示せず、1 つのクライアントが同時に持てるシークレットは 2 つまでなので、手元で漏れたときの差し替えがそのまま本番の差し替え作業になる。
   覆る条件は「手元で Google のサインインを試さなくなったら手元のクライアントを削除する」以上に書けない（規約5）。
   手順は `docs/DEPLOY.md`「Google の OAuth クライアント」
+- **`TOIITO_FAKE_AI=1` を、本番（`VERCEL_ENV=production`）では設定の読み取りが throw する**（2026-09-14・#211（TOIITO_FAKE_AI を本番で拒否し、API キーの欠落を構築時に検出する））。
+  0033 の決定 3 が `TOIITO_FAKE_LOGIN` に採った形を、同じ誤り（Preview 用の変数を All environments で入れる）を招く別の変数へ広げただけで、選択肢の間で選んでいない。
+  採らなかった案（運用の規律で持つ・`NODE_ENV` で見分ける）も覆る条件（本番が Vercel 以外へ移った）も 0033 と同じで、新しく書ける条件が無い（規約5）。
+  0019 は `TOIITO_FAKE_AI` を `DEPLOY.md` の運用上の注意に置いたが、その行は改訂版の 0029 と 0036 に引き継がれておらず、採用中の ADR に supersede する相手が無い。
+  現況は `web/src/lib/ai/provider.ts` の `readFakeMode` と `docs/DEPLOY.md`「秘密の置き場」
