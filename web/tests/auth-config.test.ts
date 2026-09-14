@@ -91,6 +91,12 @@ describe("readAuthConfig", () => {
       readAuthConfig(env({ ...GOOGLE, VERCEL_ENV: "production" })),
     ).toThrow(/TOIITO_FAKE_LOGIN/);
   });
+
+  it("本番で Google を設定せず TOIITO_FAKE_LOGIN=1 なら、TOIITO_FAKE_LOGIN を名指して投げる", () => {
+    expect(() => readAuthConfig(env({ VERCEL_ENV: "production" }))).toThrow(
+      /TOIITO_FAKE_LOGIN/,
+    );
+  });
 });
 
 describe("isAllowedEmail", () => {
