@@ -8,18 +8,32 @@
  * 呼び出しごとに変わるのは本文だけで、設定は env から作った時点で決まっている。
  */
 
+import { isProduction } from "@/lib/config";
+
 /** フェイクモードに効く環境変数。 */
 type FakeEnv = {
   readonly TOIITO_FAKE_AI?: string;
+  readonly VERCEL_ENV?: string;
   readonly [key: string]: string | undefined;
 };
 
 /**
  * env からフェイクモードを読む。
+ * `TOIITO_FAKE_AI=1` が本番（`VERCEL_ENV=production`）で設定されていれば throw する。
+ *
  * どのプロバイダを叩くかに依らない指定なので、環境変数名の正を `readFakeMode` が持ち、実装には解決済みの真偽値を渡す。
+ * 本番でフェイクの応答を返すと、その応答が immutable な `messages` へ保存されて後から直せない。
  */
 export function readFakeMode(env: FakeEnv): boolean {
-  return env.TOIITO_FAKE_AI === "1";
+  const isFake = env.TOIITO_FAKE_AI === "1";
+
+  if (isFake && isProduction(env)) {
+    throw new Error(
+      "TOIITO_FAKE_AI は本番（VERCEL_ENV=production）では設定できない。Preview・E2E・手元の動作確認だけが使う（web/README.md「環境変数」）",
+    );
+  }
+
+  return isFake;
 }
 
 /**
