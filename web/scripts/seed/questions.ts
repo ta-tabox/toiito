@@ -144,10 +144,10 @@ const SEED_QUESTIONS: QuestionSeed[] = [
 
 /**
  * 宣言したメモを、範囲付きの入力へ写す。
- *
- * オフセットを直書きすると本文を一文字直すたびに全部ずれる。
- * 単位は JS の string index（UTF-16 code unit）で、anchors.ts と揃える。
+ * 範囲の単位は JS の string index（UTF-16 code unit）で、anchors.ts と揃える。
  * 本文に `keyword` が無ければ throw する。
+ *
+ * オフセットを直書きすると、本文を一文字直すたびに全部ずれる。
  * ずれたまま投入すると、UI では無関係な語に下線が付く。
  */
 function toMemoInput(body: string, memoSeed: MemoSeed): MemoInput {

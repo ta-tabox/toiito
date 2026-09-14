@@ -41,15 +41,10 @@ function hashedSlug(name: string): string {
 }
 
 /**
- * ディレクトリ名をデータベース名の部品へ均す。
+ * ディレクトリ名を、引用符なしで接続 URL へ書けるデータベース名の部品（英小文字・数字・`_`）へ均す。
+ * `MAX_SLUG_LENGTH` を超えたら先頭側を切り捨て、空は返さない。
  *
- * 英数字以外をすべて `_` へ潰す。
- * worktree 名にはハイフンも大文字も入りうるが、引用符なしで接続 URL へ書ける形に寄せる。
- *
- * 上限を超えたときに切り捨てるのは先頭側。
- * worktree 名は末尾に一意の接尾辞を持つので、頭を残して尻を切ると別の worktree と同じ名前になる。
- *
- * 空は返さない。
+ * worktree 名は末尾に一意の接尾辞を持つので、末尾側を切り捨てると別の worktree と同じ名前になる。
  * 呼ぶ側は前後に `toiito_wt_` と `_test` を繋いだ名前を作るので、空を返すと `scripts/prune-test-databases.ts` が派生名として見分けられなくなる。
  */
 export function toDatabaseSlug(name: string): string {
