@@ -45,6 +45,31 @@ export function auth(): ReturnType<typeof createAuth> {
   return instance;
 }
 
+/** ログインの画面に並べるサインインの手段。 */
+export type SignInMethods = {
+  readonly isGoogleEnabled: boolean;
+  readonly isFakeLoginEnabled: boolean;
+
+  /** Google を経ないサインインのボタンとして並べる email。 */
+  readonly allowedEmails: readonly string[];
+};
+
+/**
+ * 環境変数を読み、ログインの画面に並べるサインインの手段を返す。
+ *
+ * 設定が欠けていれば `readAuthConfig` が throw する。
+ * `BETTER_AUTH_SECRET` と `GOOGLE_CLIENT_SECRET` は返さないので、戻り値を画面の描画へ渡してよい。
+ */
+export function readSignInMethods(): SignInMethods {
+  const config = readAuthConfig(process.env);
+
+  return {
+    isGoogleEnabled: config.google !== undefined,
+    isFakeLoginEnabled: config.isFakeLoginEnabled,
+    allowedEmails: config.allowedEmails,
+  };
+}
+
 /**
  * 環境変数を読んで Better Auth を組み立てる。
  * 設定が欠けていれば `readAuthConfig` が throw する。
