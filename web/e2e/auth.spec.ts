@@ -1,7 +1,7 @@
 /**
  * サインインの導線と、セッションの守りが実際のリクエストで効くかを見る。
  *
- * 単体テストが言えるのは `proxy` が返す値と設定の読み取りまでで、cookie に何が乗るか・別 origin からの POST が拒まれるかはブラウザから叩かないと見えない（`docs/adr/0022-session-security.md` 決定 2・4）。
+ * 単体テストが言えるのは `proxy` が返す値と設定の読み取りまでで、cookie に何が乗るか・別 origin からの POST が拒まれるかはブラウザから叩かないと見えない。
  * この spec だけはサインイン済みで始めない。
  * 未サインインの状態そのものを見るので、共有の前提（`e2e/setup/sign-in.ts`）を使わない。
  *
@@ -74,7 +74,7 @@ test("セッションの cookie は HttpOnly で SameSite=Lax", async ({ page })
   expect(setCookie).toContain("SameSite=Lax");
 
   // `secure` は明示しないので、http で叩くこの spec には乗らない。
-  // 本番で乗ることを見るのは `docs/DEPLOY.md`「ログイン」の curl（`docs/adr/0022-session-security.md` 決定 2）。
+  // 本番で乗ることを見るのは `docs/DEPLOY.md`「ログイン」の curl。
   expect(setCookie).not.toContain("Secure");
 });
 

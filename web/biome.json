@@ -43,8 +43,8 @@
           "level": "error",
           "options": {
             "paths": {
-              "better-auth": "Better Auth を組み立ててよいのは src/lib/auth/index.ts だけ（docs/adr/0022-session-security.md 決定 9）",
-              "@/lib/auth": "セッションを読む経路は src/lib/auth/current-user.ts の一本に絞る（docs/adr/0022-session-security.md 決定 9）"
+              "better-auth": "Better Auth を組み立ててよいのは src/lib/auth/index.ts だけ",
+              "@/lib/auth": "セッションを読む経路は src/lib/auth/current-user.ts の一本に絞る"
             },
             "patterns": [
               {

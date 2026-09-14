@@ -5,7 +5,7 @@
  * next にも better-auth にも依存しないので、設定の検証を単体テストから直に呼べる。
  *
  * 設定が欠けていたら、検証なしで通す側へフォールバックせず throw する。
- * 設定したつもりで設定されていない状態を残さないための規律で、この失敗は実際に二度踏んでいる（`docs/adr/0022-session-security.md`）。
+ * 設定したつもりで設定されていない状態を残さないための規律で、経緯は `docs/adr/0022-session-security.md` が持つ。
  *
  * エントリポイントは `readAuthConfig`。
  */
@@ -120,7 +120,7 @@ function readSecret(env: AuthEnv): string {
  * `TOIITO_ALLOWED_EMAILS` をカンマ区切りで読み、小文字へ揃えた配列を返す。
  *
  * 空の配列になるなら throw する。
- * 空を許すと、招待制のアプリが誰も入れない状態と誰でも入れる状態のどちらへ倒れたのかを読み取れなくなる（`docs/adr/0018-invite-only-multi-user.md` 決定 3）。
+ * 空を許すと、招待制のアプリが誰も入れない状態と誰でも入れる状態のどちらへ倒れたのかを読み取れなくなる。
  */
 function readAllowedEmails(env: AuthEnv): readonly string[] {
   const emails = (env.TOIITO_ALLOWED_EMAILS ?? "")
@@ -181,7 +181,7 @@ function readFakeLoginEnabled(env: AuthEnv): boolean {
 
   if (isEnabled && env.VERCEL_ENV === "production") {
     throw new Error(
-      "TOIITO_FAKE_LOGIN は本番（VERCEL_ENV=production）では設定できない。Preview と E2E だけが使う（docs/adr/0033-login-and-fake-sign-in.md 決定 3）",
+      "TOIITO_FAKE_LOGIN は本番（VERCEL_ENV=production）では設定できない。Preview と E2E だけが使う",
     );
   }
 

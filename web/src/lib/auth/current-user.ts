@@ -2,7 +2,7 @@
  * 現在のユーザーを取得する。
  *
  * RSC と Server Action は `requireCurrentUser` を経由してから `db.ts` の repo 関数を呼ぶ。
- * 「このユーザーを通してよいか」の判定を後から 1 箇所へ足せるので、経路を 1 本に絞る（`docs/adr/0022-session-security.md` 決定 9）。
+ * 「このユーザーを通してよいか」の判定を後から 1 箇所へ足せるので、経路を 1 本に絞る。
  * その判定はまだ無く、いま見ているのは Better Auth のセッションが在るかどうかだけである。
  * `@/lib/auth` を import してよいのはこのファイルと `sign-in.ts` とルートハンドラだけで、`biome.json` の `noRestrictedImports` が検査する。
  *
@@ -25,7 +25,7 @@ import type { User } from "@/lib/types";
  * 未サインインなら undefined を返す。
  *
  * `React.cache()` で包むので、1 リクエストの中で何度呼んでも DB への往復は 1 往復で済む。
- * セッションを取り消せる状態を保ったまま往復を減らせるので、Better Auth の `cookieCache` でなく `React.cache()` を使う（`docs/adr/0022-session-security.md` 決定 6）。
+ * セッションを取り消せる状態を保ったまま往復を減らせるので、Better Auth の `cookieCache` でなく `React.cache()` を使う。
  */
 export const getCurrentUser = cache(async (): Promise<User | undefined> => {
   const session = await auth().api.getSession({ headers: await headers() });

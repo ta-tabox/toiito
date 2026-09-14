@@ -70,7 +70,7 @@ export type Memo = {
   created_at: Date;
 };
 
-/** メモからの逆引き（#5）で使う、メモとその出所をまとめた形。 */
+/** メモからの逆引きで使う、メモとその出所をまとめた形。 */
 export type MemoWithContext = Memo & {
   session_id: string;
   question_id: string;

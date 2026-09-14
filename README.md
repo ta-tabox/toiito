@@ -28,8 +28,8 @@ AI は答えを与えない。
 
 MVP の縦一本（問い投入 → 二視点 AI との対話 → キーワードメモ → メモからのセッション逆引き）は動き、作者が常用している。
 
-本番は Vercel に立っている（[ADR-0002](docs/adr/0002-production-runtime.md)）。
-サインインできるのは許可リストに載った Google アカウントだけで、公開登録は無い（[ADR-0018](docs/adr/0018-invite-only-multi-user.md)、[ADR-0033](docs/adr/0033-login-and-fake-sign-in.md)）。
+本番は Vercel に立っている。
+サインインできるのは許可リストに載った Google アカウントだけで、公開登録は無い。
 出す手順は [docs/DEPLOY.md](docs/DEPLOY.md)。
 
 どの順で何を作るかは [docs/ROADMAP.md](docs/ROADMAP.md)、いま何に着手しているかは GitHub Issues が持つ。

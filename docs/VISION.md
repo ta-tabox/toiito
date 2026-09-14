@@ -60,7 +60,7 @@ AI はもっぱらスピードアップ（速く答えに到達する）の文�
 ### `status` のラベル
 
 **`status` の値そのものは比喩を持たない**。
-比喩は選び直しうるが enum の変更は migration を伴うので、変わる側を表示層へ閉じてある（`adr/0017-status-value-set.md`）。
+比喩は選び直しうるが enum の変更は migration を伴うので、変わる側を表示層へ閉じてある。
 比喩が動いてもこの表のラベル列だけが動き、値の列は動かない。
 
 意味の正は `ARCHITECTURE.md`「問いの状態機械」、値域の正は `prisma/schema.prisma` と `web/src/lib/question.ts`。

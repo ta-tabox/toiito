@@ -12,7 +12,7 @@
 /**
  * `Field` と `TextArea` で共有する見た目。
  *
- * 字の大きさが 16px を下回らないのは、iOS Safari が 16px 未満の入力欄へフォーカスすると自動でズームし、書き手が選んだ倍率を捨てるため（issue #160）。
+ * 字の大きさが 16px を下回らないのは、iOS Safari が 16px 未満の入力欄へフォーカスすると自動でズームし、書き手が選んだ倍率を捨てるため。
  */
 const FIELD_STYLE =
   "w-full rounded border border-transparent border-b-rule bg-transparent px-3 py-2 text-field text-ink placeholder:text-ink-weak focus:border-moss focus:bg-surface-low focus:outline-hidden";

@@ -21,7 +21,7 @@ export default defineConfig({
   //
   // アプリの接続先は別で、DATABASE_URL を PrismaClient の adapter が持つ（db.ts）。
   // 本番の Neon では DATABASE_URL がプーラー経由になるので、env は最初から二本に分けてある。
-  // schema.prisma 側に directUrl は書けない（Prisma 7 でこの config へ移った）。
+  // schema.prisma 側に directUrl は書けない（Prisma 7 の datasource は url も directUrl も受け取らない）。
   datasource: {
     url: env("DIRECT_URL"),
   },

@@ -15,7 +15,7 @@ VISION の設計原理が上位。
   ローカルは `compose.yaml` の Postgres、本番は Neon（手順は `DEPLOY.md`）
 - **Claude API（Anthropic）** — 二体 AI の対話生成。
   Server Actions（サーバー側）からのみ叩く。
-  呼び出し規約は `lib/ai/` がプロバイダ非依存の形で持ち、固有の値域と API の作法は `lib/ai/anthropic.ts` に閉じる（`adr/0021-ai-provider-scope.md`）
+  呼び出し規約は `lib/ai/` がプロバイダ非依存の形で持ち、固有の値域と API の作法は `lib/ai/anthropic.ts` に閉じる（経緯は `adr/0021-ai-provider-scope.md`）
 - **Better Auth（自前ホスト）** — 認証。
   Google OAuth 一本で、パスワードも OAuth のトークンも持たない。
   入れるのは `TOIITO_ALLOWED_EMAILS` に載ったメールアドレスだけ（経緯は `adr/0036-auth-better-auth.md`）。
@@ -118,11 +118,11 @@ UI 側でやらない。
 **現在のユーザーを返すエントリポイントは `lib/auth/current-user.ts` の `getCurrentUser` 一つ**で、RSC と Server Action は `requireCurrentUser` を通ってから repo 関数を呼ぶ。
 戻り値の `id` には印（`OwnerId`）が付いており、repo 関数は所有者としてその型しか受け取らない。
 中身は Better Auth のセッションが指す `user` 行で、未サインインなら `getCurrentUser` が undefined を返し、`requireCurrentUser` が `/login` へ送る。
-入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（`adr/0022-session-security.md` 決定 8）。
-Google を経ないサインイン（`TOIITO_FAKE_LOGIN=1`）は Preview と E2E だけが使い、本番では起動時に拒否される（`adr/0033-login-and-fake-sign-in.md`）。
+入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（理由は `adr/0022-session-security.md`）。
+Google を経ないサインイン（`TOIITO_FAKE_LOGIN=1`）は Preview と E2E だけが使い、本番では起動時に拒否される。
 
 認証まわりの四表（`user` / `session` / `account` / `verification`）は Better Auth が持ち、モデル名も列名も生成されたままにする。
-`db.ts` が触るのは `user` の `id` / `email` / `name` の三つだけで、どれも詰め替えの要らない列名なので、snake_case へ揃える利益が発生しない（`adr/0037-ownership-before-auth.md`）。
+`db.ts` が触るのは `user` の `id` / `email` / `name` の三つだけで、どれも詰め替えの要らない列名なので、snake_case へ揃える利益が発生しない。
 **Better Auth の `session` は対話の `sessions` と別物である**——前者はログイン、後者は問いへの再訪。
 Prisma のモデル名が一意でなければならないので、`Session` を名乗るのは Better Auth の側で、対話の側は `DialogueSession` と綴る（表も列もドメイン型も動いていない）。
 
@@ -137,7 +137,7 @@ Prisma のモデル名が一意でなければならないので、`Session` を
 ### 問いの状態機械
 
 7 値。
-比喩は選び直しうるが enum の変更は本番の DB を動かすので、**値は比喩を持たない一般語で持ち、比喩は UI のラベルだけが持つ**（`adr/0017-status-value-set.md`）。
+比喩は選び直しうるが enum の変更は本番の DB を動かすので、**値は比喩を持たない一般語で持ち、比喩は UI のラベルだけが持つ**。
 ラベルの正は `VISION.md`「語彙」節で、比喩が動いてもそちらの列だけが動く。
 
 | status | 意味 |
@@ -232,4 +232,4 @@ toiito/
   入れるのは許可リストに載ったメールアドレスだけで、誰でも登録できる形は開けない（経緯は `adr/0018-invite-only-multi-user.md`）
 - **パスワード認証**。
   パスワードハッシュは漏れたら他サービスまで巻き添えにするので、守るのではなく資産ごと持たない。
-  入口は Google OAuth 一本（`adr/0036-auth-better-auth.md`）
+  入口は Google OAuth 一本

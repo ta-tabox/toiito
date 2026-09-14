@@ -38,7 +38,7 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 `TOIITO_FAKE_AI` は**本番に入れない**。
 入れると本番が実 API を叩かず、決定的なダミー応答を返す。
 `TOIITO_FAKE_LOGIN` も**本番に入れない**。
-入れても動かず、`VERCEL_ENV=production` を見て起動時に落ちる（`adr/0033-login-and-fake-sign-in.md` 決定 3）。
+入れても動かず、`VERCEL_ENV=production` を見て起動時に落ちる。
 
 **8 本とも Production に入れてから最初のビルドを回す**。
 `postinstall` の `prisma generate` は `prisma.config.ts` 経由で `DIRECT_URL` を即時解決するので、無いとインストール段階で exit 1 になる。
@@ -47,8 +47,8 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 ## 初回のセットアップ
 
 1. **Neon 側で自分の組織を切り**、その下に本番プロジェクトを作って接続文字列を 2 本控える。
-   Vercel Marketplace の Neon 統合は使わない（`adr/0012-neon-outside-vercel-marketplace.md`）。
-   **Postgres は 18 を選ぶ**（ローカルと CI も 18。`adr/0009-postgres-18.md`）。
+   Vercel Marketplace の Neon 統合は使わない（理由は `adr/0012-neon-outside-vercel-marketplace.md`）。
+   **Postgres は 18 を選ぶ**（ローカルと CI も 18。理由は `adr/0009-postgres-18.md`）。
    Region は **AWS US East 1 (N. Virginia)** で、Vercel の関数リージョンの既定（`iad1`）と揃える。
    揃っていないと DB の往復が毎回大陸をまたぐ。
    接続文字列 2 本の違いはホスト名の `-pooler` だけ
@@ -125,14 +125,14 @@ PR ごとの Preview デプロイにも環境変数を 6 本入れる（Vercel �
 接続 2 本の末尾は本番と同じく `sslmode=verify-full`。
 
 **`BETTER_AUTH_URL` と Google の 2 本は Preview へ入れない**。
-Preview の URL は PR ごとに変わり、Google は redirect URI の事前登録を要求してワイルドカードを受け付けないので、実 OAuth を通せない（`adr/0036-auth-better-auth.md`）。
+Preview の URL は PR ごとに変わり、Google は redirect URI の事前登録を要求してワイルドカードを受け付けないので、実 OAuth を通せない。
 Preview のサインインは `TOIITO_FAKE_LOGIN=1` が開ける経路だけで、ログインの画面に許可リストの email がボタンとして並ぶ。
 
 **認証の 3 本を落とさない**。
 欠けていると `lib/auth/index.ts` が最初のリクエストで投げ、Preview の全ページが 500 になる。
 `next build` は設定を読まないのでビルドは通るため、**Vercel のチェックは緑のまま中身だけ壊れる**。
 
-**Preview の露出は引き受けている**（`adr/0022-session-security.md` 決定 10）。
+**Preview の露出は引き受けている**（理由は `adr/0022-session-security.md`）。
 外側の Vercel Authentication は共有リンク一本で抜けるので、漏れた共有リンクはログインの画面まで届く。
 そこから先はサインインが要るが、`TOIITO_ALLOWED_EMAILS` に載った email のボタンを押すだけで入れる。
 **引き受ける条件は「Preview に本番のデータが無いこと」**で、条件が崩れればこの構成も崩れる。
@@ -244,9 +244,9 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 
 ## ログイン
 
-本番の外周を守るのは**アプリのログイン**である（`adr/0033-login-and-fake-sign-in.md`）。
+本番の外周を守るのは**アプリのログイン**である（経緯は `adr/0033-login-and-fake-sign-in.md`）。
 `web/src/proxy.ts` が全リクエストを見て、セッションの cookie が無ければ `/login` へ送る。
-入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（`adr/0022-session-security.md` 決定 8）。
+入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（理由は `adr/0022-session-security.md`）。
 
 **ホスティング側のアクセス制限は本番に効かない**。
 Hobby で選べる Vercel Authentication の Standard Protection は、API 上の名前が `prod_deployment_urls_and_all_previews` で、守るのは production の**デプロイ URL**（`<project>-<hash>-<team>.vercel.app`）と Preview だけである。
@@ -268,7 +268,7 @@ curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://<project>.verce
 200 が返ったら効いていないので、`proxy.ts` が本番で走っているかを見る。
 
 **cookie に `Secure` が乗っていることも、この層が見る。**
-アプリは `secure` を明示しない（明示すると手元の http でも立ってサインインできなくなる）ので、本番で立っていることは応答でしか確かめられない（`adr/0022-session-security.md` 決定 2）。
+アプリは `secure` を明示しない（明示すると手元の http でも立ってサインインできなくなる）ので、本番で立っていることは応答でしか確かめられない。
 サインインした後の `Set-Cookie` を読む。
 
 ```bash
@@ -279,7 +279,7 @@ cookie の名前が `__Secure-better-auth.session_token` で始まっていれ�
 名前に `__Secure-` が無ければ立っていないので、`BETTER_AUTH_URL` が `https://` で始まっているかを見る。
 
 **CSRF が効いていることも一度は叩いて確かめる。**
-同じ POST を、別 origin と自分の origin の 2 通りで送る（`adr/0022-session-security.md` 決定 4）。
+同じ POST を、別 origin と自分の origin の 2 通りで送る。
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' -X POST 'https://<project>.vercel.app/api/auth/sign-out' \
