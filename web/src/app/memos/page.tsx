@@ -13,7 +13,7 @@
 import Link from "next/link";
 import { MemoDialog } from "@/components/memo-dialog";
 import { Row } from "@/components/ui/row";
-import { excerptParts } from "@/lib/anchors";
+import { excerptParts, parseAnchor } from "@/lib/anchors";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { listMemosWithContext } from "@/lib/db";
 
@@ -50,14 +50,14 @@ export default async function MemosPage({
   searchParams: Promise<{ memo?: string }>;
 }) {
   const { memo: openedId } = await searchParams;
-  const memos = await listMemosWithContext((await requireCurrentUser()).id);
+  const { id: owner } = await requireCurrentUser();
+  const memos = await listMemosWithContext(owner);
   const opened = memos.find((memo) => memo.id === openedId);
   const openedQuote =
     opened &&
     excerptParts(
       opened.message_body,
-      opened.anchor_start,
-      opened.anchor_end,
+      parseAnchor(opened.anchor_start, opened.anchor_end),
       DIALOG_EXCERPT_MARGIN,
     );
 
@@ -78,8 +78,7 @@ export default async function MemosPage({
         {memos.map((memo) => {
           const quote = excerptParts(
             memo.message_body,
-            memo.anchor_start,
-            memo.anchor_end,
+            parseAnchor(memo.anchor_start, memo.anchor_end),
             EXCERPT_MARGIN,
           );
 

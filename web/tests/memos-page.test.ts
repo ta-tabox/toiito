@@ -2,6 +2,7 @@ import { createOwner } from "@tests/setup/owner";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import MemosPage from "@/app/memos/page";
+import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
 import type { OwnerId } from "@/lib/types";
 
@@ -79,20 +80,15 @@ async function memoInLongMessage(keyword: string, note?: string) {
   const before = "前".repeat(100);
   const after = "後".repeat(100);
   const { question, session } = await db.createQuestion(owner, "逆引きの検査");
-  const message = await db.addMessage(
-    owner,
-    session.id,
-    "ai_a",
-    `${before}${keyword}${after}`,
-  );
-  const memo = await db.addMemo(
-    owner,
-    message.id,
-    before.length,
-    before.length + keyword.length,
+  const message = await db.addMessage(owner, session.id, {
+    speaker: "ai_a",
+    body: `${before}${keyword}${after}`,
+  });
+  const memo = await db.addMemo(owner, message.id, {
+    anchor: parseAnchor(before.length, before.length + keyword.length),
     keyword,
     note,
-  );
+  });
 
   return { question, session, message, memo, before, after };
 }
@@ -106,7 +102,8 @@ describe("/memos", () => {
   it("各行はそのメモの拡大表示へリンクする", async () => {
     const { memo } = await memoInLongMessage("拡大表示の対象");
 
-    const hrefs = hrefsOf(await listPage());
+    const listed = await listPage();
+    const hrefs = hrefsOf(listed);
 
     expect(hrefs).toContain(`/memos?memo=${memo.id}`);
   });
@@ -132,7 +129,8 @@ describe("/memos", () => {
     const { question, session, message } =
       await memoInLongMessage("開かない対象");
 
-    const hrefs = hrefsOf(await listPage());
+    const listed = await listPage();
+    const hrefs = hrefsOf(listed);
 
     // 逆引きのリンクは拡大表示の中にしか無い。
     expect(hrefs).not.toContain(
@@ -147,7 +145,8 @@ describe("/memos", () => {
       "この言い換えが効いた",
     );
 
-    const text = textOf(await listPage());
+    const listed = await listPage();
+    const text = textOf(listed);
 
     expect(text).toContain(keyword);
     expect(text).toContain("この言い換えが効いた");
@@ -164,7 +163,8 @@ describe("/memos", () => {
     await memoInLongMessage(older);
     await memoInLongMessage(newer);
 
-    const text = textOf(await listPage());
+    const listed = await listPage();
+    const text = textOf(listed);
 
     expect(text.indexOf(newer)).toBeLessThan(text.indexOf(older));
   });

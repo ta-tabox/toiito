@@ -106,9 +106,9 @@ export const ANTHROPIC_DEFAULTS = {
 
 /**
  * env から設定を読む。
+ * 数として読めない値（未設定・空・非数）は既定値にする。
  *
  * 深さは系統ごとに違うので、`readAnthropicSettings` では読まない（`readAnthropicProviders` が足す）。
- * 数として読めない値（未設定・空・非数）は既定値にする。
  * フェイクモードはプロバイダを叩くかどうかの指定で env に依らないので、解決済みの値を受け取る。
  */
 export function readAnthropicSettings(
@@ -136,11 +136,10 @@ export class AnthropicProvider extends AiProvider {
 
   /**
    * 組み立て済みの本文を Claude API へ送る。
+   * `apiKey` が無ければ送信の前に throw し、`signal` が切れて fetch が投げた例外は捕まえずに呼び出し元へ伝える。
    *
-   * `apiKey` が無ければ送信の前に throw する。
    * 打ち切りは `stop_reason` で判定して通すだけで、拒むかどうかは `callPersona` が決める。
-   * 上限を超えると `signal` が切れ、走っている fetch は例外を投げて中断する。
-   * その例外は `send` で捕まえないので、呼び出し元の `callPersona` へそのまま伝わり、`callPersona` が上限超過として投げ直す。
+   * `signal` が切れたときの例外を `send` で捕まえると、`callPersona` が上限超過として投げ直せなくなる。
    */
   async send(
     system: string,
@@ -179,11 +178,11 @@ export class AnthropicProvider extends AiProvider {
       );
     }
 
-    const data = (await res.json()) as {
+    const data: {
       content: { type: string; text?: string }[];
       stop_reason: string | null;
       usage?: { input_tokens: number; output_tokens: number };
-    };
+    } = await res.json();
 
     // thinking だけで応答が終わると text ブロックが一つも来ない。
     const body = data.content

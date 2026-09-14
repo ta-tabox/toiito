@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import QuestionPage from "@/app/q/[id]/page";
 import { MessageBody } from "@/components/message-body";
 import { SpeakForm } from "@/components/speak-form";
+import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
 import type { Memo, Message, OwnerId } from "@/lib/types";
 
@@ -59,7 +60,7 @@ async function questionWithMemoOnSecondMessage() {
       {
         speaker: "ai_a",
         body: "具体の応答",
-        memos: [{ anchorStart: 0, anchorEnd: 2, keyword: "具体" }],
+        memos: [{ anchor: parseAnchor(0, 2), keyword: "具体" }],
       },
     ],
   });
@@ -72,19 +73,20 @@ async function questionWithMemoOnSecondMessage() {
  * セッション ID を渡すとそのセッション、渡さなければ最新セッションを描く。
  */
 async function renderTree(questionId: string, sessionId?: string) {
-  return elementsOf(
-    await QuestionPage({
-      params: Promise.resolve({ id: questionId }),
-      searchParams: Promise.resolve({ s: sessionId }),
-    }),
-  );
+  const tree = await QuestionPage({
+    params: Promise.resolve({ id: questionId }),
+    searchParams: Promise.resolve({ s: sessionId }),
+  });
+
+  return elementsOf(tree);
 }
 
 describe("/q/[id]", () => {
   it("各発話に逆引きの着地点となる id を付ける", async () => {
     const { question, messages } = await questionWithMemoOnSecondMessage();
 
-    const ids = (await renderTree(question.id))
+    const tree = await renderTree(question.id);
+    const ids = tree
       .map((element) => (element.props as { id?: unknown }).id)
       .filter((id) => id !== undefined);
 
@@ -96,12 +98,10 @@ describe("/q/[id]", () => {
   it("?s が指すセッションを描く（再訪しても当時の発話が残る）", async () => {
     const { question, messages } = await questionWithMemoOnSecondMessage();
     const revisit = await db.createSession(owner, question.id);
-    const later = await db.addMessage(
-      owner,
-      revisit.id,
-      "human",
-      "日を空けてまた話す",
-    );
+    const later = await db.addMessage(owner, revisit.id, {
+      speaker: "human",
+      body: "日を空けてまた話す",
+    });
 
     const ids = (id?: string) =>
       renderTree(question.id, id).then((tree) =>
@@ -110,12 +110,13 @@ describe("/q/[id]", () => {
           .filter((id) => id !== undefined),
       );
 
+    const latestIds = await ids();
+    const pastIds = await ids(messages[0].session_id);
+
     // 既定は最新セッション。
     // 当時の発話は ?s で名指ししたときにだけ出る（メモからの逆引きがこの経路を使う）。
-    expect(await ids()).toEqual([`msg-${later.id}`]);
-    expect(await ids(messages[0].session_id)).toEqual(
-      messages.map((m) => `msg-${m.id}`),
-    );
+    expect(latestIds).toEqual([`msg-${later.id}`]);
+    expect(pastIds).toEqual(messages.map((m) => `msg-${m.id}`));
   });
 
   it("過去セッションを読むときは発話フォームを出さない", async () => {
@@ -127,15 +128,19 @@ describe("/q/[id]", () => {
         tree.some((element) => element.type === SpeakForm),
       );
 
-    expect(await hasSpeakForm()).toBe(true);
-    expect(await hasSpeakForm(session.id)).toBe(false);
+    const onLatest = await hasSpeakForm();
+    const onPast = await hasSpeakForm(session.id);
+
+    expect(onLatest).toBe(true);
+    expect(onPast).toBe(false);
   });
 
   it("各発話の本文へ、その発話に付いたメモだけを渡す", async () => {
     const { question, messages, memos } =
       await questionWithMemoOnSecondMessage();
 
-    const bodies = (await renderTree(question.id))
+    const tree = await renderTree(question.id);
+    const bodies = tree
       .filter((element) => element.type === MessageBody)
       .map((element) => element.props as { message: Message; memos: Memo[] });
 

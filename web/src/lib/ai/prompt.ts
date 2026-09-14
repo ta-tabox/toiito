@@ -6,10 +6,10 @@
  * ai_b の呼び出し時には直前の ai_a の発話も含まれている前提（二体は並列でなく逐次——ai_b は ai_a への応答であることに意味がある）。
  */
 
-import type { Speaker } from "@/lib/types";
+import type { Speaker, Utterance } from "@/lib/types";
 
 /** ここまでの全発話。 */
-export type Transcript = { speaker: Speaker; body: string }[];
+export type Transcript = Utterance[];
 
 /**
  * 原型と現在の形を両方渡す。

@@ -48,12 +48,28 @@ export type SessionWithKeywords = Session & { keywords: string[] };
 
 export type Speaker = "human" | "ai_a" | "ai_b";
 
+/**
+ * 発話の話者と本文の組。
+ * `messages` へ追記する前の発話で、AI へ渡す transcript の一行でもある。
+ */
+export type Utterance = { speaker: Speaker; body: string };
+
 export type Message = {
   id: string;
   session_id: string;
   speaker: Speaker;
   body: string;
   created_at: Date;
+};
+
+/**
+ * 発話本文の中の範囲。
+ * `start` と `end` は本文先頭からの文字オフセット（JS の string index）で、`start` を含み `end` を含まない。
+ *
+ * 作れるのは `anchors.ts` の `parseAnchor` だけなので、`Anchor` を受け取る関数は `start >= 0` かつ `end > start` の整数であることを検証し直さない。
+ */
+export type Anchor = { readonly start: number; readonly end: number } & {
+  readonly __brand: "Anchor";
 };
 
 /**

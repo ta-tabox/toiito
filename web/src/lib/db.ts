@@ -18,6 +18,7 @@ import { DATABASE_URL } from "@/lib/config";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
 import type {
+  Anchor,
   Memo,
   MemoWithContext,
   Message,
@@ -25,8 +26,8 @@ import type {
   Question,
   Session,
   SessionWithKeywords,
-  Speaker,
   User,
+  Utterance,
 } from "@/lib/types";
 
 /**
@@ -86,9 +87,8 @@ export function questionText(q: Question): string {
 }
 
 /**
- * `user` 表から読んだ行を、ドメイン型の `User` へ写す。
+ * `user` 表を SELECT した直後の行を、ドメイン型の `User` へ写す。
  *
- * 呼ぶのは `user` 表を SELECT した直後の 3 箇所（`getUserByEmail` と `getUserById` と `createUser`）だけである。
  * `OwnerId` へ変換してよいのは `fromUserRow` だけで、`fromUserRow` を経由したことが「その文字列は `user.id` である」の唯一の根拠になる。
  * URL やフォームから来た文字列は `fromUserRow` を経由しないので、`OwnerId` にならない。
  */
@@ -97,11 +97,10 @@ function fromUserRow(row: { id: string; email: string; name: string }): User {
 }
 
 /**
- * Better Auth のアダプタへ渡す Prisma のクライアントを返す。
+ * Better Auth のアダプタへ渡す、アプリと同じ Prisma のクライアントを返す。
  *
  * 呼んでよいのは `lib/auth/index.ts` だけである。
- * Prisma を `db.ts` の外へ出さないという禁止則（`docs/ARCHITECTURE.md`「技術スタック」）の唯一の例外で、Better Auth が四表を読み書きするのにクライアントそのものを要求するために開けてある。
- * アプリが使うのと同じクライアントを返すので、接続プールは 1 本のままになる。
+ * Better Auth が四表を読み書きするのにクライアントそのものを要求するので、Prisma を `db.ts` の外へ出さないという禁止則（`docs/ARCHITECTURE.md`「技術スタック」）の例外として開けてある。
  */
 export function authDatabaseClient(): PrismaClient {
   return db();
@@ -142,8 +141,7 @@ export async function getUserById(id: string): Promise<User | undefined> {
  * ユーザーを作る。
  *
  * 本番の経路では Better Auth が四表を書くので、`createUser` を呼ぶのは開発用シードだけである。
- * id は Better Auth の生成に合わせず UUID を振る。
- * `user.id` は文字列でありさえすればよく、この二人が IdP を持たない以上、id の作り方を真似ても得るものが無い。
+ * `user.id` は文字列でありさえすればよいので、id は Better Auth の生成に合わせず UUID を振る。
  */
 export async function createUser(email: string, name: string): Promise<User> {
   const row = await db().user.create({
@@ -193,22 +191,20 @@ export async function listQuestions(owner: OwnerId): Promise<Question[]> {
 
 /**
  * id で問いを 1 件取得する。
+ * `id` に一致する行が無ければ undefined を返し、owner 以外が所有する問いも同じ undefined を返す。
  *
- * `id` に一致する行が無ければ undefined を返す。
- * owner 以外が所有する問いも同じ undefined になる。
  * 二つを違う応答にすると、URL の id を差し替えるだけで在ることが読める。
- *
- * findUnique でなく findFirst なのは、findUnique の where が一意な列しか受け取らず `user_id` の条件を足せないため。
- * id は主キーなので返るのは 0 件か 1 件で、「先頭」という意味は持たない。
+ * findUnique の where は一意な列しか受け取らず `user_id` の条件を足せないので、主キーで取得する場合も findFirst を使う。
  */
 export async function getQuestion(
   owner: OwnerId,
   id: string,
 ): Promise<Question | undefined> {
-  return (
-    (await db().question.findFirst({ where: { id, user_id: owner } })) ??
-    undefined
-  );
+  const question = await db().question.findFirst({
+    where: { id, user_id: owner },
+  });
+
+  return question ?? undefined;
 }
 
 /**
@@ -258,7 +254,6 @@ async function requireOwnedSession(
  *
  * 空文字・空白のみは「現在の形なし」として扱い、表示を原型へ戻す。
  * 存在しない問いへの言い直しは呼び出し側の誤りなので、問いが無ければ throw する。
- * 見つからないことを正常終了として扱わない。
  */
 export async function setCurrentForm(
   owner: OwnerId,
@@ -287,7 +282,9 @@ export async function setQuestionStatus(
   status: QuestionStatus,
 ): Promise<Question> {
   if (!isQuestionStatus(status)) {
-    throw new Error(`unknown question status: ${status}`);
+    throw new Error(
+      `問いの状態が QUESTION_STATUSES に無い: ${status}（問い ${questionId}）`,
+    );
   }
 
   await requireOwnedQuestion(owner, questionId);
@@ -305,11 +302,11 @@ export async function getSession(
   owner: OwnerId,
   id: string,
 ): Promise<Session | undefined> {
-  return (
-    (await db().dialogueSession.findFirst({
-      where: { id, question: { user_id: owner } },
-    })) ?? undefined
-  );
+  const session = await db().dialogueSession.findFirst({
+    where: { id, question: { user_id: owner } },
+  });
+
+  return session ?? undefined;
 }
 
 /**
@@ -322,22 +319,19 @@ export async function latestSession(
   owner: OwnerId,
   questionId: string,
 ): Promise<Session | undefined> {
-  return (
-    (await db().dialogueSession.findFirst({
-      where: { question_id: questionId, question: { user_id: owner } },
-      orderBy: [{ started_at: "desc" }, { seq: "desc" }],
-    })) ?? undefined
-  );
+  const session = await db().dialogueSession.findFirst({
+    where: { question_id: questionId, question: { user_id: owner } },
+    orderBy: [{ started_at: "desc" }, { seq: "desc" }],
+  });
+
+  return session ?? undefined;
 }
 
 /**
  * 同じ問いに新しいセッションを足す（再訪）。
+ * 既存のセッションは閉じずに残し、この問いの `pending_messages` の行は同じトランザクションで削除する。
  *
- * 既存のセッションは閉じず、そのまま残す。
- * 何度戻ったかが読み返せることが目的。
- *
- * この問いの `pending_messages` の行も、同じトランザクションで削除する。
- * 再送の UI は最新のセッションにしか出ないので、残したまま新しいセッションを作ると再送できない行になる。
+ * 再送の UI は最新のセッションにしか出ないので、`pending_messages` の行を残したまま新しいセッションを作ると再送できない行になる。
  */
 export async function createSession(
   owner: OwnerId,
@@ -416,13 +410,16 @@ export async function listMessages(
 export async function addMessage(
   owner: OwnerId,
   sessionId: string,
-  speaker: Speaker,
-  body: string,
+  utterance: Utterance,
 ): Promise<Message> {
   await requireOwnedSession(owner, sessionId);
 
   return db().message.create({
-    data: { session_id: sessionId, speaker, body },
+    data: {
+      session_id: sessionId,
+      speaker: utterance.speaker,
+      body: utterance.body,
+    },
   });
 }
 
@@ -467,7 +464,7 @@ export async function savePendingBody(
 
   if (body.length > MESSAGE_BODY_MAX_LENGTH) {
     throw new Error(
-      `savePendingBody: body length (${body.length}) exceeds limit (${MESSAGE_BODY_MAX_LENGTH}) for session ${sessionId}`,
+      `本文が上限を超えている: ${body.length} 字（上限 ${MESSAGE_BODY_MAX_LENGTH}、セッション ${sessionId}）`,
     );
   }
 
@@ -495,40 +492,37 @@ export async function getPendingBody(
 
 /**
  * メッセージ本文の一部にメモを付ける。
+ * 発話が無いか owner 以外が所有する発話なら throw し、`input.anchor` の終端が本文長を超えても throw する。
  *
- * DB の check は本文長を知らないため `start >= 0 && end > start` しか守れない。
- * `anchor_end <= 本文長` は `addMemo` の責務なので、挿入前に検査して文脈付きで拒否する。
- *
- * 所有者の判定は本文を取得する SELECT の where に含めてある。
- * owner 以外が所有する発話はその SELECT が 0 件になって throw するので、`requireOwnedSession` をもう一度呼ばない。
+ * 範囲の形は `Anchor` が保証するが、本文長は発話を取得するまで分からないので、`anchor.end <= 本文長` は挿入前に `addMemo` が検査する。
+ * 所有者の条件は本文を取得する SELECT の where に含めてあるので、`requireOwnedSession` をもう一度呼ばない。
  */
 export async function addMemo(
   owner: OwnerId,
   messageId: string,
-  anchorStart: number,
-  anchorEnd: number,
-  keyword: string,
-  note?: string,
+  input: MemoInput,
 ): Promise<Memo> {
+  const { anchor, keyword, note } = input;
+
   const message = await db().message.findFirst({
     where: { id: messageId, session: { question: { user_id: owner } } },
   });
 
   if (!message) {
-    throw new Error(`addMemo: message not found: ${messageId}`);
+    throw new Error(`発話が見つからない: ${messageId}`);
   }
 
-  if (anchorEnd > message.body.length) {
+  if (anchor.end > message.body.length) {
     throw new Error(
-      `addMemo: anchor_end (${anchorEnd}) exceeds body length (${message.body.length}) of message ${messageId}`,
+      `anchor_end が本文長を超えている: ${anchor.end}（本文長 ${message.body.length}、発話 ${messageId}）`,
     );
   }
 
   return db().memo.create({
     data: {
       message_id: messageId,
-      anchor_start: anchorStart,
-      anchor_end: anchorEnd,
+      anchor_start: anchor.start,
+      anchor_end: anchor.end,
       keyword,
       note: note ?? null,
     },
@@ -557,13 +551,10 @@ export async function listMemosForSession(
 
 /**
  * 全メモを、出所の発話・セッション・問いごと新しい順に返す。
- *
- * メモからの逆引き用。
  * `memos → messages → sessions → questions` を一度に SELECT し、N+1 に割らない。
- * 古い順で読む用途が無く、件数を絞るときも先頭から取れば新しい分が残るので、並びは新しい順で確定させる。
- * 表示側で反転すると、絞った後の並べ替えになって古い分が残る。
  *
- * 所有者の条件は、既に辿っている経路の先に where が一つ増えるだけで、join は増えない。
+ * 件数を絞るときも先頭から取れば新しい分が残るので、並びは `listMemosWithContext` が新しい順で確定させる。
+ * 表示側で反転すると、絞った後の並べ替えになって古い分が残る。
  */
 export async function listMemosWithContext(
   owner: OwnerId,
@@ -586,26 +577,17 @@ export async function listMemosWithContext(
   }));
 }
 
-/** 対話とメモをまとめて作るときの、一件のメモ。 */
-export type MemoInput = {
-  anchorStart: number;
-  anchorEnd: number;
-  keyword: string;
-  note?: string;
-};
+/** `addMemo` と `createQuestionWithTranscript` が受け取る、一件のメモ。 */
+export type MemoInput = { anchor: Anchor; keyword: string; note?: string };
 
-/** 対話とメモをまとめて作るときの、一件の発話。 */
-export type MessageInput = {
-  speaker: Speaker;
-  body: string;
-  memos?: MemoInput[];
-};
+/** 対話とメモをまとめて作るときの、一件の発話と、その発話に付けるメモ。 */
+export type MessageInput = Utterance & { memos?: MemoInput[] };
 
 /**
  * 問いを対話ごと作るときの入力。
  *
  * currentForm と status は、既定（原型のまま・new）から動かすときだけ渡す。
- * メモの範囲（anchorStart / anchorEnd）は呼び出し側が決める。
+ * メモの範囲（`anchor`）は呼び出し側が決める。
  * 本文中の位置を求めるのは DB 非依存の計算で、この層の仕事ではない。
  */
 export type QuestionInput = {
@@ -646,25 +628,15 @@ export async function createQuestionWithTranscript(
   const memos: Memo[] = [];
 
   for (const messageInput of input.messages) {
-    const message = await addMessage(
-      owner,
-      session.id,
-      messageInput.speaker,
-      messageInput.body,
-    );
+    const message = await addMessage(owner, session.id, {
+      speaker: messageInput.speaker,
+      body: messageInput.body,
+    });
     messages.push(message);
 
     for (const memoInput of messageInput.memos ?? []) {
-      memos.push(
-        await addMemo(
-          owner,
-          message.id,
-          memoInput.anchorStart,
-          memoInput.anchorEnd,
-          memoInput.keyword,
-          memoInput.note,
-        ),
-      );
+      const memo = await addMemo(owner, message.id, memoInput);
+      memos.push(memo);
     }
   }
 
@@ -680,9 +652,9 @@ const SETUP_ERROR_CODES = new Set(["P1001", "P1003", "P2021"]);
 
 /**
  * DB の準備ができていない失敗なら、手当てを促す文へ包み直す。
+ * 準備不足に当たらない失敗は `cause` をそのまま返す。
  *
  * Prisma のエラーコードを読めるのは `db.ts` だけなので、判定も `db.ts` が持つ（`db.ts` の外へ Prisma を出さない）。
- * 準備不足に当たらない失敗はそのまま返す。
  * 原因を伏せると、準備の問題でない失敗まで docker を疑わせることになる。
  */
 export function withSetupGuidance(cause: unknown): unknown {
