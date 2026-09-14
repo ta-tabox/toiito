@@ -3,6 +3,7 @@
  *
  * ai_a と ai_b が両方返ってから、`commitTurn` が三行をまとめて `messages` へ入れる。
  * AI 呼び出しが失敗しても throw せず、`pending_messages` に人間の発話を残して戻る（理由は `docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+ * AI を待つあいだに同じ問いへの別の書き込みが先に確定していたときも、throw せず三行を書かずに戻る（理由は `docs/adr/0042-serialize-turn-writes.md`）。
  *
  * 呼び出す二体（`PersonaCalls`）は引数で受け取る。
  * `runTurn` が `AI_PROVIDERS` を直接参照すると、テストが失敗経路を作れなくなる。
@@ -55,7 +56,7 @@ export function personaCalls(): PersonaCalls {
 /**
  * 成立しなかった一往復を 1 行の JSON で残す。
  *
- * 画面は失敗の理由を区別しないので、5 つある失敗経路を見分けられるのはこの記録だけになる。
+ * 画面は失敗の理由を区別しないので、AI 呼び出しの 5 つの失敗経路と、書き込みで先を越された場合を見分けられるのはこの記録だけになる。
  * 発話本文は出さない（`lib/ai/` の呼び出し記録と同じ扱い）。
  */
 function logTurnFailure(sessionId: string, error: unknown): void {
@@ -99,8 +100,9 @@ async function callBoth(input: {
 
 /**
  * `body` を `pending_messages` へ書き込んでから、一往復を実行する。
- *
  * ai_a か ai_b が失敗すると `messages` は変わらず、`pending_messages` の行だけが残る。
+ * AI を待つあいだに同じセッションで別の一往復が成立したか、新しいセッションが作られていたときも、`messages` は変わらない。
+ * セッションが問いの最新セッションでなければ、書き込む前に throw する。
  */
 export async function runTurn(
   target: TurnTarget & { readonly body: string },
@@ -126,7 +128,17 @@ export async function runTurn(
     return;
   }
 
-  await commitTurn(owner, sessionId, { human: body, ...responses });
+  const isCommitted = await commitTurn(owner, sessionId, {
+    bodies: { human: body, ...responses },
+    messageCountAtStart: messages.length,
+  });
+
+  if (!isCommitted) {
+    logTurnFailure(
+      sessionId,
+      "応答を待つあいだに、同じセッションで別の一往復が成立したか、新しいセッションが作られた",
+    );
+  }
 }
 
 /**

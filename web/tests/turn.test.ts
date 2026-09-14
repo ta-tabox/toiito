@@ -1,5 +1,5 @@
 /**
- * 一往復が途中で失敗したときに何が残るかの検査。
+ * 一往復が途中で失敗したとき・同じセッションへ並走したとき・過去のセッションへ向けられたときに、何が残るかの検査。
  *
  * 見るのは `messages` と `pending_messages` の二つだけで、AI の応答の中身は見ない（呼び出し規約は `ai.test.ts` が検査する）。
  * 実 API は叩かない（`docs/HARNESS.md`「実 API を自動テストで叩かない」）。
@@ -40,6 +40,46 @@ class FailingProvider extends AiProvider {
 }
 
 /**
+ * `open` が呼ばれるまで応答を返さないプロバイダ。
+ *
+ * AI を待つあいだに別の書き込みを挟む順序を、テストの側で決めるために使う。
+ * `callPersona` はフェイクモードを送信の前に見るので、fake を降ろしてある。
+ */
+class GatedProvider extends AiProvider {
+  readonly name = "gated";
+  readonly settings = { ...FAKE_PROVIDER.settings, fake: false };
+  readonly #reached = Promise.withResolvers<void>();
+  readonly #opened = Promise.withResolvers<void>();
+
+  /** `send` が呼ばれて止まった時点で解決する Promise を返す。 */
+  get reached(): Promise<void> {
+    return this.#reached.promise;
+  }
+
+  /** 止まっている `send` を進める。 */
+  open(): void {
+    this.#opened.resolve();
+  }
+
+  /** 止まったことを `reached` へ知らせ、`open` を待ってから決定的な応答を返す。 */
+  async send(): Promise<ProviderResponse> {
+    this.#reached.resolve();
+    await this.#opened.promise;
+
+    return {
+      body: "止めてから返した応答",
+      stopReason: "end_turn",
+      inputTokens: 0,
+      outputTokens: 0,
+      truncated: false,
+    };
+  }
+}
+
+/** 一往復ぶんの話者の並び。 */
+const ONE_TURN = ["human", "ai_a", "ai_b"];
+
+/**
  * 二体ぶんの呼び出し指定。
  * 既定は両方フェイクで、失敗させたい体だけ差し替える。
  */
@@ -51,6 +91,14 @@ function calls(failing?: PersonaId): PersonaCalls {
   });
 
   return { ai_a: call("ai_a"), ai_b: call("ai_b") };
+}
+
+/** ai_a だけを `gate` で止める呼び出し指定。 */
+function callsGatedBy(gate: GatedProvider): PersonaCalls {
+  return {
+    ...calls(),
+    ai_a: { id: "ai_a", prompt: loadPersona("ai_a"), provider: gate },
+  };
 }
 
 let owner: OwnerId;
@@ -218,9 +266,12 @@ describe("再送", () => {
     // 二つの Server Action が同時に走ると起きるので、行を上書きしてから commitTurn する。
     await db.savePendingBody(owner, target.sessionId, "あとから送った発話");
     await db.commitTurn(owner, target.sessionId, {
-      human: "再送していた発話",
-      ai_a: "具体の応答",
-      ai_b: "抽象の応答",
+      bodies: {
+        human: "再送していた発話",
+        ai_a: "具体の応答",
+        ai_b: "抽象の応答",
+      },
+      messageCountAtStart: 0,
     });
 
     const pending = await db.getPendingBody(owner, target.sessionId);
@@ -232,11 +283,14 @@ describe("再送", () => {
 
     await expect(
       db.commitTurn(owner, target.sessionId, {
-        human: "預けていない発話",
-        ai_a: "具体の応答",
-        ai_b: "抽象の応答",
+        bodies: {
+          human: "預けていない発話",
+          ai_a: "具体の応答",
+          ai_b: "抽象の応答",
+        },
+        messageCountAtStart: 0,
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(true);
 
     const messages = await db.listMessages(owner, target.sessionId);
     expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
@@ -257,5 +311,105 @@ describe("再訪", () => {
     // 再送の UI は最新のセッションにしか出ないので、残すと再送できない行になる。
     const pending = await db.getPendingBody(owner, target.sessionId);
     expect(pending).toBeUndefined();
+  });
+
+  it("過去のセッションへの一往復は throw し、発話も保留も書き込まない", async () => {
+    const target = await newDialogue();
+    await db.createSession(owner, target.questionId);
+
+    await expect(
+      runTurn({ ...target, body: "過去へ足す発話", calls: calls() }),
+    ).rejects.toThrow(/最新のセッションでない/);
+
+    const messages = await db.listMessages(owner, target.sessionId);
+    const pending = await db.getPendingBody(owner, target.sessionId);
+
+    expect(messages).toEqual([]);
+    expect(pending).toBeUndefined();
+  });
+});
+
+describe("並走", () => {
+  it("同じセッションへ二本の一往復を同時に走らせても、messages は一往復ぶんか二往復ぶんの並びになる", async () => {
+    const target = await newDialogue();
+
+    await Promise.all([
+      runTurn({ ...target, body: "一本目", calls: calls() }),
+      runTurn({ ...target, body: "二本目", calls: calls() }),
+    ]);
+
+    const messages = await db.listMessages(owner, target.sessionId);
+    const speakers = messages.map((m) => m.speaker);
+
+    expect([ONE_TURN, [...ONE_TURN, ...ONE_TURN]]).toContainEqual(speakers);
+  });
+
+  it("再送を待つあいだに送った発話は、再送が先に成立すると messages へ入らず、pending_messages に残る", async () => {
+    const target = await newDialogue();
+    const retrying = new GatedProvider();
+    const speaking = new GatedProvider();
+
+    const retry = runTurn({
+      ...target,
+      body: "再送した発話",
+      calls: callsGatedBy(retrying),
+    });
+    await retrying.reached;
+
+    const speak = runTurn({
+      ...target,
+      body: "あとから送った発話",
+      calls: callsGatedBy(speaking),
+    });
+    await speaking.reached;
+
+    // 二本とも AI を待っている。
+    // 再送を先に書き込ませ、あとから送った発話は再送の三行を見ていない状態で書き込ませる。
+    retrying.open();
+    await retry;
+    speaking.open();
+    await speak;
+
+    const messages = await db.listMessages(owner, target.sessionId);
+    const pending = await db.getPendingBody(owner, target.sessionId);
+
+    expect(messages.map((m) => m.speaker)).toEqual(ONE_TURN);
+    expect(messages[0].body).toBe("再送した発話");
+    expect(pending).toBe("あとから送った発話");
+  });
+
+  it("応答を待つあいだに新しいセッションが作られると、待っていた一往復は古いセッションへ書き込まない", async () => {
+    const target = await newDialogue();
+    const waiting = new GatedProvider();
+
+    const turn = runTurn({
+      ...target,
+      body: "待っていた発話",
+      calls: callsGatedBy(waiting),
+    });
+    await waiting.reached;
+
+    await db.createSession(owner, target.questionId);
+    waiting.open();
+    await turn;
+
+    const messages = await db.listMessages(owner, target.sessionId);
+    expect(messages).toEqual([]);
+  });
+
+  it("書き込む時点で発話の数が一往復を始めたときと違えば、commitTurn は何も書かずに false を返す", async () => {
+    const target = await newDialogue();
+    const turn = {
+      bodies: { human: "発話", ai_a: "具体の応答", ai_b: "抽象の応答" },
+      messageCountAtStart: 0,
+    };
+
+    const first = await db.commitTurn(owner, target.sessionId, turn);
+    const second = await db.commitTurn(owner, target.sessionId, turn);
+
+    const messages = await db.listMessages(owner, target.sessionId);
+    expect(first).toBe(true);
+    expect(second).toBe(false);
+    expect(messages.map((m) => m.speaker)).toEqual(ONE_TURN);
   });
 });
