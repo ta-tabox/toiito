@@ -2,6 +2,7 @@
  * サインインの画面。
  *
  * 未サインインのリクエストが送られてくる先で、送るのは `proxy.ts` と各画面の `requireCurrentUser` である。
+ * Google を経るサインインが完了しなかったときは、Better Auth が `error` のクエリを付けてこの画面へ送る（送り先は `lib/auth/index.ts` の `onAPIError`）。
  * 認証の判断は持たない。
  * 押せるボタンを設定から決めるだけで、誰を通すかは `lib/auth/index.ts` の許可リストの照合が決める。
  *
@@ -14,20 +15,28 @@ import { signInAsFakeUserAction, signInWithGoogleAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { readSignInMethods } from "@/lib/auth/sign-in";
+import { formatSignInError } from "@/lib/auth/sign-in-error";
 
 export const dynamic = "force-dynamic";
 
 /**
  * サインインの画面。
  * Google のボタンと、`TOIITO_FAKE_LOGIN=1` のときだけ出る許可リストのボタンを並べる。
+ * `searchParams` に `error` があれば、サインインできなかったことを伝える文言を添える。
  */
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const currentUser = await getCurrentUser();
 
   if (currentUser) {
     redirect("/");
   }
 
+  const { error } = await searchParams;
+  const errorMessage = formatSignInError(error);
   const signInMethods = readSignInMethods();
 
   return (
@@ -40,6 +49,8 @@ export default async function LoginPage() {
       <p className="mt-8 text-aux text-ink-weak">
         自分の問いを読み書きするには、ログインが要る。
       </p>
+
+      {errorMessage && <p className="mt-2 text-aux text-ink">{errorMessage}</p>}
 
       {signInMethods.isGoogleEnabled && (
         <form action={signInWithGoogleAction} className="mt-8">
