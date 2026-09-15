@@ -46,11 +46,15 @@ export default async function LoginPage({
         <span className="font-gothic text-aux text-ink-weak">問いの発酵槽</span>
       </h1>
 
+      {errorMessage && (
+        <p className="mt-8 rounded border border-rule bg-surface-high p-3 text-aux text-ink md:p-4">
+          {errorMessage}
+        </p>
+      )}
+
       <p className="mt-8 text-aux text-ink-weak">
         自分の問いを読み書きするには、ログインが要る。
       </p>
-
-      {errorMessage && <p className="mt-2 text-aux text-ink">{errorMessage}</p>}
 
       {signInMethods.isGoogleEnabled && (
         <form action={signInWithGoogleAction} className="mt-8">
