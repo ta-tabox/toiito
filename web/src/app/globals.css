@@ -118,6 +118,13 @@ main:has(:is(input, textarea):focus) [data-recedes-while-writing] {
   opacity: 0.28;
 }
 
+/* メモの小フォームが出ているあいだは、覗き見の切り替えを隠す。
+   窓の幅が本文の一列より狭いと、画面の下端に出る小フォームが右下の切り替えを覆い、見えない切り替えにフォーカスが届く。
+   切り替えを小フォームより前へ出すと、今度は小フォームの送信ボタンを覆う。 */
+body:has([data-draft-panel]) [data-preview-toggle] {
+  display: none;
+}
+
 /* 逆引き（/memos の拡大表示 → /q/<id>#msg-<message_id>）で着地した発話の強調。
    対象を id="msg-…" の要素に絞るのは、これから足すどの id もフラグメントで指せてしまい、発話以外にまで枠が付くため。
    id の書式の正は q/[id]/page.tsx。

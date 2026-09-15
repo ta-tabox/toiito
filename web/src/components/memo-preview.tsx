@@ -253,6 +253,7 @@ function closeOnEscape(event: KeyboardEvent): void {
  * 画面の右下に小さく置き、押すたびに設定を反転させる。
  *
  * hover を持たない端末では描画そのものを CSS で止める（触って読む画面に、触れない設定が残る）。
+ * メモの小フォームが出ているあいだも `globals.css` が隠す。
  */
 function PreviewToggle() {
   const isEnabled = useMemoPreviewEnabled();
@@ -260,6 +261,7 @@ function PreviewToggle() {
   return (
     <button
       type="button"
+      data-preview-toggle=""
       aria-pressed={isEnabled}
       onClick={() => writePreference(!isEnabled)}
       className="fixed right-4 bottom-4 hidden text-ink-weak text-meta hover:underline [@media(hover:hover)]:block"

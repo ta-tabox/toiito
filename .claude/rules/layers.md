@@ -69,4 +69,4 @@ paths:
 | 選択を読み直す発話 | `message-body.tsx` の `readers`（document へのリスナは 1 本） |
 
 ## プロジェクト固有（育てる欄）
-- CSS とテストが DOM を指す `data-*` 属性は `data-message-body`・`data-segment-index`・`data-memo-underline`・`data-landed`・`data-recedes-while-writing` の 5 つで、className では指さない
+- CSS とテストが DOM を指す `data-*` 属性は `data-message-body`・`data-segment-index`・`data-memo-underline`・`data-landed`・`data-recedes-while-writing`・`data-draft-panel`・`data-preview-toggle` の 7 つで、className では指さない

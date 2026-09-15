@@ -350,6 +350,7 @@ function MemoForm({
         await action(formData);
         onClose();
       }}
+      data-draft-panel=""
       className={DRAFT_PANEL_STYLE}
     >
       <input type="hidden" name="message_id" value={messageId} />
@@ -385,7 +386,7 @@ function MemoForm({
  */
 function BlankSelectionNotice({ onClose }: { onClose: () => void }) {
   return (
-    <div role="alert" className={DRAFT_PANEL_STYLE}>
+    <div role="alert" data-draft-panel="" className={DRAFT_PANEL_STYLE}>
       <p className="text-aux text-ink-weak">空白だけは残せない。</p>
       <div className="flex justify-end">
         <Button type="button" onClick={onClose}>
