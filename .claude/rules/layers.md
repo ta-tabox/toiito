@@ -9,9 +9,7 @@ paths:
 # 置き場と依存の向き（toiito）
 
 `coding.md`「置き場と依存の向き」の規則を、このリポジトリのモジュールに当てた表。
-上の `paths` に当たるファイルを Read した時点で読み込まれる。
 `docs/ARCHITECTURE.md` と `docs/HARNESS.md` は境界の禁止則をここへ委ね、「正は `.claude/rules/layers.md`」の一行で指す。
-理由と経緯は `docs/adr/` が持つ。
 
 ## 境界を閉じるモジュール
 

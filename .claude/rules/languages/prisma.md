@@ -5,8 +5,7 @@ paths:
 
 # Prisma スキーマへの写像
 
-核の原則（`coding.md`）を Prisma スキーマのコメントへ対応付ける。
-上の `paths` に当たるファイルを Read した時点で読み込まれる。
+核（`coding.md`）の原則を Prisma スキーマのコメントへ写す。
 生成された TS のコメント規約は `typescript.md`「コメント / JSDoc」が持つ。
 
 ## コメント

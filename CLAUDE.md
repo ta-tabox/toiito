@@ -8,43 +8,28 @@ AI をスピードアップではなくスローダウン（自分の問いを�
 このプロジェクトは有期で、完了条件を満たしたら**終わる**。
 
 ## 正はどこにあるか
-**作業単位と状態の正は GitHub Issues**、順序と横断規約の正は `docs/ROADMAP.md`、決定の正は `docs/adr/`。
-**この三つの外に申し送りの層を持たない**（手で保守する写しは状態を抱えて腐るため。経緯は ADR-0023（`NEXT.md` の廃止））。
+**作業単位と状態の正は GitHub Issues**、順序と横断規約の正は `docs/ROADMAP.md`、決定の正は `docs/adr/`（1決定1レコード・追記のみ・覆すときは supersede。規約は `docs/adr/README.md`）。
+**この三つの外に申し送りの層を持たない**（理由は ADR-0023（`NEXT.md` の廃止））。
 続きは open の issue から拾う。
 現在地の一枚が要るときは、写しを保守するのでなく三つから取り直して作る。
 
 ## 開発ハーネス（本文は `docs/HARNESS.md`）
 ローカル Postgres を立ててから作業する（ルートで `docker compose up -d`。接続は `web/.env.local` に `DATABASE_URL` と `DIRECT_URL` の二本）。
 変更 → `web/` で `pnpm check`（型→lint→テスト→ビルド）→ 緑ならコミット。
-パッケージマネージャは pnpm。
-版管理はランタイム共々 **mise**（ルートの `mise.toml` が正。corepack は使わない）。
-npm/yarn は使わない。
-lint/format は **Biome 一本**（`biome.json` が正。ESLint/Prettier は使わない。書式は `pnpm format` で機械的に直し、手で整形しない）。
 **check が赤のままコミットしない**。
+道具は pnpm・mise（`mise.toml` が正）・Biome（`biome.json` が正。書式は `pnpm format` で機械的に直す）の一本ずつで、npm/yarn・corepack・ESLint/Prettier は使わない。
 AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自動テストで叩かない）。
 ロジックは lib 層へ寄せ、「lib 関数 + テスト → UI 配線」の順で作る。
 
-コーディング規約は `.claude/rules/`（`writing.md` は常時、`coding.md`・`layers.md`・`languages/typescript.md`・`languages/prisma.md`・`design.md` は該当ファイルの Read で読み込まれる）。
-隣接ファイルを読まずに新規ファイルを書くときは、先に `.claude/rules/coding.md` と `.claude/rules/languages/typescript.md` を Read する（画面へ触るなら `.claude/rules/design.md` も）。
-**コードを書く前に**、次の二つを開く（レビューやリファクタに限らない。実装・テスト追加・バグ修正でも同じ）。
-
-- skill `coding-standards` — 判断基準集。言語固有の作法（JSDoc・import・空行）は `.claude/rules/languages/` にしかなく、skill 本体には載っていない
-- skill `karpathy-guidelines` — 過剰実装と巻き込み変更を防ぐ振る舞いの規律。
-  「変更した各行が依頼に辿れるか」で手を止める。
-  プラグインとして引くと、コンテナが毎回空から始まるリモートでは初回セッションに間に合わないので、本体は `.claude/skills/` へ同梱してある。
-  外部由来で、出所は https://github.com/multica-ai/andrej-karpathy-skills の 2c60614（MIT。旧 owner は forrestchang で、改称前の URL もリダイレクトで通るが正は新しい URL）。
+## 規約の入口
+- 規約は `.claude/rules/`。
+  `writing.md` は常時、残り（`coding.md`・`layers.md`・`design.md`・`languages/*.md`）は frontmatter の `paths` に当たるファイルを Read した時点で読み込まれる
+- **コードを書く前に** skill `coding-standards`（判断の例）と `karpathy-guidelines`（過剰実装と巻き込み変更の抑制）を開く。
+  実装・テスト追加・バグ修正・レビュー・リファクタのすべてが対象
+- 隣接ファイルを読まずに新規ファイルを書くときは、先に `.claude/rules/coding.md` と該当言語の `languages/<lang>.md`（画面へ触るなら `design.md` も）を Read する
+- 書き終えたら、PR の前に skill `coding-standards`「レビューで繰り返し指摘される型」の表を、変更した各コメント・名前・ファイルへ当てる
+- `karpathy-guidelines` は外部由来（https://github.com/multica-ai/andrej-karpathy-skills の 2c60614、MIT）で、リモートの空のコンテナでも初回から効くよう本体を `.claude/skills/` へ同梱してある。
   上流の更新は手で取り込む
-
-**コメントも文書（`.md`）も、改行は句点で**。
-**1 行 1 文**。
-桁数を理由に折り返さない。
-ビューア側が折り返すので、桁合わせは読みにくさを増やすだけ。
-読点で折りたくなったら、それは折る合図ではなく文を割る合図（コメントの側は `pnpm check` が見る。正は `.claude/rules/writing.md`）。
-**理由は結論の前に置く**。
-「B なので A」と一文で閉じれば、`——` や二文目で継ぎ足す場所そのものが要らなくなる。
-
-経緯（なぜそう決めたか・採らなかった案・トレードオフ）の受け皿は `docs/adr/`。
-1決定1レコード・追記のみ・覆すときは書き換えず supersede（規約は `docs/adr/README.md`）。
 
 ## 環境変数（`.env*`）
 **秘密を含む `.env*` は Claude が読めず、`.env*` はどれも Claude が書けない**（`.claude/settings.json` の `deny`。決定と経緯は ADR-0024（`.env*` を Claude が触ってよい範囲））。
@@ -59,60 +44,20 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   届かない分をこの規約が持つ
 
 ## git
-このリポジトリは**公開する**前提。
-コードの読み手は差分から意図を復元するレビュアーなので、コミットは時間でなく関心で区切る。
-粒度の正は `.claude/rules/writing.md`「コミットの粒度」。
+このリポジトリは**公開する**前提で、コミットは時間でなく関心で区切る（粒度と文体の正は `.claude/rules/writing.md`）。
 - **author は人間名義**。
-  Claude も `-c` を付けず素の `git commit` を使う（手元は local config に焼いてある。リモートはクラウド環境の `GIT_AUTHOR_*` が渡し、無ければセッション起動フックが止まる。置き場の規則は `docs/HARNESS.md`「設定の置き場」）。
-  author が答えるのは責任を誰が担ったかの一点で、それはどこで書いても動かない。
-- **リモートでは committer だけ Claude 名義**（コンテナの global config が既にその値なので、こちらから渡すものは無い）。
-  コンテナは署名を強制し、その鍵は `noreply@anthropic.com` に紐づいているので、committer を人間名義にすると GitHub が Unverified を出す。
-  author（責任）と committer（実際にコミットを作った者）は別の欄なので、片方を実態へ合わせても他方は動かない。
-  手元は署名の事情が無いので両方とも人間のまま。
-- **Co-authored-by は、Claude がそのコミットの中身を書いたときに付ける**。
-  判断は差分を誰が書いたかの一点で、実行場所では変わらない。
-  文言の正は `.claude/settings.json` の `attribution`——`commit` が trailer 本体で、既定のモデル名はこの上書きで消える。
-  `Claude-Session:` URL を落とすのは `sessionUrl: false` の方で、別レバーなので `commit` の文字列をどう書いても消えない。
-  ただし届くのは無条件の指示文であって、下の条件分岐は設定では表現できない——付けるかどうかの判断はこちら側に残る。
-  author と co-author は別の問いに答える。
-  前者は責任を誰が担ったか、後者は誰が手を動かしたか。
-  だから co-author を足しても author は人間名義のまま動かない。
-  - **衝突なしのマージには付けない**。
-    git が中身を作っており、書いた者がいない
-  - **衝突を解いたマージ・`revert`・`cherry-pick` には付ける**。
-    git が作るのはメッセージだけで、中身は書いた側から来る。
-    この経路は設定が効かない（差し替えるのは Claude への指示文であって、git の動作ではない）ので、自分で足す
-- **Actions 経由の Claude はコメントまで。コミットは押させない**（2026-08-20 決定・issue #19）。
-  提案・レビュー・調査は @claude に投げてよいが、差分を作るのは人間かローカル／リモートのセッションが担う。
-  名義の規約をどこも曲げずに済むのが理由で、`claude[bot]` を author に持つコミットは、この節が禁じている「第三者が出したものを承認した」という嘘の外形をそのまま作る。
-  実装側は `.github/workflows/claude.yml` の `permissions: contents: read` が既にこれを満たしている（書き込み権限を渡していない）。
-  一旦の固定であって、@claude にコミットさせたくなったら issue #19 の三案（コメントまで／bot 名義を許す／@claude をやめる）に戻って決め直す。
-- **メッセージ prefix は変更の型**。
-  `feat:` `fix:` `docs:` `refactor:` `chore:` `test:`。
-  **スコープは添えない**（`feat(web):` としない。コードが `web/` 配下にあることはこのプロジェクトでは自明）。
-  **プロジェクト名も名乗らない**（このリポジトリが既に答えている）。
-- **本文の改行は句点でのみ**。
-  文の途中で切れて読みにくいので、桁数を理由に折り返さない。
-  一文が長ければ長いまま一行に置く。
-- **push は Claude が叩いてよい**（手元でもリモートでも）。
-  push は追記であって、他人の作業を消さない。
-  **ただし戻せない操作——force push・履歴の書き換え・ブランチやタグの削除——は、その都度人間に諾否を訊く**。
-  境目は場所でなく、他人の作業を消しうるかどうかにある。
-  毎回止まらないよう `.claude/settings.json` の `permissions.allow` に `Bash(git push:*)` を置き、戻せない操作のコマンド文字列は `permissions.ask` で押さえてある（規則に当たった操作は auto モードの自動分類へ回らない）。
-  ask は前方一致なので `git push origin --force main` のような並びを拾えないが、その語順は `.claude/hooks/guard-force-push.sh` がコマンド全文を見て ask へ回す。
-- **issue と PR の起票・コメント・close は Claude が叩いてよい**（閲覧・`gh run` の確認も同じ）。
-  どれも reopen で戻るので、他人の作業を消さない側に入る。
-  **マージだけは、その都度人間に諾否を訊く**——main への push が本番デプロイと migration を起こす（経緯は ADR-0008（本番の migration の経路））ので、reopen で戻る操作と同じには扱えない。
-  repo の削除・public 化（`gh repo edit`）・secret・`gh auth` は `permissions.deny` で落としてある——承認を挟めば通る類ではなく、判じる場面がそもそも来ない。
-  ただし deny が効くのはコマンド文字列の前方一致にだけで、`gh api -X PATCH repos/…` は `gh repo edit` を経由せず同じ操作へ届く。
-  `gh api` はコマンド名が一つしか無く前方一致では層を分けられないので、受け止めるのは `.claude/hooks/guard-gh-api.sh` がコマンド全文を見る側にある。
-  素通しは読み取りと、`/comments` `/replies` への投稿と、レビュースレッドの resolve / unresolve の三つだけで、どれも編集や取り消しで戻るので `gh issue comment` が allow なのと同じ層に当たる。
-  `ask` に `gh api -X DELETE` と `gh api --method DELETE` の二つを残したのはフックを切ったときの下限で、語順に依存しない判定はフックが持つ（`guard-force-push.sh` と同じ型の限界）。
-  機械は保険、正はこの規約。
-- **PR も author は人間**（そもそも author は名乗る欄でなく叩いたアカウント。bot 名義は「第三者が出したものを承認した」という嘘の外形を作る）。
-  Claude の関与は author でなく**本文の「判断したこと」節**へ。
-  残すのは判断の中身だけで、誰が判断したかには触れない。
-  書式は `.github/pull_request_template.md`（issue テンプレの各節に PR 側で答が返る対称）。
-  既定の footer は `attribution.pr` を空にして落としてある。開示の場所を本文の節に決めた以上、末尾に二重には置かない。
-- **PR・レビュー返信・コミット本文の文体は `.claude/rules/writing.md`「文章」節**。
-  だ・である調・ハッシュだけで一行・番号への名前の添え方・投稿の順序は、すべてそちらが持つ。
+  Claude も `-c` を付けず素の `git commit` を使う。
+  リモートは committer だけ Claude 名義で、直さない（名義の置き場は `docs/HARNESS.md`「設定の置き場」）
+- **Co-authored-by は、Claude がそのコミットの中身を書いたときに付ける**（文言は `.claude/settings.json` の `attribution`）。
+  衝突なしのマージには付けず、衝突を解いたマージ・`revert`・`cherry-pick` には自分で足す
+- **Actions 経由の Claude はコメントまで**。
+  差分を作るのは人間かローカル／リモートのセッションで、`.github/workflows/claude.yml` の `contents: read` がこれを機械で満たす（決め直すときは issue #19（Actions 経由の Claude の権限）の三案に戻る）
+- **prefix は変更の型**（`feat:` `fix:` `docs:` `refactor:` `chore:` `test:`）。
+  スコープもプロジェクト名も添えない
+- **push・issue と PR の起票・コメント・close は Claude が叩いてよい**（どれも追記か、reopen で戻る）
+- **戻せない操作（force push・履歴の書き換え・ブランチやタグの削除）と PR のマージは、その都度人間に諾否を訊く**。
+  マージは main への push が本番デプロイと migration を起こすので、戻る操作に入れない
+- 機械の判定は `.claude/settings.json` の `permissions` と、コマンド全文を見る `.claude/hooks/guard-force-push.sh`・`guard-gh-api.sh` が持つ。
+  機械は保険で、正はこの節
+- **PR も author は人間**。
+  Claude の関与は本文の「判断したこと」節に判断の中身だけを書く（書式は `.github/pull_request_template.md`）
