@@ -145,7 +145,7 @@ export const ANTHROPIC_DEFAULTS = {
  * env から設定を読み、`credentials` があれば `apiKey` と `model` をその値で上書きする。
  * 数として読めない値（未設定・空・非数）と、値域の外の深さ（未設定を含む）は既定値にする。
  * 深さの指定を受け付けないモデルでは、設定に深さを持たせない。
- * `credentials` が無く、本番（`VERCEL_ENV=production`）で `fake` が false かつ `ANTHROPIC_API_KEY` が無ければ throw する。
+ * 本番（`VERCEL_ENV=production`）で、実 API へ送るのに使う API キーが無ければ throw する。
  *
  * フェイクモードはプロバイダを叩くかどうかの指定で env に依らないので、解決済みの値を受け取る。
  * 深さは利用者ごとに変えないので、`credentials` があっても env から読む。
@@ -155,6 +155,7 @@ export function readAnthropicSettings(
   fake: boolean,
   credentials?: AnthropicCredentials,
 ): AnthropicSettings {
+  // `credentials` があれば利用者のキーを送り、`fake` なら何も送らないので、どちらでもないときだけ `ANTHROPIC_API_KEY` を要求する。
   if (!credentials && isProduction(env) && !fake && !env.ANTHROPIC_API_KEY) {
     throw new Error(
       "ANTHROPIC_API_KEY が本番（VERCEL_ENV=production）で設定されていない（docs/DEPLOY.md「秘密の置き場」）",
