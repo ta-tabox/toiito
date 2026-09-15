@@ -47,7 +47,7 @@ export default async function LoginPage({
       </h1>
 
       {errorMessage && (
-        <p className="mt-8 rounded border border-rule bg-surface-high p-3 text-aux text-ink md:p-4">
+        <p className="mt-8 rounded border border-warn bg-warn-surface p-3 text-aux text-warn md:p-4">
           {errorMessage}
         </p>
       )}
