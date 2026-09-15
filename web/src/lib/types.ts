@@ -9,6 +9,7 @@
  * 実行時の値（値域の定数など）は置かず、それぞれのドメインのモジュールが持つ。
  */
 
+import type { MaterialCreator, MaterialKind } from "@/lib/material";
 import type { QuestionStatus } from "@/lib/question";
 
 /**
@@ -93,4 +94,31 @@ export type MemoWithContext = Memo & {
   question_body: string;
   speaker: Speaker;
   message_body: string;
+};
+
+/**
+ * 問いに付随する材料（`materials` の行）。
+ * 同じ `topic` を持つ行が、一つの論点について立場の違う材料の組になる。
+ */
+export type Material = {
+  id: string;
+  question_id: string;
+  kind: MaterialKind;
+  topic: string;
+  body: string;
+  source_url: string | null;
+  created_by: MaterialCreator;
+  created_at: Date;
+};
+
+/**
+ * `addMaterials` へ渡す、まだ保存していない材料の一件。
+ * 出典を持たない材料は `source_url` を省く。
+ */
+export type MaterialDraft = {
+  kind: MaterialKind;
+  topic: string;
+  body: string;
+  source_url?: string;
+  created_by: MaterialCreator;
 };
