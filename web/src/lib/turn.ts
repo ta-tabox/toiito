@@ -1,13 +1,9 @@
 /**
- * 一往復（human → ai_a → ai_b）を実行する。
+ * 一往復（human → ai_a → ai_b）の、AI 呼び出しと永続化の順序を決める手順を置く。
+ * モデルへ渡す本文と一回の呼び出しの規約は持たず、`lib/ai` が持つ。
+ * 行の読み書きは持たず、`lib/db` が持つ。
  *
- * ai_a と ai_b が両方返ってから、`commitTurn` が人間・ai_a・ai_b の発話をまとめて `messages` へ書き込む。
- * AI 呼び出しが失敗しても throw せず、`pending_messages` に人間の発話を残して戻る（理由は `docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
- * AI を待つあいだに同じセッションへ別の一往復が書き込まれていたときも、同じ理由で throw せず、`messages` へ書き込まずに戻る。
- *
- * 呼び出す二体は、解決する非同期の関数（`resolveCalls`）として引数で受け取り、発話を `pending_messages` へ書き込んだ後に呼ぶ。
- * `runTurn` が `AI_PROVIDER` を直接参照すると、テストが失敗経路を作れなくなる。
- * `AI_PROVIDER` を参照するのは `personaCalls` だけである。
+ * 一往復は、人間の発話と二体の応答が揃ったときだけ `messages` へ書き込み、揃わなければ人間の発話を `pending_messages` に残す（理由は `docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
  */
 
 import { callPersona, type PersonaCall } from "@/lib/ai";
@@ -31,6 +27,7 @@ export type PersonaCalls = Record<PersonaId, PersonaCall>;
  * 発話を書き込むセッション（`sessionId`）と、その所有者（`owner`）と、応答させるペルソナを決める関数（`resolveCalls`）を持つ。
  *
  * 問いの id を持たないのは、問いとセッションを別々に渡せると、別の問いのセッションを組み合わせられるため。
+ * ペルソナを値でなく関数で受け取るのは、`runTurn` が発話を `pending_messages` へ書き込んだ後に決め、決定に失敗しても発話を残すため。
  */
 type TurnTarget = {
   readonly owner: OwnerId;
@@ -38,7 +35,11 @@ type TurnTarget = {
   readonly resolveCalls: () => Promise<PersonaCalls>;
 };
 
-/** 二体の呼び出しの指定を、env から解決済みのプロバイダで組み立てて返す。 */
+/**
+ * 二体の呼び出しの指定を、env から解決済みのプロバイダで組み立てて返す。
+ *
+ * `runTurn` が `AI_PROVIDER` を直接参照するとテストが失敗するプロバイダを差し込めなくなるので、`AI_PROVIDER` を参照するのは `personaCalls` だけにする。
+ */
 export async function personaCalls(): Promise<PersonaCalls> {
   return {
     ai_a: {
