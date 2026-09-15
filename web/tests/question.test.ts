@@ -1,6 +1,6 @@
 /**
  * 人間が選べる `status` の検査。
- * 通る 5 値と、通らない値（機械だけが書く値・未知の文字列）を対で見る。
+ * 通る値と、通らない値（機械だけが書く値・未知の文字列）を対で見る。
  */
 
 import { describe, expect, it } from "vitest";
@@ -27,7 +27,7 @@ describe("parseSelectableStatus", () => {
 });
 
 describe("SELECTABLE_STATUSES", () => {
-  it("人間が選べる 5 値を QUESTION_STATUSES の順に並べる", () => {
+  it("人間が選べる値を QUESTION_STATUSES の順に並べる", () => {
     expect(SELECTABLE_STATUSES).toEqual([
       "resolved",
       "exported",

@@ -132,9 +132,9 @@ DB 側の正は `prisma/schema.prisma` の enum `QuestionStatus`、アプリ側�
 | 遷移 | 動かす主体 | 契機 |
 |------|-----------|------|
 | `new` → `stocked` | 機械（`db.ts` の `addMaterials`） | `status` が `new` の問いに、`materials` の行が 1 件以上入ったとき |
-| 7 値のどれか → `resolved`・`exported`・`holding`・`permanent`・`discarded` | 人間（`actions.ts` の `setQuestionStatusAction`） | 対話画面で値を選んだとき |
+| どの値からも → `resolved`・`exported`・`holding`・`permanent`・`discarded` | 人間（`actions.ts` の `setQuestionStatusAction`） | 対話画面で値を選んだとき |
 
-人間が選べる 5 値の並びは `web/src/lib/question.ts` の `SELECTABLE_STATUSES` で、`new` と `stocked` は機械だけが書く。
+人間が選べる値の並びは `web/src/lib/question.ts` の `SELECTABLE_STATUSES` で、`new` と `stocked` は機械だけが書く。
 
 人間が選んだ値を材料の有無だけで書き換えないので、`new` 以外の問いに材料が付いても `status` は変わらない（理由は `adr/0038-question-status-transitions.md`）。
 
