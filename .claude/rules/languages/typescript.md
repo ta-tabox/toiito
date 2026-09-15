@@ -80,6 +80,8 @@ toolchain（pnpm / Biome / mise）の設定はここでは扱わない。
   `@param {string} name` の型注釈は TS の型と重複する
 - 構文から意図が読めない一行（`.min(1)`、`path.resolve(root, \`.${relative}\`)`）には、その行の理由を `//` で添える
 - コメントで名指した識別子とファイル名は、改名した回に一緒に直す
+- 型と interface の JSDoc は、その値が何を表し、誰が作って誰へ渡すかを書く。
+  フィールドの目次は書かない
 - Prettier / Biome はコメントの内部を折り返さない。
   `proseWrap` が効くのは Markdown だけで、`lineWidth` はコードの整形幅にしか効かない。
   折り返さない以上、改行位置は書き手が**句点でのみ**入れる
