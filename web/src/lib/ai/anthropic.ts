@@ -108,7 +108,7 @@ export type AnthropicCredentials = {
  * モデルを変えるたびに散らばった文字列を追う形にしないためで、テストも `ANTHROPIC_DEFAULTS` を読む。
  */
 export const ANTHROPIC_DEFAULTS = {
-  model: "claude-sonnet-5",
+  model: ANTHROPIC_MODELS.sonnet5,
   maxTokens: 16000,
 
   /**
