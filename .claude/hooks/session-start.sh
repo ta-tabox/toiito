@@ -52,7 +52,7 @@ require_git_author() {
   exit 1
 }
 
-# コミット本文の禁止語を止める commit-msg フックは `.githooks/` にある。
+# 追加行の禁止語を報告する pre-commit フックと、コミット本文の禁止語を止める commit-msg フックは `.githooks/` にある。
 # git は既定で `.git/hooks/` しか見ないので、このクローンの設定で向け先を替える。
 enable_git_hooks() {
   git -C "$REPO_ROOT" config core.hooksPath .githooks

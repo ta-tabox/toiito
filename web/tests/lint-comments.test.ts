@@ -1,4 +1,10 @@
-import { collectKnownNames, lintSource } from "@scripts/lint-comments.ts";
+import {
+  collectKnownNames,
+  lintSource,
+  loadRepositoryVocabulary,
+  type RepositoryVocabulary,
+  toWordList,
+} from "@scripts/lint-comments.ts";
 import { describe, expect, it } from "vitest";
 
 /** `source` を検査し、違反した規則の ID だけを並べて返す。 */
@@ -567,6 +573,80 @@ export function f() {}
   });
 });
 
+describe("リポジトリごとの語", () => {
+  const header = "/**\n * 冒頭。\n */\n\n";
+
+  /** `word` を書いた 1 行のコメントを持つソースを返す。 */
+  const sourceWith = (word: string) => `${header}/**
+ * ${word}を書く。
+ */
+export function f() {}
+`;
+
+  /** `vocabulary` を渡して `source` を検査し、違反した規則の ID だけを並べて返す。 */
+  const rulesWith = (source: string, vocabulary: RepositoryVocabulary) =>
+    lintSource("sample.ts", source, { vocabulary }).map(
+      (violation) => violation.rule,
+    );
+
+  it("vocabulary の allow に挙げた語は、単漢字の禁止語を含んでいても報告しない", () => {
+    const vocabulary = { deny: [], allow: ["検査器"] };
+
+    expect(rulesWith(sourceWith("検査器"), vocabulary)).toEqual([]);
+  });
+
+  it("vocabulary を渡さなければ、同じ語の単漢字の禁止語を報告する", () => {
+    expect(rulesOf(sourceWith("検査器"))).toEqual(["comments/noBannedWord"]);
+  });
+
+  it("vocabulary の deny に挙げた語を error で報告する", () => {
+    const vocabulary = { deny: ["預かり"], allow: [] };
+
+    expect(
+      lintSource("sample.ts", sourceWith("預かり"), { vocabulary }),
+    ).toEqual([
+      {
+        line: 6,
+        rule: "comments/noBannedWord",
+        message:
+          "「預かり」は使わない。代わりに 直叙な語（.coding-standards-vocab-deny が足した語）",
+        severity: "error",
+      },
+    ]);
+  });
+
+  it("語のファイルの空行と # で始まる行は語に数えない", () => {
+    expect(toWordList("# 説明\n\n検査器\n口調\n")).toEqual(["検査器", "口調"]);
+  });
+
+  it("語のファイルの改行で終わらない最後の行も語に数える", () => {
+    expect(toWordList("検査器\n口調")).toEqual(["検査器", "口調"]);
+  });
+
+  it(".coding-standards-vocab-allow の語はどれも、コメントに書いても報告しない", () => {
+    const vocabulary = loadRepositoryVocabulary();
+    const reported = vocabulary.allow.filter(
+      (word) => rulesWith(sourceWith(word), vocabulary).length > 0,
+    );
+
+    expect(vocabulary.allow).not.toEqual([]);
+    expect(reported).toEqual([]);
+  });
+
+  it(".coding-standards-vocab-deny の語はどれも、コメントに書けば報告する", () => {
+    const vocabulary = loadRepositoryVocabulary();
+    const missed = vocabulary.deny.filter(
+      (word) =>
+        !rulesWith(sourceWith(word), vocabulary).includes(
+          "comments/noBannedWord",
+        ),
+    );
+
+    expect(vocabulary.deny).not.toEqual([]);
+    expect(missed).toEqual([]);
+  });
+});
+
 describe("関数の JSDoc", () => {
   const header = "/**\n * 冒頭。\n */\n\n";
 
@@ -851,9 +931,9 @@ export function f() {
       { fileName: "sample.ts", text: source },
     ]);
 
-    expect(lintSource("sample.ts", source, known).map((v) => v.rule)).toEqual(
-      [],
-    );
+    expect(
+      lintSource("sample.ts", source, { known }).map((v) => v.rule),
+    ).toEqual([]);
   });
 
   it("文字列リテラルに現れる名前も通る", () => {
@@ -898,9 +978,9 @@ export function f() {
       { fileName: "sample.ts", text: source },
     ]);
 
-    expect(lintSource("sample.ts", source, known).map((v) => v.rule)).toEqual(
-      [],
-    );
+    expect(
+      lintSource("sample.ts", source, { known }).map((v) => v.rule),
+    ).toEqual([]);
   });
 
   it("検査の対象に集めない拡張子のファイル名は見ない", () => {
