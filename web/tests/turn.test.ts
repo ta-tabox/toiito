@@ -80,25 +80,30 @@ class GatedProvider extends AiProvider {
 const ONE_TURN = ["human", "ai_a", "ai_b"];
 
 /**
- * 二体ぶんの呼び出し指定。
+ * 二体ぶんの呼び出し指定を解決する関数を返す。
  * 既定は両方フェイクで、失敗させたい体だけ差し替える。
  */
-function calls(failing?: PersonaId): PersonaCalls {
+function callsResolver(failing?: PersonaId): () => Promise<PersonaCalls> {
   const call = (id: PersonaId) => ({
     id,
     prompt: loadPersona(id),
     provider: id === failing ? new FailingProvider() : FAKE_PROVIDER,
   });
+  const calls: PersonaCalls = { ai_a: call("ai_a"), ai_b: call("ai_b") };
 
-  return { ai_a: call("ai_a"), ai_b: call("ai_b") };
+  return async () => calls;
 }
 
-/** ai_a だけを `gate` で止める呼び出し指定。 */
-function callsGatedBy(gate: GatedProvider): PersonaCalls {
-  return {
-    ...calls(),
+/** ai_a だけを `gate` で止める呼び出し指定を解決する関数を返す。 */
+function callsResolverGatedBy(
+  gate: GatedProvider,
+): () => Promise<PersonaCalls> {
+  const calls: PersonaCalls = {
     ai_a: { id: "ai_a", prompt: loadPersona("ai_a"), provider: gate },
+    ai_b: { id: "ai_b", prompt: loadPersona("ai_b"), provider: FAKE_PROVIDER },
   };
+
+  return async () => calls;
 }
 
 let owner: OwnerId;
@@ -128,7 +133,7 @@ describe("一往復", () => {
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      calls: calls(),
+      resolveCalls: callsResolver(),
     });
 
     const messages = await db.listMessages(owner, target.sessionId);
@@ -144,7 +149,7 @@ describe("一往復", () => {
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      calls: calls("ai_b"),
+      resolveCalls: callsResolver("ai_b"),
     });
 
     const messages = await db.listMessages(owner, target.sessionId);
@@ -161,7 +166,23 @@ describe("一往復", () => {
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      calls: calls("ai_a"),
+      resolveCalls: callsResolver("ai_a"),
+    });
+
+    const messages = await db.listMessages(owner, target.sessionId);
+    const pending = await db.getPendingBody(owner, target.sessionId);
+
+    expect(messages).toEqual([]);
+    expect(pending).toBe("急ぐほど問いが痩せる気がする");
+  });
+
+  it("二体の解決が reject すると messages は空のままで、pending_messages に本文が残る", async () => {
+    const target = await newDialogue();
+
+    await runTurn({
+      ...target,
+      body: "急ぐほど問いが痩せる気がする",
+      resolveCalls: () => Promise.reject(new Error("二体を解決できない")),
     });
 
     const messages = await db.listMessages(owner, target.sessionId);
@@ -175,8 +196,8 @@ describe("一往復", () => {
     const target = await newDialogue();
     const body = "急ぐほど問いが痩せる気がする";
 
-    await runTurn({ ...target, body, calls: calls("ai_b") });
-    await runTurn({ ...target, body, calls: calls() });
+    await runTurn({ ...target, body, resolveCalls: callsResolver("ai_b") });
+    await runTurn({ ...target, body, resolveCalls: callsResolver() });
 
     const messages = await db.listMessages(owner, target.sessionId);
     expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
@@ -185,8 +206,8 @@ describe("一往復", () => {
   it("前の一往復が成立していれば、次の発話はその上へ積まれる", async () => {
     const target = await newDialogue();
 
-    await runTurn({ ...target, body: "一つ目", calls: calls() });
-    await runTurn({ ...target, body: "二つ目", calls: calls() });
+    await runTurn({ ...target, body: "一つ目", resolveCalls: callsResolver() });
+    await runTurn({ ...target, body: "二つ目", resolveCalls: callsResolver() });
 
     const messages = await db.listMessages(owner, target.sessionId);
     expect(messages.map((m) => m.speaker)).toEqual([
@@ -207,7 +228,7 @@ describe("一往復", () => {
       runTurn({
         ...target,
         body: "あ".repeat(MESSAGE_BODY_MAX_LENGTH + 1),
-        calls: calls(),
+        resolveCalls: callsResolver(),
       }),
     ).rejects.toThrow();
     const pending = await db.getPendingBody(owner, target.sessionId);
@@ -222,9 +243,9 @@ describe("再送", () => {
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      calls: calls("ai_b"),
+      resolveCalls: callsResolver("ai_b"),
     });
-    await retryTurn({ ...target, calls: calls() });
+    await retryTurn({ ...target, resolveCalls: callsResolver() });
 
     const messages = await db.listMessages(owner, target.sessionId);
     expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
@@ -239,9 +260,9 @@ describe("再送", () => {
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      calls: calls("ai_b"),
+      resolveCalls: callsResolver("ai_b"),
     });
-    await retryTurn({ ...target, calls: calls("ai_b") });
+    await retryTurn({ ...target, resolveCalls: callsResolver("ai_b") });
 
     const messages = await db.listMessages(owner, target.sessionId);
     const pending = await db.getPendingBody(owner, target.sessionId);
@@ -253,7 +274,7 @@ describe("再送", () => {
   it("pending_messages に行が無ければ何もしない", async () => {
     const target = await newDialogue();
 
-    await retryTurn({ ...target, calls: calls() });
+    await retryTurn({ ...target, resolveCalls: callsResolver() });
 
     const messages = await db.listMessages(owner, target.sessionId);
     expect(messages).toEqual([]);
@@ -304,7 +325,7 @@ describe("再訪", () => {
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      calls: calls("ai_b"),
+      resolveCalls: callsResolver("ai_b"),
     });
     await db.createSession(owner, target.questionId);
 
@@ -318,7 +339,11 @@ describe("再訪", () => {
     await db.createSession(owner, target.questionId);
 
     await expect(
-      runTurn({ ...target, body: "過去へ足す発話", calls: calls() }),
+      runTurn({
+        ...target,
+        body: "過去へ足す発話",
+        resolveCalls: callsResolver(),
+      }),
     ).rejects.toThrow(/最新のセッションでない/);
 
     const messages = await db.listMessages(owner, target.sessionId);
@@ -334,8 +359,8 @@ describe("並走", () => {
     const target = await newDialogue();
 
     await Promise.all([
-      runTurn({ ...target, body: "一本目", calls: calls() }),
-      runTurn({ ...target, body: "二本目", calls: calls() }),
+      runTurn({ ...target, body: "一本目", resolveCalls: callsResolver() }),
+      runTurn({ ...target, body: "二本目", resolveCalls: callsResolver() }),
     ]);
 
     const messages = await db.listMessages(owner, target.sessionId);
@@ -352,14 +377,14 @@ describe("並走", () => {
     const retry = runTurn({
       ...target,
       body: "再送した発話",
-      calls: callsGatedBy(retrying),
+      resolveCalls: callsResolverGatedBy(retrying),
     });
     await retrying.reached;
 
     const speak = runTurn({
       ...target,
       body: "あとから送った発話",
-      calls: callsGatedBy(speaking),
+      resolveCalls: callsResolverGatedBy(speaking),
     });
     await speaking.reached;
 
@@ -385,7 +410,7 @@ describe("並走", () => {
     const turn = runTurn({
       ...target,
       body: "待っていた発話",
-      calls: callsGatedBy(waiting),
+      resolveCalls: callsResolverGatedBy(waiting),
     });
     await waiting.reached;
 
