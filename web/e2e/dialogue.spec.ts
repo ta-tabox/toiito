@@ -10,13 +10,20 @@ import { expect, test } from "@playwright/test";
 import { OTHER_USER_INPUT } from "@scripts/seed/questions";
 import { SEED_USERS } from "@scripts/seed/users";
 
-/** シードの行と混ざらないよう、この spec にしか出ない文言を使う。 */
-const QUESTION = "E2E: 速さを求めることは何を削ることなのか";
-
-const UTTERANCE = "E2E: 急ぐほど問いが痩せる気がする";
-
-/** 送信中のボタンを見るシナリオの問い。 */
-const PENDING_QUESTION = "E2E: 待たされているあいだに何を考えるのか";
+/**
+ * シナリオごとの問いと発話。
+ *
+ * シードの行とも互いとも混ざらないよう、この spec にしか出ない文言を使う。
+ */
+const SCENARIOS = {
+  reply: {
+    question: "E2E: 速さを求めることは何を削ることなのか",
+    utterance: "E2E: 急ぐほど問いが痩せる気がする",
+  },
+  pending: {
+    question: "E2E: 待たされているあいだに何を考えるのか",
+  },
+} as const;
 
 // どの画面もサインインを要求するので、シードの一人目として始める。
 test.beforeEach(async ({ page }) => {
@@ -26,18 +33,19 @@ test.beforeEach(async ({ page }) => {
 test("問いを投入して発話すると、ai_a → ai_b の順にフェイク応答が並ぶ", async ({
   page,
 }) => {
+  const { question, utterance } = SCENARIOS.reply;
   await page.goto("/");
 
   // シードは二人分入るので、一覧に出るのは現在のユーザーの分だけであることを先に見る。
   // 絞り込みが repo 関数から抜けると、この一覧に二人目の問いが並ぶ。
   await expect(page.getByText(OTHER_USER_INPUT.body)).toHaveCount(0);
 
-  await page.getByPlaceholder("問いをポイっと").fill(QUESTION);
+  await page.getByPlaceholder("問いをポイっと").fill(question);
   await page.getByRole("button", { name: "仕込む" }).click();
 
-  await expect(page.getByRole("heading", { name: QUESTION })).toBeVisible();
+  await expect(page.getByRole("heading", { name: question })).toBeVisible();
 
-  await page.getByPlaceholder("問いについて、いま思うことを").fill(UTTERANCE);
+  await page.getByPlaceholder("問いについて、いま思うことを").fill(utterance);
   await page.getByRole("button", { name: /^発話する/ }).click();
 
   // 見るのはペルソナ行のうち ID までにする。
@@ -47,10 +55,11 @@ test("問いを投入して発話すると、ai_a → ai_b の順にフェイク
   await expect(responses.nth(0)).toContainText("[fake:ai_a");
   await expect(responses.nth(1)).toContainText("[fake:ai_b");
 
-  await expect(responses.nth(1)).toContainText(`「${UTTERANCE}」`);
+  await expect(responses.nth(1)).toContainText(`「${utterance}」`);
 });
 
 test("仕込むを押すと、対話画面へ移るまでボタンは押せない", async ({ page }) => {
+  const { question } = SCENARIOS.pending;
   await page.goto("/");
 
   // 問いの作成はすぐ終わるので、そのままでは表明より先に送信が終わる。
@@ -64,7 +73,7 @@ test("仕込むを押すと、対話画面へ移るまでボタンは押せな�
     await route.continue();
   });
 
-  await page.getByPlaceholder("問いをポイっと").fill(PENDING_QUESTION);
+  await page.getByPlaceholder("問いをポイっと").fill(question);
   await page.getByRole("button", { name: "仕込む" }).click();
 
   await expect(
@@ -72,7 +81,5 @@ test("仕込むを押すと、対話画面へ移るまでボタンは押せな�
   ).toBeDisabled();
 
   held.resolve();
-  await expect(
-    page.getByRole("heading", { name: PENDING_QUESTION }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: question })).toBeVisible();
 });
