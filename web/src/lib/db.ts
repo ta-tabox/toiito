@@ -90,12 +90,22 @@ export function questionText(q: Question): string {
 }
 
 /**
+ * ドメイン型の `User` へ写すときに `user` 表から SELECT する列。
+ */
+const USER_COLUMNS = {
+  id: true,
+  email: true,
+  name: true,
+  is_admin: true,
+} as const satisfies Prisma.UserSelect;
+
+/**
  * `user` 表を SELECT した直後の行を、ドメイン型の `User` へ写す。
  *
  * `OwnerId` へ変換してよいのは `fromUserRow` だけで、`fromUserRow` を経由したことが「その文字列は `user.id` である」の唯一の根拠になる。
  * URL やフォームから来た文字列は `fromUserRow` を経由しないので、`OwnerId` にならない。
  */
-function fromUserRow(row: { id: string; email: string; name: string }): User {
+function fromUserRow(row: Omit<User, "id"> & { id: string }): User {
   return { ...row, id: row.id as OwnerId };
 }
 
@@ -118,7 +128,7 @@ export function authDatabaseClient(): PrismaClient {
 export async function getUserByEmail(email: string): Promise<User | undefined> {
   const row = await db().user.findUnique({
     where: { email },
-    select: { id: true, email: true, name: true },
+    select: USER_COLUMNS,
   });
 
   return row ? fromUserRow(row) : undefined;
@@ -134,22 +144,27 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
 export async function getUserById(id: string): Promise<User | undefined> {
   const row = await db().user.findUnique({
     where: { id },
-    select: { id: true, email: true, name: true },
+    select: USER_COLUMNS,
   });
 
   return row ? fromUserRow(row) : undefined;
 }
 
 /**
- * ユーザーを作る。
+ * `user.email` と `user.name` と `user.is_admin` を持つユーザーを作る。
+ * `user.is_admin` を省くと、管理者でないユーザーになる。
  *
- * 本番の経路では Better Auth が四表を書くので、`createUser` を呼ぶのは開発用シードだけである。
+ * 本番の経路では Better Auth が四表を書くので、`createUser` を呼ぶのは開発用シードとテストだけである。
  * `user.id` は文字列でありさえすればよいので、id は Better Auth の生成に合わせず UUID を振る。
  */
-export async function createUser(email: string, name: string): Promise<User> {
+export async function createUser(user: {
+  email: string;
+  name: string;
+  is_admin?: boolean;
+}): Promise<User> {
   const row = await db().user.create({
-    data: { id: randomUUID(), email, name },
-    select: { id: true, email: true, name: true },
+    data: { id: randomUUID(), ...user },
+    select: USER_COLUMNS,
   });
 
   return fromUserRow(row);

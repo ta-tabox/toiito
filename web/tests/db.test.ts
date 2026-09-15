@@ -560,3 +560,23 @@ describe("materials", () => {
     expect(reread?.status).toBe("new");
   });
 });
+
+describe("users", () => {
+  it("is_admin を渡さずに作ったユーザーは、getUserById が is_admin を false で返す", async () => {
+    const user = await db.getUserById(owner);
+
+    expect(user?.is_admin).toBe(false);
+  });
+
+  it("is_admin を立てて作ったユーザーは、getUserById が is_admin を true で返す", async () => {
+    const admin = await db.createUser({
+      email: "admin@example.com",
+      name: "管理者",
+      is_admin: true,
+    });
+
+    const reread = await db.getUserById(admin.id);
+
+    expect(reread?.is_admin).toBe(true);
+  });
+});

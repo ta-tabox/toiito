@@ -21,7 +21,10 @@ import type { OwnerId } from "@/lib/types";
 export async function createOwner(
   email: string = SEED_USERS[0].email,
 ): Promise<OwnerId> {
-  const user = await createUser(email, `テストのユーザー（${email}）`);
+  const user = await createUser({
+    email,
+    name: `テストのユーザー（${email}）`,
+  });
 
   return user.id;
 }

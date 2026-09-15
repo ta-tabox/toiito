@@ -249,7 +249,7 @@ model Material {
 /// ユーザー。Better Auth が使う四表の一つ。
 ///
 /// モデル名と列名は Better Auth 1.7.2 が要求するまま（camelCase・型は既定）で、snake_case へ揃えない（理由はファイル冒頭のコメント）。
-/// この四表を読むのは `db.ts` の二つの用途だけで、詰め替えが増えないことが据え置きの条件。
+/// アプリでこの四表を読むのは `db.ts` だけで、詰め替えが増えないことが据え置きの条件。
 model User {
   id            String   @id
   name          String
@@ -258,6 +258,10 @@ model User {
   image         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  /// 管理者かどうか。
+  /// Better Auth が生成する列でなくアプリが足した列なので、名前は snake_case にする。
+  /// サインインの可否には使わない。
+  is_admin      Boolean  @default(false)
 
   sessions  Session[]
   accounts  Account[]

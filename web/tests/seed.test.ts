@@ -91,6 +91,16 @@ describe("シードの投入", () => {
     );
   });
 
+  it("一人目は管理者として入り、二人目は管理者でないまま入る", async () => {
+    await seed();
+
+    const first = await db.getUserByEmail(SEED_USERS[0].email);
+    const second = await db.getUserByEmail(SEED_USERS[1].email);
+
+    expect(first?.is_admin).toBe(true);
+    expect(second?.is_admin).toBe(false);
+  });
+
   it("NODE_ENV=production では投入せず落ちる", async () => {
     vi.stubEnv("NODE_ENV", "production");
 

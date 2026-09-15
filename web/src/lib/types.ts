@@ -23,9 +23,16 @@ export type OwnerId = string & { readonly __brand: "OwnerId" };
 
 /**
  * ユーザー。
- * 実体は Better Auth の `user` 表で、このアプリが読むのはこの三つだけ。
+ * 実体は Better Auth の `user` 表で、`is_admin` だけはアプリが足した列である。
+ *
+ * `is_admin` はサインインの可否に使わず、サインインの可否は許可リストが決める。
  */
-export type User = { id: OwnerId; email: string; name: string };
+export type User = {
+  id: OwnerId;
+  email: string;
+  name: string;
+  is_admin: boolean;
+};
 
 /**
  * body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、current_form は対話の中で言い直された焦点。
