@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SPEAKER_NAME } from "@/lib/ai/prompt";
 import { loadPersona, PERSONA_LABEL } from "@/lib/personas";
 
 // ペルソナ文書の構造的な健全性のみ検証する。
@@ -10,6 +11,12 @@ describe("ペルソナ定義", () => {
       expect(text.startsWith(`# ${id}`)).toBe(true);
       expect(text).toContain("禁止事項");
       expect(text).toContain("答え");
+    });
+
+    it(`${id}: transcript の自分の発話者名で、自分が誰かを名乗る一文を持つ`, () => {
+      const text = loadPersona(id);
+
+      expect(text).toContain(`あなたは${SPEAKER_NAME[id]}である。`);
     });
 
     it(`${id}: 手筋と材料の供給規律を持つ`, () => {
