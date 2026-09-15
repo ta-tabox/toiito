@@ -203,16 +203,16 @@ function PreviewPanel({ open }: { open: OpenPreview }) {
       onMouseLeave={scheduleMemoPreviewClose}
       className="fixed z-10 overflow-y-auto rounded border border-rule bg-surface-mid p-3 text-aux shadow-float"
     >
-      <ul className="flex flex-col gap-1">
+      <ul>
         {open.memos.map((memo) => (
           <li key={memo.id}>
             <Link
               href={`/memos?memo=${memo.id}`}
-              className="block rounded px-2 py-1 hover:bg-surface-high focus-visible:bg-surface-high"
+              className="block rounded px-2 py-2 hover:bg-surface-high focus-visible:bg-surface-high"
             >
               <p className="truncate font-bold">{memo.keyword}</p>
               {memo.note && (
-                <p className="mt-1 line-clamp-2 text-ink-weak">{memo.note}</p>
+                <p className="line-clamp-2 text-ink-weak">{memo.note}</p>
               )}
             </Link>
           </li>

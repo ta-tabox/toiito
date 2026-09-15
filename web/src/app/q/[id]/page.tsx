@@ -149,7 +149,7 @@ export default async function QuestionPage({
       {sessions.length > 1 && (
         <nav
           aria-label="セッション"
-          className="mt-4 flex flex-col items-start gap-1 border-rule border-l-2 pl-3"
+          className="mt-4 flex flex-col items-start gap-2 border-rule border-l-2 pl-3"
         >
           {sessions.map((candidate, index) => (
             <Link
