@@ -35,6 +35,20 @@ export type User = {
 };
 
 /**
+ * 管理の画面の一覧の一行で、ユーザー一人と、そのユーザーが持つ問いとセッションの数。
+ * 作るのは `db.ts` の `listUsersForAdmin` で、問いの本文は持たない。
+ *
+ * `id` を `OwnerId` にしないので、一覧の行から他のユーザーの問いを読む repo 関数へ渡せない。
+ */
+export type AdminUserRow = {
+  id: string;
+  email: string;
+  name: string;
+  question_count: number;
+  session_count: number;
+};
+
+/**
  * body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、current_form は対話の中で言い直された焦点。
  * 二つに分けている理由は docs/ARCHITECTURE.md「原型と現在の形」。
  */

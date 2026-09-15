@@ -18,6 +18,7 @@ import { DATABASE_URL } from "@/lib/config";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
 import type {
+  AdminUserRow,
   Anchor,
   Material,
   MaterialDraft,
@@ -168,6 +169,34 @@ export async function createUser(user: {
   });
 
   return fromUserRow(row);
+}
+
+/**
+ * 全ユーザーを、ユーザーごとの問いの数とセッションの数と一緒に、登録の古い順で返す。
+ * 問いの本文も発話も返さない。
+ *
+ * 呼び出し側は `requireAdmin` を通してから呼ぶ。
+ * `user.sessions` は Better Auth のログインのセッションなので、対話のセッションの数は問いごとの数を足して求める。
+ */
+export async function listUsersForAdmin(): Promise<AdminUserRow[]> {
+  const rows = await db().user.findMany({
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      questions: { select: { _count: { select: { sessions: true } } } },
+    },
+    orderBy: [{ createdAt: "asc" }, { email: "asc" }],
+  });
+
+  return rows.map(({ questions, ...user }) => ({
+    ...user,
+    question_count: questions.length,
+    session_count: questions.reduce(
+      (count, question) => count + question._count.sessions,
+      0,
+    ),
+  }));
 }
 
 /**
