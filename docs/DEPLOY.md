@@ -26,6 +26,7 @@ main へ入れば Vercel が本番を差し替え、同じ push で `.github/wor
 | `GOOGLE_CLIENT_ID` | 同上 | Google Cloud で作った OAuth クライアントの ID |
 | `GOOGLE_CLIENT_SECRET` | 同上 | 同じクライアントのシークレット |
 | `TOIITO_ALLOWED_EMAILS` | 同上 | サインインを許す email のカンマ区切り |
+| `TOIITO_API_KEY_ENCRYPTION_KEYS` | 同上 | 利用者の API キーを暗号化する鍵の一覧で、Preview とは別の鍵（書き方は `web/README.md`「環境変数」） |
 | `PRODUCTION_DIRECT_URL` | GitHub の Settings → Secrets and variables → Actions → **Repository secrets** | `DIRECT_URL` と同じ値。migration を流す workflow だけが読む |
 
 `pg` v9 で `sslmode=require` が libpq の意味へ変わって証明書を検証しなくなるので、**接続の 3 本は `sslmode=verify-full` で終える**。
@@ -39,9 +40,27 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 値が `1` でなくても、どちらかが入っていれば `VERCEL_ENV=production` を見て本番のビルドが失敗する（一覧と検証は `web/src/lib/config.ts` の `assertNoDevelopmentEnv`）。
 `ANTHROPIC_API_KEY` が無い場合も、本番のビルドが失敗する。
 
-**8 本とも Production に入れてから最初のビルドを回す**。
+**表の Vercel の変数をすべて Production に入れてから最初のビルドを回す**。
 `postinstall` の `prisma generate` は `prisma.config.ts` 経由で `DIRECT_URL` を即時解決するので、無いとインストール段階で exit 1 になる。
 要るのは解決できることだけで、接続は要らない（`prisma generate` は DB へ繋がない）。
+
+### 利用者の API キーを暗号化する鍵を回転する
+
+`TOIITO_API_KEY_ENCRYPTION_KEYS` は、先頭の組の鍵で暗号化し、並べたどの鍵の暗号文も復号する。
+回転は、旧い鍵と新しい鍵を並べた状態を挟んで次の順に行う。
+本番と Preview は別の鍵を持つので、それぞれで同じ順に行う。
+
+| 段 | 行うこと | 復号できる暗号文 |
+|---|---|---|
+| 1 | 新しい鍵 ID と `openssl rand -base64 32` の値の組を先頭へ足し、Redeploy する | 旧い鍵・新しい鍵 |
+| 2 | 旧い鍵の暗号文を、すべて新しい鍵で暗号化し直す | 旧い鍵・新しい鍵 |
+| 3 | 旧い鍵の暗号文が残っていないことを確かめてから、旧い鍵の組を外して Redeploy する | 新しい鍵 |
+
+**新しい鍵 ID には、過去に使った鍵 ID を使わない**。
+同じ鍵 ID の暗号文が残っていると、鍵が無いというエラーでなく、復号できないというエラーになり、原因が読み取れない。
+
+**鍵の値は Vercel の外（パスワードマネージャー）にも控える**。
+鍵を失うと全員の API キーが復号できなくなり、利用者に登録し直してもらうことになる。
 
 ## 初回のセットアップ
 
@@ -109,7 +128,7 @@ pnpm migrate:prod
 
 ## Preview
 
-PR ごとの Preview デプロイにも環境変数を 6 本入れる（Vercel の Environment Variables で環境に **Preview** を選ぶ）。
+PR ごとの Preview デプロイにも、次の表の環境変数を入れる（Vercel の Environment Variables で環境に **Preview** を選ぶ）。
 接続先は Neon の `preview` ブランチで、本番とは別の DB を向く。
 
 | 変数 | 値 |
@@ -120,6 +139,7 @@ PR ごとの Preview デプロイにも環境変数を 6 本入れる（Vercel �
 | `BETTER_AUTH_SECRET` | Production とは別に作った乱数 |
 | `TOIITO_ALLOWED_EMAILS` | `pnpm seed` が入れる二人の email（`web/scripts/seed/users.ts`） |
 | `TOIITO_FAKE_LOGIN` | `1` |
+| `TOIITO_API_KEY_ENCRYPTION_KEYS` | Production とは別に作った鍵の一覧 |
 
 接続 2 本の末尾は本番と同じく `sslmode=verify-full`。
 
