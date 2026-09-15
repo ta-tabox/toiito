@@ -46,7 +46,7 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 
 ### 利用者の API キーを暗号化する鍵を回転する
 
-`TOIITO_API_KEY_ENCRYPTION_KEYS` は、先頭の組の鍵で暗号化し、並べたどの鍵の暗号文も復号する。
+`TOIITO_API_KEY_ENCRYPTION_KEYS` の書式と、どの鍵で暗号化・復号するかの正は `web/README.md`「環境変数」。
 回転は、旧い鍵と新しい鍵を並べた状態を挟んで次の順に行う。
 本番と Preview は別の鍵を持つので、それぞれで同じ順に行う。
 
