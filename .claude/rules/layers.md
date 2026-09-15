@@ -57,7 +57,7 @@ paths:
 | 境界 | 上の表 | 純粋な計算・ドメイン型・概念のモジュール | 境界の道具と検証 |
 | 一往復の手順 | `lib/turn.ts` | `lib/ai`・`lib/db`・`lib/personas` | AI 呼び出しと永続化の順序 |
 | 配線 | `app/actions.ts`・`app/**/page.tsx`・`scripts/seed/index.ts` | 境界・手順・純粋な計算 | 受け取り・呼び出し・`revalidatePath` か `redirect` |
-| クライアント側の部品 | `components/**` | `lib/anchors.ts`・`lib/message.ts`・`lib/types.ts`・`components/ui/*` | DOM の読み書きと描画 |
+| クライアント側の部品 | `components/**` | `lib/anchors.ts`・`lib/message.ts`・`lib/question.ts`・`lib/types.ts`・`components/ui/*` | DOM の読み書きと描画 |
 
 ## 一つしか無い状態の正
 
