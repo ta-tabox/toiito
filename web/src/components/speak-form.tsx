@@ -24,6 +24,7 @@ export function SpeakForm({
         name="body"
         rows={3}
         maxLength={MESSAGE_BODY_MAX_LENGTH}
+        aria-label="発話"
         placeholder="問いについて、いま思うことを"
       />
       <SubmitButton
