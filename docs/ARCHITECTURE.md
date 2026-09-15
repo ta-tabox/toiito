@@ -192,7 +192,7 @@ toiito/
 ├── extensions/        MVP の外の構想
 └── web/               Next.js アプリ本体
     ├── src/
-    │   ├── app/           ルーティング（/ 問い一覧・/q/[id] 対話・/memos 逆引き・/login）と Server Actions
+    │   ├── app/           ルーティング（/ 問い一覧・/q/[id] 対話・/memos 逆引き・/login・/admin 管理者だけが開くユーザーの一覧）と Server Actions
     │   ├── components/    UI 部品（共通部品は ui/）
     │   ├── lib/           db.ts（Prisma repo 層）・auth/（認証と現在のユーザー）・ai/（AI 呼び出し）・personas.ts・anchors.ts・question.ts・turn.ts
     │   ├── personas/      二体のシステムプロンプト（.md で管理）
@@ -210,7 +210,8 @@ toiito/
   このアプリは少し使い心地が悪くないと機能しない類型に属し、快適にした瞬間に快適さが目的化してスローダウンという効果が死ぬ。
   体験改善の要求が出たら、**摩擦の除去**（疑う）と **妨害の除去**（直す）を毎回切り分ける。
   線引きは `DESIGN.md`「残す摩擦」、理由は `extensions/fermentation-and-outlets.md`「設計上の自己言及: 反快適性」
-- KPI・利用統計・ゲーミフィケーション（速度を最適化しない）
+- KPI・利用統計・ゲーミフィケーション（速度を最適化しない）。
+  問いの熟成を速度で測らないという不作為なので、ユーザーに見せず管理者だけが見る運用の記録（`/admin` のユーザーごとの数と利用量）はこれに当たらない
 - 問いの「解決済み」クローズフロー（チケットではない）
 - **公開登録**。
   入れるのは許可リストに載ったメールアドレスだけで、誰でも登録できる形は開けない（経緯は `adr/0018-invite-only-multi-user.md`）
