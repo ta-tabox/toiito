@@ -279,6 +279,19 @@ describe("本文の組み立て", () => {
     expect(content.match(/<\/question>/g)).toHaveLength(1);
   });
 
+  it("末尾の指示文は次に発話するペルソナを発話者名で呼び、「あなた」を使わない", async () => {
+    const fetchMock = stubOkResponse();
+
+    await callPersona(personaCall({ id: "ai_b" }), { body: "q" }, [
+      { speaker: "human", body: "問いを投げた" },
+    ]);
+
+    const content = sentBody(fetchMock).messages[0].content;
+    const instruction = content.split("\n\n").at(-1);
+    expect(instruction).toMatch(/^抽象さんとして/);
+    expect(instruction).not.toContain("あなた");
+  });
+
   it("現在の形があれば、原型と併せて渡す", async () => {
     const fetchMock = stubOkResponse();
 

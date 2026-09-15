@@ -18,13 +18,17 @@ export type Transcript = Utterance[];
  */
 export type QuestionRef = { body: string; current_form?: string | null };
 
+/** 次に発話する AI の発話者。 */
+type AiSpeaker = Exclude<Speaker, "human">;
+
 /**
  * transcript の発話者名。
  *
  * モデルはこの文字列をそのまま呼称として使うので、対話に出したくない語を置かない。
  * 内部 ID（ai_a / ai_b）を置くと、AI 同士がその ID で呼び合う。
+ * AI の名前は、ペルソナ定義の「あなたは<発話者名>である。」の一文と揃える。
  */
-const SPEAKER_NAME: Record<Speaker, string> = {
+export const SPEAKER_NAME: Record<Speaker, string> = {
   human: "あなた",
   ai_a: "具体さん",
   ai_b: "抽象さん",
@@ -43,12 +47,15 @@ function toTagContent(text: string): string {
 }
 
 /**
- * ペルソナ一体へ渡すユーザーメッセージを組み立てる。
+ * `persona` へ渡すユーザーメッセージを、`question` と `transcript` から組み立てる。
  * 原型と現在の形を両方載せる理由は `QuestionRef` の JSDoc にある。
+ *
+ * 指示文はモデルを発話者名で呼び、ユーザーメッセージの中の「あなた」は人間の発話者名だけにする。
  */
 export function buildUserContent(
   question: QuestionRef,
   transcript: Transcript,
+  persona: AiSpeaker,
 ): string {
   const dialogue = transcript
     .map(
@@ -65,7 +72,7 @@ export function buildUserContent(
             `※ 原型からずれていると見えたら、それ自体を突いてよい。`,
         ]
       : []),
-    `# ここまでの対話\n${dialogue || "（まだ発話なし。問いへの最初の応答をする）"}`,
-    `あなたの役割定義に従い、次の一手を発話せよ。発話本文のみを出力すること。`,
+    `# ここまでの対話（発話者「${SPEAKER_NAME.human}」は問いを投入した人間）\n${dialogue || "（まだ発話なし。問いへの最初の応答をする）"}`,
+    `${SPEAKER_NAME[persona]}として、役割定義に従い、次の一手を発話せよ。発話本文のみを出力すること。`,
   ].join("\n\n");
 }
