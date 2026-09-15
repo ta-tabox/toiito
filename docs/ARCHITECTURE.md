@@ -58,7 +58,7 @@ UI からの経路も、Next の外から走るもの（開発用シード `web/
 VISION の「対話は堆積して振り返れるもの」をそのままスキーマにする。
 
 ```
-user           ユーザー。Better Auth の表で、is_admin だけはアプリが足した列
+user           ユーザー。Better Auth が持つ表
   id, email, name, is_admin(管理者か。既定は偽。立てるのは DB への直接の更新だけ)
 
 questions      問い。発酵槽への仕込み単位

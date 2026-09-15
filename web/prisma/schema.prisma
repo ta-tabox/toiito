@@ -259,7 +259,6 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   /// 管理者かどうか。
-  /// Better Auth が生成する列でなくアプリが足した列なので、名前は snake_case にする。
   /// サインインの可否には使わない。
   is_admin      Boolean  @default(false)
 

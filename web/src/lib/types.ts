@@ -23,7 +23,7 @@ export type OwnerId = string & { readonly __brand: "OwnerId" };
 
 /**
  * ユーザー。
- * 実体は Better Auth の `user` 表で、`is_admin` だけはアプリが足した列である。
+ * 実体は Better Auth の `user` 表である。
  *
  * `is_admin` の使い道の制約は `prisma/schema.prisma` の `is_admin` のコメントが正。
  */
