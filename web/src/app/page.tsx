@@ -51,6 +51,7 @@ export default async function Home() {
       <form action={createQuestionAction} className="mt-8 flex gap-2">
         <Field
           name="body"
+          aria-label="問い"
           placeholder="問いをポイっと"
           className="flex-1"
           autoComplete="off"

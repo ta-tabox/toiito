@@ -24,6 +24,7 @@ export function SpeakForm({
         name="body"
         rows={3}
         maxLength={MESSAGE_BODY_MAX_LENGTH}
+        aria-label="発話"
         placeholder="問いについて、いま思うことを"
       />
       <SubmitButton
@@ -68,7 +69,7 @@ function RespondingLabel() {
   return (
     <span className="inline-flex items-center gap-2">
       二体が応答中
-      <span className="inline-flex gap-1" aria-hidden="true">
+      <span className="inline-flex gap-2" aria-hidden="true">
         <span className="size-1.5 rounded-full bg-current motion-safe:animate-pulse" />
         <span className="size-1.5 rounded-full bg-current motion-safe:animate-pulse [animation-delay:-0.66s]" />
         <span className="size-1.5 rounded-full bg-current motion-safe:animate-pulse [animation-delay:-1.33s]" />
