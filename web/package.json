@@ -12,7 +12,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome check && node scripts/lint-comments.ts",
-    "seed": "node --experimental-transform-types --env-file-if-exists=.env.local scripts/seed/index.ts",
+    "seed": "node --env-file-if-exists=.env.local scripts/seed/index.ts",
     "db:prune": "node scripts/prune-test-databases.ts",
     "migrate:prod": "node --env-file-if-exists=.env.local scripts/migrate.ts prod",
     "migrate:preview": "node --env-file-if-exists=.env.local scripts/migrate.ts preview",
