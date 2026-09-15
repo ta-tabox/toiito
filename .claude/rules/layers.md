@@ -52,7 +52,7 @@ paths:
 | 層 | 置き場 | import してよい相手 | 持つもの |
 |---|---|---|---|
 | ドメイン型 | `lib/types.ts` | `lib/question.ts`（型だけ） | 型だけ |
-| 概念のモジュール | `lib/question.ts`・`lib/message.ts`・`lib/value-set.ts` | 無し | 値域の定数と判定 |
+| 概念のモジュール | `lib/question.ts`・`lib/message.ts`・`lib/value-set.ts` | 無し | 取りうる値の定数と判定 |
 | 純粋な計算 | `lib/anchors.ts`・`lib/format.ts`・`lib/ai/prompt.ts`・`lib/auth/protected-paths.ts` | ドメイン型・概念のモジュール | 関数とテスト |
 | 境界 | 上の表 | 純粋な計算・ドメイン型・概念のモジュール | 境界の道具と検証 |
 | 一往復の手順 | `lib/turn.ts` | `lib/ai`・`lib/db`・`lib/personas` | AI 呼び出しと永続化の順序 |
