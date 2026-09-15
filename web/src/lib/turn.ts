@@ -28,7 +28,7 @@ export type PersonaCalls = Record<PersonaId, PersonaCall>;
 
 /**
  * `runTurn` と `retryTurn` に渡す、一往復の実行の指定。
- * 発話を書き込むセッション（`sessionId`）と、その所有者（`owner`）と、応答させる二体を解決する関数（`resolveCalls`）を持つ。
+ * 発話を書き込むセッション（`sessionId`）と、その所有者（`owner`）と、応答させるペルソナを決める関数（`resolveCalls`）を持つ。
  *
  * 問いの id を持たないのは、問いとセッションを別々に渡せると、別の問いのセッションを組み合わせられるため。
  */
@@ -71,8 +71,8 @@ function logTurnFailure(sessionId: string, error: unknown): void {
 }
 
 /**
- * `resolveCalls` で二体を解決し、逐次に呼んで、揃った本文を返す。
- * 解決が reject するか、どちらかの呼び出しが失敗すれば undefined。
+ * `resolveCalls` で応答させるペルソナを決め、二体を逐次に呼んで、揃った本文を返す。
+ * ペルソナの決定か、どちらかの呼び出しに失敗すれば undefined。
  *
  * 並列にしないのは、ai_b が ai_a への応答であることに意味があるため（衝突と転位）。
  */
@@ -103,7 +103,7 @@ async function callBoth(input: {
 
 /**
  * `body` を `pending_messages` へ書き込み、二体の応答が揃えば、`body` と二体の応答を一往復として `messages` へ書き込む。
- * 二体の解決か、ai_a か ai_b の呼び出しが失敗したら、`messages` へ書き込まず、`pending_messages` の行を残して戻る。
+ * ペルソナの決定か、ai_a か ai_b の呼び出しに失敗したら、`messages` へ書き込まず、`pending_messages` の行を残して戻る。
  * 二体の応答を待つあいだに、同じセッションへ別の一往復が書き込まれたか、問いに新しいセッションが作られていたら、`messages` へ書き込まずに戻る。
  * セッションが問いの最新のセッションでなければ、何も書き込まずに throw する。
  */

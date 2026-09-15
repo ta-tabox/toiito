@@ -176,13 +176,13 @@ describe("一往復", () => {
     expect(pending).toBe("急ぐほど問いが痩せる気がする");
   });
 
-  it("二体の解決が reject すると messages は空のままで、pending_messages に本文が残る", async () => {
+  it("ペルソナの決定に失敗すると messages は空のままで、pending_messages に本文が残る", async () => {
     const target = await newDialogue();
 
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      resolveCalls: () => Promise.reject(new Error("二体を解決できない")),
+      resolveCalls: () => Promise.reject(new Error("ペルソナを決められない")),
     });
 
     const messages = await db.listMessages(owner, target.sessionId);
