@@ -6,7 +6,7 @@
    直書きするとダークの二系統が片方だけ動く。
 
    背景色は彩度を持たず、暖色と寒色の傾きだけを持つ（.claude/rules/design.md「彩度の規律」）。
-   彩度を持つのは人間の発話（moss-surface）と自分が付けたメモ（mark）の二つだけで、三つ目が増えたらそこが破れ目になる。 */
+   彩度を持つのは人間の発話（moss-surface）と自分が付けたメモ（mark）とサインインの失敗を伝える枠（warn・warn-surface）の三つだけで、四つ目が増えたらそこが破れ目になる。 */
 :root {
   --ground: #fbf9f4;
   --surface-low: #f5f3ee;
@@ -22,6 +22,8 @@
   --moss-solid: #4a6741;
   --on-moss: #ffffff;
   --mark: #9a7223;
+  --warn: #9c4a2f;
+  --warn-surface: #f7ebe6;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -40,6 +42,8 @@
     --moss-solid: #324e2a;
     --on-moss: #e3e3dc;
     --mark: #c9a557;
+    --warn: #e0a08a;
+    --warn-surface: #2a1d18;
   }
 }
 
@@ -58,6 +62,8 @@
   --color-moss-solid: var(--moss-solid);
   --color-on-moss: var(--on-moss);
   --color-mark: var(--mark);
+  --color-warn: var(--warn);
+  --color-warn-surface: var(--warn-surface);
 
   /* 和文が本体で、欧文と数字は従属欧文で足りる（.claude/rules/design.md「書体と字組み」）。
      欧文専用の書体を混ぜると、一行の中で字面の大きさとベースラインに段差が出る。
