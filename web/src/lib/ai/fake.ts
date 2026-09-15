@@ -19,9 +19,9 @@ export function fakeResponse(id: PersonaId, transcript: Transcript): string {
 
 /**
  * 問いに付随する材料を寄せる AI 呼び出しの、フェイクモードの結果。
- * `body` は `parseCultureDrafts` が読む JSON の応答本文で、`searchResultUrls` は検索結果の URL の一覧。
+ * `body` は `parseMaterialDrafts` が読む JSON の応答本文で、`searchResultUrls` は検索結果の URL の一覧。
  */
-export type FakeCultureResponse = {
+export type FakeMaterialResponse = {
   body: string;
   searchResultUrls: string[];
 };
@@ -29,17 +29,17 @@ export type FakeCultureResponse = {
 /**
  * `question` に対する、材料の決定的な応答を組み立てる。
  *
- * 一つの論点について立場の違う外部の材料を二件返し、出典はどちらも `searchResultUrls` に含めるので、`listCultureViolations` は違反を返さない。
+ * 一つの論点について立場の違う外部の材料を二件返し、出典はどちらも `searchResultUrls` に含めるので、`listMaterialViolations` は違反を返さない。
  */
-export function fakeCultureResponse(
+export function fakeMaterialResponse(
   question: QuestionRef,
-): FakeCultureResponse {
-  const topic = `[fake:culture] 「${question.body}」`;
+): FakeMaterialResponse {
+  const topic = `[fake:material] 「${question.body}」`;
   const searchResultUrls = [
-    "https://example.com/fake-culture/for",
-    "https://example.com/fake-culture/against",
+    "https://example.com/fake-material/for",
+    "https://example.com/fake-material/against",
   ];
-  const cultures = [
+  const materials = [
     {
       kind: "external",
       topic,
@@ -54,5 +54,5 @@ export function fakeCultureResponse(
     },
   ];
 
-  return { body: JSON.stringify({ cultures }), searchResultUrls };
+  return { body: JSON.stringify({ materials }), searchResultUrls };
 }
