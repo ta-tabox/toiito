@@ -85,18 +85,6 @@ describe("readAuthConfig", () => {
   it("Google を設定しなければ BETTER_AUTH_URL は無くてよい", () => {
     expect(readAuthConfig(env()).baseUrl).toBeUndefined();
   });
-
-  it("本番で TOIITO_FAKE_LOGIN=1 なら投げる", () => {
-    expect(() =>
-      readAuthConfig(env({ ...GOOGLE, VERCEL_ENV: "production" })),
-    ).toThrow(/TOIITO_FAKE_LOGIN/);
-  });
-
-  it("本番で Google を設定せず TOIITO_FAKE_LOGIN=1 なら、TOIITO_FAKE_LOGIN を名指して投げる", () => {
-    expect(() => readAuthConfig(env({ VERCEL_ENV: "production" }))).toThrow(
-      /TOIITO_FAKE_LOGIN/,
-    );
-  });
 });
 
 describe("isAllowedEmail", () => {

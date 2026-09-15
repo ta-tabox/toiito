@@ -96,7 +96,12 @@
   },
   "overrides": [
     {
-      "includes": ["vitest.config.ts", "tests/setup/**", "scripts/**"],
+      "includes": [
+        "vitest.config.ts",
+        "next.config.ts",
+        "tests/setup/**",
+        "scripts/**"
+      ],
       "linter": {
         "rules": {
           "style": {

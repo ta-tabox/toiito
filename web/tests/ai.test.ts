@@ -84,18 +84,6 @@ describe("readFakeMode", () => {
     expect(readFakeMode({ TOIITO_FAKE_AI: "true" })).toBe(false);
     expect(readFakeMode({})).toBe(false);
   });
-
-  it("本番で TOIITO_FAKE_AI=1 なら投げる", () => {
-    expect(() =>
-      readFakeMode({ TOIITO_FAKE_AI: "1", VERCEL_ENV: "production" }),
-    ).toThrow(/TOIITO_FAKE_AI/);
-  });
-
-  it("Preview では TOIITO_FAKE_AI=1 を受け付ける", () => {
-    expect(readFakeMode({ TOIITO_FAKE_AI: "1", VERCEL_ENV: "preview" })).toBe(
-      true,
-    );
-  });
 });
 
 describe("フェイクモード", () => {

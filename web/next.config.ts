@@ -1,9 +1,13 @@
 /**
  * Next の設定。
- * 持つのは既定から動かす二つ（`agentRules`・`distDir`）だけで、経路の保護は `src/proxy.ts`、認証は `src/lib/auth/` が持つ。
+ * 持つのは既定から動かす二つ（`agentRules`・`distDir`）と本番の開発用の環境変数の検証だけで、経路の保護は `src/proxy.ts`、認証は `src/lib/auth/` が持つ。
  */
 
 import type { NextConfig } from "next";
+import { assertNoDevelopmentEnv } from "./src/lib/config.ts";
+
+// `next build` が最初に評価するので、本番に開発用の環境変数が入っていればここで throw してビルドを失敗させる。
+assertNoDevelopmentEnv(process.env);
 
 const nextConfig: NextConfig = {
   // エージェントを検出すると next dev が AGENTS.md へ自分の指示文を書き足して作業ツリーを汚すので、生成を止める。

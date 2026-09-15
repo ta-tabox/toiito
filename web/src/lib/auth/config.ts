@@ -10,8 +10,6 @@
  * エントリポイントは `readAuthConfig`。
  */
 
-import { isProduction } from "@/lib/config";
-
 /**
  * 認証の設定を読むときに見る環境変数。
  * 値の書き方の正は `web/README.md`「環境変数」。
@@ -34,9 +32,6 @@ type AuthEnv = {
 
   /** `1` のとき、Google を経ないサインイン（Preview と E2E 用）を有効にする。 */
   readonly TOIITO_FAKE_LOGIN?: string;
-
-  /** Vercel が渡す実行環境の名前で、`production` のときは `TOIITO_FAKE_LOGIN` を拒否する。 */
-  readonly VERCEL_ENV?: string;
 
   /** 省略可能なプロパティだけの型は weak type 検出で `ProcessEnv` を代入できないので、`process.env` をそのまま渡せるようにインデックスシグネチャを持たせる。 */
   readonly [key: string]: string | undefined;
@@ -175,17 +170,8 @@ function readGoogleClient(
 /**
  * `TOIITO_FAKE_LOGIN` が `1` かどうかを返す。
  *
- * `VERCEL_ENV=production` で有効になっていれば throw する。
- * Google を経ないサインインが本番で有効だと、許可リストに載った email を名乗るだけで他人のリソースへ到達できる。
+ * 本番で設定されていないことは、`next build` の最初に `assertNoDevelopmentEnv` が確かめる。
  */
 function readFakeLoginEnabled(env: AuthEnv): boolean {
-  const isEnabled = env.TOIITO_FAKE_LOGIN === "1";
-
-  if (isEnabled && isProduction(env)) {
-    throw new Error(
-      "TOIITO_FAKE_LOGIN は本番（VERCEL_ENV=production）では設定できない。Preview と E2E だけが使う",
-    );
-  }
-
-  return isEnabled;
+  return env.TOIITO_FAKE_LOGIN === "1";
 }
