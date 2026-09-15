@@ -15,7 +15,6 @@ import {
   type ProviderResponse,
 } from "@/lib/ai/provider";
 import { isProduction } from "@/lib/config";
-import type { PersonaRole } from "@/lib/personas";
 import { valueSet } from "@/lib/value-set";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
@@ -42,6 +41,46 @@ export type AnthropicEffort =
  */
 const EFFORTS = valueSet<AnthropicEffort>(Object.values(ANTHROPIC_EFFORT));
 
+/** 利用者が選べるモデル。 */
+export const ANTHROPIC_MODELS = {
+  sonnet5: "claude-sonnet-5",
+  opus5: "claude-opus-5",
+  haiku45: "claude-haiku-4-5",
+} as const;
+
+export type AnthropicModel =
+  (typeof ANTHROPIC_MODELS)[keyof typeof ANTHROPIC_MODELS];
+
+/** 利用者が選べるモデルの値域の検証。 */
+const MODELS = valueSet<AnthropicModel>(Object.values(ANTHROPIC_MODELS));
+
+/**
+ * `value` が `ANTHROPIC_MODELS` のモデル名なら true を返す。
+ * 利用者の設定から読んだモデル名は、`isAnthropicModel` で絞り込んでから `AnthropicCredentials` に渡す。
+ */
+export function isAnthropicModel(value: string): value is AnthropicModel {
+  return MODELS.includes(value);
+}
+
+/**
+ * モデルごとの、深さの指定（`output_config.effort`）を受け付けるか。
+ *
+ * 受け付けないモデルへ深さを送ると Claude API がエラーを返すので、`readAnthropicSettings` はそのモデルの設定に深さを持たせない。
+ */
+const ACCEPTS_EFFORT: Record<AnthropicModel, boolean> = {
+  [ANTHROPIC_MODELS.sonnet5]: true,
+  [ANTHROPIC_MODELS.opus5]: true,
+  [ANTHROPIC_MODELS.haiku45]: false,
+};
+
+/**
+ * `model` が深さの指定を受け付けるなら true を返す。
+ * `ANTHROPIC_MODELS` の外のモデル名（`TOIITO_ANTHROPIC_MODEL` で指定したもの）は true を返す。
+ */
+function acceptsEffort(model: string): boolean {
+  return isAnthropicModel(model) ? ACCEPTS_EFFORT[model] : true;
+}
+
 /**
  * Claude API の呼び出しに効く環境変数。
  * `process.env` をそのまま渡せるよう、宣言した以外のキーも通す。
@@ -51,8 +90,7 @@ type AnthropicEnv = {
   readonly TOIITO_ANTHROPIC_MAX_TOKENS?: string;
   readonly TOIITO_ANTHROPIC_TIMEOUT_MS?: string;
   readonly ANTHROPIC_API_KEY?: string;
-  readonly TOIITO_ANTHROPIC_EFFORT_CONCRETE?: string;
-  readonly TOIITO_ANTHROPIC_EFFORT_ABSTRACT?: string;
+  readonly TOIITO_ANTHROPIC_EFFORT?: string;
   readonly [key: string]: string | undefined;
 };
 
@@ -69,20 +107,12 @@ export type AnthropicSettings = CommonSettings & {
 };
 
 /**
- * 系統ごとの思考の深さの既定。
- *
- * 抽象系は構造を取り出して材料を添える役で thinking が膨らみやすいので、一段下げる。
- * undefined は API の既定（high）で走らせるという指定。
+ * 利用者が登録した API キーと、利用者が選んだモデル。
+ * `readAnthropicSettings` が env から読んだ設定の `apiKey` と `model` を、この二つで上書きする。
  */
-const DEFAULT_EFFORT: Record<PersonaRole, AnthropicEffort | undefined> = {
-  concrete: undefined,
-  abstract: ANTHROPIC_EFFORT.medium,
-};
-
-/** 系統ごとの深さを指定する環境変数。 */
-const EFFORT_ENV_KEY: Record<PersonaRole, string> = {
-  concrete: "TOIITO_ANTHROPIC_EFFORT_CONCRETE",
-  abstract: "TOIITO_ANTHROPIC_EFFORT_ABSTRACT",
+export type AnthropicCredentials = {
+  readonly apiKey: string;
+  readonly model: AnthropicModel;
 };
 
 /**
@@ -92,7 +122,7 @@ const EFFORT_ENV_KEY: Record<PersonaRole, string> = {
  * モデルを変えるたびに散らばった文字列を追う形にしないためで、テストも `ANTHROPIC_DEFAULTS` を読む。
  */
 export const ANTHROPIC_DEFAULTS = {
-  model: "claude-sonnet-5",
+  model: ANTHROPIC_MODELS.sonnet5,
   maxTokens: 16000,
 
   /**
@@ -102,44 +132,63 @@ export const ANTHROPIC_DEFAULTS = {
    * 二体を逐次に待っても立ち上がりの約 10 秒と合わせて Vercel Hobby の 300 秒に収まり、実行環境が強制終了する前に `timeoutMs` で打ち切れる。
    */
   timeoutMs: 120000,
-  effort: DEFAULT_EFFORT,
+
+  /**
+   * 思考の深さ。
+   *
+   * `ANTHROPIC_API_KEY` に乗る費用を抑えるので、API の既定（high）より一段下げる。
+   */
+  effort: ANTHROPIC_EFFORT.medium,
 } as const;
 
 /**
- * env から設定を読む。
- * 数として読めない値（未設定・空・非数）は既定値にする。
- * 本番（`VERCEL_ENV=production`）で `fake` が false かつ `ANTHROPIC_API_KEY` が無ければ throw する。
+ * env から設定を読み、`credentials` があれば `apiKey` と `model` をその値で上書きする。
+ * 数として読めない値（未設定・空・非数）と、値域の外の深さ（未設定を含む）は既定値にする。
+ * 深さの指定を受け付けないモデルでは、設定に深さを持たせない。
+ * 本番（`VERCEL_ENV=production`）で、実 API へ送るのに使う API キーが無ければ throw する。
  *
- * 深さは系統ごとに違うので、`readAnthropicSettings` では読まない（`readAnthropicProviders` が足す）。
  * フェイクモードはプロバイダを叩くかどうかの指定で env に依らないので、解決済みの値を受け取る。
+ * 深さは利用者ごとに変えないので、`credentials` があっても env から読む。
  */
 export function readAnthropicSettings(
   env: AnthropicEnv,
   fake: boolean,
+  credentials?: AnthropicCredentials,
 ): AnthropicSettings {
-  if (isProduction(env) && !fake && !env.ANTHROPIC_API_KEY) {
+  // `credentials` があれば利用者のキーを送り、`fake` なら何も送らないので、どちらでもないときだけ `ANTHROPIC_API_KEY` を要求する。
+  if (!credentials && isProduction(env) && !fake && !env.ANTHROPIC_API_KEY) {
     throw new Error(
       "ANTHROPIC_API_KEY が本番（VERCEL_ENV=production）で設定されていない（docs/DEPLOY.md「秘密の置き場」）",
     );
   }
 
+  const model =
+    credentials?.model ??
+    env.TOIITO_ANTHROPIC_MODEL ??
+    ANTHROPIC_DEFAULTS.model;
+  const effort =
+    EFFORTS.from(env.TOIITO_ANTHROPIC_EFFORT) ?? ANTHROPIC_DEFAULTS.effort;
+
   return {
-    model: env.TOIITO_ANTHROPIC_MODEL ?? ANTHROPIC_DEFAULTS.model,
+    model,
     maxTokens:
       Number(env.TOIITO_ANTHROPIC_MAX_TOKENS) || ANTHROPIC_DEFAULTS.maxTokens,
     timeoutMs:
       Number(env.TOIITO_ANTHROPIC_TIMEOUT_MS) || ANTHROPIC_DEFAULTS.timeoutMs,
+    effort: acceptsEffort(model) ? effort : undefined,
     fake,
-    apiKey: env.ANTHROPIC_API_KEY,
+    apiKey: credentials?.apiKey ?? env.ANTHROPIC_API_KEY,
   };
 }
 
 /** Claude API を叩くプロバイダ。 */
 export class AnthropicProvider extends AiProvider {
   readonly name = "anthropic";
+  readonly settings: AnthropicSettings;
 
-  constructor(readonly settings: AnthropicSettings) {
+  constructor(settings: AnthropicSettings) {
     super();
+    this.settings = settings;
   }
 
   /**
@@ -209,38 +258,13 @@ export class AnthropicProvider extends AiProvider {
 }
 
 /**
- * env から系統ごとの深さを読む。
- * 値域の外（未設定・想定外の値）は既定値にする。
+ * env から Claude API を叩くプロバイダを作り、`credentials` があれば `apiKey` と `model` をその値で上書きする。
+ * throw する条件は `readAnthropicSettings` と同じ。
  */
-function readEffort(
-  env: AnthropicEnv,
-  role: PersonaRole,
-): AnthropicEffort | undefined {
-  return (
-    EFFORTS.from(env[EFFORT_ENV_KEY[role]]) ?? ANTHROPIC_DEFAULTS.effort[role]
-  );
-}
-
-/**
- * env から系統ごとのプロバイダを作る。
- *
- * 深さは個体でなく系統の性質なので、キーは `PersonaId` でなく `PersonaRole`。
- * 系統で分かれるのは深さだけで、残りは全系統が同じ設定を持つ。
- */
-export function readAnthropicProviders(
+export function readAnthropicProvider(
   env: AnthropicEnv,
   fake: boolean,
-): Record<PersonaRole, AnthropicProvider> {
-  const settings = readAnthropicSettings(env, fake);
-
-  return {
-    concrete: new AnthropicProvider({
-      ...settings,
-      effort: readEffort(env, "concrete"),
-    }),
-    abstract: new AnthropicProvider({
-      ...settings,
-      effort: readEffort(env, "abstract"),
-    }),
-  };
+  credentials?: AnthropicCredentials,
+): AnthropicProvider {
+  return new AnthropicProvider(readAnthropicSettings(env, fake, credentials));
 }
