@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* 色・書体・字組み・幅のトークン。
+/* 色・影・書体・字組み・幅のトークン。
    値の正は docs/DESIGN.md（色／書体と字組み／余白と密度）で、変数名は同文書の用途名を英語へ写したもの。
    このファイルで定義した名前以外の色をコンポーネントへ直書きしない。
    直書きするとダークの二系統が片方だけ動く。
@@ -24,6 +24,7 @@
   --mark: #9a7223;
   --warn: #9c4a2f;
   --warn-surface: #f7ebe6;
+  --float-shadow: 0 0 16px #0000001f;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -44,6 +45,7 @@
     --mark: #c9a557;
     --warn: #e0a08a;
     --warn-surface: #2a1d18;
+    --float-shadow: 0 0 16px #00000099;
   }
 }
 
@@ -64,6 +66,7 @@
   --color-mark: var(--mark);
   --color-warn: var(--warn);
   --color-warn-surface: var(--warn-surface);
+  --shadow-float: var(--float-shadow);
 
   /* 和文が本体で、欧文と数字は従属欧文で足りる（.claude/rules/design.md「書体と字組み」）。
      欧文専用の書体を混ぜると、一行の中で字面の大きさとベースラインに段差が出る。
@@ -113,6 +116,13 @@ body {
 
 main:has(:is(input, textarea):focus) [data-recedes-while-writing] {
   opacity: 0.28;
+}
+
+/* メモの小フォームが出ているあいだは、覗き見の切り替えを隠す。
+   窓の幅が本文の一列より狭いと、画面の下端に出る小フォームが右下の切り替えを覆い、見えない切り替えにフォーカスが届く。
+   切り替えを小フォームより前へ出すと、今度は小フォームの送信ボタンを覆う。 */
+body:has([data-draft-panel]) [data-preview-toggle] {
+  display: none;
 }
 
 /* 逆引き（/memos の拡大表示 → /q/<id>#msg-<message_id>）で着地した発話の強調。

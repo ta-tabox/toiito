@@ -17,11 +17,13 @@ import {
   createMemoAction,
   newSessionAction,
   retryTurnAction,
+  setQuestionStatusAction,
   speakAction,
 } from "@/app/actions";
 import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
 import { RetryForm, SpeakForm } from "@/components/speak-form";
+import { StatusForm } from "@/components/status-form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import {
@@ -111,6 +113,7 @@ export default async function QuestionPage({
   const speak = speakAction.bind(null, session.id);
   const retry = retryTurnAction.bind(null, session.id);
   const newSession = newSessionAction.bind(null, question.id);
+  const setStatus = setQuestionStatusAction.bind(null, question.id);
 
   return (
     <main className="mx-auto w-full max-w-reading flex-1 px-5 py-10">
@@ -142,6 +145,9 @@ export default async function QuestionPage({
           原型（不変）: {question.body}
         </p>
       )}
+      <div className="mt-2">
+        <StatusForm status={question.status} action={setStatus} />
+      </div>
       <p className="mt-2 text-meta text-ink-weak tabular-nums">
         セッション開始: {formatTimestamp(session.started_at)}
       </p>
@@ -149,7 +155,7 @@ export default async function QuestionPage({
       {sessions.length > 1 && (
         <nav
           aria-label="セッション"
-          className="mt-4 flex flex-col items-start gap-1 border-rule border-l-2 pl-3"
+          className="mt-4 flex flex-col items-start gap-2 border-rule border-l-2 pl-3"
         >
           {sessions.map((candidate, index) => (
             <Link

@@ -201,18 +201,18 @@ function PreviewPanel({ open }: { open: OpenPreview }) {
       style={positionNear(open.anchor)}
       onMouseEnter={cancelMemoPreviewClose}
       onMouseLeave={scheduleMemoPreviewClose}
-      className="fixed z-10 overflow-y-auto rounded border border-rule bg-surface-mid p-3 text-aux shadow-[0_0_16px_rgba(0,0,0,0.12)]"
+      className="fixed z-10 overflow-y-auto rounded border border-rule bg-surface-mid p-3 text-aux shadow-float"
     >
-      <ul className="flex flex-col gap-1">
+      <ul>
         {open.memos.map((memo) => (
           <li key={memo.id}>
             <Link
               href={`/memos?memo=${memo.id}`}
-              className="block rounded px-2 py-1 hover:bg-surface-high focus-visible:bg-surface-high"
+              className="block rounded px-2 py-2 hover:bg-surface-high focus-visible:bg-surface-high"
             >
               <p className="truncate font-bold">{memo.keyword}</p>
               {memo.note && (
-                <p className="mt-1 line-clamp-2 text-ink-weak">{memo.note}</p>
+                <p className="line-clamp-2 text-ink-weak">{memo.note}</p>
               )}
             </Link>
           </li>
@@ -253,6 +253,7 @@ function closeOnEscape(event: KeyboardEvent): void {
  * 画面の右下に小さく置き、押すたびに設定を反転させる。
  *
  * hover を持たない端末では描画そのものを CSS で止める（触って読む画面に、触れない設定が残る）。
+ * メモの小フォームが出ているあいだも `globals.css` が隠す。
  */
 function PreviewToggle() {
   const isEnabled = useMemoPreviewEnabled();
@@ -260,6 +261,7 @@ function PreviewToggle() {
   return (
     <button
       type="button"
+      data-preview-toggle=""
       aria-pressed={isEnabled}
       onClick={() => writePreference(!isEnabled)}
       className="fixed right-4 bottom-4 hidden text-ink-weak text-meta hover:underline [@media(hover:hover)]:block"
