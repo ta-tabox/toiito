@@ -47,7 +47,7 @@ function toTagContent(text: string): string {
 }
 
 /**
- * `persona` へ渡すユーザーメッセージを、`question` と `transcript` から組み立てる。
+ * 次に `nextSpeaker` が発話するためのユーザーメッセージを、`question` と `transcript` から組み立てる。
  * 原型と現在の形を両方載せる理由は `QuestionRef` の JSDoc にある。
  *
  * 指示文はモデルを発話者名で呼び、ユーザーメッセージの中の「あなた」は人間の発話者名だけにする。
@@ -55,7 +55,7 @@ function toTagContent(text: string): string {
 export function buildUserContent(
   question: QuestionRef,
   transcript: Transcript,
-  persona: AiSpeaker,
+  nextSpeaker: AiSpeaker,
 ): string {
   const dialogue = transcript
     .map(
@@ -73,6 +73,6 @@ export function buildUserContent(
         ]
       : []),
     `# ここまでの対話（発話者「${SPEAKER_NAME.human}」は問いを投入した人間）\n${dialogue || "（まだ発話なし。問いへの最初の応答をする）"}`,
-    `${SPEAKER_NAME[persona]}として、役割定義に従い、次の一手を発話せよ。発話本文のみを出力すること。`,
+    `${SPEAKER_NAME[nextSpeaker]}として、役割定義に従い、次の一手を発話せよ。発話本文のみを出力すること。`,
   ].join("\n\n");
 }
