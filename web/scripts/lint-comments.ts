@@ -8,7 +8,7 @@
  *
  * エントリポイントは lintSource。
  * このファイルは複数のリポジトリで同じ内容を保つ共有物なので、このリポジトリ固有の逸脱を足すときはこのコメントの直下に理由を書く。
- * このリポジトリ固有の逸脱は `REASON_LIMIT_EXCEPTION` と `RepositoryVocabulary` で、理由はそれぞれの JSDoc が持つ。
+ * このリポジトリ固有の逸脱は `REASON_LIMIT_EXCEPTION` で、理由はその JSDoc が持つ。
  */
 
 import { spawnSync } from "node:child_process";
@@ -1247,7 +1247,7 @@ function resolveTargets(argv: string[]): string[] {
  * ファイルが無い側は空の配列にする。
  *
  * ルートは `git rev-parse --show-toplevel` で求め、git を実行できない環境ではカレントディレクトリをルートと見なす。
- * `pnpm lint` はルートでなく `web/` で走るので、カレントディレクトリから語のファイルを探すと見つからない。
+ * `pnpm lint` はルートでなくパッケージのディレクトリ（toiito では `web/`）で走ることがあるので、カレントディレクトリから語のファイルを探すと見つからない。
  */
 export function loadRepositoryVocabulary(): RepositoryVocabulary {
   const topLevel = spawnSync("git", ["rev-parse", "--show-toplevel"], {
