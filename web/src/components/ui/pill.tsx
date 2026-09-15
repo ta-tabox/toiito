@@ -28,6 +28,8 @@ const STATUS_FACE: Record<QuestionStatus, { label: string; isOpen: boolean }> =
 /**
  * 状態のピル。
  * 点は読み上げから外す（開／閉はラベルの語が既に言っている）。
+ *
+ * 上下の余白を 8px にするとピルの高さが 12px の文字の 3 倍になり、一覧の行の中で問いの本文より先に目に入るので、上下だけ 4px に留める。
  */
 export function Pill({ status }: { status: QuestionStatus }) {
   const { label, isOpen } = STATUS_FACE[status];
