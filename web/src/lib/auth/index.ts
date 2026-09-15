@@ -16,6 +16,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { isAllowedEmail, readAuthConfig } from "@/lib/auth/config";
 import { fakeLogin } from "@/lib/auth/fake-login";
+import { LOGIN_PATH } from "@/lib/auth/protected-paths";
 import { authDatabaseClient, getUserById } from "@/lib/db";
 
 /**
@@ -88,6 +89,10 @@ function createAuth() {
     database: prismaAdapter(authDatabaseClient(), { provider: "postgresql" }),
 
     socialProviders: config.google ? { google: config.google } : {},
+
+    // Google から戻った後にサインインが完了しなかったとき、Better Auth のエラー画面（`/api/auth/error`）でなくログインの画面へ送る。
+    // Better Auth は送り先へ `error` のクエリを付け、ルートからの相対パスにもそのまま付ける。
+    onAPIError: { errorURL: LOGIN_PATH },
 
     session: {
       expiresIn: SESSION_EXPIRES_IN_SECONDS,

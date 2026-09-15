@@ -211,7 +211,7 @@ spec は `web/e2e/` の 4 本で、何を見るかは各 spec の冒頭コメン
 
 check の前提は Postgres が起動していること（`docker compose up -d`）。
 
-コミット本文の禁止語を止める `.githooks/commit-msg` は、git の既定の `.git/hooks/` に無いので、クローンごとに `git config core.hooksPath .githooks` で有効にする。
+ステージした追加行の禁止語を報告だけする `.githooks/pre-commit` と、コミット本文の禁止語を止める `.githooks/commit-msg` は、git の既定の `.git/hooks/` に無いので、クローンごとに `git config core.hooksPath .githooks` で有効にする。
 リモートでは下の起動フックがこの設定を入れる。
 
 ### リモート（Claude Code on the web）
