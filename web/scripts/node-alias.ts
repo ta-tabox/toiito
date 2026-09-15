@@ -7,6 +7,8 @@
  *
  * エントリポイントは `registerSrcAlias`。
  * 静的 import は本体より先に解決されるため、呼び出し側は src の読み込みを登録後の動的 import へ回す。
+ *
+ * node は src を型の除去だけで実行するので、スクリプトが読む src のモジュールには、型の除去で消せない構文（enum・コンストラクタのパラメータプロパティなど）を書かない。
  */
 
 import { existsSync } from "node:fs";
