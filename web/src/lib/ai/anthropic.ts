@@ -137,9 +137,11 @@ export function readAnthropicSettings(
 /** Claude API を叩くプロバイダ。 */
 export class AnthropicProvider extends AiProvider {
   readonly name = "anthropic";
+  readonly settings: AnthropicSettings;
 
-  constructor(readonly settings: AnthropicSettings) {
+  constructor(settings: AnthropicSettings) {
     super();
+    this.settings = settings;
   }
 
   /**
