@@ -81,7 +81,7 @@ E2E は worktree をまたいで `toiito_e2e` 一本を共有するので、こ�
 手元は一組でよい。
 
 ```
-TOIITO_API_KEY_ENCRYPTION_KEYS=local1:<openssl rand -base64 32 で作った値>
+TOIITO_API_KEY_ENCRYPTION_KEYS=k1:<openssl rand -base64 32 で作った値>
 ```
 
 回転の手順は `docs/DEPLOY.md`「秘密の置き場」が持つ。
