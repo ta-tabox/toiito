@@ -201,7 +201,7 @@ function PreviewPanel({ open }: { open: OpenPreview }) {
       style={positionNear(open.anchor)}
       onMouseEnter={cancelMemoPreviewClose}
       onMouseLeave={scheduleMemoPreviewClose}
-      className="fixed z-10 overflow-y-auto rounded border border-rule bg-surface-mid p-3 text-aux shadow-[0_0_16px_rgba(0,0,0,0.12)]"
+      className="fixed z-10 overflow-y-auto rounded border border-rule bg-surface-mid p-3 text-aux shadow-float"
     >
       <ul className="flex flex-col gap-1">
         {open.memos.map((memo) => (

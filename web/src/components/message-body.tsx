@@ -95,7 +95,7 @@ type MemoDraft =
 
 /** メモの小フォームと、空白だけの選択の知らせが共有する、画面の下端の置き場と見た目。 */
 const DRAFT_PANEL_STYLE =
-  "fixed inset-x-4 bottom-4 z-10 mx-auto flex max-w-reading flex-col gap-2 rounded border border-rule bg-surface-mid p-3 shadow-[0_0_16px_rgba(0,0,0,0.12)]";
+  "fixed inset-x-4 bottom-4 z-10 mx-auto flex max-w-reading flex-col gap-2 rounded border border-rule bg-surface-mid p-3 shadow-float";
 
 /**
  * 発話本文。
