@@ -14,6 +14,7 @@ import {
   type CommonSettings,
   type ProviderResponse,
 } from "@/lib/ai/provider";
+import { isProduction } from "@/lib/config";
 import type { PersonaRole } from "@/lib/personas";
 import { valueSet } from "@/lib/value-set";
 
@@ -107,7 +108,7 @@ export const ANTHROPIC_DEFAULTS = {
 /**
  * env から設定を読む。
  * 数として読めない値（未設定・空・非数）は既定値にする。
- * `fake` が false で `ANTHROPIC_API_KEY` が無ければ throw する。
+ * 本番（`VERCEL_ENV=production`）で `fake` が false かつ `ANTHROPIC_API_KEY` が無ければ throw する。
  *
  * 深さは系統ごとに違うので、`readAnthropicSettings` では読まない（`readAnthropicProviders` が足す）。
  * フェイクモードはプロバイダを叩くかどうかの指定で env に依らないので、解決済みの値を受け取る。
@@ -116,9 +117,9 @@ export function readAnthropicSettings(
   env: AnthropicEnv,
   fake: boolean,
 ): AnthropicSettings {
-  if (!fake && !env.ANTHROPIC_API_KEY) {
+  if (isProduction(env) && !fake && !env.ANTHROPIC_API_KEY) {
     throw new Error(
-      "ANTHROPIC_API_KEY が設定されていない。実 API を叩かない環境では TOIITO_FAKE_AI=1 を設定する（web/README.md「環境変数」）",
+      "ANTHROPIC_API_KEY が本番（VERCEL_ENV=production）で設定されていない（docs/DEPLOY.md「秘密の置き場」）",
     );
   }
 
