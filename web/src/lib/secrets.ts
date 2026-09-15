@@ -49,7 +49,7 @@ const MALFORMED_STORED_API_KEY_MESSAGE =
  * 値の書き方の正は `web/README.md`「環境変数」。
  */
 type EncryptionKeyEnv = {
-  /** `<鍵 ID>:<鍵の値>` のカンマ区切りで、先頭の組の鍵で暗号化する。 */
+  /** 利用者の API キーを暗号化・復号する鍵の一覧。 */
   readonly TOIITO_API_KEY_ENCRYPTION_KEYS?: string;
 
   /** `process.env` をそのまま渡せるよう、宣言した以外のキーも通す。 */
