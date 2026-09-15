@@ -106,7 +106,12 @@ const USER_COLUMNS = {
  * `OwnerId` へ変換してよいのは `fromUserRow` だけで、`fromUserRow` を経由したことが「その文字列は `user.id` である」の唯一の根拠になる。
  * URL やフォームから来た文字列は `fromUserRow` を経由しないので、`OwnerId` にならない。
  */
-function fromUserRow(row: Omit<User, "id"> & { id: string }): User {
+function fromUserRow(row: {
+  id: string;
+  email: string;
+  name: string;
+  is_admin: boolean;
+}): User {
   return { ...row, id: row.id as OwnerId };
 }
 
