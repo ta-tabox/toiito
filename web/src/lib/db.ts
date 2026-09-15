@@ -157,8 +157,7 @@ export async function getUserById(id: string): Promise<User | undefined> {
 }
 
 /**
- * `user.email` と `user.name` と `user.is_admin` を持つユーザーを作る。
- * `user.is_admin` を省くと、管理者でないユーザーになる。
+ * ユーザーを作る。
  *
  * 本番の経路では Better Auth が四表を書くので、`createUser` を呼ぶのは開発用シードとテストだけである。
  * `user.id` は文字列でありさえすればよいので、id は Better Auth の生成に合わせず UUID を振る。
