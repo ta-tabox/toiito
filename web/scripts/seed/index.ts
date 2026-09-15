@@ -14,7 +14,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { registerSrcAlias } from "../node-alias.ts";
-import { OTHER_USER_INPUT, SEED_INPUTS } from "./questions.ts";
 import { SEED_USERS } from "./users.ts";
 
 /**
@@ -64,6 +63,10 @@ export async function seed(): Promise<SeedSummary> {
   assertNotProduction();
 
   const repo: Repo = await import("@/lib/db");
+
+  // `questions.ts` も src を import するので、`@/lib/db` と同じく `registerSrcAlias` の登録後に読み込む。
+  const { OTHER_USER_INPUT, SEED_INPUTS } = await import("./questions.ts");
+
   const summary: SeedSummary = {
     users: 0,
     questionIds: [],

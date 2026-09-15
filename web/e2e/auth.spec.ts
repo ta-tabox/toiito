@@ -44,6 +44,25 @@ test("ログインの画面のボタンを押すと、問いの一覧が開く",
   await expect(page.getByRole("heading", { level: 1 })).toContainText("toiito");
 });
 
+test("エラーコードを付けてログインの画面を開くと、ログインできなかったことを日本語で伝える", async ({
+  page,
+}) => {
+  await page.goto("/login?error=unable_to_create_session");
+
+  await expect(
+    page.getByText("ログインできなかった。", { exact: true }),
+  ).toBeVisible();
+});
+
+test("state を付けずに Google の callback を開くと、エラーコードを付けてログインの画面へ送られる", async ({
+  page,
+}) => {
+  // Better Auth は `state` の確認を provider の検索より前に行うので、Google を設定していないこの環境でも失敗の経路を通る。
+  await page.goto("/api/auth/callback/google");
+
+  await expect(page).toHaveURL(/\/login\?error=state_not_found$/);
+});
+
 test("ログアウトするとログインの画面へ戻り、問いの一覧はもう開かない", async ({
   page,
 }) => {

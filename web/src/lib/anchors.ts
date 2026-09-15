@@ -44,11 +44,15 @@ export function parseAnchor(start: number, end: number): Anchor {
  * `start` が無いと、セグメント内オフセットを絶対オフセットへ戻すたびに手前のセグメントを全部足し直すことになる。
  */
 export class Segment {
-  constructor(
-    readonly text: string,
-    readonly start: number,
-    readonly memoIds: string[],
-  ) {}
+  readonly text: string;
+  readonly start: number;
+  readonly memoIds: string[];
+
+  constructor(text: string, start: number, memoIds: string[]) {
+    this.text = text;
+    this.start = start;
+    this.memoIds = memoIds;
+  }
 
   /** UI が返すセグメント内オフセットを、本文先頭基準の絶対オフセットへ換算する。 */
   absoluteOffset(offsetInSegment: number): number {
