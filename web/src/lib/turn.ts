@@ -3,7 +3,7 @@
  *
  * ai_a と ai_b が両方返ってから、`commitTurn` が三行をまとめて `messages` へ入れる。
  * AI 呼び出しが失敗しても throw せず、`pending_messages` に人間の発話を残して戻る（理由は `docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
- * AI を待つあいだに同じ問いへの別の書き込みが先に確定していたときも、throw せず三行を書かずに戻る（理由は `docs/adr/0042-serialize-turn-writes.md`）。
+ * AI を待つあいだに同じ問いへの別の書き込みが先に確定していたときも、同じ理由で throw せず、三行を書かずに戻る（`commitTurn` が false を返す）。
  *
  * 呼び出す二体（`PersonaCalls`）は引数で受け取る。
  * `runTurn` が `AI_PROVIDERS` を直接参照すると、テストが失敗経路を作れなくなる。

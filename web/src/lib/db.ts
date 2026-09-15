@@ -251,8 +251,9 @@ async function requireOwnedSession(
 /**
  * トランザクション `tx` の中で、owner が所有する `questionId` の問いの行を、`tx` が終わるまで排他ロックする。
  * 問いが無いか owner 以外が所有する問いなら、`requireOwnedQuestion` と同じ文面で throw する。
+ * 問いのセッションの並びか発話を書き換えるトランザクション（`savePendingBody`・`commitTurn`・`createSession`）は、読む前にこれを呼び、同じ問いに対して直列に走る。
  *
- * 問いのセッションの並びか発話を書き換えるトランザクションは、読む前にこのロックを取り、同じ問いに対して直列に走る。
+ * ロックするのがセッションでなく問いの行なのは、再訪の `createSession` が既存のセッションの行を書き換えず、セッションの行のロックでは再訪と一往復の書き込みが直列にならないため。
  * Postgres の既定の READ COMMITTED は文ごとに読み直すので、ロックの後の読み出しは先に確定した書き込みを見る。
  */
 async function requireOwnedQuestionForUpdate(
