@@ -42,6 +42,32 @@ export type AnthropicEffort =
 const EFFORTS = valueSet<AnthropicEffort>(Object.values(ANTHROPIC_EFFORT));
 
 /**
+ * 利用者が選べるモデル。
+ *
+ * 値域には、`output_config.effort` の全値を受け付けるモデルだけを入れる。
+ * 受け付けないモデル（`claude-haiku-4-5` など）へ深さを送ると、Claude API がエラーを返す。
+ */
+export const ANTHROPIC_MODELS = {
+  sonnet5: "claude-sonnet-5",
+  opus5: "claude-opus-5",
+  fable51: "claude-fable-5-1",
+} as const;
+
+export type AnthropicModel =
+  (typeof ANTHROPIC_MODELS)[keyof typeof ANTHROPIC_MODELS];
+
+/** 利用者が選べるモデルの値域の検証。 */
+const MODELS = valueSet<AnthropicModel>(Object.values(ANTHROPIC_MODELS));
+
+/**
+ * `value` が `ANTHROPIC_MODELS` のモデル名なら true を返す。
+ * 利用者の設定から読んだモデル名は、`isAnthropicModel` で絞り込んでから `AnthropicCredentials` に渡す。
+ */
+export function isAnthropicModel(value: string): value is AnthropicModel {
+  return MODELS.includes(value);
+}
+
+/**
  * Claude API の呼び出しに効く環境変数。
  * `process.env` をそのまま渡せるよう、宣言した以外のキーも通す。
  */
@@ -64,6 +90,15 @@ export type AnthropicSettings = CommonSettings & {
 
   /** Claude API のキー。 */
   readonly apiKey?: string;
+};
+
+/**
+ * 利用者が登録した API キーと、利用者が選んだモデル。
+ * `readAnthropicSettings` が env から読んだ設定の `apiKey` と `model` を、この二つで上書きする。
+ */
+export type AnthropicCredentials = {
+  readonly apiKey: string;
+  readonly model: AnthropicModel;
 };
 
 /**
@@ -93,24 +128,29 @@ export const ANTHROPIC_DEFAULTS = {
 } as const;
 
 /**
- * env から設定を読む。
+ * env から設定を読み、`credentials` があれば `apiKey` と `model` をその値で上書きする。
  * 数として読めない値（未設定・空・非数）と、値域の外の深さ（未設定を含む）は既定値にする。
- * 本番（`VERCEL_ENV=production`）で `fake` が false かつ `ANTHROPIC_API_KEY` が無ければ throw する。
+ * `credentials` が無く、本番（`VERCEL_ENV=production`）で `fake` が false かつ `ANTHROPIC_API_KEY` が無ければ throw する。
  *
  * フェイクモードはプロバイダを叩くかどうかの指定で env に依らないので、解決済みの値を受け取る。
+ * 深さは利用者ごとに変えないので、`credentials` があっても env から読む。
  */
 export function readAnthropicSettings(
   env: AnthropicEnv,
   fake: boolean,
+  credentials?: AnthropicCredentials,
 ): AnthropicSettings {
-  if (isProduction(env) && !fake && !env.ANTHROPIC_API_KEY) {
+  if (!credentials && isProduction(env) && !fake && !env.ANTHROPIC_API_KEY) {
     throw new Error(
       "ANTHROPIC_API_KEY が本番（VERCEL_ENV=production）で設定されていない（docs/DEPLOY.md「秘密の置き場」）",
     );
   }
 
   return {
-    model: env.TOIITO_ANTHROPIC_MODEL ?? ANTHROPIC_DEFAULTS.model,
+    model:
+      credentials?.model ??
+      env.TOIITO_ANTHROPIC_MODEL ??
+      ANTHROPIC_DEFAULTS.model,
     maxTokens:
       Number(env.TOIITO_ANTHROPIC_MAX_TOKENS) || ANTHROPIC_DEFAULTS.maxTokens,
     timeoutMs:
@@ -118,7 +158,7 @@ export function readAnthropicSettings(
     effort:
       EFFORTS.from(env.TOIITO_ANTHROPIC_EFFORT) ?? ANTHROPIC_DEFAULTS.effort,
     fake,
-    apiKey: env.ANTHROPIC_API_KEY,
+    apiKey: credentials?.apiKey ?? env.ANTHROPIC_API_KEY,
   };
 }
 
@@ -198,10 +238,14 @@ export class AnthropicProvider extends AiProvider {
   }
 }
 
-/** env から Claude API を叩くプロバイダを作る。 */
+/**
+ * env から Claude API を叩くプロバイダを作り、`credentials` があれば `apiKey` と `model` をその値で上書きする。
+ * throw する条件は `readAnthropicSettings` と同じ。
+ */
 export function readAnthropicProvider(
   env: AnthropicEnv,
   fake: boolean,
+  credentials?: AnthropicCredentials,
 ): AnthropicProvider {
-  return new AnthropicProvider(readAnthropicSettings(env, fake));
+  return new AnthropicProvider(readAnthropicSettings(env, fake, credentials));
 }

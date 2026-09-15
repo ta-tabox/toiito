@@ -9,8 +9,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ANTHROPIC_DEFAULTS,
   ANTHROPIC_EFFORT,
+  ANTHROPIC_MODELS,
+  type AnthropicCredentials,
   AnthropicProvider,
   type AnthropicSettings,
+  isAnthropicModel,
   readAnthropicProvider,
   readAnthropicSettings,
 } from "@/lib/ai/anthropic";
@@ -38,6 +41,15 @@ const OVERRIDE = {
   maxTokens: 2048,
   timeoutMs: 5000,
   effort: ANTHROPIC_EFFORT.xhigh,
+};
+
+/**
+ * 利用者が登録したキーと選んだモデル。
+ * env のキーとモデルより優先されることを見るので、`OVERRIDE` とも既定値とも違うモデルにする。
+ */
+const CREDENTIALS: AnthropicCredentials = {
+  apiKey: "user-key",
+  model: ANTHROPIC_MODELS.fable51,
 };
 
 /** Claude API の応答一件を返す fetch に差し替える。 */
@@ -71,6 +83,11 @@ function sentBody(fetchMock: ReturnType<typeof stubApiResponse>) {
   };
 }
 
+/** モックした fetch が送ったリクエストヘッダを読む。 */
+function sentHeaders(fetchMock: ReturnType<typeof stubApiResponse>) {
+  return fetchMock.mock.calls[0][1].headers as Record<string, string>;
+}
+
 /** 組み立て済みの本文を渡して一回叩く。 */
 function send(settings: AnthropicSettings = SETTINGS) {
   return new AnthropicProvider(settings).send(
@@ -86,6 +103,16 @@ describe("既定値", () => {
     expect(ANTHROPIC_DEFAULTS.maxTokens).toBe(16000);
     expect(ANTHROPIC_DEFAULTS.timeoutMs).toBe(120000);
     expect(ANTHROPIC_DEFAULTS.effort).toBe("medium");
+  });
+});
+
+describe("利用者が選べるモデル", () => {
+  it("既定のモデルは isAnthropicModel を通る", () => {
+    expect(isAnthropicModel(ANTHROPIC_DEFAULTS.model)).toBe(true);
+  });
+
+  it("値域の外のモデル名は isAnthropicModel を通らない", () => {
+    expect(isAnthropicModel("claude-haiku-4-5")).toBe(false);
   });
 });
 
@@ -179,6 +206,40 @@ describe("readAnthropicProvider", () => {
     const provider = readAnthropicProvider({ VERCEL_ENV: "preview" }, false);
 
     expect(provider.settings.apiKey).toBeUndefined();
+  });
+
+  it("利用者のキーとモデルを渡すと、env のキーとモデルでなく利用者のキーとモデルでリクエストを送る", async () => {
+    const fetchMock = stubOkResponse();
+    const env = {
+      ANTHROPIC_API_KEY: "operator-key",
+      TOIITO_ANTHROPIC_MODEL: OVERRIDE.model,
+    };
+    const provider = readAnthropicProvider(env, false, CREDENTIALS);
+
+    await provider.send(
+      "# 抽象派",
+      "組み立て済みの本文",
+      AbortSignal.timeout(SETTINGS.timeoutMs),
+    );
+
+    expect(sentHeaders(fetchMock)["x-api-key"]).toBe(CREDENTIALS.apiKey);
+    expect(sentBody(fetchMock).model).toBe(CREDENTIALS.model);
+  });
+
+  it("利用者のキーとモデルを渡しても、深さは既定値のまま", () => {
+    const provider = readAnthropicProvider({}, false, CREDENTIALS);
+
+    expect(provider.settings.effort).toBe(ANTHROPIC_DEFAULTS.effort);
+  });
+
+  it("本番で ANTHROPIC_API_KEY が無くても、利用者のキーを渡せばプロバイダを作れる", () => {
+    const provider = readAnthropicProvider(
+      { VERCEL_ENV: "production" },
+      false,
+      CREDENTIALS,
+    );
+
+    expect(provider.settings.apiKey).toBe(CREDENTIALS.apiKey);
   });
 });
 
