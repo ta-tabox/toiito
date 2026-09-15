@@ -100,7 +100,6 @@ UI 側でやらない。
 Google を経ないサインイン（`TOIITO_FAKE_LOGIN=1`）は Preview と E2E だけが使い、本番に設定されていればビルドが失敗する。
 
 認証まわりの四表（`user` / `session` / `account` / `verification`）は Better Auth が持ち、モデル名も列名も生成されたままにする。
-`db.ts` が触るのは `user` の `id` / `email` / `name` とアプリが足した `is_admin` だけで、どれも詰め替えの要らない列名なので、snake_case へ揃える利益が発生しない。
 **Better Auth の `session` は対話の `sessions` と別物である**——前者はログイン、後者は問いへの再訪。
 Prisma のモデル名が一意でなければならないので、`Session` を名乗るのは Better Auth の側で、対話の側は `DialogueSession` と綴る（表も列もドメイン型も動いていない）。
 
