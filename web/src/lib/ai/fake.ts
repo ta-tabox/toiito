@@ -19,7 +19,9 @@ export function fakeResponse(id: PersonaId, transcript: Transcript): string {
 
 /**
  * 問いに付随する材料を寄せる AI 呼び出しの、フェイクモードの結果。
- * `body` は `parseMaterialDrafts` が読む JSON の応答本文で、`searchResultUrls` は検索結果の URL の一覧。
+ *
+ * - `body`: `parseMaterialDrafts` が読む JSON の応答本文
+ * - `searchResultUrls`: 検索結果の URL の一覧
  */
 export type FakeMaterialResponse = {
   body: string;

@@ -59,7 +59,10 @@ enum Speaker {
 }
 
 /// 問いに付随する材料（`materials` の行）の種類。
-/// `internal` は自分の過去の問いとメモ、`external` は外部の調査、`isomorph` は別領域と同じ形に見える候補を指す。
+///
+/// - `internal`: 自分の過去の問いとメモ
+/// - `external`: 外部の調査
+/// - `isomorph`: 別領域と同じ形に見える候補
 ///
 /// TS 側の対応は `src/lib/material.ts` の `MATERIAL_KINDS`。
 /// ずれの検出は QuestionStatus と同じなので、この enum に値を足したら `MATERIAL_KINDS` にも足す。
@@ -72,7 +75,9 @@ enum MaterialKind {
 }
 
 /// 問いに付随する材料を作った主体。
-/// `auto` は AI が寄せた材料、`human` は人間が足した材料を指す。
+///
+/// - `auto`: AI が寄せた材料
+/// - `human`: 人間が足した材料
 ///
 /// TS 側の対応は `src/lib/material.ts` の `MATERIAL_CREATORS`。
 /// この enum に値を足したら `MATERIAL_CREATORS` にも足す。

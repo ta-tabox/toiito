@@ -9,7 +9,10 @@ import type { MaterialDraft } from "@/lib/types";
 
 /**
  * 材料の種類。
- * `internal` は自分の過去の問いとメモ、`external` は外部の調査、`isomorph` は別領域と同じ形に見える候補を指す。
+ *
+ * - `internal`: 自分の過去の問いとメモ
+ * - `external`: 外部の調査
+ * - `isomorph`: 別領域と同じ形に見える候補
  *
  * DB の enum `MaterialKind`（`prisma/schema.prisma`）と同じ並びなので、値を足すときは両方に足す。
  */
@@ -19,7 +22,9 @@ export type MaterialKind = (typeof MATERIAL_KINDS)[number];
 
 /**
  * 材料を作った主体。
- * `auto` は AI が寄せた材料、`human` は人間が足した材料を指す。
+ *
+ * - `auto`: AI が寄せた材料
+ * - `human`: 人間が足した材料
  *
  * DB の enum `MaterialCreator`（`prisma/schema.prisma`）と同じ並びなので、値を足すときは両方に足す。
  */
@@ -48,7 +53,9 @@ export type MaterialViolation =
 
 /**
  * `listMaterialViolations` が照らす規律。
- * `searchResultUrls` は AI の web 検索が返した URL の一覧で、`externalLimit` を省くと `EXTERNAL_MATERIAL_LIMIT` になる。
+ *
+ * - `searchResultUrls`: AI の web 検索が返した URL の一覧
+ * - `externalLimit`: 外部の材料の件数の上限で、省くと `EXTERNAL_MATERIAL_LIMIT` になる
  */
 export type MaterialRules = {
   searchResultUrls: readonly string[];
