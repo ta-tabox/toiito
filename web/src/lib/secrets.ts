@@ -40,6 +40,9 @@ const FIELD_SEPARATOR = ":";
 /** 環境変数の中で、鍵 ID と鍵の値の組を並べる区切り。 */
 const ENTRY_SEPARATOR = ",";
 
+/** 鍵の一覧の書き方を載せた文書の節で、鍵の一覧を読めないときのエラー文が指す。 */
+const KEYS_FORMAT_DOC = "web/README.md「環境変数」";
+
 /** `decryptApiKey` に渡した値が `encryptApiKey` の戻り値の形でないときのエラー文。 */
 const MALFORMED_STORED_API_KEY_MESSAGE =
   "保存された API キーの暗号文の形式が不正。encryptApiKey が返した値でない";
@@ -105,7 +108,7 @@ export function readEncryptionKeyRing(
 
   if (!encryptionKey) {
     throw new Error(
-      "TOIITO_API_KEY_ENCRYPTION_KEYS が空。<鍵 ID>:<鍵の値> をカンマ区切りで設定する（web/README.md「環境変数」）",
+      `TOIITO_API_KEY_ENCRYPTION_KEYS が空。<鍵 ID>:<鍵の値> をカンマ区切りで設定する（${KEYS_FORMAT_DOC}）`,
     );
   }
 
@@ -178,7 +181,7 @@ function parseKeyEntry(entry: string, index: number): EncryptionKey {
 
   if (fields.length !== 2 || !KEY_ID_PATTERN.test(fields[0])) {
     throw new Error(
-      `${position}が <鍵 ID>:<鍵の値> の形でない。鍵 ID は英数字・_・- で書く（web/README.md「環境変数」）`,
+      `${position}が <鍵 ID>:<鍵の値> の形でない。鍵 ID は英数字・_・- で書く（${KEYS_FORMAT_DOC}）`,
     );
   }
 
@@ -187,7 +190,7 @@ function parseKeyEntry(entry: string, index: number): EncryptionKey {
 
   if (bytes?.length !== KEY_BYTES) {
     throw new Error(
-      `${position}の鍵の値が 32 バイトの base64 でない。openssl rand -base64 32 で作る（web/README.md「環境変数」）`,
+      `${position}の鍵の値が 32 バイトの base64 でない。openssl rand -base64 32 で作る（${KEYS_FORMAT_DOC}）`,
     );
   }
 
