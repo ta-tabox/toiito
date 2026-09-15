@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * 管理の画面。
- * ユーザーを登録の古い順に並べ、ユーザーごとの問いの数とセッションの数を表で描く。
+ * ユーザーごとの問いの数とセッションの数を表で描く。
  */
 export default async function AdminPage() {
   await requireAdmin();

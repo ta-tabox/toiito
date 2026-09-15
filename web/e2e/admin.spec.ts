@@ -17,7 +17,6 @@ test("管理者でない二人目が /admin を開くと 404 になり、一覧�
   await signIn(page, NON_ADMIN.email);
   const response = await page.goto("/admin");
 
-  // 403 を返すと、管理の画面が在ることが管理者でないユーザーへ伝わる。
   expect(response?.status()).toBe(404);
   await expect(page.getByRole("table")).toHaveCount(0);
 });
