@@ -18,6 +18,7 @@ import { DATABASE_URL } from "@/lib/config";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
 import type {
+  AdminUserRow,
   Anchor,
   Material,
   MaterialDraft,
@@ -90,12 +91,27 @@ export function questionText(q: Question): string {
 }
 
 /**
+ * ドメイン型の `User` へ写すときに `user` 表から SELECT する列。
+ */
+const USER_COLUMNS = {
+  id: true,
+  email: true,
+  name: true,
+  is_admin: true,
+} as const satisfies Prisma.UserSelect;
+
+/**
  * `user` 表を SELECT した直後の行を、ドメイン型の `User` へ写す。
  *
  * `OwnerId` へ変換してよいのは `fromUserRow` だけで、`fromUserRow` を経由したことが「その文字列は `user.id` である」の唯一の根拠になる。
  * URL やフォームから来た文字列は `fromUserRow` を経由しないので、`OwnerId` にならない。
  */
-function fromUserRow(row: { id: string; email: string; name: string }): User {
+function fromUserRow(row: {
+  id: string;
+  email: string;
+  name: string;
+  is_admin: boolean;
+}): User {
   return { ...row, id: row.id as OwnerId };
 }
 
@@ -118,7 +134,7 @@ export function authDatabaseClient(): PrismaClient {
 export async function getUserByEmail(email: string): Promise<User | undefined> {
   const row = await db().user.findUnique({
     where: { email },
-    select: { id: true, email: true, name: true },
+    select: USER_COLUMNS,
   });
 
   return row ? fromUserRow(row) : undefined;
@@ -134,7 +150,7 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
 export async function getUserById(id: string): Promise<User | undefined> {
   const row = await db().user.findUnique({
     where: { id },
-    select: { id: true, email: true, name: true },
+    select: USER_COLUMNS,
   });
 
   return row ? fromUserRow(row) : undefined;
@@ -143,16 +159,48 @@ export async function getUserById(id: string): Promise<User | undefined> {
 /**
  * ユーザーを作る。
  *
- * 本番の経路では Better Auth が四表を書くので、`createUser` を呼ぶのは開発用シードだけである。
+ * 本番の経路では Better Auth が四表を書くので、`createUser` を呼ぶのは開発用シードとテストだけである。
  * `user.id` は文字列でありさえすればよいので、id は Better Auth の生成に合わせず UUID を振る。
  */
-export async function createUser(email: string, name: string): Promise<User> {
+export async function createUser(user: {
+  email: string;
+  name: string;
+  is_admin?: boolean;
+}): Promise<User> {
   const row = await db().user.create({
-    data: { id: randomUUID(), email, name },
-    select: { id: true, email: true, name: true },
+    data: { id: randomUUID(), ...user },
+    select: USER_COLUMNS,
   });
 
   return fromUserRow(row);
+}
+
+/**
+ * 全ユーザーを、ユーザーごとの問いの数とセッションの数と一緒に、登録の古い順で返す。
+ * 問いの本文も発話も返さない。
+ *
+ * 呼び出し側は `requireAdmin` を通してから呼ぶ。
+ * `user.sessions` は Better Auth のログインのセッションなので、対話のセッションの数は問いごとの数を足して求める。
+ */
+export async function listUsersForAdmin(): Promise<AdminUserRow[]> {
+  const rows = await db().user.findMany({
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      questions: { select: { _count: { select: { sessions: true } } } },
+    },
+    orderBy: [{ createdAt: "asc" }, { email: "asc" }],
+  });
+
+  return rows.map(({ questions, ...user }) => ({
+    ...user,
+    question_count: questions.length,
+    session_count: questions.reduce(
+      (count, question) => count + question._count.sessions,
+      0,
+    ),
+  }));
 }
 
 /**

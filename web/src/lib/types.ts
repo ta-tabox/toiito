@@ -23,9 +23,30 @@ export type OwnerId = string & { readonly __brand: "OwnerId" };
 
 /**
  * ユーザー。
- * 実体は Better Auth の `user` 表で、このアプリが読むのはこの三つだけ。
+ * 実体は Better Auth の `user` 表である。
+ *
+ * `is_admin` の使い道の制約は `prisma/schema.prisma` の `is_admin` のコメントが正。
  */
-export type User = { id: OwnerId; email: string; name: string };
+export type User = {
+  id: OwnerId;
+  email: string;
+  name: string;
+  is_admin: boolean;
+};
+
+/**
+ * 管理の画面の一覧の一行で、ユーザー一人と、そのユーザーが持つ問いとセッションの数。
+ * 作るのは `db.ts` の `listUsersForAdmin` で、問いの本文は持たない。
+ *
+ * `id` を `OwnerId` にしないので、一覧の行から他のユーザーの問いを読む repo 関数へ渡せない。
+ */
+export type AdminUserRow = {
+  id: string;
+  email: string;
+  name: string;
+  question_count: number;
+  session_count: number;
+};
 
 /**
  * body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、current_form は対話の中で言い直された焦点。

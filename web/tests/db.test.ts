@@ -560,3 +560,55 @@ describe("materials", () => {
     expect(reread?.status).toBe("new");
   });
 });
+
+describe("users", () => {
+  it("is_admin を渡さずに作ったユーザーは、getUserById が is_admin を false で返す", async () => {
+    const user = await db.getUserById(owner);
+
+    expect(user?.is_admin).toBe(false);
+  });
+
+  it("is_admin を立てて作ったユーザーは、getUserById が is_admin を true で返す", async () => {
+    const admin = await db.createUser({
+      email: "admin@example.com",
+      name: "管理者",
+      is_admin: true,
+    });
+
+    const reread = await db.getUserById(admin.id);
+
+    expect(reread?.is_admin).toBe(true);
+  });
+
+  it("listUsersForAdmin は、ユーザーごとに問いの数と、再訪を含めたセッションの数を返す", async () => {
+    const other = await createOwner("other@example.com");
+    const { question } = await db.createQuestion(owner, "再訪する問い");
+    await db.createSession(owner, question.id);
+    await db.createQuestion(owner, "一度きりの問い");
+
+    const rows = await db.listUsersForAdmin();
+
+    expect(
+      rows.map(({ id, question_count, session_count }) => ({
+        id,
+        question_count,
+        session_count,
+      })),
+    ).toEqual([
+      { id: owner, question_count: 2, session_count: 3 },
+      { id: other, question_count: 0, session_count: 0 },
+    ]);
+  });
+
+  it("listUsersForAdmin の戻り値に、問いの本文も現在の形も含まれない", async () => {
+    const { question } = await db.createQuestion(owner, "管理者に見せない原型");
+    await db.setCurrentForm(owner, question.id, "管理者に見せない現在の形");
+
+    const rows = await db.listUsersForAdmin();
+    const serialized = JSON.stringify(rows);
+
+    expect(rows[0].question_count).toBe(1);
+    expect(serialized).not.toContain("管理者に見せない原型");
+    expect(serialized).not.toContain("管理者に見せない現在の形");
+  });
+});
