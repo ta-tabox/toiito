@@ -6,7 +6,7 @@
  * この書式を変えると `e2e/dialogue.spec.ts` と `e2e/memo.spec.ts` が応答を拾えなくなる。
  */
 
-import type { Transcript } from "@/lib/ai/prompt";
+import type { QuestionRef, Transcript } from "@/lib/ai/prompt";
 import type { PersonaId } from "@/lib/personas";
 
 /** ペルソナ一体分の決定的応答を組み立てる。 */
@@ -15,4 +15,46 @@ export function fakeResponse(id: PersonaId, transcript: Transcript): string {
     .reverse()
     .find((m) => m.speaker === "human");
   return `[fake:${id}] 「${lastHuman?.body ?? "(発話なし)"}」への応答`;
+}
+
+/**
+ * 問いに付随する材料を寄せる AI 呼び出しの、フェイクモードの結果。
+ *
+ * - `body`: `parseMaterialDrafts` が読む JSON の応答本文
+ * - `searchResultUrls`: 検索結果の URL の一覧
+ */
+export type FakeMaterialResponse = {
+  body: string;
+  searchResultUrls: string[];
+};
+
+/**
+ * `question` に対する、材料の決定的な応答を組み立てる。
+ *
+ * 一つの論点について立場の違う外部の材料を二件返し、出典はどちらも `searchResultUrls` に含めるので、`listMaterialViolations` は違反を返さない。
+ */
+export function fakeMaterialResponse(
+  question: QuestionRef,
+): FakeMaterialResponse {
+  const topic = `[fake:material] 「${question.body}」`;
+  const searchResultUrls = [
+    "https://example.com/fake-material/for",
+    "https://example.com/fake-material/against",
+  ];
+  const materials = [
+    {
+      kind: "external",
+      topic,
+      body: "問いの前提を支持する立場の材料",
+      source_url: searchResultUrls[0],
+    },
+    {
+      kind: "external",
+      topic,
+      body: "問いの前提に反対する立場の材料",
+      source_url: searchResultUrls[1],
+    },
+  ];
+
+  return { body: JSON.stringify({ materials }), searchResultUrls };
 }

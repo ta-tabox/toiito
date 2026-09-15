@@ -19,6 +19,8 @@ import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
 import type {
   Anchor,
+  Material,
+  MaterialDraft,
   Memo,
   MemoWithContext,
   Message,
@@ -60,6 +62,7 @@ function db(): PrismaClient {
         dialogueSession: { seq: true },
         message: { seq: true },
         memo: { seq: true },
+        material: { seq: true },
       },
     });
   }
@@ -686,6 +689,66 @@ export async function listMemosWithContext(
     speaker: message.speaker,
     message_body: message.body,
   }));
+}
+
+/**
+ * `questionId` の問いに材料 `drafts` を追記し、作った行を `drafts` の順で返す。
+ * 問いが無いか owner 以外が所有する問いなら throw し、`drafts` が空なら何も書かずに空配列を返す。
+ *
+ * 行の作成と `status` の更新を一トランザクションで行うので、材料が入ったのに `new` のまま残る問いはできない。
+ * `new` 以外の `status` は人間が選んだ値なので、`addMaterials` は `new` の問いだけを `stocked` へ上げる。
+ */
+export async function addMaterials(
+  owner: OwnerId,
+  questionId: string,
+  drafts: readonly MaterialDraft[],
+): Promise<Material[]> {
+  await requireOwnedQuestion(owner, questionId);
+
+  if (drafts.length === 0) {
+    return [];
+  }
+
+  return db().$transaction(async (tx) => {
+    const materials: Material[] = [];
+
+    for (const draft of drafts) {
+      const material = await tx.material.create({
+        data: {
+          question_id: questionId,
+          kind: draft.kind,
+          topic: draft.topic,
+          body: draft.body,
+          source_url: draft.source_url ?? null,
+          created_by: draft.created_by,
+        },
+      });
+      materials.push(material);
+    }
+
+    await tx.question.updateMany({
+      where: { id: questionId, status: "new" },
+      data: { status: "stocked" },
+    });
+
+    return materials;
+  });
+}
+
+/**
+ * `questionId` の問いに付いた材料を、付いた順で返す。
+ * 問いが無いか owner 以外が所有する問いなら空配列を返す。
+ *
+ * 一回の付与で入った行は `created_at` が同じ値になるので、同着は seq で決める。
+ */
+export async function listMaterials(
+  owner: OwnerId,
+  questionId: string,
+): Promise<Material[]> {
+  return db().material.findMany({
+    where: { question_id: questionId, question: { user_id: owner } },
+    orderBy: [{ created_at: "asc" }, { seq: "asc" }],
+  });
 }
 
 /** `addMemo` と `createQuestionWithTranscript` が受け取る、一件のメモ。 */

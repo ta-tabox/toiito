@@ -89,7 +89,7 @@ VISION「リンキングを支える」の実体。
 **スキーマ案**（memo_links と同じく先にテーブルだけ切る手もある）:
 
 ```
-cultures
+materials
   id, question_id, kind(internal/external/isomorph),
   body, source_url, created_at, created_by(auto/human)
 ```
