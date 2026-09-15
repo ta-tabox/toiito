@@ -8,9 +8,6 @@
 
 ## 色
 
-出所は人間が起こした案（Fermented Inquiry / Fermented Inquiry Dark）。
-中心メタファーの発酵槽を、苔と生成りの側で具体化したもの。
-
 ### トークン
 
 値の正はこの表で、`web/src/app/globals.css` の変数名は用途名を英語へ写したものである。
