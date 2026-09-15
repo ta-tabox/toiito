@@ -191,6 +191,18 @@ describe("readAnthropicProviders", () => {
       ANTHROPIC_DEFAULTS.effort.abstract,
     );
   });
+
+  it("本番でフェイクでなく ANTHROPIC_API_KEY が無ければ、プロバイダを作る時点で投げる", () => {
+    expect(() =>
+      readAnthropicProviders({ VERCEL_ENV: "production" }, false),
+    ).toThrow(/ANTHROPIC_API_KEY/);
+  });
+
+  it("本番以外では ANTHROPIC_API_KEY が無くてもプロバイダを作れる", () => {
+    const providers = readAnthropicProviders({ VERCEL_ENV: "preview" }, false);
+
+    expect(providers.concrete.settings.apiKey).toBeUndefined();
+  });
 });
 
 describe("リクエストの組み立て", () => {

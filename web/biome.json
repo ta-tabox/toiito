@@ -43,13 +43,20 @@
           "level": "error",
           "options": {
             "paths": {
-              "better-auth": "Better Auth を組み立ててよいのは src/lib/auth/index.ts だけ",
-              "@/lib/auth": "セッションを読む経路は src/lib/auth/current-user.ts の一本に絞る"
+              "better-auth": "Better Auth を組み立ててよいのは src/lib/auth/index.ts だけ"
             },
             "patterns": [
               {
                 "group": ["./**", "../**", "!./**/*.css", "!../**/*.css"],
                 "message": "import は @ 起点の絶対パスで書く"
+              },
+              {
+                "group": [
+                  "@/lib/auth",
+                  "@/lib/auth/index",
+                  "@/lib/auth/index.*"
+                ],
+                "message": "セッションを読む経路は src/lib/auth/current-user.ts の一本に絞る"
               }
             ]
           }
@@ -89,7 +96,12 @@
   },
   "overrides": [
     {
-      "includes": ["vitest.config.ts", "tests/setup/**", "scripts/**"],
+      "includes": [
+        "vitest.config.ts",
+        "next.config.ts",
+        "tests/setup/**",
+        "scripts/**"
+      ],
       "linter": {
         "rules": {
           "style": {
