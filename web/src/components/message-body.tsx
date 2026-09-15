@@ -34,11 +34,13 @@ import {
 } from "@/components/memo-preview";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { SubmitButton } from "@/components/ui/submit-button";
 import {
   clampToGraphemeBoundary,
   parseAnchor,
   type Segment,
   segmentBody,
+  toTrimmedAnchor,
 } from "@/lib/anchors";
 import type { Anchor, Memo, Message } from "@/lib/types";
 
@@ -83,8 +85,17 @@ type SelectionReader = {
  */
 const readers = new Map<Element, SelectionReader>();
 
-/** 選択が確定してから、メモとして送られるまでの下書き。 */
-type MemoDraft = { anchor: Anchor; keyword: string };
+/**
+ * 選択が確定してから、メモとして送られるまでの下書き。
+ * `kind: "blank"` は、選んだ範囲の前後の空白を除くと何も残らなかった選択で、メモとして送れない。
+ */
+type MemoDraft =
+  | { readonly kind: "memo"; readonly anchor: Anchor; readonly keyword: string }
+  | { readonly kind: "blank"; readonly anchor: Anchor };
+
+/** メモの小フォームと、空白だけの選択の知らせが共有する、画面の下端の置き場と見た目。 */
+const DRAFT_PANEL_STYLE =
+  "fixed inset-x-4 bottom-4 z-10 mx-auto flex max-w-reading flex-col gap-2 rounded border border-rule bg-surface-mid p-3 shadow-[0_0_16px_rgba(0,0,0,0.12)]";
 
 /**
  * 発話本文。
@@ -166,13 +177,20 @@ export function MessageBody({
       {/* body へ移すのは、祖先が containing block を作ると fixed の基準が画面でなくその祖先へ移るため。 */}
       {draft &&
         createPortal(
-          <MemoForm
-            key={`${draft.anchor.start}-${draft.anchor.end}`}
-            messageId={message.id}
-            draft={draft}
-            action={action}
-            onClose={closeDraft}
-          />,
+          draft.kind === "memo" ? (
+            <MemoForm
+              key={`${draft.anchor.start}-${draft.anchor.end}`}
+              messageId={message.id}
+              draft={draft}
+              action={action}
+              onClose={closeDraft}
+            />
+          ) : (
+            <BlankSelectionNotice
+              key={`${draft.anchor.start}-${draft.anchor.end}`}
+              onClose={closeDraft}
+            />
+          ),
           document.body,
         )}
     </>
@@ -322,7 +340,7 @@ function MemoForm({
   onClose,
 }: {
   messageId: string;
-  draft: MemoDraft;
+  draft: Extract<MemoDraft, { kind: "memo" }>;
   action: (formData: FormData) => Promise<void>;
   onClose: () => void;
 }) {
@@ -332,7 +350,7 @@ function MemoForm({
         await action(formData);
         onClose();
       }}
-      className="fixed inset-x-4 bottom-4 z-10 mx-auto flex max-w-reading flex-col gap-2 rounded border border-rule bg-surface-mid p-3 shadow-[0_0_16px_rgba(0,0,0,0.12)]"
+      className={DRAFT_PANEL_STYLE}
     >
       <input type="hidden" name="message_id" value={messageId} />
       <input type="hidden" name="anchor_start" value={draft.anchor.start} />
@@ -353,11 +371,28 @@ function MemoForm({
         <Button type="button" onClick={onClose}>
           やめる
         </Button>
-        <Button type="submit" tone="solid">
+        <SubmitButton tone="solid" pendingLabel="メモしている">
           メモする
-        </Button>
+        </SubmitButton>
       </div>
     </form>
+  );
+}
+
+/**
+ * 空白だけを選んだときに、メモの小フォームの代わりに出す知らせ。
+ * 送信の操作は出さず、閉じる操作だけを置く。
+ */
+function BlankSelectionNotice({ onClose }: { onClose: () => void }) {
+  return (
+    <div role="alert" className={DRAFT_PANEL_STYLE}>
+      <p className="text-aux text-ink-weak">空白だけは残せない。</p>
+      <div className="flex justify-end">
+        <Button type="button" onClick={onClose}>
+          閉じる
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -430,6 +465,7 @@ function notifySelectedMessage(): void {
 
 /**
  * いまの選択範囲から下書きを作る。
+ * 範囲の前後の空白は除き、除くと何も残らない選択は `kind: "blank"` の下書きにする。
  *
  * 選択が無い・潰れている・この発話の外へ出ているときは undefined。
  * 書記素境界への丸めで潰れた範囲も捨てる（絵文字の内側だけを選んだ場合）。
@@ -469,8 +505,17 @@ function draftFromSelection(
   }
 
   const anchor = parseAnchor(clampedStart, clampedEnd);
+  const trimmed = toTrimmedAnchor(body, anchor);
 
-  return { anchor, keyword: body.slice(anchor.start, anchor.end) };
+  if (!trimmed) {
+    return { kind: "blank", anchor };
+  }
+
+  return {
+    kind: "memo",
+    anchor: trimmed,
+    keyword: body.slice(trimmed.start, trimmed.end),
+  };
 }
 
 /**

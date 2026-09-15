@@ -4,7 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
 import { QUESTION_STATUSES } from "@/lib/question";
-import type { Anchor, OwnerId } from "@/lib/types";
+import type { Anchor, MaterialDraft, OwnerId } from "@/lib/types";
 
 afterAll(async () => {
   await db.disconnect();
@@ -459,9 +459,8 @@ describe("所有権", () => {
     ).rejects.toThrow(/セッションが見つからない/);
     await expect(
       db.commitTurn(owner, session.id, {
-        human: "割り込み",
-        ai_a: "具体の応答",
-        ai_b: "抽象の応答",
+        bodies: { human: "割り込み", ai_a: "具体の応答", ai_b: "抽象の応答" },
+        messageCountAtStart: 1,
       }),
     ).rejects.toThrow(/セッションが見つからない/);
     await expect(
@@ -484,5 +483,80 @@ describe("所有権", () => {
       .catch((error: Error) => error.message);
 
     expect(others).toBe(String(missing).replace(/: .*$/, `: ${question.id}`));
+  });
+});
+
+describe("materials", () => {
+  /** 一つの論点について、立場の違う外部の材料が二件ある下書き。 */
+  const drafts: MaterialDraft[] = [
+    {
+      kind: "external",
+      topic: "速さと余白",
+      body: "速さは余白を生むとする調査",
+      source_url: "https://example.com/speed-creates-slack",
+      created_by: "auto",
+    },
+    {
+      kind: "external",
+      topic: "速さと余白",
+      body: "速さは余白を削るとする調査",
+      source_url: "https://example.com/speed-consumes-slack",
+      created_by: "auto",
+    },
+  ];
+
+  it("status が new の問いに材料を付けると、行が付与の順で入り、status が stocked になる", async () => {
+    const { question } = await db.createQuestion(owner, "なぜ速さを求めるのか");
+
+    await db.addMaterials(owner, question.id, drafts);
+
+    const materials = await db.listMaterials(owner, question.id);
+    const reread = await db.getQuestion(owner, question.id);
+
+    expect(materials.map((material) => material.body)).toEqual(
+      drafts.map((draft) => draft.body),
+    );
+    expect(reread?.status).toBe("stocked");
+  });
+
+  it("status が holding の問いに材料を付けても、status は holding のまま変わらない", async () => {
+    const { question } = await db.createQuestion(owner, "持ち続ける問い");
+    await db.setQuestionStatus(owner, question.id, "holding");
+
+    await db.addMaterials(owner, question.id, drafts);
+
+    const materials = await db.listMaterials(owner, question.id);
+    const reread = await db.getQuestion(owner, question.id);
+
+    expect(materials).toHaveLength(drafts.length);
+    expect(reread?.status).toBe("holding");
+  });
+
+  it("owner 以外が所有する問いへの付与は throw し、行も status も変わらない", async () => {
+    const other = await createOwner("other@example.com");
+    const { question } = await db.createQuestion(other, "アクセス権の無い問い");
+
+    await expect(db.addMaterials(owner, question.id, drafts)).rejects.toThrow(
+      /問いが見つからない/,
+    );
+
+    const materials = await db.listMaterials(other, question.id);
+    const reread = await db.getQuestion(other, question.id);
+
+    expect(materials).toEqual([]);
+    expect(reread?.status).toBe("new");
+  });
+
+  it("空配列を渡すと、材料の行は入らず、status も new のまま変わらない", async () => {
+    const { question } = await db.createQuestion(owner, "材料の無い問い");
+
+    const added = await db.addMaterials(owner, question.id, []);
+
+    const materials = await db.listMaterials(owner, question.id);
+    const reread = await db.getQuestion(owner, question.id);
+
+    expect(added).toEqual([]);
+    expect(materials).toEqual([]);
+    expect(reread?.status).toBe("new");
   });
 });

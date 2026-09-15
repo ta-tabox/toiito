@@ -13,12 +13,14 @@
 
 import { randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@/generated/prisma/client";
+import { type Prisma, PrismaClient } from "@/generated/prisma/client";
 import { DATABASE_URL } from "@/lib/config";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
 import type {
   Anchor,
+  Material,
+  MaterialDraft,
   Memo,
   MemoWithContext,
   Message,
@@ -60,6 +62,7 @@ function db(): PrismaClient {
         dialogueSession: { seq: true },
         message: { seq: true },
         memo: { seq: true },
+        material: { seq: true },
       },
     });
   }
@@ -211,7 +214,7 @@ export async function getQuestion(
  * その問いが所有者のものであることを確かめ、違えば投げる。
  * アクセス権のない問いと存在しない問いを、同じ失敗にする。
  *
- * 呼ぶのは、その問いにセッションを足す前（`createSession`）と、問いの列を更新する前（`setCurrentForm`・`setQuestionStatus`）である。
+ * 呼ぶのは、問いの列を更新する前（`setCurrentForm`・`setQuestionStatus`）である。
  * 読み出しは where に条件を置けば済むが、`create` と `update` は所有者の条件を where へ入れられないので先に確かめる。
  */
 async function requireOwnedQuestion(
@@ -246,6 +249,71 @@ async function requireOwnedSession(
   if (!session) {
     throw new Error(`セッションが見つからない: ${sessionId}`);
   }
+}
+
+/**
+ * トランザクション `tx` の中で、owner が所有する `questionId` の問いの行を、`tx` が終わるまで排他ロックする。
+ * 問いが無いか owner 以外が所有する問いなら、`requireOwnedQuestion` と同じ文面で throw する。
+ * 問いのセッションの並びか発話を書き換えるトランザクション（`savePendingBody`・`commitTurn`・`createSession`）は、読む前にこれを呼び、同じ問いに対して直列に走る。
+ *
+ * ロックするのがセッションでなく問いの行なのは、再訪の `createSession` が既存のセッションの行を書き換えず、セッションの行のロックでは再訪と一往復の書き込みが直列にならないため。
+ * Postgres の既定の READ COMMITTED は文ごとに読み直すので、ロックの後の読み出しは先に確定した書き込みを見る。
+ */
+async function requireOwnedQuestionForUpdate(
+  tx: Prisma.TransactionClient,
+  owner: OwnerId,
+  questionId: string,
+): Promise<void> {
+  const rows = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM questions
+    WHERE id = ${questionId}::uuid AND user_id = ${owner}
+    FOR UPDATE
+  `;
+
+  if (rows.length === 0) {
+    throw new Error(`問いが見つからない: ${questionId}`);
+  }
+}
+
+/** 書き込む直前に読んだ、セッションの位置と発話の数。 */
+type SessionForUpdate = {
+  readonly isLatest: boolean;
+  readonly messageCount: number;
+};
+
+/**
+ * トランザクション `tx` の中で、owner が所有する `sessionId` のセッションが問いの最新セッションかと、その発話の数を取得する。
+ * セッションが無いか owner 以外が所有するセッションなら undefined を返す。
+ *
+ * 読む前にセッションが属する問いの行をロックするので、呼び出し側は返った値で書き込むかを決めてよい。
+ */
+async function getSessionForUpdate(
+  tx: Prisma.TransactionClient,
+  owner: OwnerId,
+  sessionId: string,
+): Promise<SessionForUpdate | undefined> {
+  const session = await tx.dialogueSession.findFirst({
+    where: { id: sessionId, question: { user_id: owner } },
+    select: { question_id: true },
+  });
+
+  if (!session) {
+    return undefined;
+  }
+
+  await requireOwnedQuestionForUpdate(tx, owner, session.question_id);
+
+  // 最新の決め方は `latestSession` と同じ（同時刻なら seq）。
+  const latest = await tx.dialogueSession.findFirst({
+    where: { question_id: session.question_id },
+    orderBy: [{ started_at: "desc" }, { seq: "desc" }],
+    select: { id: true },
+  });
+  const messageCount = await tx.message.count({
+    where: { session_id: sessionId },
+  });
+
+  return { isLatest: latest?.id === sessionId, messageCount };
 }
 
 /**
@@ -310,6 +378,21 @@ export async function getSession(
 }
 
 /**
+ * `sessionId` のセッションが属する問いを 1 件取得する。
+ * セッションが無いか owner 以外が所有するセッションなら undefined を返す。
+ */
+export async function getQuestionOfSession(
+  owner: OwnerId,
+  sessionId: string,
+): Promise<Question | undefined> {
+  const question = await db().question.findFirst({
+    where: { user_id: owner, sessions: { some: { id: sessionId } } },
+  });
+
+  return question ?? undefined;
+}
+
+/**
  * owner が所有する問いの、最新セッションを 1 件取得する。
  *
  * 対話画面が表示するのは最新セッション一つ。
@@ -332,14 +415,14 @@ export async function latestSession(
  * 既存のセッションは閉じずに残し、この問いの `pending_messages` の行は同じトランザクションで削除する。
  *
  * 再送の UI は最新のセッションにしか出ないので、`pending_messages` の行を残したまま新しいセッションを作ると再送できない行になる。
+ * 問いの行をロックしてから書くのは、AI の応答を待っていた一往復が、新しいセッションの確定と前後して古いセッションへ書き込まないため（`commitTurn`）。
  */
 export async function createSession(
   owner: OwnerId,
   questionId: string,
 ): Promise<Session> {
-  await requireOwnedQuestion(owner, questionId);
-
   return db().$transaction(async (tx) => {
+    await requireOwnedQuestionForUpdate(tx, owner, questionId);
     await tx.pendingMessage.deleteMany({
       where: { session: { question_id: questionId } },
     });
@@ -424,54 +507,85 @@ export async function addMessage(
 }
 
 /**
- * human / ai_a / ai_b の三行を `messages` へ追記し、`pending_messages` の行を削除する。
+ * human / ai_a / ai_b の三行を `messages` へ追記し、`pending_messages` の行を削除して true を返す。
+ * セッションが問いの最新セッションでなくなっていたか、発話の数が `turn.messageCountAtStart` と違えば、何も書かずに false を返す。
+ * セッションが無いか owner 以外が所有するセッションなら throw する。
  *
  * 三行が揃わない turn を残さないため、一トランザクションで行う。
- * 削除を `body` でも絞り、一致しなければ何もしない `deleteMany` を使うのは、再送を待つあいだに次の発話が送られて `pending_messages` の行が差し替わったとき、その行まで削除しないため。
+ * 発話は追記のみで減らないので、数が一往復を始めたときと同じなら、AI を待つあいだに他の一往復は書き込んでいない。
  */
 export async function commitTurn(
   owner: OwnerId,
   sessionId: string,
-  bodies: { human: string; ai_a: string; ai_b: string },
-): Promise<void> {
-  await requireOwnedSession(owner, sessionId);
+  turn: {
+    readonly bodies: { human: string; ai_a: string; ai_b: string };
+    readonly messageCountAtStart: number;
+  },
+): Promise<boolean> {
+  const { bodies, messageCountAtStart } = turn;
 
-  await db().$transaction(async (tx) => {
+  return db().$transaction(async (tx) => {
+    const session = await getSessionForUpdate(tx, owner, sessionId);
+    if (!session) {
+      throw new Error(`セッションが見つからない: ${sessionId}`);
+    }
+
+    if (!session.isLatest || session.messageCount !== messageCountAtStart) {
+      return false;
+    }
+
     for (const speaker of ["human", "ai_a", "ai_b"] as const) {
       await tx.message.create({
         data: { session_id: sessionId, speaker, body: bodies[speaker] },
       });
     }
 
+    // 再送を待つあいだに次の発話が送られると、`pending_messages` の行はその発話へ差し替わっている。
+    // `body` でも絞るのは、差し替わった行まで削除しないため。
     await tx.pendingMessage.deleteMany({
       where: { session_id: sessionId, body: bodies.human },
     });
+
+    return true;
   });
 }
 
 /**
  * 人間の発話を `pending_messages` へ書き込む。
  * 行が既にあれば上書きする。
+ * セッションが無いか owner 以外が所有するセッションなら throw し、問いの最新セッションでなくても throw する。
  *
  * 長さを `savePendingBody` で検査するのは、`messages` へ入る本文が必ずこの関数を通るため。
+ * 過去のセッションを拒否するのは、画面が発話フォームを出さないだけでは、古い画面や直接の送信から書き込めるため。
  */
 export async function savePendingBody(
   owner: OwnerId,
   sessionId: string,
   body: string,
 ): Promise<void> {
-  await requireOwnedSession(owner, sessionId);
+  await db().$transaction(async (tx) => {
+    const session = await getSessionForUpdate(tx, owner, sessionId);
+    if (!session) {
+      throw new Error(`セッションが見つからない: ${sessionId}`);
+    }
 
-  if (body.length > MESSAGE_BODY_MAX_LENGTH) {
-    throw new Error(
-      `本文が上限を超えている: ${body.length} 字（上限 ${MESSAGE_BODY_MAX_LENGTH}、セッション ${sessionId}）`,
-    );
-  }
+    if (!session.isLatest) {
+      throw new Error(
+        `最新のセッションでないので発話を書き込めない: ${sessionId}`,
+      );
+    }
 
-  await db().pendingMessage.upsert({
-    where: { session_id: sessionId },
-    create: { session_id: sessionId, body },
-    update: { body },
+    if (body.length > MESSAGE_BODY_MAX_LENGTH) {
+      throw new Error(
+        `本文が上限を超えている: ${body.length} 字（上限 ${MESSAGE_BODY_MAX_LENGTH}、セッション ${sessionId}）`,
+      );
+    }
+
+    await tx.pendingMessage.upsert({
+      where: { session_id: sessionId },
+      create: { session_id: sessionId, body },
+      update: { body },
+    });
   });
 }
 
@@ -575,6 +689,66 @@ export async function listMemosWithContext(
     speaker: message.speaker,
     message_body: message.body,
   }));
+}
+
+/**
+ * `questionId` の問いに材料 `drafts` を追記し、作った行を `drafts` の順で返す。
+ * 問いが無いか owner 以外が所有する問いなら throw し、`drafts` が空なら何も書かずに空配列を返す。
+ *
+ * 行の作成と `status` の更新を一トランザクションで行うので、材料が入ったのに `new` のまま残る問いはできない。
+ * `new` 以外の `status` は人間が選んだ値なので、`addMaterials` は `new` の問いだけを `stocked` へ上げる。
+ */
+export async function addMaterials(
+  owner: OwnerId,
+  questionId: string,
+  drafts: readonly MaterialDraft[],
+): Promise<Material[]> {
+  await requireOwnedQuestion(owner, questionId);
+
+  if (drafts.length === 0) {
+    return [];
+  }
+
+  return db().$transaction(async (tx) => {
+    const materials: Material[] = [];
+
+    for (const draft of drafts) {
+      const material = await tx.material.create({
+        data: {
+          question_id: questionId,
+          kind: draft.kind,
+          topic: draft.topic,
+          body: draft.body,
+          source_url: draft.source_url ?? null,
+          created_by: draft.created_by,
+        },
+      });
+      materials.push(material);
+    }
+
+    await tx.question.updateMany({
+      where: { id: questionId, status: "new" },
+      data: { status: "stocked" },
+    });
+
+    return materials;
+  });
+}
+
+/**
+ * `questionId` の問いに付いた材料を、付いた順で返す。
+ * 問いが無いか owner 以外が所有する問いなら空配列を返す。
+ *
+ * 一回の付与で入った行は `created_at` が同じ値になるので、同着は seq で決める。
+ */
+export async function listMaterials(
+  owner: OwnerId,
+  questionId: string,
+): Promise<Material[]> {
+  return db().material.findMany({
+    where: { question_id: questionId, question: { user_id: owner } },
+    orderBy: [{ created_at: "asc" }, { seq: "asc" }],
+  });
 }
 
 /** `addMemo` と `createQuestionWithTranscript` が受け取る、一件のメモ。 */

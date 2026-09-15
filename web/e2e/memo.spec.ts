@@ -28,6 +28,10 @@ const SCENARIOS = {
     question: "E2E: 選択した語に印は残るのか",
     utterance: "E2E: 引っかかった語だけが後に残る",
   },
+  blank: {
+    question: "E2E: 空白だけを選ぶと何が残るのか",
+    utterance: "E2E: 語と語のあいだ",
+  },
   touch: {
     question: "E2E: 指で選んでもメモは作れるのか",
     utterance: "E2E: 画面を指でなぞって語を掴む",
@@ -241,6 +245,19 @@ test("何行にも折り返す下線でも、覗き見の枠は画面の中に�
   expect(rect.left).toBeGreaterThanOrEqual(0);
   expect(rect.bottom).toBeLessThanOrEqual(NARROW_VIEWPORT.height);
   expect(rect.right).toBeLessThanOrEqual(NARROW_VIEWPORT.width);
+});
+
+test("空白だけを選ぶと、メモの小フォームの代わりに残せないことが出る", async ({
+  page,
+}) => {
+  const aiA = await postQuestionAndSpeak(page, SCENARIOS.blank);
+  await selectTextIn(page, aiA, " ");
+
+  // role="alert" を持つ要素は他にも描かれうるので、文面で絞る。
+  await expect(
+    page.getByRole("alert").filter({ hasText: "空白だけは残せない" }),
+  ).toBeVisible();
+  await expect(memoForm(page)).toHaveCount(0);
 });
 
 test("選択を touchend で終えてもメモの小フォームが立つ", async ({ page }) => {

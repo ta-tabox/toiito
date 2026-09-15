@@ -75,6 +75,9 @@ memos          キーワードメモ。文字選択で残す
 
 memo_links     （将来）メモ間・問い間のリンキング辺
   id, from_memo_id, to_memo_id, kind
+
+materials      問いに付随する材料で、誰の発話でもない。二体 AI へは渡さず、人間だけが読む（画面の語では培地）
+  id, question_id, kind(internal/external/isomorph), topic(論点。同じ値の行が立場の違う材料の組), body, source_url, created_by(auto/human), created_at
 ```
 
 ### 所有権
@@ -125,6 +128,12 @@ Prisma のモデル名が一意でなければならないので、`Session` を
 値域は二箇所で表明する。
 DB 側の正は `prisma/schema.prisma` の enum `QuestionStatus`、アプリ側の正は `web/src/lib/question.ts` の `QUESTION_STATUSES`（型と UI ラベルがここから派生する）。
 両者がずれると repo 関数の戻り値がドメイン型へ代入できなくなり `tsc` が落ちるので、**ずれは L0 で捕まる**。
+
+| 遷移 | 動かす主体 | 契機 |
+|------|-----------|------|
+| `new` → `stocked` | 機械（`db.ts` の `addMaterials`） | `status` が `new` の問いに、`materials` の行が 1 件以上入ったとき |
+
+人間が選んだ値を材料の有無だけで書き換えないので、`new` 以外の問いに材料が付いても `status` は変わらない（理由は `adr/0038-question-status-transitions.md`）。
 
 ### メモとアンカー
 
