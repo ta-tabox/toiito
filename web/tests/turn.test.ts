@@ -26,7 +26,7 @@ const FAKE_PROVIDER = new AnthropicProvider({
 /**
  * 呼ばれると必ず投げるプロバイダ。
  *
- * `callPersona` はフェイクモードを送信の前に見るので、失敗を辿るには fake を降ろす必要がある。
+ * `callPersona` は `settings.fake` が true だと `send` を呼ばないので、`settings.fake` を false にしてある。
  * 5 つある失敗経路のどれで投げたかは `speakAction` から見て区別が付かないため、代表して一つだけ模す。
  */
 class FailingProvider extends AiProvider {
@@ -40,10 +40,10 @@ class FailingProvider extends AiProvider {
 }
 
 /**
- * `open` が呼ばれるまで応答を返さないプロバイダ。
+ * テストが指示するまで応答を返さない AI プロバイダ。
+ * 一往復が AI の応答を待っているあいだに、別の書き込みを割り込ませる検査に使う。
  *
- * AI を待つあいだに別の書き込みを挟む順序を、テストの側で決めるために使う。
- * `callPersona` はフェイクモードを送信の前に見るので、fake を降ろしてある。
+ * `callPersona` は `settings.fake` が true だと `send` を呼ばないので、`settings.fake` を false にしてある。
  */
 class GatedProvider extends AiProvider {
   readonly name = "gated";
@@ -364,7 +364,7 @@ describe("並走", () => {
     await speaking.reached;
 
     // 二本とも AI を待っている。
-    // 再送を先に書き込ませ、あとから送った発話は再送の三行を見ていない状態で書き込ませる。
+    // 再送の一往復を先に書き込ませ、あとから送った発話の一往復には、再送が書き込む前に読んだ発話の数のまま書き込ませる。
     retrying.open();
     await retry;
     speaking.open();

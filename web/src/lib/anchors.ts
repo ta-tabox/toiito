@@ -37,7 +37,7 @@ export function parseAnchor(start: number, end: number): Anchor {
 
 /**
  * `anchor` の範囲から、前後の空白と改行を除いた範囲を返す。
- * 除くと何も残らないなら undefined を返す。
+ * 範囲の本文が空白と改行だけなら undefined を返す。
  *
  * 空白の判定を `String.prototype.trim` に任せるので、返した範囲の本文は、`anchor` の範囲の本文を `trim` した文字列と一致する。
  */
