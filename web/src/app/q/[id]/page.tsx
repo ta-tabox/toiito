@@ -8,7 +8,7 @@
  *
  * 発話の生成と永続化は Server Action、本文の描画と選択からのメモ作成は `MessageBody` の担当で、`QuestionPage` は並べて描くところまで。
  *
- * 各発話に付ける id="msg-<message_id>" は逆引き（/memos）の着地点で、書式の正は `memos/page.tsx`。
+ * 各発話に付ける id は逆引き（/memos）の着地点で、書式の正は `lib/routes.ts` の `messageElementIdOf`。
  */
 
 import Link from "next/link";
@@ -22,6 +22,7 @@ import {
 import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
 import { RetryForm, SpeakForm } from "@/components/speak-form";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import {
   getPendingBody,
@@ -33,6 +34,7 @@ import {
 } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
 import { PERSONA_LABEL } from "@/lib/personas";
+import { messageElementIdOf, questionPathOf } from "@/lib/routes";
 import type { Speaker } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -106,10 +108,9 @@ export default async function QuestionPage({
   const memos = await listMemosForSession(owner, session.id);
   const pendingBody = await getPendingBody(owner, session.id);
 
-  const speak = speakAction.bind(null, question.id, session.id);
-  const retry = retryTurnAction.bind(null, question.id, session.id);
+  const speak = speakAction.bind(null, session.id);
+  const retry = retryTurnAction.bind(null, session.id);
   const newSession = newSessionAction.bind(null, question.id);
-  const createMemo = createMemoAction.bind(null, question.id);
 
   return (
     <main className="mx-auto w-full max-w-reading flex-1 px-5 py-10">
@@ -119,16 +120,13 @@ export default async function QuestionPage({
         </Link>
         {isLatest ? (
           <form action={newSession}>
-            <button
-              type="submit"
-              className="text-aux text-ink-weak hover:underline"
-            >
+            <SubmitButton pendingLabel="セッションを始めている">
               新しいセッションで再訪
-            </button>
+            </SubmitButton>
           </form>
         ) : (
           <Link
-            href={`/q/${question.id}`}
+            href={questionPathOf(question.id)}
             className="text-aux text-ink-weak hover:underline"
           >
             最新のセッションへ →
@@ -158,8 +156,8 @@ export default async function QuestionPage({
               key={candidate.id}
               href={
                 candidate.id === latest.id
-                  ? `/q/${question.id}`
-                  : `/q/${question.id}?s=${candidate.id}`
+                  ? questionPathOf(question.id)
+                  : questionPathOf(question.id, { sessionId: candidate.id })
               }
               aria-current={candidate.id === session.id ? "page" : undefined}
               className="text-meta text-ink-weak hover:underline aria-[current]:font-bold aria-[current]:text-ink"
@@ -176,7 +174,7 @@ export default async function QuestionPage({
         {messages.map((m) => (
           <div
             key={m.id}
-            id={`msg-${m.id}`}
+            id={messageElementIdOf(m.id)}
             className={`p-3 md:p-4 ${SPEAKER_STYLE[m.speaker].bubble}`}
           >
             <div
@@ -187,7 +185,7 @@ export default async function QuestionPage({
             <MessageBody
               message={m}
               memos={memos.filter((memo) => memo.message_id === m.id)}
-              action={createMemo}
+              action={createMemoAction}
             />
           </div>
         ))}
@@ -228,7 +226,9 @@ function PendingTurn({
 }) {
   return (
     <div className="mt-8 rounded border border-rule border-dashed bg-surface-low p-3 md:p-4">
-      <p className="text-aux text-ink-weak">応答の取得に失敗した。</p>
+      <p role="alert" className="text-aux text-ink-weak">
+        応答の取得に失敗した。
+      </p>
       <p className="mt-2 whitespace-pre-wrap text-utterance text-ink md:text-utterance-lg">
         {body}
       </p>
