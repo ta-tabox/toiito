@@ -619,6 +619,10 @@ export function f() {}
     expect(toWordList("# 説明\n\n検査器\n口調\n")).toEqual(["検査器", "口調"]);
   });
 
+  it("語のファイルの改行で終わらない最後の行も語に数える", () => {
+    expect(toWordList("検査器\n口調")).toEqual(["検査器", "口調"]);
+  });
+
   it(".coding-standards-vocab-allow の語はどれも、コメントに書いても報告しない", () => {
     const vocabulary = loadRepositoryVocabulary();
     const reported = vocabulary.allow.filter(

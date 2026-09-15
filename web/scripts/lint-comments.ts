@@ -1275,7 +1275,9 @@ function loadWordFile(file: string): string[] {
 
 /**
  * 1 行 1 語のテキスト `text` を語の配列にする。
- * 空行と `#` で始まる行は語に数えず、`scripts/lint-vocabulary.sh` と同じ行を語として読む。
+ * 空行と `#` で始まる行は語に数えず、改行で終わらない最後の行は語に数える。
+ *
+ * `scripts/lint-vocabulary.sh` と同じ行を語として読み、2 本の検査の判定を揃える。
  */
 export function toWordList(text: string): string[] {
   return text

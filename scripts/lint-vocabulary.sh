@@ -45,7 +45,8 @@ EXCLUDE_PATHSPECS=(
   ':!**/lint-vocabulary.sh' ':!**/lint-comments.ts' ':!**/lint-comments.test.ts'
 )
 if [ -f "$REPO_ROOT/.coding-standards-vocab-ignore" ]; then
-  while IFS= read -r pathspec; do
+  # read は改行で終わらない最後の行で 1 を返すので、行が空でなければその行も読む(read_word_file も同じ)。
+  while IFS= read -r pathspec || [ -n "$pathspec" ]; do
     [ -z "$pathspec" ] && continue
     case "$pathspec" in \#*) continue ;; esac
     EXCLUDE_PATHSPECS+=(":!$pathspec")
@@ -70,7 +71,7 @@ STRIP_COMPOUNDS=(
 read_word_file() {   # $1 = ファイル, $2 = 足す先の配列名
   local f="$1" w
   [ -f "$f" ] || return 0
-  while IFS= read -r w; do
+  while IFS= read -r w || [ -n "$w" ]; do
     [ -z "$w" ] && continue
     case "$w" in \#*) continue ;; esac
     if [ "$2" = banned ]; then BANNED_WORDS+=("$w"); else STRIP_COMPOUNDS+=("$w"); fi
