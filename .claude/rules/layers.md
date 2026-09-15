@@ -69,4 +69,5 @@ paths:
 | 選択を読み直す発話 | `message-body.tsx` の `readers`（document へのリスナは 1 本） |
 
 ## プロジェクト固有（育てる欄）
-- CSS とテストが DOM を指す `data-*` 属性は `data-message-body`・`data-segment-index`・`data-memo-underline`・`data-landed`・`data-recedes-while-writing`・`data-draft-panel`・`data-preview-toggle` の 7 つで、className では指さない
+- CSS とテストが DOM を指す印は `data-*` 属性で付け、className では指さない
+  属性は画面を足すたびに増えるので、いま付いている属性は一覧を持たず `web/src` と `web/e2e` を `data-` で検索して見る
