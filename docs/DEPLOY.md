@@ -35,10 +35,9 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 ローカルと CI の接続文字列は `sslmode` を持たない（`localhost` へ TLS を張っていないので関係が無い）。
 
 `TOIITO_ANTHROPIC_MODEL` は任意（既定 `claude-sonnet-5`）。
-`TOIITO_FAKE_AI` は**本番に入れない**。
-入れても動かず、発話を送ると `VERCEL_ENV=production` を見て一往復が失敗する（理由はランタイムログの `turn_failed` に出る）。
-`TOIITO_FAKE_LOGIN` も**本番に入れない**。
-入れても動かず、`VERCEL_ENV=production` を見て最初のリクエストで throw する。
+`TOIITO_FAKE_AI` と `TOIITO_FAKE_LOGIN` は**本番に入れない**。
+値が `1` でなくても、どちらかが入っていれば `VERCEL_ENV=production` を見て本番のビルドが失敗する（一覧と検証は `web/src/lib/config.ts` の `assertNoDevelopmentEnv`）。
+`ANTHROPIC_API_KEY` が無い場合も、本番のビルドが失敗する。
 
 **8 本とも Production に入れてから最初のビルドを回す**。
 `postinstall` の `prisma generate` は `prisma.config.ts` 経由で `DIRECT_URL` を即時解決するので、無いとインストール段階で exit 1 になる。

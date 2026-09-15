@@ -99,7 +99,7 @@ TOIITO_ALLOWED_EMAILS=<自分の Google アカウントの email>
 ```
 
 **本番と Preview**の値は `docs/DEPLOY.md`「秘密の置き場」と「Preview」が持つ。
-`TOIITO_FAKE_LOGIN` は本番へ入れられない（`VERCEL_ENV=production` を見て、最初のリクエストで throw する）。
+`TOIITO_FAKE_LOGIN` は本番へ入れられない（`VERCEL_ENV=production` を見て、本番のビルドが失敗する）。
 
 テストと E2E は設定を自分で渡すので、手で書くのは `.env.local` の一箇所だけである。
 
