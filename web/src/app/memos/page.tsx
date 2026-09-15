@@ -5,8 +5,7 @@
  * 開いているメモの正は URL のクエリ（`?memo=<id>`）で、client の state には持たない。
  * 対話画面の下線から特定のメモを名指しで開く経路があり、その経路から指せる手段が URL しか無いため。
  *
- * 逆引きのリンクの書式は `/q/<question_id>?s=<session_id>#msg-<message_id>` で、その正は `memos/page.tsx`。
- * `q/[id]/page.tsx` が飛び先の `id="msg-…"` を発話へ付け、`landing-mark.tsx` が着地した発話を強調するので、書式を変えるときは三箇所とも直す。
+ * 逆引きのリンクは、セッションと発話を名指しして `questionPathOf` で組み立てる（書式の正は `lib/routes.ts`）。
  * セッションを名指しするのは、再訪で最新が入れ替わってもメモを付けた当時の発話へ着地させるため。
  */
 
@@ -16,6 +15,7 @@ import { Row } from "@/components/ui/row";
 import { excerptParts, parseAnchor } from "@/lib/anchors";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { listMemosWithContext } from "@/lib/db";
+import { questionPathOf } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 
@@ -127,7 +127,10 @@ export default async function MemosPage({
           <p className="mt-4 text-meta text-ink-weak">{opened.question_body}</p>
 
           <Link
-            href={`/q/${opened.question_id}?s=${opened.session_id}#msg-${opened.message_id}`}
+            href={questionPathOf(opened.question_id, {
+              sessionId: opened.session_id,
+              messageId: opened.message_id,
+            })}
             className="mt-4 inline-block text-aux text-ink-weak hover:underline"
           >
             この発話へ →

@@ -459,9 +459,8 @@ describe("所有権", () => {
     ).rejects.toThrow(/セッションが見つからない/);
     await expect(
       db.commitTurn(owner, session.id, {
-        human: "割り込み",
-        ai_a: "具体の応答",
-        ai_b: "抽象の応答",
+        bodies: { human: "割り込み", ai_a: "具体の応答", ai_b: "抽象の応答" },
+        messageCountAtStart: 1,
       }),
     ).rejects.toThrow(/セッションが見つからない/);
     await expect(

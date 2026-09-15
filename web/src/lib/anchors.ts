@@ -36,6 +36,27 @@ export function parseAnchor(start: number, end: number): Anchor {
 }
 
 /**
+ * `anchor` の範囲から、前後の空白と改行を除いた範囲を返す。
+ * 範囲の本文が空白と改行だけなら undefined を返す。
+ *
+ * 空白の判定を `String.prototype.trim` に任せるので、返した範囲の本文は、`anchor` の範囲の本文を `trim` した文字列と一致する。
+ */
+export function toTrimmedAnchor(
+  body: string,
+  anchor: Anchor,
+): Anchor | undefined {
+  const text = body.slice(anchor.start, anchor.end);
+  const start = anchor.start + (text.length - text.trimStart().length);
+  const end = anchor.end - (text.length - text.trimEnd().length);
+
+  if (end <= start) {
+    return undefined;
+  }
+
+  return parseAnchor(start, end);
+}
+
+/**
  * 本文を切り分けた一区間。
  *
  * 「付いているメモの組み合わせが変わらない最大の連続範囲」で、UI はセグメント 1 つを単位として下線を描く。
