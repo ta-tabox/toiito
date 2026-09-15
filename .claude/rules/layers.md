@@ -19,6 +19,7 @@ paths:
 | 環境変数（DB の接続先） | `web/src/lib/config.ts` | `DATABASE_URL` |
 | 環境変数（AI） | `web/src/lib/ai/providers.ts` | `AI_PROVIDER`（解決済みのプロバイダ） |
 | 環境変数（認証） | `web/src/lib/auth/index.ts`（写像は `auth/config.ts` の `readAuthConfig`） | 組み立て済みの Better Auth と、ログインの画面に並べるサインインの手段（`SignInMethods`） |
+| 環境変数（利用者の API キーを暗号化する鍵） | `web/src/lib/secrets-config.ts`（写像は `secrets.ts` の `readEncryptionKeyRing`） | `EncryptionKeyRing`（`secrets.ts` の `encryptApiKey` と `decryptApiKey` へ渡す） |
 | Claude API（HTTP） | `web/src/lib/ai/anthropic.ts` | `ProviderResponse` |
 | ペルソナ定義（ファイル） | `web/src/lib/personas.ts` | プロンプトの文字列 |
 | 現在のユーザー（セッション） | `web/src/lib/auth/current-user.ts` | `User`（`id` は `OwnerId`） |
@@ -36,8 +37,8 @@ paths:
   RSC と Server Action は `requireCurrentUser` から受け取った `id` を repo 関数へ渡す
 - `Anchor` を作るのは `anchors.ts` の `parseAnchor` だけにする
   フォームの値・DOM の選択・DB の行から範囲を作るときは `parseAnchor` を通してから、`addMemo` と `excerptParts` へ渡す
-- `process.env` を読むのは `lib/config.ts`・`lib/ai/providers.ts`・`lib/auth/index.ts` と、別プロセスで走る `scripts/`・`e2e/setup/` だけにする
-  写像と既定値は `readAnthropicSettings`・`ANTHROPIC_DEFAULTS`・`readAuthConfig` の純関数が持ち、テストは `process.env` を書き換えずに env を模した値を渡す
+- `process.env` を読むのは `lib/config.ts`・`lib/ai/providers.ts`・`lib/auth/index.ts`・`lib/secrets-config.ts` と、別プロセスで走る `scripts/`・`e2e/setup/` だけにする
+  写像と既定値は `readAnthropicSettings`・`ANTHROPIC_DEFAULTS`・`readAuthConfig`・`readEncryptionKeyRing` の純関数が持ち、テストは `process.env` を書き換えずに env を模した値を渡す
 - アプリに入れるのは実行環境に依らない道具だけにする
   `@vercel/*` の import・ISR のオンデマンド再検証・Edge Config・Cron Jobs を入れたくなったら、実行環境を決め直す合図として一度戻る
 - `session.cookieCache` と `session.deferSessionRefresh` は既定（無効）のまま置く

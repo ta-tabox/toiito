@@ -39,6 +39,7 @@ pnpm dev
 | `DATABASE_URL` | 必須 | — | アプリからの接続先。本番 Neon ではプーラー経由 |
 | `DIRECT_URL` | 必須 | — | Prisma Migrate 用の直結。プーラー越しには Migrate が動かないので分ける |
 | `ANTHROPIC_API_KEY` | 実 AI を使うなら必須 | — | Claude API のキー。**サーバー側のみ**で使い、クライアントへ露出させない |
+| `TOIITO_API_KEY_ENCRYPTION_KEYS` | 利用者の API キーを扱うなら必須 | — | 利用者の API キーを暗号化・復号する鍵の一覧。形式は表の下 |
 | `BETTER_AUTH_SECRET` | 必須 | — | セッションのトークンと OAuth の state の署名に使う秘密。32 文字以上の乱数 |
 | `TOIITO_ALLOWED_EMAILS` | 必須 | — | サインインを許す email のカンマ区切り。空だと最初のリクエストで throw する |
 | `BETTER_AUTH_URL` | Google を使うなら必須 | — | アプリの公開 URL。cookie と OAuth の callback を組み立て、信頼する origin もこの値で決まる |
@@ -73,6 +74,17 @@ E2E は worktree をまたいで `toiito_e2e` 一本を共有するので、こ�
 
 `TOIITO_FAKE_AI=1` は AI 呼び出しを伴う動作確認で使う。
 実 API を自動テストで叩かない（遅い・非決定的・金がかかる）。
+
+`TOIITO_API_KEY_ENCRYPTION_KEYS` は、`<鍵 ID>:<鍵の値>` の組をカンマ区切りで並べる。
+先頭の組の鍵で暗号化し、並べたどの鍵の暗号文も復号する。
+鍵 ID は英数字・`_`・`-` で書き、鍵の値は `openssl rand -base64 32` で作る。
+手元は一組でよい。
+
+```
+TOIITO_API_KEY_ENCRYPTION_KEYS=k1:<openssl rand -base64 32 で作った値>
+```
+
+回転の手順は `docs/DEPLOY.md`「秘密の置き場」が持つ。
 
 認証は 3 通りの組み合わせがあり、どれも `TOIITO_ALLOWED_EMAILS` と `BETTER_AUTH_SECRET` は要る。
 サインインの手段が一つも無い設定は、最初のリクエストで throw する。
