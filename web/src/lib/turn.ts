@@ -1,8 +1,9 @@
 /**
  * 一往復（human → ai_a → ai_b）を実行する。
  *
- * ai_a と ai_b が両方返ってから、`commitTurn` が三行をまとめて `messages` へ入れる。
+ * ai_a と ai_b が両方返ってから、`commitTurn` が人間・ai_a・ai_b の発話をまとめて `messages` へ書き込む。
  * AI 呼び出しが失敗しても throw せず、`pending_messages` に人間の発話を残して戻る（理由は `docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+ * AI を待つあいだに同じセッションへ別の一往復が書き込まれていたときも、同じ理由で throw せず、`messages` へ書き込まずに戻る。
  *
  * 呼び出す二体（`PersonaCalls`）は引数で受け取る。
  * `runTurn` が `AI_PROVIDERS` を直接参照すると、テストが失敗経路を作れなくなる。
@@ -15,7 +16,7 @@ import { AI_PROVIDERS } from "@/lib/ai/providers";
 import {
   commitTurn,
   getPendingBody,
-  getQuestion,
+  getQuestionOfSession,
   listMessages,
   savePendingBody,
 } from "@/lib/db";
@@ -25,10 +26,14 @@ import type { OwnerId } from "@/lib/types";
 /** 一往復で呼ぶ二体。 */
 export type PersonaCalls = Record<PersonaId, PersonaCall>;
 
-/** 誰の、どの問いのどのセッションを、どの二体で回すか。 */
+/**
+ * `runTurn` と `retryTurn` に渡す、一往復の実行の指定。
+ * 発話を書き込むセッション（`sessionId`）と、その所有者（`owner`）と、応答させる二体（`calls`）を持つ。
+ *
+ * 問いの id を持たないのは、問いとセッションを別々に渡せると、別の問いのセッションを組み合わせられるため。
+ */
 type TurnTarget = {
   readonly owner: OwnerId;
-  readonly questionId: string;
   readonly sessionId: string;
   readonly calls: PersonaCalls;
 };
@@ -53,9 +58,9 @@ export function personaCalls(): PersonaCalls {
 }
 
 /**
- * 成立しなかった一往復を 1 行の JSON で残す。
+ * 一往復が `messages` へ書き込まれずに終わったことを、`sessionId` と理由を持つ 1 行の JSON で標準エラーへ出す。
  *
- * 画面は失敗の理由を区別しないので、5 つある失敗経路を見分けられるのはこの記録だけになる。
+ * 画面は書き込まれなかった理由を出さないので、理由を追えるのはこの記録だけになる。
  * 発話本文は出さない（`lib/ai/` の呼び出し記録と同じ扱い）。
  */
 function logTurnFailure(sessionId: string, error: unknown): void {
@@ -98,18 +103,19 @@ async function callBoth(input: {
 }
 
 /**
- * `body` を `pending_messages` へ書き込んでから、一往復を実行する。
- *
- * ai_a か ai_b が失敗すると `messages` は変わらず、`pending_messages` の行だけが残る。
+ * `body` を `pending_messages` へ書き込み、二体の応答が揃えば、`body` と二体の応答を一往復として `messages` へ書き込む。
+ * ai_a か ai_b の呼び出しが失敗したら、`messages` へ書き込まず、`pending_messages` の行を残して戻る。
+ * 二体の応答を待つあいだに、同じセッションへ別の一往復が書き込まれたか、問いに新しいセッションが作られていたら、`messages` へ書き込まずに戻る。
+ * セッションが問いの最新のセッションでなければ、何も書き込まずに throw する。
  */
 export async function runTurn(
   target: TurnTarget & { readonly body: string },
 ): Promise<void> {
-  const { owner, questionId, sessionId, calls, body } = target;
+  const { owner, sessionId, calls, body } = target;
 
-  const question = await getQuestion(owner, questionId);
+  const question = await getQuestionOfSession(owner, sessionId);
   if (!question) {
-    throw new Error(`問いが見つからない: ${questionId}`);
+    throw new Error(`セッションが見つからない: ${sessionId}`);
   }
 
   await savePendingBody(owner, sessionId, body);
@@ -126,7 +132,17 @@ export async function runTurn(
     return;
   }
 
-  await commitTurn(owner, sessionId, { human: body, ...responses });
+  const isCommitted = await commitTurn(owner, sessionId, {
+    bodies: { human: body, ...responses },
+    messageCountAtStart: messages.length,
+  });
+
+  if (!isCommitted) {
+    logTurnFailure(
+      sessionId,
+      "応答を待つあいだに、同じセッションへ別の一往復が書き込まれたか、問いに新しいセッションが作られた",
+    );
+  }
 }
 
 /**

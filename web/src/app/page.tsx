@@ -8,13 +8,14 @@
 
 import Link from "next/link";
 import { createQuestionAction, signOutAction } from "@/app/actions";
-import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Pill } from "@/components/ui/pill";
 import { Row } from "@/components/ui/row";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { listQuestions, questionText } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
+import { questionPathOf } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 
@@ -54,14 +55,14 @@ export default async function Home() {
           className="flex-1"
           autoComplete="off"
         />
-        <Button type="submit" tone="solid">
+        <SubmitButton tone="solid" pendingLabel="仕込んでいる">
           仕込む
-        </Button>
+        </SubmitButton>
       </form>
 
       <ul className="mt-8 space-y-4">
         {questions.map((q) => (
-          <Row key={q.id} href={`/q/${q.id}`}>
+          <Row key={q.id} href={questionPathOf(q.id)}>
             <div className="font-mincho text-question">{questionText(q)}</div>
             {q.current_form && (
               <div className="mt-2 text-meta text-ink-weak">原型: {q.body}</div>

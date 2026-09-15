@@ -2,15 +2,14 @@
 
 /**
  * 新しい発話を送る `SpeakForm` と、送信に失敗した発話を再送する `RetryForm` を持つ。
- * 送信中であることを画面へ表示するための client component。
+ * どちらも、応答を待つあいだは送信ボタンが押せなくなり、ラベルが「二体が応答中」の表示へ変わる。
  *
  * 入力の検証も送信先の決定も行わない。
  * Server Action は bind 済みのものを引数で受け取る。
  */
 
-import { useFormStatus } from "react-dom";
-import { Button } from "@/components/ui/button";
 import { TextArea } from "@/components/ui/field";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 
 /** 対話へ発話を送るフォーム。 */
@@ -27,7 +26,13 @@ export function SpeakForm({
         maxLength={MESSAGE_BODY_MAX_LENGTH}
         placeholder="問いについて、いま思うことを"
       />
-      <SubmitButton label="発話する（二体が応答するまで少し待つ）" />
+      <SubmitButton
+        tone="solid"
+        className="self-end"
+        pendingLabel={<RespondingLabel />}
+      >
+        発話する（二体が応答するまで少し待つ）
+      </SubmitButton>
     </form>
   );
 }
@@ -36,35 +41,19 @@ export function SpeakForm({
  * `pending_messages` に残っている発話の再送フォーム。
  *
  * 送る本文は `pending_messages` が持っているので、入力欄を出さない。
+ * `SpeakForm` と同時に表示されるので、ボタンを `tone="quiet"` で薄くして主要な操作を一つに保つ。
  */
 export function RetryForm({ action }: { action: () => Promise<void> }) {
   return (
     <form action={action} className="mt-3 flex flex-col">
-      <SubmitButton label="再送" tone="quiet" />
+      <SubmitButton
+        tone="quiet"
+        className="self-end"
+        pendingLabel={<RespondingLabel />}
+      >
+        再送
+      </SubmitButton>
     </form>
-  );
-}
-
-/**
- * 送信ボタン。
- * 応答を待つ間は押せなくなり、ラベルが「二体が応答中」の表示へ変わる。
- *
- * `useFormStatus` は親フォームの状態を読むので、`form` を描くコンポーネントには置けない（常に `pending: false` が返る）。
- * `RetryForm` と `SpeakForm` は同時に表示されるので、`RetryForm` を `tone="quiet"` で薄くして主要な操作を一つに保つ。
- */
-function SubmitButton({
-  label,
-  tone = "solid",
-}: {
-  label: string;
-  tone?: "solid" | "quiet";
-}) {
-  const { pending } = useFormStatus();
-
-  return (
-    <Button type="submit" tone={tone} disabled={pending} className="self-end">
-      {pending ? <RespondingLabel /> : label}
-    </Button>
   );
 }
 
