@@ -33,9 +33,6 @@ type AuthEnv = {
   /** `1` のとき、Google を経ないサインイン（Preview と E2E 用）を有効にする。 */
   readonly TOIITO_FAKE_LOGIN?: string;
 
-  /** Vercel が渡す実行環境の名前で、`production` のときは `TOIITO_FAKE_LOGIN` を拒否する。 */
-  readonly VERCEL_ENV?: string;
-
   /** 省略可能なプロパティだけの型は weak type 検出で `ProcessEnv` を代入できないので、`process.env` をそのまま渡せるようにインデックスシグネチャを持たせる。 */
   readonly [key: string]: string | undefined;
 };
@@ -90,7 +87,7 @@ export function readAuthConfig(env: AuthEnv): AuthConfig {
 /**
  * `email` が許可リストに含まれるかを判定する。
  *
- * 比較の前に前後の空白を取り除いて小文字へ揃える。
+ * 比較の前に前後の空白を取り除いて小文字へ揃えるのは `email` だけなので、`allowedEmails` には `readAuthConfig` が小文字へ揃えた配列を渡す。
  * Better Auth は IdP から受け取った email を小文字にして `user` 表へ書き込むので、揃えないと大文字を含む設定値が一致しなくなる。
  */
 export function isAllowedEmail(
@@ -173,17 +170,8 @@ function readGoogleClient(
 /**
  * `TOIITO_FAKE_LOGIN` が `1` かどうかを返す。
  *
- * `VERCEL_ENV=production` で有効になっていれば throw する。
- * Google を経ないサインインが本番で有効だと、許可リストに載った email を名乗るだけで他人のリソースへ到達できる。
+ * 本番で設定されていないことは、`next build` の最初に `assertNoDevelopmentEnv` が確かめる。
  */
 function readFakeLoginEnabled(env: AuthEnv): boolean {
-  const isEnabled = env.TOIITO_FAKE_LOGIN === "1";
-
-  if (isEnabled && env.VERCEL_ENV === "production") {
-    throw new Error(
-      "TOIITO_FAKE_LOGIN は本番（VERCEL_ENV=production）では設定できない。Preview と E2E だけが使う",
-    );
-  }
-
-  return isEnabled;
+  return env.TOIITO_FAKE_LOGIN === "1";
 }

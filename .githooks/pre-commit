@@ -1,21 +1,19 @@
 #!/bin/bash
 #
-# コミット本文の禁止語を検査する。
+# ステージした追加行の禁止語を報告する。
 #
 # 語の一覧は scripts/lint-vocabulary.sh が持つ(正本は .claude/rules/writing.md「語彙と読み手」節の表)。
-# コミット本文はマージされた後に直せないので、報告でなく commit の前で止める。
+# 追加行はマージされた後にも直せるので、コミットは止めず、判定は報告を読んだ人間に任せる。
+# マージされた後に直せないコミット本文は、commit-msg フックが止める。
 #
 # 導入は2通り。
-#   リポジトリ全体へ効かせる: このファイルを .githooks/commit-msg へ置き、git config core.hooksPath .githooks を設定する
-#   自分の手元だけ:           .git/hooks/commit-msg へコピーする(版管理の外)
-#
-# 押し切るのは git commit --no-verify。
+#   リポジトリ全体へ効かせる: このファイルを .githooks/pre-commit へ置き、git config core.hooksPath .githooks を設定する
+#   自分の手元だけ:           .git/hooks/pre-commit へコピーする(版管理の外)
 
 # set -e は使わない。
-# 禁止語が見つかると lint が rc 1 を返すので、-e があると report への代入で打ち切られ、案内の行を出さないまま終わる。
+# 禁止語が見つかると lint が rc 1 を返すので、-e があると report への代入でフックが 0 以外で終わり、コミットが止まる。
 set -uo pipefail
 
-MSG_FILE="$1"
 ROOT=$(git rev-parse --show-toplevel)
 
 # 配布先では scripts/ の直下、雛形そのものを持つリポジトリでは tools/coding-standards/scripts/ に在る。
@@ -25,19 +23,18 @@ for candidate in "$ROOT/scripts/lint-vocabulary.sh" "$ROOT/tools/coding-standard
 done
 
 if [ -z "$LINT" ]; then
-  echo "commit-msg: lint-vocabulary.sh が見つからないので語彙の検査を飛ばした。" >&2
+  echo "pre-commit: lint-vocabulary.sh が見つからないので語彙の検査を飛ばした。" >&2
   echo "  探した先: $ROOT/scripts/ と $ROOT/tools/coding-standards/scripts/" >&2
   exit 0
 fi
 
-report=$(bash "$LINT" --text "$MSG_FILE" 2>/dev/null)
+report=$(bash "$LINT" --cached 2>/dev/null)
 [ -z "$report" ] && exit 0
 
 {
-  echo "commit-msg: 本文に禁止語があるのでコミットを止めた:"
+  echo "pre-commit: ステージした追加行に禁止語がある（コミットは続ける）:"
   printf '%s\n' "$report" | sed "s|^|  |"
   echo "  言い換え先は .claude/rules/writing.md「語彙と読み手」節の表。"
   echo "  この領域で比喩でない語なら .coding-standards-vocab-allow へ足す。"
-  echo "  押し切る: git commit --no-verify"
 } >&2
-exit 1
+exit 0

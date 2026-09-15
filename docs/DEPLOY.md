@@ -35,10 +35,9 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 ローカルと CI の接続文字列は `sslmode` を持たない（`localhost` へ TLS を張っていないので関係が無い）。
 
 `TOIITO_ANTHROPIC_MODEL` は任意（既定 `claude-sonnet-5`）。
-`TOIITO_FAKE_AI` は**本番に入れない**。
-入れると本番が実 API を叩かず、決定的なダミー応答を返す。
-`TOIITO_FAKE_LOGIN` も**本番に入れない**。
-入れても動かず、`VERCEL_ENV=production` を見て起動時に落ちる。
+`TOIITO_FAKE_AI` と `TOIITO_FAKE_LOGIN` は**本番に入れない**。
+値が `1` でなくても、どちらかが入っていれば `VERCEL_ENV=production` を見て本番のビルドが失敗する（一覧と検証は `web/src/lib/config.ts` の `assertNoDevelopmentEnv`）。
+`ANTHROPIC_API_KEY` が無い場合も、本番のビルドが失敗する。
 
 **8 本とも Production に入れてから最初のビルドを回す**。
 `postinstall` の `prisma generate` は `prisma.config.ts` 経由で `DIRECT_URL` を即時解決するので、無いとインストール段階で exit 1 になる。
@@ -152,6 +151,7 @@ Preview では次を守る。
 - 実際の問いを書かない
 - Vercel の共有リンクは自分が開くためだけに発行し、他人へ渡さない
 - `ANTHROPIC_API_KEY` を Preview へ入れず、`TOIITO_FAKE_AI=1` を外さない
+- `TOIITO_ALLOWED_EMAILS` に実在の email を入れない（ログインの画面が、未サインインの相手へ許可リストの email をボタンとして並べる）
 
 決定の経緯と採らなかった案は `adr/0015-preview-neon-branch.md`。
 

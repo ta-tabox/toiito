@@ -1,5 +1,5 @@
 # このリポジトリだけの禁止語を1行1語で書く。
-# scripts/lint-vocabulary.sh は writing.md の表に加えて、ここの語も報告する。
+# scripts/lint-vocabulary.sh と web/scripts/lint-comments.ts は、writing.md の表に加えてここの語も報告する。
 # レビューで差し戻された語だけを足す。
 預かり
 述語
