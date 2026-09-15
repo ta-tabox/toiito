@@ -26,23 +26,23 @@ paths:
 
 ## 境界の禁止則
 
-- Prisma のクライアントと生成型（`@/generated/prisma`）を import するのは `db.ts` だけにする。
+- Prisma のクライアントと生成型（`@/generated/prisma`）を import するのは `db.ts` だけにする
   例外は Better Auth のアダプタへ渡す `authDatabaseClient`（呼ぶのは `lib/auth/index.ts` だけ）と、アプリの経路の外にある `tests/setup/truncate.ts`・`scripts/prune-test-databases.ts`
 - スキーマの正は `prisma/schema.prisma` 一箇所にし、DDL を別ファイルに書き写さない
 - repo 関数はすべて `async` で書く
-- 所有者を受け取る repo 関数は、読みでは where に所有者の条件を置き、`create` と `update` の前では `requireOwnedQuestion` か `requireOwnedSession` を呼ぶ。
+- 所有者を受け取る repo 関数は、読みでは where に所有者の条件を置き、`create` と `update` の前では `requireOwnedQuestion` か `requireOwnedSession` を呼ぶ
   無い行とアクセス権の無い行は同じ応答（undefined か同じ文面の throw）にする
-- `OwnerId` を作るのは `user` 表を SELECT した `db.ts` の `fromUserRow` だけにする。
+- `OwnerId` を作るのは `user` 表を SELECT した `db.ts` の `fromUserRow` だけにする
   RSC と Server Action は `requireCurrentUser` から受け取った `id` を repo 関数へ渡す
-- `Anchor` を作るのは `anchors.ts` の `parseAnchor` だけにする。
+- `Anchor` を作るのは `anchors.ts` の `parseAnchor` だけにする
   フォームの値・DOM の選択・DB の行から範囲を作るときは `parseAnchor` を通してから、`addMemo` と `excerptParts` へ渡す
-- `process.env` を読むのは `lib/config.ts`・`lib/ai/providers.ts`・`lib/auth/index.ts` と、別プロセスで走る `scripts/`・`e2e/setup/` だけにする。
+- `process.env` を読むのは `lib/config.ts`・`lib/ai/providers.ts`・`lib/auth/index.ts` と、別プロセスで走る `scripts/`・`e2e/setup/` だけにする
   写像と既定値は `readAnthropicSettings`・`ANTHROPIC_DEFAULTS`・`readAuthConfig` の純関数が持ち、テストは `process.env` を書き換えずに env を模した値を渡す
-- アプリに入れるのは実行環境に依らない道具だけにする。
+- アプリに入れるのは実行環境に依らない道具だけにする
   `@vercel/*` の import・ISR のオンデマンド再検証・Edge Config・Cron Jobs を入れたくなったら、実行環境を決め直す合図として一度戻る
-- `session.cookieCache` と `session.deferSessionRefresh` は既定（無効）のまま置く。
+- `session.cookieCache` と `session.deferSessionRefresh` は既定（無効）のまま置く
   速度が要るときに先に手を付けるのは `getCurrentUser` の `React.cache()` である
-- ログインをまたぐ識別子（匿名セッション・未ログインの下書きの引き継ぎ・自前の「戻り先」cookie）は持たない。
+- ログインをまたぐ識別子（匿名セッション・未ログインの下書きの引き継ぎ・自前の「戻り先」cookie）は持たない
   未ログインで何かを書かせたいときは、ログインをまたがない形で解けるかを先に見る
 - DB への書き込みは、UI からも `scripts/seed/` からも `db.ts` の repo 関数を通す
 - クライアント側コンポーネントが読む定数は、`node:*` も Prisma も import しないモジュール（`lib/message.ts`）に置く
