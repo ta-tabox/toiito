@@ -30,3 +30,44 @@ export type QuestionStatus = (typeof QUESTION_STATUSES)[number];
 export function isQuestionStatus(value: string): value is QuestionStatus {
   return (QUESTION_STATUSES as readonly string[]).includes(value);
 }
+
+/**
+ * `status` のうち、機械だけが書く値。
+ * 人間が選べる値は、`QUESTION_STATUSES` からこの並びを除いた残りである。
+ *
+ * 書き手を値ごとに分ける理由は `docs/adr/0038-question-status-transitions.md`。
+ */
+const MACHINE_WRITTEN_STATUSES = [
+  "new",
+  "stocked",
+] as const satisfies readonly QuestionStatus[];
+
+/** 人間が対話画面で選べる `status` の値。 */
+export type SelectableStatus = Exclude<
+  QuestionStatus,
+  (typeof MACHINE_WRITTEN_STATUSES)[number]
+>;
+
+/**
+ * 人間が対話画面で選べる `status` の値の並び。
+ * 順序は `QUESTION_STATUSES` に従う。
+ */
+export const SELECTABLE_STATUSES: readonly SelectableStatus[] =
+  QUESTION_STATUSES.filter(
+    (status): status is SelectableStatus =>
+      !(MACHINE_WRITTEN_STATUSES as readonly QuestionStatus[]).includes(status),
+  );
+
+/**
+ * `value` を、人間が選べる `status` として返す。
+ * `SELECTABLE_STATUSES` に無い値（`new`・`stocked`・未知の文字列）なら throw する。
+ */
+export function parseSelectableStatus(value: string): SelectableStatus {
+  const status = SELECTABLE_STATUSES.find((candidate) => candidate === value);
+
+  if (!status) {
+    throw new Error(`人間が選べる問いの状態に無い: ${JSON.stringify(value)}`);
+  }
+
+  return status;
+}

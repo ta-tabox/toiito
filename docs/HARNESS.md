@@ -176,7 +176,7 @@ pnpm exec playwright install chromium
 
 ### 入っているもの
 
-spec は `web/e2e/` の 4 本で、何を見るかは各 spec の冒頭コメントが言う。
+spec は `web/e2e/` に置き、何を見るかは各 spec の冒頭コメントが言う。
 
 `auth.spec.ts` だけはサインイン済みで始めない。
 未サインインの状態そのものを見るので、他の spec が共有する前提（`signIn` の `beforeEach`）を使わない。

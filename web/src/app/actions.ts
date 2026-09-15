@@ -19,8 +19,14 @@ import {
   signOutCurrentUser,
   startGoogleSignIn,
 } from "@/lib/auth/sign-in";
-import { addMemo, createQuestion, createSession } from "@/lib/db";
+import {
+  addMemo,
+  createQuestion,
+  createSession,
+  setQuestionStatus,
+} from "@/lib/db";
 import { parseMemoKeyword } from "@/lib/memo";
+import { parseSelectableStatus } from "@/lib/question";
 import { questionPathOf, ROUTES } from "@/lib/routes";
 import { personaCalls, retryTurn, runTurn } from "@/lib/turn";
 
@@ -33,6 +39,21 @@ export async function createQuestionAction(formData: FormData) {
   const { id: owner } = await requireCurrentUser();
   const { question } = await createQuestion(owner, body);
   redirect(questionPathOf(question.id));
+}
+
+/**
+ * フォームの `status` を、問い `questionId` の `status` へ書き込む。
+ * フォームの値が人間の選べる値でなければ throw する。
+ */
+export async function setQuestionStatusAction(
+  questionId: string,
+  formData: FormData,
+) {
+  const status = parseSelectableStatus(String(formData.get("status") ?? ""));
+
+  const { id: owner } = await requireCurrentUser();
+  await setQuestionStatus(owner, questionId, status);
+  revalidatePath(questionPathOf(questionId));
 }
 
 /**
@@ -53,7 +74,7 @@ export async function speakAction(sessionId: string, formData: FormData) {
   }
 
   const { id: owner } = await requireCurrentUser();
-  await runTurn({ owner, sessionId, body, calls: personaCalls() });
+  await runTurn({ owner, sessionId, body, resolveCalls: personaCalls });
 
   // 発話とメモの action は問いの id を受け取らないので、個々の URL でなくルートの型で再検証する。
   revalidatePath(ROUTES.question, "page");
@@ -62,7 +83,7 @@ export async function speakAction(sessionId: string, formData: FormData) {
 /** `pending_messages` に残っている発話で、一往復をもう一度実行する。 */
 export async function retryTurnAction(sessionId: string) {
   const { id: owner } = await requireCurrentUser();
-  await retryTurn({ owner, sessionId, calls: personaCalls() });
+  await retryTurn({ owner, sessionId, resolveCalls: personaCalls });
 
   // 発話とメモの action は問いの id を受け取らないので、個々の URL でなくルートの型で再検証する。
   revalidatePath(ROUTES.question, "page");

@@ -86,8 +86,8 @@ export async function seed(): Promise<SeedSummary> {
       return summary;
     }
 
-    const owner = await repo.createUser(first.email, first.name);
-    const other = await repo.createUser(second.email, second.name);
+    const owner = await repo.createUser(first);
+    const other = await repo.createUser(second);
     summary.users = 2;
 
     const plan = [

@@ -95,7 +95,7 @@ type MemoDraft =
 
 /** メモの小フォームと、空白だけの選択の知らせが共有する、画面の下端の置き場と見た目。 */
 const DRAFT_PANEL_STYLE =
-  "fixed inset-x-4 bottom-4 z-10 mx-auto flex max-w-reading flex-col gap-2 rounded border border-rule bg-surface-mid p-3 shadow-[0_0_16px_rgba(0,0,0,0.12)]";
+  "fixed inset-x-4 bottom-4 z-10 mx-auto flex max-w-reading flex-col gap-2 rounded border border-rule bg-surface-mid p-3 shadow-float";
 
 /**
  * 発話本文。
@@ -350,6 +350,7 @@ function MemoForm({
         await action(formData);
         onClose();
       }}
+      data-draft-panel=""
       className={DRAFT_PANEL_STYLE}
     >
       <input type="hidden" name="message_id" value={messageId} />
@@ -385,7 +386,7 @@ function MemoForm({
  */
 function BlankSelectionNotice({ onClose }: { onClose: () => void }) {
   return (
-    <div role="alert" className={DRAFT_PANEL_STYLE}>
+    <div role="alert" data-draft-panel="" className={DRAFT_PANEL_STYLE}>
       <p className="text-aux text-ink-weak">空白だけは残せない。</p>
       <div className="flex justify-end">
         <Button type="button" onClick={onClose}>

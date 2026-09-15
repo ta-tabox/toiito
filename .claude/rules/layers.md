@@ -17,7 +17,7 @@ paths:
 |---|---|---|
 | DB（Prisma） | `web/src/lib/db.ts` | `types.ts` のドメイン型 |
 | 環境変数（DB の接続先） | `web/src/lib/config.ts` | `DATABASE_URL` |
-| 環境変数（AI） | `web/src/lib/ai/providers.ts` | `AI_PROVIDERS`（解決済みのプロバイダ） |
+| 環境変数（AI） | `web/src/lib/ai/providers.ts` | `AI_PROVIDER`（解決済みのプロバイダ） |
 | 環境変数（認証） | `web/src/lib/auth/index.ts`（写像は `auth/config.ts` の `readAuthConfig`） | 組み立て済みの Better Auth と、ログインの画面に並べるサインインの手段（`SignInMethods`） |
 | 環境変数（利用者の API キーを暗号化する鍵） | `web/src/lib/secrets-config.ts`（写像は `secrets.ts` の `readEncryptionKeyRing`） | `EncryptionKeyRing`（`secrets.ts` の `encryptApiKey` と `decryptApiKey` へ渡す） |
 | Claude API（HTTP） | `web/src/lib/ai/anthropic.ts` | `ProviderResponse` |
@@ -58,7 +58,7 @@ paths:
 | 境界 | 上の表 | 純粋な計算・ドメイン型・概念のモジュール | 境界の道具と検証 |
 | 一往復の手順 | `lib/turn.ts` | `lib/ai`・`lib/db`・`lib/personas` | AI 呼び出しと永続化の順序 |
 | 配線 | `app/actions.ts`・`app/**/page.tsx`・`scripts/seed/index.ts` | 境界・手順・純粋な計算 | 受け取り・呼び出し・`revalidatePath` か `redirect` |
-| クライアント側の部品 | `components/**` | `lib/anchors.ts`・`lib/message.ts`・`lib/types.ts`・`components/ui/*` | DOM の読み書きと描画 |
+| クライアント側の部品 | `components/**` | `lib/anchors.ts`・`lib/message.ts`・`lib/question.ts`・`lib/types.ts`・`components/ui/*` | DOM の読み書きと描画 |
 
 ## 一つしか無い状態の正
 
@@ -70,4 +70,5 @@ paths:
 | 選択を読み直す発話 | `message-body.tsx` の `readers`（document へのリスナは 1 本） |
 
 ## プロジェクト固有（育てる欄）
-- CSS とテストが DOM を指す `data-*` 属性は `data-message-body`・`data-segment-index`・`data-memo-underline`・`data-landed`・`data-recedes-while-writing` の 5 つで、className では指さない
+- CSS とテストが DOM を指す印は `data-*` 属性で付け、className では指さない
+  属性は画面を足すたびに増えるので、いま付いている属性は一覧を持たず `web/src` と `web/e2e` を `data-` で検索して見る

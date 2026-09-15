@@ -9,11 +9,11 @@
  * 誰がサインインできるかは決めない。
  * 許可リストの照合は `auth/index.ts` の `databaseHooks.session.create.before` が行う。
  *
- * エントリポイントは `requireCurrentUser`。
+ * エントリポイントは `requireCurrentUser` と、管理の画面と操作が通る `requireAdmin`。
  */
 
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { LOGIN_PATH } from "@/lib/auth/protected-paths";
@@ -49,6 +49,23 @@ export async function requireCurrentUser(): Promise<User> {
 
   if (!user) {
     redirect(LOGIN_PATH);
+  }
+
+  return user;
+}
+
+/**
+ * 現在のユーザーが管理者なら、そのユーザーを返す。
+ * 未サインインなら `/login` へ redirect し、`is_admin` が偽なら `notFound()` を呼び、どちらも呼び出し側へは戻らない。
+ *
+ * 管理の画面と、管理の操作を行う Server Action は、どれも最初に `requireAdmin` を呼ぶ。
+ * 管理の画面が在ること自体を管理者でないユーザーへ伏せるので、403 でなく 404 にする。
+ */
+export async function requireAdmin(): Promise<User> {
+  const user = await requireCurrentUser();
+
+  if (!user.is_admin) {
+    notFound();
   }
 
   return user;

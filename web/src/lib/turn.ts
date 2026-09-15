@@ -1,18 +1,14 @@
 /**
- * 一往復（human → ai_a → ai_b）を実行する。
+ * 一往復（human → ai_a → ai_b）の、AI 呼び出しと永続化の順序を決める手順を置く。
+ * モデルへ渡す本文と一回の呼び出しの規約は持たず、`lib/ai` が持つ。
+ * 行の読み書きは持たず、`lib/db` が持つ。
  *
- * ai_a と ai_b が両方返ってから、`commitTurn` が人間・ai_a・ai_b の発話をまとめて `messages` へ書き込む。
- * AI 呼び出しが失敗しても throw せず、`pending_messages` に人間の発話を残して戻る（理由は `docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
- * AI を待つあいだに同じセッションへ別の一往復が書き込まれていたときも、同じ理由で throw せず、`messages` へ書き込まずに戻る。
- *
- * 呼び出す二体（`PersonaCalls`）は引数で受け取る。
- * `runTurn` が `AI_PROVIDERS` を直接参照すると、テストが失敗経路を作れなくなる。
- * `AI_PROVIDERS` を参照するのは `personaCalls` だけである。
+ * 一往復は、人間の発話と二体の応答が揃ったときだけ `messages` へ書き込み、揃わなければ人間の発話を `pending_messages` に残す（理由は `docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
  */
 
 import { callPersona, type PersonaCall } from "@/lib/ai";
 import type { QuestionRef, Transcript } from "@/lib/ai/prompt";
-import { AI_PROVIDERS } from "@/lib/ai/providers";
+import { AI_PROVIDER } from "@/lib/ai/providers";
 import {
   commitTurn,
   getPendingBody,
@@ -28,31 +24,33 @@ export type PersonaCalls = Record<PersonaId, PersonaCall>;
 
 /**
  * `runTurn` と `retryTurn` に渡す、一往復の実行の指定。
- * 発話を書き込むセッション（`sessionId`）と、その所有者（`owner`）と、応答させる二体（`calls`）を持つ。
+ * 発話を書き込むセッション（`sessionId`）と、その所有者（`owner`）と、応答させるペルソナを決める関数（`resolveCalls`）を持つ。
  *
  * 問いの id を持たないのは、問いとセッションを別々に渡せると、別の問いのセッションを組み合わせられるため。
+ * ペルソナを値でなく関数で受け取るのは、`runTurn` が発話を `pending_messages` へ書き込んだ後に決め、決定に失敗しても発話を残すため。
  */
 type TurnTarget = {
   readonly owner: OwnerId;
   readonly sessionId: string;
-  readonly calls: PersonaCalls;
+  readonly resolveCalls: () => Promise<PersonaCalls>;
 };
 
 /**
- * 二体の呼び出しの指定を、env から解決済みのプロバイダで組み立てる。
- * 系統の割り当て（具体が ai_a、抽象が ai_b）は `personaCalls` が持つ。
+ * 二体の呼び出しの指定を、env から解決済みのプロバイダで組み立てて返す。
+ *
+ * `runTurn` が `AI_PROVIDER` を直接参照するとテストが失敗するプロバイダを差し込めなくなるので、`AI_PROVIDER` を参照するのは `personaCalls` だけにする。
  */
-export function personaCalls(): PersonaCalls {
+export async function personaCalls(): Promise<PersonaCalls> {
   return {
     ai_a: {
       id: "ai_a",
       prompt: loadPersona("ai_a"),
-      provider: AI_PROVIDERS.concrete,
+      provider: AI_PROVIDER,
     },
     ai_b: {
       id: "ai_b",
       prompt: loadPersona("ai_b"),
-      provider: AI_PROVIDERS.abstract,
+      provider: AI_PROVIDER,
     },
   };
 }
@@ -74,20 +72,22 @@ function logTurnFailure(sessionId: string, error: unknown): void {
 }
 
 /**
- * 二体を逐次に呼んで、揃った本文を返す。
- * 揃わなければ undefined。
+ * `resolveCalls` で応答させるペルソナを決め、二体を逐次に呼んで、揃った本文を返す。
+ * ペルソナの決定か、どちらかの呼び出しに失敗すれば undefined。
  *
  * 並列にしないのは、ai_b が ai_a への応答であることに意味があるため（衝突と転位）。
  */
 async function callBoth(input: {
-  readonly calls: PersonaCalls;
+  readonly resolveCalls: TurnTarget["resolveCalls"];
   readonly question: QuestionRef;
   readonly transcript: Transcript;
   readonly sessionId: string;
 }): Promise<{ ai_a: string; ai_b: string } | undefined> {
-  const { calls, question, transcript } = input;
+  const { resolveCalls, question, transcript } = input;
 
   try {
+    const calls = await resolveCalls();
+
     const aiA = await callPersona(calls.ai_a, question, transcript);
     const aiB = await callPersona(calls.ai_b, question, [
       ...transcript,
@@ -104,14 +104,14 @@ async function callBoth(input: {
 
 /**
  * `body` を `pending_messages` へ書き込み、二体の応答が揃えば、`body` と二体の応答を一往復として `messages` へ書き込む。
- * ai_a か ai_b の呼び出しが失敗したら、`messages` へ書き込まず、`pending_messages` の行を残して戻る。
+ * ペルソナの決定か、ai_a か ai_b の呼び出しに失敗したら、`messages` へ書き込まず、`pending_messages` の行を残して戻る。
  * 二体の応答を待つあいだに、同じセッションへ別の一往復が書き込まれたか、問いに新しいセッションが作られていたら、`messages` へ書き込まずに戻る。
  * セッションが問いの最新のセッションでなければ、何も書き込まずに throw する。
  */
 export async function runTurn(
   target: TurnTarget & { readonly body: string },
 ): Promise<void> {
-  const { owner, sessionId, calls, body } = target;
+  const { owner, sessionId, resolveCalls, body } = target;
 
   const question = await getQuestionOfSession(owner, sessionId);
   if (!question) {
@@ -123,7 +123,7 @@ export async function runTurn(
   const messages = await listMessages(owner, sessionId);
   const transcript: Transcript = [...messages, { speaker: "human", body }];
   const responses = await callBoth({
-    calls,
+    resolveCalls,
     question,
     transcript,
     sessionId,
