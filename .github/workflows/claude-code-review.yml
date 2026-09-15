@@ -92,3 +92,55 @@ jobs:
           name: claude-execution-output
           path: ${{ runner.temp }}/claude-execution-output.json
           retention-days: 2
+
+  # 上の job（/code-review）は正しさを見るだけで、人間のレビューが繰り返し拾ってきた命名・コメント・構造の型を見ない。
+  # この job はリポジトリの規約（.claude/rules/ と skill coding-standards の「レビューで繰り返し指摘される型」の表）を差分へ当て、当たった行にだけインラインコメントを付ける。
+  # プラグインのコマンドは手順が固定で、system prompt の追記が規約の側まで届く保証が無いので、job を分ける。
+  claude-style-review:
+    # 絞りは上の job と同じ（同一リポジトリ由来の PR に限る。理由は上の job のコメント）。
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: claude-style-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - run: mkdir -p "$HOME/.local/bin"
+
+      # プラグインを通さないので Skill と Agent は開けず、規約と差分を読む Read・Glob・Grep と gh の読み取りだけを開ける。
+      # 指摘が無くても読んだものを残すために tag mode を強制する（上の job と同じ理由）。
+      - name: Run Claude style review
+        id: claude-style-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: true
+          prompt: |
+            PR #${{ github.event.pull_request.number }} の差分を、このリポジトリの命名・コメント・構造の規約に照らしてレビューする。
+            1. `.claude/rules/writing.md`「語彙と読み手」、`.claude/rules/coding.md`「命名」「コメント」、`.claude/skills/coding-standards/SKILL.md`「レビューで繰り返し指摘される型」を Read する。
+            2. `gh pr diff ${{ github.event.pull_request.number }}` で差分を取り、追加・変更した各コメント・名前（表・列・enum・型・関数・ファイル）・ファイルの分割に、表の「判定」を一行ずつ当てる。
+            3. 当たった行にだけ mcp__github_inline_comment__create_inline_comment でインラインコメントを付ける。本文は、型の名前・判定に当たった理由・直し方の三文にし、直し方は表の語で書く。
+            4. 正しさ（バグ・境界・性能）は見ない。別の job が見る。
+            5. 指摘が無い場合も、何を読んで問題無しと判断したかをトラッキングコメントへ書く。
+          claude_args: '--allowedTools "Read,Glob,Grep,TodoWrite,mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git fetch:*),Bash(git merge-base:*)" --append-system-prompt "レビューの本文・要約・インラインコメントはすべて日本語で書く。文体は だ・である調。識別子・ルール名・パス・引用したコードは原文のまま残す。レビュー結果は gh pr comment でなくトラッキングコメントへ書く。"'
+
+      # 上の job と同じ理由で、拒否の中身を読める artifact を短い保持期間で残す。
+      - name: Upload Claude execution output
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: claude-style-review-execution-output
+          path: ${{ runner.temp }}/claude-execution-output.json
+          retention-days: 2
