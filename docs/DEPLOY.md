@@ -311,6 +311,50 @@ Better Auth は cookie ヘッダが在るかどうかで照合を始め、cookie
 **当てるときは、`BETTER_AUTH_URL` と Google の redirect URI を下の「Google の OAuth クライアント」の「ドメインを変えるとき」の順で動かす**。
 Hobby は非商用限定なので、他人へ開く段では実行環境ごと決め直すことになる（`adr/0002-production-runtime.md`「覆る条件」）。
 
+## 管理者
+
+`/admin` は、`user` 表の `is_admin` が真のユーザーにだけユーザーの一覧を出し、それ以外のユーザーには 404 を返す。
+フラグを立てる画面は無いので、DB の行を直接更新する（理由は `adr/0046-admin-flag-on-user-row.md`）。
+フラグはサインインの可否を変えないので、立てる相手も `TOIITO_ALLOWED_EMAILS` に載っている必要がある。
+
+### 本番で最初の管理者を立てる
+
+1. 立てるアカウントで、本番へ一度サインインする。
+   `user` 表の行は初回のサインインで Better Auth が作るので、サインインする前は更新する行が無い
+2. 次の SQL をリポジトリの外のファイル（例: `/tmp/grant-admin.sql`）に保存し、`<email>` の 2 箇所を立てるアカウントの email に置き換える。
+   該当する行が無ければ `RAISE EXCEPTION` で止まるので、接続先を取り違えても黙って成功しない
+3. `web/` で接続先のホストを表示し、Neon の toiito → Branches → `production` → Connect が示す直結のホストと一致することを確かめる
+4. 同じ `web/` で SQL を実行し、`Script executed successfully.` が返ることを確かめる
+5. 立てたアカウントで `/admin` を開いて一覧が出ることを、許可リストの別のアカウントで開いて 404 になることを確かめる
+
+```sql
+DO $$
+BEGIN
+  UPDATE "user" SET is_admin = true WHERE email = '<email>';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'user 表に <email> の行が無い';
+  END IF;
+END $$;
+```
+
+手順 3 と 4 のコマンド。
+接続先は `.env.local` の `DIRECT_URL_PROD`（`web/README.md` の表）で、シェルで渡した `DIRECT_URL` が `.env.local` の `DIRECT_URL` より優先される。
+
+```bash
+node --env-file-if-exists=.env.local -p 'new URL(process.env.DIRECT_URL_PROD).host'
+env DIRECT_URL="$(node --env-file-if-exists=.env.local -p 'process.env.DIRECT_URL_PROD')" pnpm exec prisma db execute --file /tmp/grant-admin.sql
+```
+
+### Preview で管理者を立てる
+
+Preview でサインインできるのはシードの二人だけなので、管理者はシードの一人目（`web/scripts/seed/users.ts`）にする。
+空の DB へ `pnpm seed` を入れた Preview では、シードが一人目のフラグを立てているので手順は要らない。
+
+シードを入れた後に `is_admin` の列が足された Preview では、一人目のフラグが立っていない。
+上の「本番で最初の管理者を立てる」の手順 2〜4 を、email をシードの一人目に、`DIRECT_URL_PROD` を `DIRECT_URL_PREVIEW` に、手順 3 の比べる先を `preview` ブランチに替えて行う。
+列が無ければ SQL が止まるので、先に上の「migration を含む PR」の `pnpm migrate:preview` を実行する。
+
 ## Google の OAuth クライアント
 
 本番と手元で、別々の OAuth クライアントを使う。

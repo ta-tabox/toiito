@@ -101,7 +101,7 @@ export async function callPersona(
   const response = await sendWithTimeout(
     provider,
     call.prompt,
-    buildUserContent(question, transcript),
+    buildUserContent(question, transcript, call.id),
   );
 
   logCall({

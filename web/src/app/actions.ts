@@ -74,7 +74,7 @@ export async function speakAction(sessionId: string, formData: FormData) {
   }
 
   const { id: owner } = await requireCurrentUser();
-  await runTurn({ owner, sessionId, body, calls: personaCalls() });
+  await runTurn({ owner, sessionId, body, resolveCalls: personaCalls });
 
   // 発話とメモの action は問いの id を受け取らないので、個々の URL でなくルートの型で再検証する。
   revalidatePath(ROUTES.question, "page");
@@ -83,7 +83,7 @@ export async function speakAction(sessionId: string, formData: FormData) {
 /** `pending_messages` に残っている発話で、一往復をもう一度実行する。 */
 export async function retryTurnAction(sessionId: string) {
   const { id: owner } = await requireCurrentUser();
-  await retryTurn({ owner, sessionId, calls: personaCalls() });
+  await retryTurn({ owner, sessionId, resolveCalls: personaCalls });
 
   // 発話とメモの action は問いの id を受け取らないので、個々の URL でなくルートの型で再検証する。
   revalidatePath(ROUTES.question, "page");

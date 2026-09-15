@@ -7,12 +7,6 @@ import path from "node:path";
 
 export type PersonaId = "ai_a" | "ai_b";
 
-/**
- * ペルソナの系統。
- * `ai_a` は具体系の、`ai_b` は抽象系の一実体である。
- */
-export type PersonaRole = "concrete" | "abstract";
-
 export const PERSONA_LABEL: Record<PersonaId, string> = {
   ai_a: "具体",
   ai_b: "抽象",
