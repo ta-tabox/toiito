@@ -17,7 +17,7 @@ paths:
 |---|---|---|
 | DB（Prisma） | `web/src/lib/db.ts` | `types.ts` のドメイン型 |
 | 環境変数（DB の接続先） | `web/src/lib/config.ts` | `DATABASE_URL` |
-| 環境変数（AI） | `web/src/lib/ai/providers.ts` | `AI_PROVIDERS`（解決済みのプロバイダ） |
+| 環境変数（AI） | `web/src/lib/ai/providers.ts` | `AI_PROVIDER`（解決済みのプロバイダ） |
 | 環境変数（認証） | `web/src/lib/auth/index.ts`（写像は `auth/config.ts` の `readAuthConfig`） | 組み立て済みの Better Auth と、ログインの画面に並べるサインインの手段（`SignInMethods`） |
 | Claude API（HTTP） | `web/src/lib/ai/anthropic.ts` | `ProviderResponse` |
 | ペルソナ定義（ファイル） | `web/src/lib/personas.ts` | プロンプトの文字列 |

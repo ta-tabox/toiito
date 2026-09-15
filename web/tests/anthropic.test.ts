@@ -11,7 +11,7 @@ import {
   ANTHROPIC_EFFORT,
   AnthropicProvider,
   type AnthropicSettings,
-  readAnthropicProviders,
+  readAnthropicProvider,
   readAnthropicSettings,
 } from "@/lib/ai/anthropic";
 
@@ -85,8 +85,7 @@ describe("既定値", () => {
     expect(ANTHROPIC_DEFAULTS.model).toBe("claude-sonnet-5");
     expect(ANTHROPIC_DEFAULTS.maxTokens).toBe(16000);
     expect(ANTHROPIC_DEFAULTS.timeoutMs).toBe(120000);
-    expect(ANTHROPIC_DEFAULTS.effort.concrete).toBeUndefined();
-    expect(ANTHROPIC_DEFAULTS.effort.abstract).toBe("medium");
+    expect(ANTHROPIC_DEFAULTS.effort).toBe("medium");
   });
 });
 
@@ -96,6 +95,7 @@ describe("readAnthropicSettings", () => {
       model: ANTHROPIC_DEFAULTS.model,
       maxTokens: ANTHROPIC_DEFAULTS.maxTokens,
       timeoutMs: ANTHROPIC_DEFAULTS.timeoutMs,
+      effort: ANTHROPIC_DEFAULTS.effort,
       fake: false,
       apiKey: undefined,
     });
@@ -137,71 +137,48 @@ describe("readAnthropicSettings", () => {
     ).toBe(ANTHROPIC_DEFAULTS.timeoutMs);
   });
 
+  it("TOIITO_ANTHROPIC_EFFORT の深さが載る", () => {
+    const env = { TOIITO_ANTHROPIC_EFFORT: OVERRIDE.effort };
+
+    expect(readAnthropicSettings(env, false).effort).toBe(OVERRIDE.effort);
+  });
+
+  it("値域の外の TOIITO_ANTHROPIC_EFFORT は既定値にする", () => {
+    const env = { TOIITO_ANTHROPIC_EFFORT: "middle" };
+
+    expect(readAnthropicSettings(env, false).effort).toBe(
+      ANTHROPIC_DEFAULTS.effort,
+    );
+  });
+
   it("渡されたフェイクモードが載る", () => {
     expect(readAnthropicSettings({}, true).fake).toBe(true);
   });
-
-  it("深さは読まない（系統ごとに分かれるため）", () => {
-    const env = { TOIITO_ANTHROPIC_EFFORT_ABSTRACT: OVERRIDE.effort };
-
-    expect(readAnthropicSettings(env, false).effort).toBeUndefined();
-  });
 });
 
-describe("readAnthropicProviders", () => {
-  it("深さ以外は全系統に同じ設定が載る", () => {
+describe("readAnthropicProvider", () => {
+  it("env から読んだ設定が載る", () => {
     const env = {
       TOIITO_ANTHROPIC_MODEL: OVERRIDE.model,
-      TOIITO_ANTHROPIC_MAX_TOKENS: String(OVERRIDE.maxTokens),
+      TOIITO_ANTHROPIC_EFFORT: OVERRIDE.effort,
     };
-    const providers = readAnthropicProviders(env, false);
+    const provider = readAnthropicProvider(env, false);
 
-    expect(providers.concrete.name).toBe("anthropic");
-    expect(providers.concrete.settings.model).toBe(OVERRIDE.model);
-    expect(providers.abstract.settings.model).toBe(OVERRIDE.model);
-    expect(providers.concrete.settings.maxTokens).toBe(OVERRIDE.maxTokens);
-    expect(providers.abstract.settings.maxTokens).toBe(OVERRIDE.maxTokens);
-  });
-
-  it("深さは系統ごとに分かれる", () => {
-    const providers = readAnthropicProviders(
-      { TOIITO_ANTHROPIC_EFFORT_ABSTRACT: OVERRIDE.effort },
-      false,
-    );
-
-    expect(providers.concrete.settings.effort).toBe(
-      ANTHROPIC_DEFAULTS.effort.concrete,
-    );
-    expect(providers.abstract.settings.effort).toBe(OVERRIDE.effort);
-  });
-
-  it("深さの値域の外は既定へ倒す", () => {
-    const providers = readAnthropicProviders(
-      {
-        TOIITO_ANTHROPIC_EFFORT_CONCRETE: "middle",
-        TOIITO_ANTHROPIC_EFFORT_ABSTRACT: "middle",
-      },
-      false,
-    );
-
-    expect(providers.concrete.settings.effort).toBe(
-      ANTHROPIC_DEFAULTS.effort.concrete,
-    );
-    expect(providers.abstract.settings.effort).toBe(
-      ANTHROPIC_DEFAULTS.effort.abstract,
-    );
+    expect(provider.name).toBe("anthropic");
+    expect(provider.settings.model).toBe(OVERRIDE.model);
+    expect(provider.settings.effort).toBe(OVERRIDE.effort);
   });
 
   it("本番でフェイクでなく ANTHROPIC_API_KEY が無ければ、プロバイダを作る時点で投げる", () => {
     expect(() =>
-      readAnthropicProviders({ VERCEL_ENV: "production" }, false),
+      readAnthropicProvider({ VERCEL_ENV: "production" }, false),
     ).toThrow(/ANTHROPIC_API_KEY/);
   });
 
   it("本番以外では ANTHROPIC_API_KEY が無くてもプロバイダを作れる", () => {
-    const providers = readAnthropicProviders({ VERCEL_ENV: "preview" }, false);
+    const provider = readAnthropicProvider({ VERCEL_ENV: "preview" }, false);
 
-    expect(providers.concrete.settings.apiKey).toBeUndefined();
+    expect(provider.settings.apiKey).toBeUndefined();
   });
 });
 

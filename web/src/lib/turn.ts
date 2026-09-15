@@ -6,13 +6,13 @@
  * AI を待つあいだに同じセッションへ別の一往復が書き込まれていたときも、同じ理由で throw せず、`messages` へ書き込まずに戻る。
  *
  * 呼び出す二体（`PersonaCalls`）は引数で受け取る。
- * `runTurn` が `AI_PROVIDERS` を直接参照すると、テストが失敗経路を作れなくなる。
- * `AI_PROVIDERS` を参照するのは `personaCalls` だけである。
+ * `runTurn` が `AI_PROVIDER` を直接参照すると、テストが失敗経路を作れなくなる。
+ * `AI_PROVIDER` を参照するのは `personaCalls` だけである。
  */
 
 import { callPersona, type PersonaCall } from "@/lib/ai";
 import type { QuestionRef, Transcript } from "@/lib/ai/prompt";
-import { AI_PROVIDERS } from "@/lib/ai/providers";
+import { AI_PROVIDER } from "@/lib/ai/providers";
 import {
   commitTurn,
   getPendingBody,
@@ -38,21 +38,18 @@ type TurnTarget = {
   readonly calls: PersonaCalls;
 };
 
-/**
- * 二体の呼び出しの指定を、env から解決済みのプロバイダで組み立てる。
- * 系統の割り当て（具体が ai_a、抽象が ai_b）は `personaCalls` が持つ。
- */
+/** 二体の呼び出しの指定を、env から解決済みのプロバイダで組み立てる。 */
 export function personaCalls(): PersonaCalls {
   return {
     ai_a: {
       id: "ai_a",
       prompt: loadPersona("ai_a"),
-      provider: AI_PROVIDERS.concrete,
+      provider: AI_PROVIDER,
     },
     ai_b: {
       id: "ai_b",
       prompt: loadPersona("ai_b"),
-      provider: AI_PROVIDERS.abstract,
+      provider: AI_PROVIDER,
     },
   };
 }

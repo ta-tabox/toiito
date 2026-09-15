@@ -15,7 +15,6 @@ import {
   type ProviderResponse,
 } from "@/lib/ai/provider";
 import { isProduction } from "@/lib/config";
-import type { PersonaRole } from "@/lib/personas";
 import { valueSet } from "@/lib/value-set";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
@@ -51,8 +50,7 @@ type AnthropicEnv = {
   readonly TOIITO_ANTHROPIC_MAX_TOKENS?: string;
   readonly TOIITO_ANTHROPIC_TIMEOUT_MS?: string;
   readonly ANTHROPIC_API_KEY?: string;
-  readonly TOIITO_ANTHROPIC_EFFORT_CONCRETE?: string;
-  readonly TOIITO_ANTHROPIC_EFFORT_ABSTRACT?: string;
+  readonly TOIITO_ANTHROPIC_EFFORT?: string;
   readonly [key: string]: string | undefined;
 };
 
@@ -66,23 +64,6 @@ export type AnthropicSettings = CommonSettings & {
 
   /** Claude API のキー。 */
   readonly apiKey?: string;
-};
-
-/**
- * 系統ごとの思考の深さの既定。
- *
- * 抽象系は構造を取り出して材料を添える役で thinking が膨らみやすいので、一段下げる。
- * undefined は API の既定（high）で走らせるという指定。
- */
-const DEFAULT_EFFORT: Record<PersonaRole, AnthropicEffort | undefined> = {
-  concrete: undefined,
-  abstract: ANTHROPIC_EFFORT.medium,
-};
-
-/** 系統ごとの深さを指定する環境変数。 */
-const EFFORT_ENV_KEY: Record<PersonaRole, string> = {
-  concrete: "TOIITO_ANTHROPIC_EFFORT_CONCRETE",
-  abstract: "TOIITO_ANTHROPIC_EFFORT_ABSTRACT",
 };
 
 /**
@@ -102,15 +83,20 @@ export const ANTHROPIC_DEFAULTS = {
    * 二体を逐次に待っても立ち上がりの約 10 秒と合わせて Vercel Hobby の 300 秒に収まり、実行環境が強制終了する前に `timeoutMs` で打ち切れる。
    */
   timeoutMs: 120000,
-  effort: DEFAULT_EFFORT,
+
+  /**
+   * 思考の深さ。
+   *
+   * `ANTHROPIC_API_KEY` に乗る費用を抑えるので、API の既定（high）より一段下げる。
+   */
+  effort: ANTHROPIC_EFFORT.medium,
 } as const;
 
 /**
  * env から設定を読む。
- * 数として読めない値（未設定・空・非数）は既定値にする。
+ * 数として読めない値（未設定・空・非数）と、値域の外の深さ（未設定を含む）は既定値にする。
  * 本番（`VERCEL_ENV=production`）で `fake` が false かつ `ANTHROPIC_API_KEY` が無ければ throw する。
  *
- * 深さは系統ごとに違うので、`readAnthropicSettings` では読まない（`readAnthropicProviders` が足す）。
  * フェイクモードはプロバイダを叩くかどうかの指定で env に依らないので、解決済みの値を受け取る。
  */
 export function readAnthropicSettings(
@@ -129,6 +115,8 @@ export function readAnthropicSettings(
       Number(env.TOIITO_ANTHROPIC_MAX_TOKENS) || ANTHROPIC_DEFAULTS.maxTokens,
     timeoutMs:
       Number(env.TOIITO_ANTHROPIC_TIMEOUT_MS) || ANTHROPIC_DEFAULTS.timeoutMs,
+    effort:
+      EFFORTS.from(env.TOIITO_ANTHROPIC_EFFORT) ?? ANTHROPIC_DEFAULTS.effort,
     fake,
     apiKey: env.ANTHROPIC_API_KEY,
   };
@@ -210,39 +198,10 @@ export class AnthropicProvider extends AiProvider {
   }
 }
 
-/**
- * env から系統ごとの深さを読む。
- * 値域の外（未設定・想定外の値）は既定値にする。
- */
-function readEffort(
-  env: AnthropicEnv,
-  role: PersonaRole,
-): AnthropicEffort | undefined {
-  return (
-    EFFORTS.from(env[EFFORT_ENV_KEY[role]]) ?? ANTHROPIC_DEFAULTS.effort[role]
-  );
-}
-
-/**
- * env から系統ごとのプロバイダを作る。
- *
- * 深さは個体でなく系統の性質なので、キーは `PersonaId` でなく `PersonaRole`。
- * 系統で分かれるのは深さだけで、残りは全系統が同じ設定を持つ。
- */
-export function readAnthropicProviders(
+/** env から Claude API を叩くプロバイダを作る。 */
+export function readAnthropicProvider(
   env: AnthropicEnv,
   fake: boolean,
-): Record<PersonaRole, AnthropicProvider> {
-  const settings = readAnthropicSettings(env, fake);
-
-  return {
-    concrete: new AnthropicProvider({
-      ...settings,
-      effort: readEffort(env, "concrete"),
-    }),
-    abstract: new AnthropicProvider({
-      ...settings,
-      effort: readEffort(env, "abstract"),
-    }),
-  };
+): AnthropicProvider {
+  return new AnthropicProvider(readAnthropicSettings(env, fake));
 }
