@@ -15,6 +15,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { listQuestions, questionText } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
+import { questionPathOf } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +62,7 @@ export default async function Home() {
 
       <ul className="mt-8 space-y-4">
         {questions.map((q) => (
-          <Row key={q.id} href={`/q/${q.id}`}>
+          <Row key={q.id} href={questionPathOf(q.id)}>
             <div className="font-mincho text-question">{questionText(q)}</div>
             {q.current_form && (
               <div className="mt-2 text-meta text-ink-weak">原型: {q.body}</div>

@@ -21,14 +21,8 @@ import {
 } from "@/lib/auth/sign-in";
 import { addMemo, createQuestion, createSession } from "@/lib/db";
 import { parseMemoKeyword } from "@/lib/memo";
+import { questionPathOf, ROUTES } from "@/lib/routes";
 import { personaCalls, retryTurn, runTurn } from "@/lib/turn";
-
-/**
- * 対話画面のルートの型。
- *
- * 発話とメモの action は問いの id を受け取らないので、再検証は個々の URL でなくこの型で指す。
- */
-const QUESTION_PAGE_ROUTE = "/q/[id]";
 
 /** 問いを投入し、その対話画面へ送る。 */
 export async function createQuestionAction(formData: FormData) {
@@ -38,7 +32,7 @@ export async function createQuestionAction(formData: FormData) {
   }
   const { id: owner } = await requireCurrentUser();
   const { question } = await createQuestion(owner, body);
-  redirect(`/q/${question.id}`);
+  redirect(questionPathOf(question.id));
 }
 
 /**
@@ -48,7 +42,7 @@ export async function createQuestionAction(formData: FormData) {
 export async function newSessionAction(questionId: string) {
   const { id: owner } = await requireCurrentUser();
   await createSession(owner, questionId);
-  revalidatePath(`/q/${questionId}`);
+  revalidatePath(questionPathOf(questionId));
 }
 
 /** 発話を送って一往復を回す。 */
@@ -61,7 +55,8 @@ export async function speakAction(sessionId: string, formData: FormData) {
   const { id: owner } = await requireCurrentUser();
   await runTurn({ owner, sessionId, body, calls: personaCalls() });
 
-  revalidatePath(QUESTION_PAGE_ROUTE, "page");
+  // 発話とメモの action は問いの id を受け取らないので、個々の URL でなくルートの型で再検証する。
+  revalidatePath(ROUTES.question, "page");
 }
 
 /** `pending_messages` に残っている発話で、一往復をもう一度実行する。 */
@@ -69,7 +64,8 @@ export async function retryTurnAction(sessionId: string) {
   const { id: owner } = await requireCurrentUser();
   await retryTurn({ owner, sessionId, calls: personaCalls() });
 
-  revalidatePath(QUESTION_PAGE_ROUTE, "page");
+  // 発話とメモの action は問いの id を受け取らないので、個々の URL でなくルートの型で再検証する。
+  revalidatePath(ROUTES.question, "page");
 }
 
 /**
@@ -90,7 +86,8 @@ export async function createMemoAction(formData: FormData) {
   const { id: owner } = await requireCurrentUser();
   await addMemo(owner, messageId, { anchor, keyword, note: note || undefined });
 
-  revalidatePath(QUESTION_PAGE_ROUTE, "page");
+  // 発話とメモの action は問いの id を受け取らないので、個々の URL でなくルートの型で再検証する。
+  revalidatePath(ROUTES.question, "page");
 }
 
 /** Google の同意画面へ送る。 */

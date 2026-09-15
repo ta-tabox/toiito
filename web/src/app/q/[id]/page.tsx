@@ -8,7 +8,7 @@
  *
  * 発話の生成と永続化は Server Action、本文の描画と選択からのメモ作成は `MessageBody` の担当で、`QuestionPage` は並べて描くところまで。
  *
- * 各発話に付ける id="msg-<message_id>" は逆引き（/memos）の着地点で、書式の正は `memos/page.tsx`。
+ * 各発話に付ける id は逆引き（/memos）の着地点で、書式の正は `lib/routes.ts` の `messageElementIdOf`。
  */
 
 import Link from "next/link";
@@ -34,6 +34,7 @@ import {
 } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
 import { PERSONA_LABEL } from "@/lib/personas";
+import { messageElementIdOf, questionPathOf } from "@/lib/routes";
 import type { Speaker } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -125,7 +126,7 @@ export default async function QuestionPage({
           </form>
         ) : (
           <Link
-            href={`/q/${question.id}`}
+            href={questionPathOf(question.id)}
             className="text-aux text-ink-weak hover:underline"
           >
             最新のセッションへ →
@@ -155,8 +156,8 @@ export default async function QuestionPage({
               key={candidate.id}
               href={
                 candidate.id === latest.id
-                  ? `/q/${question.id}`
-                  : `/q/${question.id}?s=${candidate.id}`
+                  ? questionPathOf(question.id)
+                  : questionPathOf(question.id, { sessionId: candidate.id })
               }
               aria-current={candidate.id === session.id ? "page" : undefined}
               className="text-meta text-ink-weak hover:underline aria-[current]:font-bold aria-[current]:text-ink"
@@ -173,7 +174,7 @@ export default async function QuestionPage({
         {messages.map((m) => (
           <div
             key={m.id}
-            id={`msg-${m.id}`}
+            id={messageElementIdOf(m.id)}
             className={`p-3 md:p-4 ${SPEAKER_STYLE[m.speaker].bubble}`}
           >
             <div
