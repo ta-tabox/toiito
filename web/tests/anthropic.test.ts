@@ -49,7 +49,7 @@ const OVERRIDE = {
  */
 const CREDENTIALS: AnthropicCredentials = {
   apiKey: "user-key",
-  model: ANTHROPIC_MODELS.fable51,
+  model: ANTHROPIC_MODELS.haiku45,
 };
 
 /** Claude API の応答一件を返す fetch に差し替える。 */
@@ -112,7 +112,7 @@ describe("利用者が選べるモデル", () => {
   });
 
   it("値域の外のモデル名は isAnthropicModel を通らない", () => {
-    expect(isAnthropicModel("claude-haiku-4-5")).toBe(false);
+    expect(isAnthropicModel("claude-fable-5-1")).toBe(false);
   });
 });
 
@@ -178,6 +178,24 @@ describe("readAnthropicSettings", () => {
     );
   });
 
+  it("深さの指定を受け付けないモデルでは、TOIITO_ANTHROPIC_EFFORT があっても深さを持たせない", () => {
+    const env = {
+      TOIITO_ANTHROPIC_MODEL: ANTHROPIC_MODELS.haiku45,
+      TOIITO_ANTHROPIC_EFFORT: OVERRIDE.effort,
+    };
+
+    expect(readAnthropicSettings(env, false).effort).toBeUndefined();
+  });
+
+  it("ANTHROPIC_MODELS の外のモデル名では、深さを持たせる", () => {
+    const env = {
+      TOIITO_ANTHROPIC_MODEL: "claude-opus-4-8",
+      TOIITO_ANTHROPIC_EFFORT: OVERRIDE.effort,
+    };
+
+    expect(readAnthropicSettings(env, false).effort).toBe(OVERRIDE.effort);
+  });
+
   it("渡されたフェイクモードが載る", () => {
     expect(readAnthropicSettings({}, true).fake).toBe(true);
   });
@@ -226,10 +244,29 @@ describe("readAnthropicProvider", () => {
     expect(sentBody(fetchMock).model).toBe(CREDENTIALS.model);
   });
 
-  it("利用者のキーとモデルを渡しても、深さは既定値のまま", () => {
-    const provider = readAnthropicProvider({}, false, CREDENTIALS);
+  it("深さの指定を受け付けるモデルなら、利用者のキーとモデルを渡しても深さは既定値のまま", () => {
+    const provider = readAnthropicProvider({}, false, {
+      ...CREDENTIALS,
+      model: ANTHROPIC_MODELS.opus5,
+    });
 
     expect(provider.settings.effort).toBe(ANTHROPIC_DEFAULTS.effort);
+  });
+
+  it("利用者が深さの指定を受け付けないモデルを選ぶと、output_config を送らない", async () => {
+    const fetchMock = stubOkResponse();
+    const provider = readAnthropicProvider({}, false, {
+      ...CREDENTIALS,
+      model: ANTHROPIC_MODELS.haiku45,
+    });
+
+    await provider.send(
+      "# 抽象派",
+      "組み立て済みの本文",
+      AbortSignal.timeout(SETTINGS.timeoutMs),
+    );
+
+    expect(sentBody(fetchMock).output_config).toBeUndefined();
   });
 
   it("本番で ANTHROPIC_API_KEY が無くても、利用者のキーを渡せばプロバイダを作れる", () => {

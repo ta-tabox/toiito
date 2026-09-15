@@ -41,16 +41,11 @@ export type AnthropicEffort =
  */
 const EFFORTS = valueSet<AnthropicEffort>(Object.values(ANTHROPIC_EFFORT));
 
-/**
- * 利用者が選べるモデル。
- *
- * 値域には、`output_config.effort` の全値を受け付けるモデルだけを入れる。
- * 受け付けないモデル（`claude-haiku-4-5` など）へ深さを送ると、Claude API がエラーを返す。
- */
+/** 利用者が選べるモデル。 */
 export const ANTHROPIC_MODELS = {
   sonnet5: "claude-sonnet-5",
   opus5: "claude-opus-5",
-  fable51: "claude-fable-5-1",
+  haiku45: "claude-haiku-4-5",
 } as const;
 
 export type AnthropicModel =
@@ -65,6 +60,25 @@ const MODELS = valueSet<AnthropicModel>(Object.values(ANTHROPIC_MODELS));
  */
 export function isAnthropicModel(value: string): value is AnthropicModel {
   return MODELS.includes(value);
+}
+
+/**
+ * モデルごとの、深さの指定（`output_config.effort`）を受け付けるか。
+ *
+ * 受け付けないモデルへ深さを送ると Claude API がエラーを返すので、`readAnthropicSettings` はそのモデルの設定に深さを持たせない。
+ */
+const ACCEPTS_EFFORT: Record<AnthropicModel, boolean> = {
+  [ANTHROPIC_MODELS.sonnet5]: true,
+  [ANTHROPIC_MODELS.opus5]: true,
+  [ANTHROPIC_MODELS.haiku45]: false,
+};
+
+/**
+ * `model` が深さの指定を受け付けるなら true を返す。
+ * `ANTHROPIC_MODELS` の外のモデル名（`TOIITO_ANTHROPIC_MODEL` で指定したもの）は true を返す。
+ */
+function acceptsEffort(model: string): boolean {
+  return isAnthropicModel(model) ? ACCEPTS_EFFORT[model] : true;
 }
 
 /**
@@ -130,6 +144,7 @@ export const ANTHROPIC_DEFAULTS = {
 /**
  * env から設定を読み、`credentials` があれば `apiKey` と `model` をその値で上書きする。
  * 数として読めない値（未設定・空・非数）と、値域の外の深さ（未設定を含む）は既定値にする。
+ * 深さの指定を受け付けないモデルでは、設定に深さを持たせない。
  * `credentials` が無く、本番（`VERCEL_ENV=production`）で `fake` が false かつ `ANTHROPIC_API_KEY` が無ければ throw する。
  *
  * フェイクモードはプロバイダを叩くかどうかの指定で env に依らないので、解決済みの値を受け取る。
@@ -146,17 +161,20 @@ export function readAnthropicSettings(
     );
   }
 
+  const model =
+    credentials?.model ??
+    env.TOIITO_ANTHROPIC_MODEL ??
+    ANTHROPIC_DEFAULTS.model;
+  const effort =
+    EFFORTS.from(env.TOIITO_ANTHROPIC_EFFORT) ?? ANTHROPIC_DEFAULTS.effort;
+
   return {
-    model:
-      credentials?.model ??
-      env.TOIITO_ANTHROPIC_MODEL ??
-      ANTHROPIC_DEFAULTS.model,
+    model,
     maxTokens:
       Number(env.TOIITO_ANTHROPIC_MAX_TOKENS) || ANTHROPIC_DEFAULTS.maxTokens,
     timeoutMs:
       Number(env.TOIITO_ANTHROPIC_TIMEOUT_MS) || ANTHROPIC_DEFAULTS.timeoutMs,
-    effort:
-      EFFORTS.from(env.TOIITO_ANTHROPIC_EFFORT) ?? ANTHROPIC_DEFAULTS.effort,
+    effort: acceptsEffort(model) ? effort : undefined,
     fake,
     apiKey: credentials?.apiKey ?? env.ANTHROPIC_API_KEY,
   };
