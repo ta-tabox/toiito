@@ -1,21 +1,30 @@
 #!/bin/bash
 #
-# ステージした追加行に禁止語があれば、scripts/lint-vocabulary.sh の報告を表示する。
+# ステージした追加行の禁止語を報告する。
 #
+# 語の一覧は scripts/lint-vocabulary.sh が持つ(正本は .claude/rules/writing.md「語彙と読み手」節の表)。
 # 追加行はマージされた後にも直せるので、コミットは止めず、判定は報告を読んだ人間に任せる。
-# マージされた後に直せないコミット本文は、.githooks/commit-msg が止める。
+# マージされた後に直せないコミット本文は、commit-msg フックが止める。
 #
-# 導入は .githooks/commit-msg と同じく git config core.hooksPath .githooks。
+# 導入は2通り。
+#   リポジトリ全体へ効かせる: このファイルを .githooks/pre-commit へ置き、git config core.hooksPath .githooks を設定する
+#   自分の手元だけ:           .git/hooks/pre-commit へコピーする(版管理の外)
 
 # set -e は使わない。
-# 禁止語が見つかると lint が rc 1 を返し、-e があるとフックが 0 以外で終わってコミットが止まる。
+# 禁止語が見つかると lint が rc 1 を返すので、-e があると report への代入でフックが 0 以外で終わり、コミットが止まる。
 set -uo pipefail
 
 ROOT=$(git rev-parse --show-toplevel)
-LINT="$ROOT/scripts/lint-vocabulary.sh"
 
-if [ ! -f "$LINT" ]; then
-  echo "pre-commit: $LINT が無いので語彙の検査を飛ばした。" >&2
+# 配布先では scripts/ の直下、雛形そのものを持つリポジトリでは tools/coding-standards/scripts/ に在る。
+LINT=""
+for candidate in "$ROOT/scripts/lint-vocabulary.sh" "$ROOT/tools/coding-standards/scripts/lint-vocabulary.sh"; do
+  if [ -f "$candidate" ]; then LINT="$candidate"; break; fi
+done
+
+if [ -z "$LINT" ]; then
+  echo "pre-commit: lint-vocabulary.sh が見つからないので語彙の検査を飛ばした。" >&2
+  echo "  探した先: $ROOT/scripts/ と $ROOT/tools/coding-standards/scripts/" >&2
   exit 0
 fi
 
