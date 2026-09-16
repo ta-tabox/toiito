@@ -88,9 +88,13 @@ usage_logs     AI の呼び出し 1 回ごとの利用量。管理者だけが�
 
 ### 所有権
 
-`user_id` を持つのは**所有のルートだけ**で、いまは `questions` 一つである。
-`sessions` / `messages` / `memos` は持たず、所有者は親から辿る。
+**所有のルート**は、いまは `questions` 一つである。
+`sessions` / `messages` / `memos` は `user_id` を持たず、所有者は親から辿る。
 下位にも持たせない理由と、却下した案は `adr/0030-ownership-granularity.md`。
+
+`usage_logs` は `user_id` を持つが、所有のルートではない。
+利用者が読むリソースではなく、列が指すのは呼び出しの費用が乗る利用者である。
+読むのは管理の画面だけで、利用者の画面の repo 関数からは読まない。
 
 **絞り込みは `db.ts` の repo 関数が行う**。
 UI 側でやらない。
