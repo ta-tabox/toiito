@@ -291,7 +291,7 @@ export class AnthropicProvider extends AiProvider {
         ...(request.webSearch
           ? {
               tools: [
-                { ...WEB_SEARCH_TOOL, max_uses: request.webSearch.maxUses },
+                { ...WEB_SEARCH_TOOL, max_uses: request.webSearch.maxSearches },
               ],
             }
           : {}),

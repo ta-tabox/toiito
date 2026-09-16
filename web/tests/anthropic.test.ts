@@ -96,7 +96,7 @@ const REQUEST = {
 };
 
 /** 検索を 4 回まで許す要求の中身。 */
-const SEARCHING_REQUEST = { ...REQUEST, webSearch: { maxUses: 4 } };
+const SEARCHING_REQUEST = { ...REQUEST, webSearch: { maxSearches: 4 } };
 
 /** 検索を要求して一回叩く。 */
 function sendSearching(settings: AnthropicSettings = SETTINGS) {

@@ -54,10 +54,10 @@ export type CommonSettings = {
 
 /**
  * プロバイダのサーバー側で行う web 検索の指定。
- * `maxUses` は、一回の呼び出しで許す検索の回数の上限である。
+ * `maxSearches` は、一回の呼び出しで許す検索の回数の上限である。
  */
 export type WebSearchRequest = {
-  readonly maxUses: number;
+  readonly maxSearches: number;
 };
 
 /**

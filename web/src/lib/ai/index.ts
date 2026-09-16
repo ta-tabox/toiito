@@ -242,7 +242,7 @@ export async function callMaterial(
     {
       system: call.prompt,
       userContent: buildMaterialContent(question),
-      webSearch: { maxUses: call.maxSearches },
+      webSearch: { maxSearches: call.maxSearches },
     },
   );
 
