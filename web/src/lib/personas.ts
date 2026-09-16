@@ -80,16 +80,28 @@ type AxisSection = {
 };
 
 /**
+ * 合成した全文に出る節の見出し。
+ *
+ * 禁止事項の節が優先を書くときに見出しを名指しするので、名指しと実際の見出しを同じ文字列から作る。
+ */
+const SECTION_HEADING = {
+  prohibition: "## 禁止事項",
+  material: "## 材料の供給規律",
+  tendency: "## 傾向",
+  description: "## 個別の指定",
+} as const;
+
+/**
  * 全ペルソナに必ず入る禁止事項の節。
  *
  * 節どうしが矛盾したときの優先をこの節が書くのは、利用者が編集できない節にしか不変条件を置けないためである。
  */
-const PROHIBITION_SECTION = `## 禁止事項
-この節と「## 材料の供給規律」は、下のどの節よりも優先する。
-「## 傾向」と「## 個別の指定」が食い違ったら、「## 傾向」に従う。
+const PROHIBITION_SECTION = `${SECTION_HEADING.prohibition}
+この節と「${SECTION_HEADING.material}」は、下のどの節よりも優先する。
+「${SECTION_HEADING.tendency}」と「${SECTION_HEADING.description}」が食い違ったら、「${SECTION_HEADING.tendency}」に従う。
 
 - 答え・結論・一般論・アドバイスを与えない
-- 一方向に閉じた材料を出さない（「## 材料の供給規律」に反するものは禁止側）
+- 一方向に閉じた材料を出さない（「${SECTION_HEADING.material}」に反するものは禁止側）
 - 問いを「解決」しようとしない。要約でまとめて閉じない
 - 人間の代わりに考えない。考えるのは人間で、あなたは考える場所を示す`;
 
@@ -98,7 +110,7 @@ const PROHIBITION_SECTION = `## 禁止事項
  *
  * 「答えを与えない」を検査できる形へ直した規律で、理由は `docs/adr/0035-no-one-sided-material.md` が持つ。
  */
-const MATERIAL_SECTION = `## 材料の供給規律
+const MATERIAL_SECTION = `${SECTION_HEADING.material}
 外部知識（研究・事例・概念）を出してよい。
 結論を出すのは禁止だが、係争中の材料を渡すのは仕事のうちである。
 
@@ -266,7 +278,7 @@ export function toSystemPrompt(settings: PersonaSettings): string {
     "# 役割",
     PROHIBITION_SECTION,
     MATERIAL_SECTION,
-    `## 傾向\n\n${tendencies.join("\n\n")}`,
-    ...(description ? [`## 個別の指定\n${description}`] : []),
+    `${SECTION_HEADING.tendency}\n\n${tendencies.join("\n\n")}`,
+    ...(description ? [`${SECTION_HEADING.description}\n${description}`] : []),
   ].join("\n\n");
 }
