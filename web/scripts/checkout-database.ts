@@ -78,9 +78,9 @@ export function isWorktree(root: string): boolean {
 }
 
 /**
- * `root` が worktree なら派生名の共通部分（`toiito_wt_<スラグ>`）を返し、本体なら undefined を返す。
+ * `root` が worktree なら、開発用とテスト用に共通の派生名（`toiito_wt_<スラグ>`）を返し、本体なら undefined を返す。
  */
-function derivedStem(root: string): string | undefined {
+function derivedNameOf(root: string): string | undefined {
   if (!isWorktree(root)) {
     return undefined;
   }
@@ -94,7 +94,7 @@ function derivedStem(root: string): string | undefined {
  * worktree ごとに分けるのは、本体の開発用 DB に手で入れた対話が載っており、worktree の migration をそこへ積ませないため。
  */
 export function developmentDatabaseName(root: string): string {
-  return derivedStem(root) ?? DEVELOPMENT_DATABASE_NAME;
+  return derivedNameOf(root) ?? DEVELOPMENT_DATABASE_NAME;
 }
 
 /**
@@ -104,7 +104,7 @@ export function developmentDatabaseName(root: string): string {
  * 同時に走る別の worktree とは、名前で分かれていないと互いのテーブルを空にし合う。
  */
 export function testDatabaseName(root: string): string {
-  return `${derivedStem(root) ?? DEVELOPMENT_DATABASE_NAME}${TEST_SUFFIX}`;
+  return `${derivedNameOf(root) ?? DEVELOPMENT_DATABASE_NAME}${TEST_SUFFIX}`;
 }
 
 /** 手元の Postgres の、データベース `name` への接続先を返す。 */

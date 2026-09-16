@@ -5,9 +5,9 @@
  */
 
 import { defineConfig } from "prisma/config";
-import { applyCheckoutEnvironment } from "./scripts/checkout-environment.ts";
+import { setCheckoutEnvironment } from "./scripts/checkout-environment.ts";
 
-const environment = applyCheckoutEnvironment();
+const environment = setCheckoutEnvironment();
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

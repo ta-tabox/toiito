@@ -6,7 +6,7 @@
  * 接続先はどのチェックアウトでも導き、サインインと AI の既定は worktree でだけ導く。
  * 本番と CI は環境変数を明示で渡すので、ここは何も書き換えない。
  *
- * エントリポイントは `applyCheckoutEnvironment`（CLI は `node scripts/checkout-environment.ts <コマンド> [引数...]`）。
+ * エントリポイントは `setCheckoutEnvironment`（CLI は `node scripts/checkout-environment.ts <コマンド> [引数...]`）。
  */
 
 import { spawnSync } from "node:child_process";
@@ -46,7 +46,7 @@ type DevelopmentDefaults = Partial<
 
 /**
  * 導いた環境変数。
- * `readCheckoutEnvironment` が作り、`applyCheckoutEnvironment` が `process.env` へ入れる。
+ * `readCheckoutEnvironment` が作り、`setCheckoutEnvironment` が `process.env` へ設定する。
  */
 export type CheckoutEnvironment = DevelopmentDefaults & {
   /** アプリからの接続先。 */
@@ -119,12 +119,12 @@ export function readCheckoutEnvironment(
 }
 
 /**
- * `web/.env.local` があれば読み込み、それでも無い環境変数をこのチェックアウトから導いて `process.env` へ入れ、入れた後の値を返す。
+ * `web/.env.local` があれば読み込み、それでも無い環境変数をこのチェックアウトから導いて `process.env` へ設定し、設定した後の値を返す。
  * 既に入っている環境変数は書き換えない。
  *
  * `process.loadEnvFile` は既にある環境変数を上書きしないので、コマンドの前置きで渡した値が `.env.local` の値より優先する。
  */
-export function applyCheckoutEnvironment(): CheckoutEnvironment {
+export function setCheckoutEnvironment(): CheckoutEnvironment {
   const envFile = path.join(webRoot, ".env.local");
 
   if (fs.existsSync(envFile)) {
@@ -150,7 +150,7 @@ function main(): void {
     );
   }
 
-  applyCheckoutEnvironment();
+  setCheckoutEnvironment();
 
   const result = spawnSync(command, args, { stdio: "inherit" });
 

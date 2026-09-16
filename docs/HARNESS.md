@@ -219,7 +219,7 @@ check の前提は Postgres が起動していること（`docker compose up -d`
 
 手元（リポジトリ本体と worktree）の準備は `scripts/setup.sh` 一本で、Claude Code のセッション起動フック（`.claude/hooks/session-start.sh`）が手元でも呼ぶ。
 人間が叩くときはリポジトリのどこからでも `bash scripts/setup.sh`。
-何度走らせても同じ状態に落ち着き、揃えるのは次の四つである。
+何度走らせても同じ状態に落ち着き、揃えるものは次の表が持つ。
 
 | 揃えるもの | 正 |
 |---|---|

@@ -3,7 +3,7 @@
 # 手元のチェックアウト（リポジトリ本体と worktree）で、`pnpm check` と `pnpm dev` が前置き無しで動くところまで揃える。
 # 何度走らせても同じ状態に落ち着く。
 #
-# 揃えるのは四つ。
+# 揃えるもの。
 #   - git のフックの向き先（`.githooks`）
 #   - 依存と Prisma の生成物（`pnpm install`。store は web/pnpm-workspace.yaml の storeDir で本体と worktree が同じ場所を使う）
 #   - Postgres（`docker compose up -d`。docker が無ければ飛ばして告げる）

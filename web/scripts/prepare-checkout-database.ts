@@ -18,7 +18,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client.ts";
 import { adminUrl } from "../tests/setup/test-database-url.ts";
 import { isWorktree } from "./checkout-database.ts";
-import { applyCheckoutEnvironment } from "./checkout-environment.ts";
+import { setCheckoutEnvironment } from "./checkout-environment.ts";
 
 const webRoot = path.resolve(import.meta.dirname, "..");
 const repositoryRoot = path.resolve(webRoot, "..");
@@ -60,10 +60,10 @@ async function createDatabaseIfMissing(url: string): Promise<boolean> {
 }
 
 /**
- * `url` のデータベースへ migration を積む。
+ * `url` のデータベースへ `prisma migrate deploy` で migration を積む。
  * 積むものが無ければ何もしない。
  */
-function deployMigrations(url: string): void {
+function runMigrateDeploy(url: string): void {
   execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], {
     cwd: webRoot,
     stdio: "inherit",
@@ -76,7 +76,7 @@ function deployMigrations(url: string): void {
  * 接続先を告げ、無ければ作り、worktree なら migration を積む。
  */
 async function main(): Promise<void> {
-  const { DIRECT_URL } = applyCheckoutEnvironment();
+  const { DIRECT_URL } = setCheckoutEnvironment();
   const name = path.basename(new URL(DIRECT_URL).pathname);
 
   try {
@@ -90,7 +90,7 @@ async function main(): Promise<void> {
   }
 
   if (isWorktree(repositoryRoot)) {
-    deployMigrations(DIRECT_URL);
+    runMigrateDeploy(DIRECT_URL);
   }
 }
 
