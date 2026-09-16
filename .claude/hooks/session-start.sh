@@ -1,8 +1,9 @@
 #!/bin/bash
 #
-# リモート環境（Claude Code on the web）のセッション起動フック。
-# 責務は一点——docker の無いコンテナで `pnpm check` と `pnpm dev` がローカルと同じ意味を持つところまで組む。
-# 手元の環境は docker compose + mise が正なので、このフックはリモートでしか走らない。
+# セッション起動フック。
+# 責務は一点——どの環境でも `pnpm check` と `pnpm dev` が同じ意味を持つところまで組む。
+# 手元（リポジトリ本体と worktree）の準備は scripts/setup.sh が持ち、このファイルが持つのはリモート（Claude Code on the web）の分だけである。
+# リモートは docker が無いコンテナなので、イメージ同梱の Postgres を compose.yaml と同じ形に組み直す。
 #
 # リモート特有の非対称は二つ。どちらも外向きの通信が許可制で塞げないもの（docs/HARNESS.md「実行環境」）:
 #   - Postgres は 18 でなく、イメージに同梱の 16（apt.postgresql.org へ出られない）
@@ -253,6 +254,9 @@ apply_migrations() {
 
 main() {
   if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
+    # 手元では止めない。
+    # 準備が途中で止まってもセッションは立ち、足りない分は pnpm check が同じ相手で落ちて言う。
+    bash "$REPO_ROOT/scripts/setup.sh" || echo "[toiito] 手元の準備が途中で止まった。bash scripts/setup.sh を叩き直す" >&2
     exit 0
   fi
 
