@@ -2,7 +2,7 @@
  * 繋ぎ先のデータベースが、スキーマと食い違っていないか見て警告する。
  *
  * 繋ぎ先を決めるのは `check-database-drift.ts` ではない。
- * `prisma.config.ts` が `.env.local` の `DIRECT_URL` から読むので、どの DB を守るかは呼ぶ側の配線が決める。
+ * `prisma.config.ts` が `scripts/checkout-environment.ts` から受け取るので、どの DB を守るかは呼ぶ側の配線と環境変数が決める。
  *
  * 見つけても throw しない。
  * 別のブランチで積んだ migration は剥がれずに残るが、作り直してよいかは中身の持ち主にしか判断できない。

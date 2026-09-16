@@ -1,7 +1,7 @@
 /**
  * 消えた worktree が残したテスト用データベースを削除する。
  *
- * 削除するのは自動で派生した名前だけで、判定は `tests/setup/test-database-url.ts` の規則を借りる。
+ * 削除するのは自動で派生した名前だけで、判定は `checkout-database.ts` の規則を借りる。
  * 手で付けた名前（`toiito_129_e2e` のような）は現存の worktree と突き合わせようがないので、削除せず一覧に出して人間へ渡す。
  *
  * エントリポイントは CLI（`pnpm db:prune`）。
@@ -14,8 +14,8 @@ import { PrismaClient } from "../src/generated/prisma/client.ts";
 import {
   adminUrl,
   TEST_DATABASE_URL,
-  testDatabaseName,
 } from "../tests/setup/test-database-url.ts";
+import { testDatabaseName } from "./checkout-database.ts";
 
 /**
  * 自動で派生した名前の形。

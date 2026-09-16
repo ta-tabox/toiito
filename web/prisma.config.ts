@@ -1,17 +1,13 @@
 /**
  * Prisma CLI の設定。
- * Prisma 7 は .env を自動で読まないので、`prisma.config.ts` で明示的に読み込む。
+ * Prisma 7 は .env を自動で読まないので、接続先は `scripts/checkout-environment.ts` から受け取る。
  * Next.js は .env.local を自分で読むが、CLI はこの経路しか通らない。
  */
 
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
+import { applyCheckoutEnvironment } from "./scripts/checkout-environment.ts";
 
-// ファイルが無い環境（CI で env を直接渡す場合）でも落とさない
-try {
-  process.loadEnvFile(".env.local");
-} catch {
-  // .env.local が無ければ、既に環境変数として入っている前提で続ける
-}
+const environment = applyCheckoutEnvironment();
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -23,6 +19,6 @@ export default defineConfig({
   // 本番の Neon では DATABASE_URL がプーラー経由になるので、env は最初から二本に分けてある。
   // schema.prisma 側に directUrl は書けない（Prisma 7 の datasource は url も directUrl も受け取らない）。
   datasource: {
-    url: env("DIRECT_URL"),
+    url: environment.DIRECT_URL,
   },
 });

@@ -124,7 +124,7 @@ DB 由来の列名が snake_case のまま型と往復するため、誤検出�
 - **「無い」は `undefined` で返す**
   `null` は DB の NULL 列を写す型（`current_form`・`note`）にだけ現れ、repo 関数は `?? undefined` で `null` を `undefined` へ揃える
 - **異常は例外で表す**（雛形の既定どおり。Result 型は使わない）
-- **import の `@` の例外は 3 箇所**で、`biome.json` の `overrides` が持つ
-  `vitest.config.ts`（`@` を定義する側）・`tests/setup/**`（`vitest.config.ts` が読む）・`scripts/**`（素の node が読み、tsconfig の `paths` を見ない）
+- **import の `@` の例外は 4 箇所**で、`biome.json` の `overrides` が持つ
+  設定ファイル（`vitest.config.ts`・`next.config.ts`・`prisma.config.ts`。`@` が解決される前に道具が読む）・`tests/setup/**`（`vitest.config.ts` が読む）・`scripts/**`（素の node が読み、tsconfig の `paths` を見ない）
 - **文字境界の丸めは書記素クラスタで**（`Intl.Segmenter`）
   サロゲートペア判定では、異体字セレクタ（`神︀` = U+795E + U+FE00）・ZWJ 連結・肌色修飾が漏れて字が割れる
