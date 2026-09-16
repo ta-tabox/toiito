@@ -14,7 +14,11 @@ import {
   type QuestionRef,
   type Transcript,
 } from "@/lib/ai/prompt";
-import type { AiProvider, ProviderResponse } from "@/lib/ai/provider";
+import type {
+  AiProvider,
+  ProviderRequest,
+  ProviderResponse,
+} from "@/lib/ai/provider";
 import type { PersonaId } from "@/lib/personas";
 import type { UsageInput } from "@/lib/types";
 
@@ -60,21 +64,20 @@ function logCall(fields: {
 }
 
 /**
- * `timeoutMs` を上限に設定して一回送る。
+ * `timeoutMs` を上限に設定して `request` を一回送る。
  *
  * 待ち続けた末に実行環境が関数を強制終了すると、打ち切りとも空本文とも付かない不透明な失敗になるので、その手前で `sendWithTimeout` が打ち切る。
  * 上限で切れたのかどうかは、投げられた値の名前に依らせず signal で見分ける。
  */
 async function sendWithTimeout(
   provider: AiProvider,
-  system: string,
-  userContent: string,
+  request: ProviderRequest,
 ): Promise<ProviderResponse> {
   const { timeoutMs } = provider.settings;
   const timeout = AbortSignal.timeout(timeoutMs);
 
   try {
-    return await provider.send(system, userContent, timeout);
+    return await provider.send(request, timeout);
   } catch (cause) {
     if (timeout.aborted) {
       throw new Error(
@@ -110,11 +113,10 @@ export async function callPersona(
   }
 
   const startedAt = Date.now();
-  const response = await sendWithTimeout(
-    provider,
-    call.prompt,
-    buildUserContent(question, transcript, call.id),
-  );
+  const response = await sendWithTimeout(provider, {
+    system: call.prompt,
+    userContent: buildUserContent(question, transcript, call.id),
+  });
 
   logCall({
     provider: provider.name,

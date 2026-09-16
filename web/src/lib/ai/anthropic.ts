@@ -12,12 +12,24 @@
 import {
   AiProvider,
   type CommonSettings,
+  type ProviderRequest,
   type ProviderResponse,
 } from "@/lib/ai/provider";
 import { isProduction } from "@/lib/config";
 import { valueSet } from "@/lib/value-set";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
+
+/**
+ * サーバー側で web 検索を行うツールの、Claude API での指定。
+ *
+ * 版を上げると検索がコード実行の内側で走る形になり、`ANTHROPIC_MODELS` のうち `haiku45` が受け付けない。
+ * 三つのモデルで同じ経路を通すため、どのモデルでも動く版を使う。
+ */
+const WEB_SEARCH_TOOL = {
+  type: "web_search_20250305",
+  name: "web_search",
+} as const;
 
 /**
  * 思考にどれだけ費やすか。
@@ -181,6 +193,60 @@ export function readAnthropicSettings(
   };
 }
 
+/**
+ * Claude API の応答のうち、`send` が読む欄。
+ *
+ * `web_search_tool_result` の `content` は、検索が成功すれば結果の配列、失敗すれば一つのエラーの object になる。
+ * 結果が一件も無い検索は空配列を返すので、配列であること自体は成功を意味する。
+ */
+type MessageResponse = {
+  content: {
+    type: string;
+    text?: string;
+    content?:
+      | { type: string; url?: string }[]
+      | { type: string; error_code?: string };
+  }[];
+  stop_reason: string | null;
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+    server_tool_use?: { web_search_requests: number };
+  };
+};
+
+/**
+ * 応答のブロック `content` から、web 検索が返した URL を現れた順で返す。
+ * 検索が失敗したブロックがあれば、その `error_code` を添えて throw する。
+ *
+ * 検索の失敗を URL ゼロ件として返すと、出典の照合（`listMaterialViolations`）が結果ゼロ件として違反を返すので、失敗の理由がどこにも残らない。
+ */
+function listSearchResultUrls(content: MessageResponse["content"]): string[] {
+  const urls: string[] = [];
+
+  for (const block of content) {
+    if (block.type !== "web_search_tool_result") {
+      continue;
+    }
+
+    const result = block.content;
+
+    if (!Array.isArray(result)) {
+      throw new Error(
+        `Claude API の web 検索が失敗した: ${result?.error_code ?? "不明"}`,
+      );
+    }
+
+    for (const item of result) {
+      if (item.type === "web_search_result" && item.url) {
+        urls.push(item.url);
+      }
+    }
+  }
+
+  return urls;
+}
+
 /** Claude API を叩くプロバイダ。 */
 export class AnthropicProvider extends AiProvider {
   readonly name = "anthropic";
@@ -192,15 +258,14 @@ export class AnthropicProvider extends AiProvider {
   }
 
   /**
-   * 組み立て済みの本文を Claude API へ送る。
+   * 組み立て済みの本文と、`request.webSearch` があれば web 検索のツールを Claude API へ送る。
    * `apiKey` が無ければ送信の前に throw し、`signal` が切れて fetch が投げた例外は捕まえずに呼び出し元へ伝える。
    *
-   * 打ち切りは `stop_reason` で判定して通すだけで、拒むかどうかは `callPersona` が決める。
-   * `signal` が切れたときの例外を `send` で捕まえると、`callPersona` が上限超過として投げ直せなくなる。
+   * 打ち切りは `stop_reason` で判定して通すだけで、拒むかどうかは `lib/ai/index.ts` が決める。
+   * `signal` が切れたときの例外を `send` で捕まえると、上限超過として投げ直せなくなる。
    */
   async send(
-    system: string,
-    userContent: string,
+    request: ProviderRequest,
     signal: AbortSignal,
   ): Promise<ProviderResponse> {
     const { settings } = this;
@@ -223,8 +288,15 @@ export class AnthropicProvider extends AiProvider {
         ...(settings.effort
           ? { output_config: { effort: settings.effort } }
           : {}),
-        system,
-        messages: [{ role: "user", content: userContent }],
+        ...(request.webSearch
+          ? {
+              tools: [
+                { ...WEB_SEARCH_TOOL, max_uses: request.webSearch.maxUses },
+              ],
+            }
+          : {}),
+        system: request.system,
+        messages: [{ role: "user", content: request.userContent }],
       }),
     });
 
@@ -235,11 +307,12 @@ export class AnthropicProvider extends AiProvider {
       );
     }
 
-    const data: {
-      content: { type: string; text?: string }[];
-      stop_reason: string | null;
-      usage?: { input_tokens: number; output_tokens: number };
-    } = await res.json();
+    const data: MessageResponse = await res.json();
+
+    // 応答を送り返して続きを出させる経路を持たないので、途中で止まった応答は失敗として扱う。
+    if (data.stop_reason === "pause_turn") {
+      throw new Error("Claude API の応答が pause_turn で中断した");
+    }
 
     // thinking だけで応答が終わると text ブロックが一つも来ない。
     const body = data.content
@@ -253,6 +326,8 @@ export class AnthropicProvider extends AiProvider {
       inputTokens: data.usage?.input_tokens ?? null,
       outputTokens: data.usage?.output_tokens ?? null,
       truncated: data.stop_reason === "max_tokens",
+      searchResultUrls: listSearchResultUrls(data.content),
+      webSearchCount: data.usage?.server_tool_use?.web_search_requests ?? 0,
     };
   }
 }

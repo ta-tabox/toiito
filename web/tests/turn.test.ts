@@ -73,6 +73,8 @@ class GatedProvider extends AiProvider {
       inputTokens: 0,
       outputTokens: 0,
       truncated: false,
+      searchResultUrls: [],
+      webSearchCount: 0,
     };
   }
 }
@@ -93,6 +95,8 @@ class StubProvider extends AiProvider {
       inputTokens: 1200,
       outputTokens: 340,
       truncated: false,
+      searchResultUrls: [],
+      webSearchCount: 0,
     };
   }
 }
