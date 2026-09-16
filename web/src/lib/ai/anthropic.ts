@@ -24,7 +24,7 @@ const API_URL = "https://api.anthropic.com/v1/messages";
  * サーバー側で web 検索を行うツールの、Claude API での指定。
  *
  * 版を上げると検索がコード実行の内側で走る形になり、`ANTHROPIC_MODELS` のうち `haiku45` が受け付けない。
- * 三つのモデルで同じ経路を通すため、どのモデルでも動く版を使う。
+ * `send` にモデルごとの分岐を置かずに済むよう、`ANTHROPIC_MODELS` のどれでも動く版を使う。
  */
 const WEB_SEARCH_TOOL = {
   type: "web_search_20250305",
