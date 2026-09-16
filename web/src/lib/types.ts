@@ -11,6 +11,7 @@
 
 import type { MaterialCreator, MaterialKind } from "@/lib/material";
 import type { QuestionStatus } from "@/lib/question";
+import type { AiCallKind, ApiKeySource } from "@/lib/usage";
 
 /**
  * 所有者の ID。
@@ -142,4 +143,35 @@ export type MaterialDraft = {
   body: string;
   source_url?: string;
   created_by: MaterialCreator;
+};
+
+/**
+ * AI の呼び出し一回分の利用量（`usage_logs` の行）。
+ * 問いの本文も、問い・セッション・発話を指す値も持たない。
+ */
+export type UsageLog = {
+  id: string;
+  user_id: string;
+  provider: string;
+  model: string;
+  kind: AiCallKind;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  web_search_count: number;
+  key_source: ApiKeySource;
+  created_at: Date;
+};
+
+/**
+ * `recordUsage` へ渡す、まだ保存していない利用量の一件。
+ * `web_search_count` を省くと 0 に、`key_source` を省くと `operator` になる。
+ */
+export type UsageInput = {
+  provider: string;
+  model: string;
+  kind: AiCallKind;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  web_search_count?: number;
+  key_source?: ApiKeySource;
 };

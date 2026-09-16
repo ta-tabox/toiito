@@ -88,6 +88,34 @@ enum MaterialCreator {
   @@map("material_creator")
 }
 
+/// AI の呼び出しの種別。
+///
+/// - `persona`: ペルソナ一体の発話を作る呼び出し
+/// - `material`: 問いに付随する材料を作る呼び出し
+///
+/// TS 側の対応は `src/lib/usage.ts` の `AI_CALL_KINDS`。
+/// ずれの検出は QuestionStatus と同じなので、この enum に値を足したら `AI_CALL_KINDS` にも足す。
+enum AiCallKind {
+  persona
+  material
+
+  @@map("ai_call_kind")
+}
+
+/// AI の呼び出しに使った API キーの出所。
+///
+/// - `operator`: 運営が持つキー
+/// - `user`: 利用者が登録したキー
+///
+/// TS 側の対応は `src/lib/usage.ts` の `API_KEY_SOURCES`。
+/// この enum に値を足したら `API_KEY_SOURCES` にも足す。
+enum ApiKeySource {
+  operator
+  user
+
+  @@map("api_key_source")
+}
+
 /// 問い。投入された一件と、その現在の状態。
 /// body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、
 /// current_form は対話の中で言い直された焦点。
@@ -246,6 +274,35 @@ model Material {
   @@map("materials")
 }
 
+/// AI の呼び出し一回分の利用量。
+/// 管理者だけが読む運用の記録で、利用者の画面からは読まない。
+///
+/// プロンプト・応答・問いの本文を持たず、問い・セッション・発話を指す列も持たない。
+/// 参照があると管理者が DB を辿って他人の問いの本文へ行き着けるので、列を足すときはその経路を作らないことを保つ（理由は `docs/adr/0047-usage-log-in-db.md`）。
+///
+/// `user_id` を持つが、所有のルート（`Question`）ではない。
+/// 利用者が読む行ではなく、その呼び出しの費用が誰に乗るかを表す列である。
+model UsageLog {
+  id               String       @id @default(uuid(4)) @db.Uuid
+  user_id          String
+  provider         String
+  model            String
+  kind             AiCallKind
+  /// プロバイダが返した入力トークン数。返らなければ NULL。
+  input_tokens     Int?
+  /// プロバイダが返した出力トークン数。返らなければ NULL。
+  output_tokens    Int?
+  /// 呼び出しの中で AI が行った web 検索の回数。検索を要求しない呼び出しは 0。
+  web_search_count Int          @default(0)
+  key_source       ApiKeySource @default(operator)
+  created_at       DateTime     @default(now()) @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@map("usage_logs")
+}
+
 /// ユーザー。Better Auth が使う四表の一つ。
 ///
 /// モデル名と列名は Better Auth 1.7.2 が要求するまま（camelCase・型は既定）で、snake_case へ揃えない（理由はファイル冒頭のコメント）。
@@ -262,9 +319,10 @@ model User {
   /// サインインの可否には使わない。
   is_admin      Boolean  @default(false)
 
-  sessions  Session[]
-  accounts  Account[]
-  questions Question[]
+  sessions   Session[]
+  accounts   Account[]
+  questions  Question[]
+  usage_logs UsageLog[]
 
   @@map("user")
 }

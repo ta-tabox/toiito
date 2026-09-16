@@ -29,6 +29,8 @@ import type {
   Question,
   Session,
   SessionWithKeywords,
+  UsageInput,
+  UsageLog,
   User,
   Utterance,
 } from "@/lib/types";
@@ -863,6 +865,31 @@ export async function createQuestionWithTranscript(
   }
 
   return { question, session, messages, memos };
+}
+
+/**
+ * AI の呼び出し一回分の利用量を 1 行書く。
+ * `web_search_count` と `key_source` を省いた `usage` は、列の既定値（0 と `operator`）で入る。
+ *
+ * `owner` は絞り込みの条件ではなく、その呼び出しの費用が乗る利用者を指す（`usage_logs` は所有のルートでない）。
+ */
+export async function recordUsage(
+  owner: OwnerId,
+  usage: UsageInput,
+): Promise<void> {
+  await db().usageLog.create({ data: { user_id: owner, ...usage } });
+}
+
+/**
+ * `userId` が呼んだ AI の利用量の行を、記録した古い順で返す。
+ *
+ * 呼び出し側は `requireAdmin` を通してから呼ぶ。
+ */
+export async function listUsageLogs(userId: string): Promise<UsageLog[]> {
+  return db().usageLog.findMany({
+    where: { user_id: userId },
+    orderBy: { created_at: "asc" },
+  });
 }
 
 /**
