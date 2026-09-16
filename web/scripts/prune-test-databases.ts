@@ -1,5 +1,5 @@
 /**
- * 消えた worktree が残したテスト用データベースを削除する。
+ * 消えた worktree が残した開発用とテスト用のデータベースを削除する。
  *
  * 削除するのは自動で派生した名前だけで、判定は `checkout-database.ts` の規則を借りる。
  * 手で付けた名前（`toiito_129_e2e` のような）は現存の worktree と突き合わせようがないので、削除せず一覧に出して人間へ渡す。
@@ -15,15 +15,21 @@ import {
   adminUrl,
   TEST_DATABASE_URL,
 } from "../tests/setup/test-database-url.ts";
-import { testDatabaseName } from "./checkout-database.ts";
+import {
+  DERIVED_PREFIX,
+  developmentDatabaseName,
+  testDatabaseName,
+} from "./checkout-database.ts";
 
 /**
- * 自動で派生した名前の形。
+ * 自動で派生した名前かどうか。
  *
  * `toiito_wt_` という接頭辞を見るのは、手で `TOIITO_TEST_DATABASE_URL` を指した DB を巻き込まないため。
  * 接頭辞が無ければ、いま誰かが使っている `toiito_120_test` のような名前と区別が付かない。
  */
-const DERIVED_NAME = /^toiito_wt_.+_test$/;
+function isDerivedName(name: string): boolean {
+  return name.startsWith(DERIVED_PREFIX) && name.length > DERIVED_PREFIX.length;
+}
 
 /**
  * worktree に対応しないまま居続けるデータベース。
@@ -58,7 +64,7 @@ export function selectPruneTargets(
       continue;
     }
 
-    if (DERIVED_NAME.test(name)) {
+    if (isDerivedName(name)) {
       orphans.push(name);
     } else {
       unmanaged.push(name);
@@ -69,7 +75,7 @@ export function selectPruneTargets(
 }
 
 /**
- * 現存する worktree が使うデータベースの名前。
+ * 現存する worktree が使う開発用とテスト用のデータベースの名前。
  *
  * `git worktree list --porcelain` は worktree ごとに `worktree <パス>` の行から始まる。
  */
@@ -79,7 +85,11 @@ export function liveDatabaseNames(porcelain: string): string[] {
   return porcelain
     .split("\n")
     .filter((line) => line.startsWith(prefix))
-    .map((line) => testDatabaseName(line.slice(prefix.length)));
+    .flatMap((line) => {
+      const root = line.slice(prefix.length);
+
+      return [developmentDatabaseName(root), testDatabaseName(root)];
+    });
 }
 
 /** 孤児を数え上げて削除する。 */
