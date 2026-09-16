@@ -15,6 +15,7 @@ AI をスピードアップではなくスローダウン（自分の問いを�
 
 ## 開発ハーネス（本文は `docs/HARNESS.md`）
 ローカル Postgres を立ててから作業する（ルートで `docker compose up -d`。接続は `web/.env.local` に `DATABASE_URL` と `DIRECT_URL` の二本）。
+手元と worktree の準備（フックの向き先・依存・Postgres・開発用 DB）は `scripts/setup.sh` 一本で、セッション起動フックが呼ぶ。
 変更 → `web/` で `pnpm check`（型→lint→テスト→ビルド）→ 緑ならコミット。
 **check が赤のままコミットしない**。
 道具は pnpm・mise（`mise.toml` が正）・Biome（`biome.json` が正。書式は `pnpm format` で機械的に直す）の一本ずつで、npm/yarn・corepack・ESLint/Prettier は使わない。
@@ -38,7 +39,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   `web/.env.example` の更新も人間の手に入る
 - **worktree に `.env.local` を作らない**。
   本体と同じ `DATABASE_URL` を持つコピーは、worktree の migration を本体の開発用 DB へ積む（`.worktreeinclude` が同じ理由でこのファイルを対象から外している）。
-  `prisma generate` のように値が要るだけの場面は、ファイルでなくコマンドの前置きで渡す
+  worktree の接続先とサインイン・AI の既定は `web/scripts/checkout-environment.ts` が導くので、`pnpm dev`・`pnpm seed`・Prisma CLI に前置きは要らない
 - **deny に当たったら、別経路を探さずそこで止める**。
   機械層が塞ぐのはツールの読み書き・`cat` や `sed`・リダイレクトの書き込み先までで、`python` や `node` のスクリプトが自分でファイルを開く経路には届かない。
   届かない分をこの規約が持つ
