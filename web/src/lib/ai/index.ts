@@ -33,8 +33,6 @@ export type PersonaCall = {
   /**
    * 一回分の利用量を書く関数。
    * `callPersona` は書き込みに失敗した例外を捕まえずに呼び出し元へ伝える。
-   *
-   * 呼び出しの規約を持つ `lib/ai/index.ts` は DB を知らないので、書く手段は呼び出し側が渡す。
    */
   readonly recordUsage: (usage: UsageInput) => Promise<void>;
 };
