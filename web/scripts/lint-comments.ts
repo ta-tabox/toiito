@@ -459,8 +459,10 @@ function checkSentenceEndLineBreaks(
   const violations: Violation[] = [];
 
   for (const block of toCommentBlocks(source, comments)) {
-    for (const [index, current] of block.slice(0, -1).entries()) {
-      const next = block[index + 1];
+    const lines = maskListItems(block);
+
+    for (const [index, current] of lines.slice(0, -1).entries()) {
+      const next = lines[index + 1];
 
       if (current.text === "" || next.text === "") {
         continue;
@@ -1071,6 +1073,26 @@ function maskFencedRegions(lines: CommentLine[]): CommentLine[] {
       inside = !inside;
 
       return { line: entry.line, text: "" };
+    }
+
+    return inside ? { line: entry.line, text: "" } : entry;
+  });
+}
+
+/**
+ * 箇条の項目の行を空行に見せる。
+ *
+ * 規約が項目の中の文に句点を付けないと決めているので、項目の行では行末の句点が文の終わりの合図にならない。
+ * 箇条の記号を持つのは項目の 1 行目だけで、2 行目から先の目印になる字下げは `stripDecoration` が取り除くので、項目は記号で始まる行から次の空行までとする。
+ */
+function maskListItems(lines: CommentLine[]): CommentLine[] {
+  let inside = false;
+
+  return lines.map((entry) => {
+    if (entry.text === "") {
+      inside = false;
+    } else if (LIST_MARKER.test(entry.text)) {
+      inside = true;
     }
 
     return inside ? { line: entry.line, text: "" } : entry;
