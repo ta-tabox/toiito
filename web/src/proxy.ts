@@ -1,7 +1,7 @@
 /**
  * 未サインインのリクエストをログインの画面へ送る配線（Next の proxy 規約）。
  *
- * 見るのはセッションの cookie が在るかどうかだけで、DB へは問い合わせない（理由は `docs/adr/0036-auth-better-auth.md`）。
+ * 見るのはセッションの cookie が在るかどうかだけで、DB へは問い合わせない（理由は `docs/adr/20260909-auth-better-auth.md`）。
  * cookie が在っても中身が有効とは限らないので、`proxy` を通ったことは認可の根拠にならない。
  * 他人のリソースを拒否するのは `db.ts` の repo 関数で、期限切れのセッションを拒否するのは `getCurrentUser` である。
  *

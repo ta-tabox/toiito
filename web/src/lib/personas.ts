@@ -34,7 +34,7 @@ export function loadPersona(id: PersonaId): string {
  * - `dissent` は異論の強さで、`level_1` が相手の言葉に沿う受容、`level_5` が反例と異論を正面から出す対抗
  * - `convergence` は発散と収束で、`level_1` が問いを増やす発散、`level_5` が問いの焦点を一つに絞る収束
  *
- * 軸を三つにした理由は `docs/adr/0042-persona-as-records.md` が持つ。
+ * 軸を三つにした理由は `docs/adr/20260915-persona-as-records.md` が持つ。
  */
 export const PERSONA_AXES = ["abstraction", "dissent", "convergence"] as const;
 
@@ -132,7 +132,7 @@ const PROHIBITION_SECTION = `${SECTION_HEADING.prohibition}
 /**
  * 全ペルソナに必ず入る材料の供給規律の節。
  *
- * 「答えを与えない」を検査できる形へ直した規律で、理由は `docs/adr/0035-no-one-sided-material.md` が持つ。
+ * 「答えを与えない」を検査できる形へ直した規律で、理由は `docs/adr/20260719-no-one-sided-material.md` が持つ。
  */
 const MATERIAL_SECTION = `${SECTION_HEADING.material}
 外部知識（研究・事例・概念）を出してよい。
@@ -237,7 +237,7 @@ const AXIS_SECTIONS: Record<PersonaAxis, AxisSection> = {
  * DB の版は、この設定から合成した結果の記録である。
  * 合成した全文は `tests/__snapshots__/system-prompts/ai_a.md` と `ai_b.md` に置き、テストが一致を検査する。
  *
- * 既定の設定の正をコードへ置く理由は `docs/adr/0042-persona-as-records.md` が持つ。
+ * 既定の設定の正をコードへ置く理由は `docs/adr/20260915-persona-as-records.md` が持つ。
  */
 export const DEFAULT_PERSONA_SETTINGS: Record<PersonaId, PersonaSettings> = {
   ai_a: {

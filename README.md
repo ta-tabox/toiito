@@ -76,4 +76,4 @@ MIT（[LICENSE](LICENSE)）。
 
 利用者が投げた問いと対話はデータベースにあり、このリポジトリには載らない。
 
-決定と、採らなかった案とその条件は [ADR-0001](docs/adr/0001-license.md)。
+決定と、採らなかった案とその条件は [ADR-20260827-license](docs/adr/20260827-license.md)。

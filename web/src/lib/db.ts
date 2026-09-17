@@ -6,7 +6,7 @@
  * `@prisma/client` と生成型（`@/generated/prisma`）に触れてよいのは `db.ts` だけで、UI と Server Actions が受け取るのは `types.ts` のドメイン型に限る。
  * DB 非依存の計算を `db.ts` へ積まない（`anchors.ts` のような純関数層へ置く）。
  *
- * **アクセス権のないリソースを拒否するのは `db.ts` で、DB の制約（RLS）ではない**（理由は `docs/adr/0030-ownership-granularity.md`）。
+ * **アクセス権のないリソースを拒否するのは `db.ts` で、DB の制約（RLS）ではない**（理由は `docs/adr/20260906-ownership-granularity.md`）。
  * 所有者を受け取る repo 関数は、読みも書きも所有者の条件を必ず where に置く（取得してから user_id を比べる形は、比べ忘れても `tsc` が通ってしまう）。
  * 所有者の列を持つのは `questions` だけで、下位のテーブルは親を辿って判定する。
  */

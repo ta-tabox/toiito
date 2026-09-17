@@ -9,7 +9,7 @@ AI をスピードアップではなくスローダウン（自分の問いを�
 
 ## 正はどこにあるか
 **作業単位と状態の正は GitHub Issues**、順序と横断規約の正は `docs/ROADMAP.md`、決定の正は `docs/adr/`（1決定1レコード・追記のみ・覆すときは supersede。規約は `docs/adr/README.md`）。
-**この三つの外に申し送りの層を持たない**（理由は ADR-0023（`NEXT.md` の廃止））。
+**この三つの外に申し送りの層を持たない**（理由は ADR-20260901-retire-next-md（`NEXT.md` の廃止））。
 続きは open の issue から拾う。
 現在地の一枚が要るときは、写しを保守するのでなく三つから取り直して作る。
 
@@ -33,7 +33,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   上流の更新は手で取り込む
 
 ## 環境変数（`.env*`）
-**秘密を含む `.env*` は Claude が読めず、`.env*` はどれも Claude が書けない**（`.claude/settings.json` の `deny`。決定と経緯は ADR-0024（`.env*` を Claude が触ってよい範囲））。
+**秘密を含む `.env*` は Claude が読めず、`.env*` はどれも Claude が書けない**（`.claude/settings.json` の `deny`。決定と経緯は ADR-20260902-env-file-scope（`.env*` を Claude が触ってよい範囲））。
 書いて漏れうるのは追跡対象の `.env.example` だけなので書き側に例外を置かず、読んで漏れるのは秘密を持つ側だけなので `.env.example` は読める。
 - **env に足すものが出たら、自分で書かず人間へ渡す**（変数の一覧と意味は `web/README.md`）
   `web/.env.example` の更新も人間の手に入る
