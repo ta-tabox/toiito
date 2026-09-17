@@ -28,7 +28,7 @@ paths:
 ## 境界の禁止則
 
 - Prisma のクライアントと生成型（`@/generated/prisma`）を import するのは `db.ts` だけにする
-  例外は Better Auth のアダプタへ渡す `authDatabaseClient`（呼ぶのは `lib/auth/index.ts` だけ）と、アプリの経路の外にある `tests/setup/truncate.ts`・`scripts/prune-test-databases.ts`
+  例外は Better Auth のアダプタへ渡す `authDatabaseClient`（呼ぶのは `lib/auth/index.ts` だけ）と、アプリの経路の外にある `tests/setup/truncate.ts`・`scripts/prune-test-databases.ts`・`scripts/prepare-checkout-database.ts`
 - スキーマの正は `prisma/schema.prisma` 一箇所にし、DDL を別ファイルに書き写さない
 - repo 関数はすべて `async` で書く
 - 所有者を受け取る repo 関数は、読みでは where に所有者の条件を置き、`create` と `update` の前では `requireOwnedQuestion` か `requireOwnedSession` を呼ぶ

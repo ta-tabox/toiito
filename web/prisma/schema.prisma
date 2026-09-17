@@ -120,7 +120,7 @@ enum ApiKeySource {
 /// body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、
 /// current_form は対話の中で言い直された焦点。
 ///
-/// `user_id` を持つのは所有のルートだけで、いまはこのモデル一つ（理由は `docs/adr/0030-ownership-granularity.md`）。
+/// `user_id` を持つのは所有のルートだけで、いまはこのモデル一つ（理由は `docs/adr/20260906-ownership-granularity.md`）。
 /// 型が UUID でなく String なのは、Better Auth の `user.id` に合わせるため。
 model Question {
   id           String         @id @default(uuid(4)) @db.Uuid
@@ -167,7 +167,7 @@ model DialogueSession {
 /// 送信されたが、一往復が完了していない人間の発話。
 ///
 /// `messages` へは human / ai_a / ai_b の三行が同時に入るため、AI 呼び出しが失敗すると発話が残らない。
-/// この行があることが、直前の送信が失敗した状態を表す（理由は `docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+/// この行があることが、直前の送信が失敗した状態を表す（理由は `docs/adr/20260902-turn-atomicity-and-pending-utterance.md`）。
 ///
 /// 1 セッションに 1 行なので `session_id` が主キー。
 /// `messages` と違って更新も削除もする。

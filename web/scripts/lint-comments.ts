@@ -8,7 +8,6 @@
  *
  * エントリポイントは lintSource。
  * このファイルは複数のリポジトリで同じ内容を保つ共有物なので、このリポジトリ固有の逸脱を足すときはこのコメントの直下に理由を書く。
- * このリポジトリ固有の逸脱は `REASON_LIMIT_EXCEPTION` で、理由はその JSDoc が持つ。
  */
 
 import { spawnSync } from "node:child_process";
@@ -105,7 +104,7 @@ const MAX_REASON_SENTENCES = 2;
  * JSDoc と宣言の間に置き、コロンの後ろにその関数の呼び手が実際に踏んだ誤りを書く。
  * 誤りを書かない宣言では外さない。
  *
- * このリポジトリは `comments/maxReasonSentences` を error にしているので、例外を宣言できないと、呼び手が実際に踏んだ誤りを残すべき関数まで文を詰め込んで上限へ収めることになる。
+ * `comments/maxReasonSentences` を error へ上げたリポジトリでは、例外を宣言できないと、呼び手が実際に踏んだ誤りを残すべき関数まで文を詰め込んで上限へ収めることになる。
  */
 const REASON_LIMIT_EXCEPTION =
   /^\/\/\s*lint-comments-allow\s+comments\/maxReasonSentences:\s*\S/;
@@ -459,8 +458,10 @@ function checkSentenceEndLineBreaks(
   const violations: Violation[] = [];
 
   for (const block of toCommentBlocks(source, comments)) {
-    for (const [index, current] of block.slice(0, -1).entries()) {
-      const next = block[index + 1];
+    const lines = maskListItems(block);
+
+    for (const [index, current] of lines.slice(0, -1).entries()) {
+      const next = lines[index + 1];
 
       if (current.text === "" || next.text === "") {
         continue;
@@ -1071,6 +1072,26 @@ function maskFencedRegions(lines: CommentLine[]): CommentLine[] {
       inside = !inside;
 
       return { line: entry.line, text: "" };
+    }
+
+    return inside ? { line: entry.line, text: "" } : entry;
+  });
+}
+
+/**
+ * 箇条の項目の行を空行に見せる。
+ *
+ * 規約が項目の中の文に句点を付けないと決めているので、項目の行では行末の句点が文の終わりの合図にならない。
+ * 箇条の記号を持つのは項目の 1 行目だけで、2 行目から先の目印になる字下げは `stripDecoration` が取り除くので、項目は記号で始まる行から次の空行までとする。
+ */
+function maskListItems(lines: CommentLine[]): CommentLine[] {
+  let inside = false;
+
+  return lines.map((entry) => {
+    if (entry.text === "") {
+      inside = false;
+    } else if (LIST_MARKER.test(entry.text)) {
+      inside = true;
     }
 
     return inside ? { line: entry.line, text: "" } : entry;
