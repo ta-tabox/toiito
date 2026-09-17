@@ -88,10 +88,11 @@ describe("システムプロンプトの合成", () => {
 
       expect(prompt).toContain("## 禁止事項");
       expect(prompt).toContain("## 材料の供給規律");
-      // 抽象度 level_1・異論の強さ level_4・発散と収束 level_3 の本文にだけ出る一行。
+      expect(prompt).toContain("あなたの傾きは「強く具体寄り」である。");
+      expect(prompt).toContain("あなたの傾きは「やや対抗寄り」である。");
+      expect(prompt).toContain("あなたの傾きは「発散と収束の中間」である。");
+      // md の手筋のうち、具体の端にだけ置いた手。
       expect(prompt).toContain("出自の具体を聞く");
-      expect(prompt).toContain("反例と境界事例を出す");
-      expect(prompt).toContain("問いの数を増やしも減らしもしない");
     });
 
     it("ai_b: 共通の節と、自分の段階に対応する各軸の節を持つ", () => {
@@ -99,10 +100,11 @@ describe("システムプロンプトの合成", () => {
 
       expect(prompt).toContain("## 禁止事項");
       expect(prompt).toContain("## 材料の供給規律");
-      // 抽象度 level_5・異論の強さ level_4・発散と収束 level_2 の本文にだけ出る一行。
+      expect(prompt).toContain("あなたの傾きは「強く抽象寄り」である。");
+      expect(prompt).toContain("あなたの傾きは「やや対抗寄り」である。");
+      expect(prompt).toContain("あなたの傾きは「やや発散寄り」である。");
+      // md の手筋のうち、抽象の端にだけ置いた手。
       expect(prompt).toContain("語の同一性を疑う");
-      expect(prompt).toContain("反例と境界事例を出す");
-      expect(prompt).toContain("どれを先に扱うかは人間に決めさせる");
     });
 
     (["ai_a", "ai_b"] as const).forEach((id) => {
