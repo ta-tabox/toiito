@@ -34,7 +34,7 @@ jobs:
     timeout-minutes: 30
     concurrency:
       group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
-      # 同じ issue/PR での連投は直列化する。走っている応答を途中で殺すと中途半端なコメントが残るので cancel はしない。
+      # 同じ issue/PR での連投は直列化する。走っている応答を途中で止めると中途半端なコメントが残るので cancel はしない。
       cancel-in-progress: false
     permissions:
       # contents: read で固定する（Actions 経由の Claude はコメントまで。コミットは押させない）。

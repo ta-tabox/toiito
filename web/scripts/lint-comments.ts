@@ -8,7 +8,6 @@
  *
  * エントリポイントは lintSource。
  * このファイルは複数のリポジトリで同じ内容を保つ共有物なので、このリポジトリ固有の逸脱を足すときはこのコメントの直下に理由を書く。
- * このリポジトリ固有の逸脱は `REASON_LIMIT_EXCEPTION` で、理由はその JSDoc が持つ。
  */
 
 import { spawnSync } from "node:child_process";
@@ -105,7 +104,7 @@ const MAX_REASON_SENTENCES = 2;
  * JSDoc と宣言の間に置き、コロンの後ろにその関数の呼び手が実際に踏んだ誤りを書く。
  * 誤りを書かない宣言では外さない。
  *
- * このリポジトリは `comments/maxReasonSentences` を error にしているので、例外を宣言できないと、呼び手が実際に踏んだ誤りを残すべき関数まで文を詰め込んで上限へ収めることになる。
+ * `comments/maxReasonSentences` を error へ上げたリポジトリでは、例外を宣言できないと、呼び手が実際に踏んだ誤りを残すべき関数まで文を詰め込んで上限へ収めることになる。
  */
 const REASON_LIMIT_EXCEPTION =
   /^\/\/\s*lint-comments-allow\s+comments\/maxReasonSentences:\s*\S/;
