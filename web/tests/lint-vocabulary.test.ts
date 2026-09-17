@@ -91,6 +91,13 @@ describe("--text の禁止語", () => {
 
     expect(result.status).toBe(1);
     expect(result.stdout).toBe(`body.txt:2: 二行目に${DENIED_WORD}がある\n`);
+  });
+
+  it("禁止語を含む行があれば、対処の案内を標準エラー出力へ出す", () => {
+    writeRepositoryFile("body.txt", `${DENIED_WORD}\n`);
+
+    const result = runLintVocabulary(["--text", "body.txt"]);
+
     expect(result.stderr).not.toBe("");
   });
 
