@@ -220,28 +220,28 @@ const BRACKET_CLOSE = "）)」】";
 const TRAILING_DECORATION = /^[*_`）)」】\s]*$/;
 
 /**
- * 禁止語を 1 行 1 語で持つファイルの名前。
+ * 禁止語を 1 行 1 語で持つファイルのパス。
  * 語・言い換え先・除外する複合語の 3 列をタブで区切り、3 列目は空白で区切った語の並びにする。
  *
  * 語の正は `.claude/rules/writing.md`「語彙と読み手」節の表で、このファイルはそれを機械が読める形へ写したもの。
- * リポジトリのルートに無ければ `VOCAB_TEMPLATE_DIRECTORY` から読み、`lint-vocabulary.sh` も同じ順で探す。
+ * リポジトリのルートに無ければ `VOCAB_TEMPLATE_DIRECTORY` の下から読み、`lint-vocabulary.sh` も同じ順で探す。
  */
-const VOCAB_BANNED_FILE = ".coding-standards-vocab-banned";
+const VOCAB_BANNED_FILE = ".vocabulary/banned.tsv";
 
 /** 雛形そのものを持つリポジトリで、配布物を置くディレクトリ。 */
 const VOCAB_TEMPLATE_DIRECTORY = "tools/coding-standards";
 
 /**
- * リポジトリだけの禁止語を 1 行 1 語で持つファイルの名前。
- * リポジトリのルートに置き、`scripts/lint-vocabulary.sh` も同じファイルを読む。
+ * リポジトリだけの禁止語を 1 行 1 語で持つファイルのパス。
+ * リポジトリのルートからの相対で、`scripts/lint-vocabulary.sh` も同じファイルを読む。
  */
-const VOCAB_DENY_FILE = ".coding-standards-vocab-deny";
+const VOCAB_DENY_FILE = ".vocabulary/deny";
 
 /**
- * そのリポジトリの領域で比喩でない語を 1 行 1 語で持つファイルの名前。
+ * そのリポジトリの領域で比喩でない語を 1 行 1 語で持つファイルのパス。
  * 置き場と、同じファイルを読む検査は `VOCAB_DENY_FILE` と同じ。
  */
-const VOCAB_ALLOW_FILE = ".coding-standards-vocab-allow";
+const VOCAB_ALLOW_FILE = ".vocabulary/allow";
 
 /**
  * リンタのエントリポイント。

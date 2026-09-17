@@ -667,7 +667,7 @@ export function f() {}
         line: 6,
         rule: "comments/noBannedWord",
         message:
-          "「預かり」は使わない。代わりに 直叙な語（.coding-standards-vocab-deny が足した語）",
+          "「預かり」は使わない。代わりに 直叙な語（.vocabulary/deny が足した語）",
         severity: "error",
       },
     ]);
@@ -681,7 +681,7 @@ export function f() {}
     expect(toWordList("検査器\n口調")).toEqual(["検査器", "口調"]);
   });
 
-  it(".coding-standards-vocab-allow の語はどれも、コメントに書いても報告しない", () => {
+  it(".vocabulary/allow の語はどれも、コメントに書いても報告しない", () => {
     const vocabulary = loadRepositoryVocabulary();
     const reported = vocabulary.allow.filter(
       (word) => rulesWith(sourceWith(word), vocabulary).length > 0,
@@ -691,7 +691,7 @@ export function f() {}
     expect(reported).toEqual([]);
   });
 
-  it(".coding-standards-vocab-deny の語はどれも、コメントに書けば報告する", () => {
+  it(".vocabulary/deny の語はどれも、コメントに書けば報告する", () => {
     const vocabulary = loadRepositoryVocabulary();
     const missed = vocabulary.deny.filter(
       (word) =>
