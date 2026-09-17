@@ -26,7 +26,7 @@ error は赤にし、warn は報告だけにする。
 | 言い切った文への `——` の後置き（雛形は warn） | 同上 | error |
 | 関数の JSDoc の理由が 2 文以内か（雛形は warn） | 同上 | error |
 | バッククォートで名指した識別子・ファイルの実在 | 同上 | warn |
-| import は `@` 起点（`.css` と、下の例外の 3 箇所は除外） | biome `style/noRestrictedImports` | error |
+| import は `@` 起点（`.css` と、下の例外は除外） | biome `style/noRestrictedImports` | error |
 | 1 行 if を分ける | biome `style/useBlockStatements` | error |
 | 三項の多重ネスト・複数代入・多重宣言 | biome `noNestedTernary` / `noMultiAssign` / `useSingleVarDeclarator` | error |
 | floating promise | biome `nursery/noFloatingPromises` | error |
@@ -52,7 +52,7 @@ DB 由来の列名が snake_case のまま型と往復するため、誤検出�
 - **「無い」は `undefined` で返す**
   `null` は DB の NULL 列を写す型（`current_form`・`note`）にだけ現れ、repo 関数は `?? undefined` で `null` を `undefined` へ揃える
 - **異常は例外で表す**（雛形の既定どおり。Result 型は使わない）
-- **import の `@` の例外は 4 箇所**で、`biome.json` の `overrides` が持つ
+- **import の `@` の例外は `biome.json` の `overrides` が持つ**
   設定ファイル（`vitest.config.ts`・`next.config.ts`・`prisma.config.ts`。`@` が解決される前に道具が読む）・`tests/setup/**`（`vitest.config.ts` が読む）・`scripts/**`（素の node が読み、tsconfig の `paths` を見ない）
 - **文字境界の丸めは書記素クラスタで**（`Intl.Segmenter`）
   サロゲートペア判定では、異体字セレクタ（`神︀` = U+795E + U+FE00）・ZWJ 連結・肌色修飾が漏れて字が割れる
