@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { readCheckoutEnvironment } from "@scripts/checkout-environment.ts";
+import {
+  CHECKOUT_ENVIRONMENT_RULES,
+  type CheckoutVariable,
+  readCheckoutEnvironment,
+} from "@scripts/checkout-environment.ts";
 import { afterEach, describe, expect, it } from "vitest";
 
 /** 後始末の対象。 */
@@ -138,5 +142,28 @@ describe("readCheckoutEnvironment のサインインと AI の既定", () => {
       "DATABASE_URL",
       "DIRECT_URL",
     ]);
+  });
+});
+
+describe("CHECKOUT_ENVIRONMENT_RULES", () => {
+  it("表のどの変数も、環境変数にあれば導かない", () => {
+    const root = makeCheckout("issue-300-setup", "file");
+    const names = Object.keys(CHECKOUT_ENVIRONMENT_RULES) as CheckoutVariable[];
+
+    for (const name of names) {
+      const environment = readCheckoutEnvironment({ [name]: "given" }, root);
+
+      expect(environment[name]).toBe(
+        name === "DATABASE_URL" || name === "DIRECT_URL" ? "given" : undefined,
+      );
+    }
+  });
+
+  it("worktree では表のすべての変数を導く", () => {
+    const root = makeCheckout("issue-300-setup", "file");
+
+    expect(Object.keys(readCheckoutEnvironment({}, root)).sort()).toEqual(
+      Object.keys(CHECKOUT_ENVIRONMENT_RULES).sort(),
+    );
   });
 });

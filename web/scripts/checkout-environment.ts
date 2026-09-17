@@ -30,92 +30,134 @@ const repositoryRoot = path.resolve(webRoot, "..");
  */
 type Env = Readonly<Record<string, string | undefined>>;
 
+/** 導く値を決めるときに見るもの。 */
+type Context = {
+  readonly env: Env;
+  readonly root: string;
+};
+
+/** 環境変数一つを導く規則。 */
+type Rule = {
+  /** どのチェックアウトでも導くか、worktree でだけ導くか。 */
+  readonly scope: "checkout" | "worktree";
+
+  /**
+   * `env` にその変数が無いときに、さらに満たす必要のある条件。
+   * 無ければ常に導く。
+   */
+  readonly when?: (env: Env) => boolean;
+
+  /** 導く値。 */
+  readonly value: (context: Context) => string;
+};
+
 /**
- * worktree でだけ導く既定。
- * 値の意味は `web/README.md`「環境変数」の表が持つ。
+ * Google を経ないサインインが開くかどうか。
+ * `env` が `TOIITO_FAKE_LOGIN=1` を持つか、Google のクライアントも `TOIITO_FAKE_LOGIN` も持たないときに真。
  */
-type DevelopmentDefaults = Partial<
-  Record<
-    | "TOIITO_FAKE_LOGIN"
-    | "TOIITO_ALLOWED_EMAILS"
-    | "BETTER_AUTH_SECRET"
-    | "TOIITO_FAKE_AI",
-    string
-  >
->;
+function opensFakeLogin(env: Env): boolean {
+  if (env.TOIITO_FAKE_LOGIN !== undefined) {
+    return env.TOIITO_FAKE_LOGIN === "1";
+  }
+
+  return !env.GOOGLE_CLIENT_ID;
+}
+
+/**
+ * このモジュールが導く環境変数の一覧。
+ * どの変数も `env` に既にあれば導かず、その値を残す。
+ *
+ * 値の意味は `web/README.md`「環境変数」の表が持つ。
+ * worktree の規則はリモートの起動フック（`.claude/hooks/session-start.sh`）が `.env.local` へ書く値と同じにする。
+ * 秘密をチェックアウトのパスから決めるのは、手元の worktree でしか使わない値なので、再起動でサインインが切れない方を採ったためである。
+ */
+export const CHECKOUT_ENVIRONMENT_RULES = {
+  DATABASE_URL: {
+    scope: "checkout",
+    value: ({ root }) => localDatabaseUrl(developmentDatabaseName(root)),
+  },
+  DIRECT_URL: {
+    scope: "checkout",
+    value: ({ root }) => localDatabaseUrl(developmentDatabaseName(root)),
+  },
+  TOIITO_FAKE_LOGIN: {
+    scope: "worktree",
+    when: (env) => !env.GOOGLE_CLIENT_ID,
+    value: () => "1",
+  },
+  TOIITO_ALLOWED_EMAILS: {
+    scope: "worktree",
+    when: opensFakeLogin,
+    value: () => SEED_USERS.map((user) => user.email).join(","),
+  },
+  BETTER_AUTH_SECRET: {
+    scope: "worktree",
+    value: ({ root }) =>
+      crypto.createHash("sha256").update(root).digest("base64"),
+  },
+  TOIITO_FAKE_AI: {
+    scope: "worktree",
+    when: (env) => !env.ANTHROPIC_API_KEY,
+    value: () => "1",
+  },
+} as const satisfies Record<string, Rule>;
+
+/** `CHECKOUT_ENVIRONMENT_RULES` が持つ変数の名前。 */
+export type CheckoutVariable = keyof typeof CHECKOUT_ENVIRONMENT_RULES;
+
+/** どのチェックアウトでも値を持つ変数の名前。 */
+type DatabaseVariable = "DATABASE_URL" | "DIRECT_URL";
 
 /**
  * 導いた環境変数。
  * `readCheckoutEnvironment` が作り、`setCheckoutEnvironment` が `process.env` へ設定する。
  */
-export type CheckoutEnvironment = DevelopmentDefaults & {
-  /** アプリからの接続先。 */
-  DATABASE_URL: string;
-
-  /** Prisma Migrate 用の直結。 */
-  DIRECT_URL: string;
-};
+export type CheckoutEnvironment = Partial<
+  Record<Exclude<CheckoutVariable, DatabaseVariable>, string>
+> &
+  Record<DatabaseVariable, string>;
 
 /**
- * `env` に無いサインインと AI の設定を、リモートの起動フック（`.claude/hooks/session-start.sh`）と同じ規則で埋めた値を返す。
- * `env` にある値は返さない。
+ * `env` に無い環境変数を `CHECKOUT_ENVIRONMENT_RULES` に従って導き、接続先の二本は `env` にあればその値で返す。
+ * worktree でだけ導く規則は `root` が worktree（`.git` がファイル）のときに限って当てる。
  *
- * Google のクライアントが無ければ Google を経ないサインインを開け、許可リストはシードの二人にする。
- * 秘密はチェックアウトのパスから決める（worktree の手元でしか使わないので、再起動でサインインが切れない方を採る）。
- */
-function readDevelopmentDefaults(env: Env, root: string): DevelopmentDefaults {
-  const defaults: DevelopmentDefaults = {};
-
-  const opensFakeLogin = !env.GOOGLE_CLIENT_ID && !env.TOIITO_FAKE_LOGIN;
-
-  if (opensFakeLogin) {
-    defaults.TOIITO_FAKE_LOGIN = "1";
-  }
-
-  if (
-    (opensFakeLogin || env.TOIITO_FAKE_LOGIN === "1") &&
-    !env.TOIITO_ALLOWED_EMAILS
-  ) {
-    defaults.TOIITO_ALLOWED_EMAILS = SEED_USERS.map((user) => user.email).join(
-      ",",
-    );
-  }
-
-  if (!env.BETTER_AUTH_SECRET) {
-    defaults.BETTER_AUTH_SECRET = crypto
-      .createHash("sha256")
-      .update(root)
-      .digest("base64");
-  }
-
-  if (!env.ANTHROPIC_API_KEY && !env.TOIITO_FAKE_AI) {
-    defaults.TOIITO_FAKE_AI = "1";
-  }
-
-  return defaults;
-}
-
-/**
- * `env` に無い接続先を `root` のチェックアウトから導いた手元の開発用 DB で埋め、`root` が worktree ならサインインと AI の既定も足して返す。
- * `env` にある接続先はそのまま返す。
- *
- * サインインと AI の既定を worktree に限るのは、`.git` がファイルになるのは手元の worktree だけで、本番・CI・リモートでは決して当たらないためである。
+ * 本番・CI・リモートでは `.git` がファイルにならないので、本番で秘密や開発用の変数が黙って埋まる経路は無い。
  */
 export function readCheckoutEnvironment(
   env: Env,
   root: string,
 ): CheckoutEnvironment {
-  const fallback = localDatabaseUrl(developmentDatabaseName(root));
-  const database = {
-    DATABASE_URL: env.DATABASE_URL ?? fallback,
-    DIRECT_URL: env.DIRECT_URL ?? fallback,
-  };
+  const context: Context = { env, root };
+  const worktree = isWorktree(root);
+  const derived: Partial<Record<CheckoutVariable, string>> = {};
 
-  if (!isWorktree(root)) {
-    return database;
+  for (const name of Object.keys(CHECKOUT_ENVIRONMENT_RULES)) {
+    const variable = name as CheckoutVariable;
+    const rule: Rule = CHECKOUT_ENVIRONMENT_RULES[variable];
+
+    if (env[variable] !== undefined) {
+      continue;
+    }
+
+    if (rule.scope === "worktree" && !worktree) {
+      continue;
+    }
+
+    if (rule.when !== undefined && !rule.when(env)) {
+      continue;
+    }
+
+    derived[variable] = rule.value(context);
   }
 
-  return { ...database, ...readDevelopmentDefaults(env, root) };
+  return {
+    ...derived,
+    DATABASE_URL:
+      env.DATABASE_URL ??
+      CHECKOUT_ENVIRONMENT_RULES.DATABASE_URL.value(context),
+    DIRECT_URL:
+      env.DIRECT_URL ?? CHECKOUT_ENVIRONMENT_RULES.DIRECT_URL.value(context),
+  };
 }
 
 /**
