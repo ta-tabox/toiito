@@ -27,8 +27,12 @@ export function loadPersona(id: PersonaId): string {
 }
 
 /**
- * ペルソナの傾向を表す軸。
- * 各軸は自分の段階が上がるほど、軸の名前が指す性質を強く出す（`abstraction` の段階 5 が最も抽象）。
+ * ペルソナの傾向を表す軸（axis は「軸」、axes はその複数形）。
+ * 各軸は段階が上がるほど、軸の名前が指す性質を強く出す。
+ *
+ * - `abstraction` は抽象度で、`level_1` が具体、`level_5` が抽象
+ * - `dissent` は異論の強さで、`level_1` が相手の言葉に沿う受容、`level_5` が反例と異論を正面から出す対抗
+ * - `convergence` は発散と収束で、`level_1` が問いを増やす発散、`level_5` が問いの焦点を一つに絞る収束
  *
  * 軸を三つにした理由は `docs/adr/0042-persona-as-records.md` が持つ。
  */
