@@ -26,19 +26,19 @@ check が赤のままコミットしない（コミットゲート）。
 **`enforcement` は `active`、bypass list は空**（最終確認 2026-09-01）。
 設定の内容だけを書いても掛かっているかどうかは書けないので、実際の値と確かめた日付をここへ置く。
 
-- **Require a pull request before merging** — 有効、承認は 0 件。
-  main への直 push を塞ぐ。
-  文書の一行だけを直す変更も PR を通る。
-  bypass が空なので、例外は誰も持たない。
+- **Require a pull request before merging** — 有効、承認は 0 件
+  main への直 push を塞ぐ
+  文書の一行だけを直す変更も PR を通る
+  bypass が空なので、例外は誰も持たない
   承認を 1 件以上にすると GitHub は自分の PR を自分で承認させないので、全ての PR が bypass 頼みになる
-- **Require status checks to pass before merging** — 有効。
-  必須は `check` 一本（`.github/workflows/check.yml` の job 名）。
+- **Require status checks to pass before merging** — 有効
+  必須は `check` 一本（`.github/workflows/check.yml` の job 名）
   `claude` 系の job は当面必須にしない
-- **Require branches to be up to date before merging** — 有効。
-  main の差分を取り込んだ状態で CI を通さないと、緑の PR がマージ後に初めて壊れる組み合わせを取り逃がす。
+- **Require branches to be up to date before merging** — 有効
+  main の差分を取り込んだ状態で CI を通さないと、緑の PR がマージ後に初めて壊れる組み合わせを取り逃がす
   main が進むたび PR 側の取り込みが要るが、Update branch 一つで済むので手間として引き受ける
-- **Bypass list** — 空。
-  手元の Claude も人間と同じアカウントで叩くため名義で逃げ道を分けられず、管理者を入れると全ての push とマージが常時そこを通ってしまうので、誰も入れない。
+- **Bypass list** — 空
+  手元の Claude も人間と同じアカウントで叩くため名義で逃げ道を分けられず、管理者を入れると全ての push とマージが常時そこを通ってしまうので、誰も入れない
   CI 自体が壊れて緑にできないときは ruleset を一時的に `disabled` にして回すが、**戻すところまでを一続きにする**
 
 ruleset が enforce されるのは public であることが前提。
@@ -105,9 +105,15 @@ worktree 間は DB の名前で分かれる。
 名前は worktree のディレクトリ名から派生し（`toiito_wt_<ディレクトリ名>_test`）、リポジトリ本体は既定の `toiito_test` を使う。
 `toiito_wt_` の印を付けるのは、掃除が手で指した DB を巻き込まないため。
 上書きの口は `TOIITO_TEST_DATABASE_URL` で、指定が派生に勝つ。
+導出は `web/scripts/checkout-database.ts` が持つ。
+
+開発用も同じ規則で分かれる（worktree は `toiito_wt_<ディレクトリ名>`、本体は `toiito`）。
+worktree には `web/.env.local` が無いので、`pnpm dev`・`pnpm seed`・Prisma CLI は接続先を `web/scripts/checkout-environment.ts` から受け取る。
+worktree の開発用 DB は `pnpm db:prepare` が無ければ作って migration を積む（`scripts/setup.sh` が呼ぶ）。
+本体の `toiito` は同じスクリプトでも作るだけで、migration は積まない（下の段落）。
 
 worktree を消しても DB は残るので、`pnpm db:prune` で落とす。
-落とすのは派生した名前のうち現存の worktree に対応しないものだけで、手で付けた名前は一覧に出して人間へ渡す。
+削除するのは派生した名前（開発用とテスト用）のうち現存の worktree に対応しないものだけで、手で付けた名前は一覧に出して人間へ渡す。
 
 開発用 `toiito` は作り直さない。
 手で入れた対話が載りうるので、`pnpm dev` の前に食い違いを見て警告するだけに留める（`web/scripts/check-database-drift.ts`）。
@@ -123,10 +129,10 @@ Prisma 7 はこれを破壊的操作として検知し、AI エージェント�
 
 `TOIITO_FAKE_AI=1` で `lib/ai/` がネットワークに出ず決定的な応答を返す。
 
-- 目的: API キー無し・ネットワーク遮断環境（Cowork サンドボックス含む）でも縦一本が end-to-end で動く。
+- 目的: API キー無し・ネットワーク遮断環境（Cowork サンドボックス含む）でも縦一本が end-to-end で動く
   E2E（L4）もこのモードで回す
 - 応答はペルソナ ID と直近の人間発話を含む決定的テキスト → アサーションで「どの体が・何を受けて」応答したか検証可能
-- 実 API の疎通は L5 側（人間が実キーで常用する）で担保。
+- 実 API の疎通は L5 側（人間が実キーで常用する）で担保
   ユニットテストで実 API を叩かない（遅い・非決定的・金がかかる）
 
 ## E2E（L4）
@@ -187,13 +193,13 @@ spec は `web/e2e/` に置き、何を見るかは各 spec の冒頭コメント
 
 ### spec を書くときの制約
 
-- **spec は直列に走る**（`workers: 1`）。
+- **spec は直列に走る**（`workers: 1`）
   一つのデータベースを共有しているので、増やすと spec 同士が互いの行を踏む
-- **データベースの作り直しは globalSetup でなく webServer の command に置く**。
+- **データベースの作り直しは globalSetup でなく webServer の command に置く**
   Playwright は webServer をプラグインとして globalSetup より先に立ち上げるので、逆にすると dev サーバーが接続を張った後で足元のデータベースを落とすことになる
-- **選択は Range を組んで document へ mouseup を投げて作る**。
+- **選択は Range を組んで document へ mouseup を投げて作る**
   Playwright のドラッグでは文字の途中から始まる範囲を安定して作れず、拾う側は document の mouseup を見ている
-- **本文の下線は role で指す**。
+- **本文の下線は role で指す**
   選択した直後だけ同じ文字列が本文とメモフォームの引用の二箇所に出るので、文字で指すとリンクでない側を掴む
 
 ## テスト可能性の設計制約（コードの書き方に課すルール)
@@ -211,8 +217,23 @@ spec は `web/e2e/` に置き、何を見るかは各 spec の冒頭コメント
 
 check の前提は Postgres が起動していること（`docker compose up -d`）。
 
+手元（リポジトリ本体と worktree）の準備は `scripts/setup.sh` 一本で、Claude Code のセッション起動フック（`.claude/hooks/session-start.sh`）が手元でも呼ぶ。
+人間が叩くときはリポジトリのどこからでも `bash scripts/setup.sh`。
+何度走らせても同じ状態に落ち着き、揃えるものは次の表が持つ。
+
+| 揃えるもの | 正 |
+|---|---|
+| git のフックの向き先（`core.hooksPath` を相対の `.githooks` に） | `.githooks/` |
+| 依存と Prisma の生成物（本体と worktree は同じ pnpm の store から張る） | `web/pnpm-lock.yaml`・`web/pnpm-workspace.yaml` の `storeDir` |
+| Postgres（`docker compose up -d --wait`。docker が無ければ飛ばして告げる） | `compose.yaml` |
+| このチェックアウトの開発用 DB と migration（`pnpm db:prepare`） | `web/scripts/checkout-database.ts`・`web/prisma/migrations/` |
+
+`.env.local` を持たない worktree では、`web/scripts/checkout-environment.ts` が接続先とサインイン・AI の既定を導く（一覧は同ファイルの `CHECKOUT_ENVIRONMENT_RULES`）。
+規則はリモートの起動フックが `.env.local` へ書く値と同じで、環境変数で渡した値が勝つ。
+サインインと AI の既定を導くのは worktree だけで、理由は `web/scripts/checkout-environment.ts` の `readCheckoutEnvironment` が正。
+
 ステージした追加行の禁止語を報告だけする `.githooks/pre-commit` と、コミット本文の禁止語を止める `.githooks/commit-msg` は、git の既定の `.git/hooks/` に無いので、クローンごとに `git config core.hooksPath .githooks` で有効にする。
-リモートでは下の起動フックがこの設定を入れる。
+手元では `scripts/setup.sh`、リモートでは下の起動フックがこの設定を入れる。
 
 ### リモート（Claude Code on the web）
 
@@ -227,11 +248,11 @@ Google の OAuth クライアントも無いので、`.env.local` には `TOIITO
 最初の二つは外向きの通信が許可制で、塞ぐ手段がこの環境に無いことから来る:
 
 - Postgres が 18 でなく 16（apt.postgresql.org へ出られない）
-- 版の管理が mise でなく直置き（mise.run へ出られない）。
+- 版の管理が mise でなく直置き（mise.run へ出られない）
   版の正は `mise.toml` のままで、フックはそれを読む側
-- L4 の実走は手元（macOS）が担う。
-  三つ目だけは通信の話ではない。
-  ブラウザは `/opt/pw-browsers` に同梱されているが、その版が `@playwright/test` の要求する版と一致しないので、`executablePath` を差さないと起動しない。
+- L4 の実走は手元（macOS）が担う
+  三つ目だけは通信の話ではない
+  ブラウザは `/opt/pw-browsers` に同梱されているが、その版が `@playwright/test` の要求する版と一致しないので、`executablePath` を差さないと起動しない
   **その設定は常設しない**（下の表の最終行）ので、リモートで書けるのは設定と spec までになる
 
 #### 設定の置き場
@@ -266,6 +287,6 @@ Google の OAuth クライアントも無いので、`.env.local` には `TOIITO
 ## 意図的にやらないこと
 
 - カバレッジ計測・閾値（個人プロジェクトで数字を KPI 化しない。VISION と同じ理屈）
-- コンポーネント単体テスト（jsdom）。
+- コンポーネント単体テスト（jsdom）
   UI の検証は L3 + L4 に寄せる
 - 実 Claude API を叩く自動テスト

@@ -3,7 +3,7 @@
  * モデルへ渡す本文と一回の呼び出しの規約は持たず、`lib/ai` が持つ。
  * 行の読み書きは持たず、`lib/db` が持つ。
  *
- * 一往復は、人間の発話と二体の応答が揃ったときだけ `messages` へ書き込み、揃わなければ人間の発話を `pending_messages` に残す（理由は `docs/adr/0025-turn-atomicity-and-pending-utterance.md`）。
+ * 一往復は、人間の発話と二体の応答が揃ったときだけ `messages` へ書き込み、揃わなければ人間の発話を `pending_messages` に残す（理由は `docs/adr/20260902-turn-atomicity-and-pending-utterance.md`）。
  */
 
 import { callPersona, type PersonaCall } from "@/lib/ai";

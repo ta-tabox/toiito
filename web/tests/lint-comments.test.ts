@@ -293,6 +293,34 @@ export function f() {}
     expect(rulesOf(source)).toEqual([]);
   });
 
+  it("箇条の項目の中は句点が無くても通る", () => {
+    const source = `${header}/**
+ * 材料の規律を持つ。
+ * - 外部の材料は件数に上限を置く
+ *   上限を超えた分は保存しない
+ * - 出典の無い材料は保存しない
+ */
+export function f() {}
+`;
+
+    // 規約が項目の中の文に句点を付けないと決めているので、行末の句点を折った跡と読まない。
+    expect(rulesOf(source)).toEqual([]);
+  });
+
+  it("空行で箇条が終われば、その後ろの散文は見る", () => {
+    const source = `${header}/**
+ * 材料の規律を持つ。
+ * - 外部の材料は件数に上限を置く
+ *
+ * 出典の無い材料は保存しないので、
+ * 保存の前に出典の有無を見る。
+ */
+export function f() {}
+`;
+
+    expect(rulesOf(source)).toEqual(["comments/useSentenceEndLineBreak"]);
+  });
+
   it("表の行は散文でないと宣言できる", () => {
     const source = `${header}/**
  * 対応表を持つ。
@@ -411,6 +439,18 @@ export function f() {}
 export function f() {}
 `;
 
+    expect(rulesOf(source)).toEqual(["comments/useOneSentencePerLine"]);
+  });
+
+  it("箇条の項目の中でも 2 文あれば useOneSentencePerLine", () => {
+    const source = `${header}/**
+ * 材料の規律を持つ。
+ * - 外部の材料は件数に上限を置く。超えた分は保存しない
+ */
+export function f() {}
+`;
+
+    // 項目の中も 1 行 1 文なので、行末の句点を外す規約は行の途中の句点まで許さない。
     expect(rulesOf(source)).toEqual(["comments/useOneSentencePerLine"]);
   });
 

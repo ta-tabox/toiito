@@ -5,8 +5,8 @@
  * 見るのは、生きた worktree の DB を巻き込む形と、規則の外の名前を勝手に削除する形の二つ。
  */
 
+import { toDatabaseSlug } from "@scripts/checkout-database.ts";
 import { selectPruneTargets } from "@scripts/prune-test-databases.ts";
-import { toDatabaseSlug } from "@tests/setup/test-database-url";
 import { describe, expect, it } from "vitest";
 
 describe("selectPruneTargets", () => {
