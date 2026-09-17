@@ -1,15 +1,23 @@
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import {
   collectKnownNames,
   lintSource,
   loadRepositoryVocabulary,
   type RepositoryVocabulary,
+  toBannedWordList,
   toWordList,
 } from "@scripts/lint-comments.ts";
 import { describe, expect, it } from "vitest";
 
-/** `source` を検査し、違反した規則の ID だけを並べて返す。 */
+const repositoryVocabulary = loadRepositoryVocabulary();
+
+/** `source` をリポジトリの語で検査し、違反した規則の ID だけを並べて返す。 */
 function rulesOf(source: string, fileName = "sample.ts"): string[] {
-  return lintSource(fileName, source).map((violation) => violation.rule);
+  return lintSource(fileName, source, {
+    vocabulary: repositoryVocabulary,
+  }).map((violation) => violation.rule);
 }
 
 describe("モジュール冒頭コメント", () => {
@@ -563,7 +571,9 @@ describe("禁止語", () => {
 export function f() {}
 `;
 
-    expect(lintSource("sample.ts", source)).toEqual([
+    expect(
+      lintSource("sample.ts", source, { vocabulary: repositoryVocabulary }),
+    ).toEqual([
       {
         line: 6,
         rule: "comments/noBannedWord",
@@ -630,17 +640,25 @@ export function f() {}
     );
 
   it("vocabulary の allow に挙げた語は、単漢字の禁止語を含んでいても報告しない", () => {
-    const vocabulary = { deny: [], allow: ["検査器"] };
+    const vocabulary = { ...repositoryVocabulary, allow: ["検査器"] };
 
     expect(rulesWith(sourceWith("検査器"), vocabulary)).toEqual([]);
   });
 
-  it("vocabulary を渡さなければ、同じ語の単漢字の禁止語を報告する", () => {
-    expect(rulesOf(sourceWith("検査器"))).toEqual(["comments/noBannedWord"]);
+  it("vocabulary の allow が空なら、同じ語の単漢字の禁止語を報告する", () => {
+    const vocabulary = { ...repositoryVocabulary, allow: [] };
+
+    expect(rulesWith(sourceWith("検査器"), vocabulary)).toEqual([
+      "comments/noBannedWord",
+    ]);
+  });
+
+  it("vocabulary を渡さなければ、禁止語を報告しない", () => {
+    expect(lintSource("sample.ts", sourceWith("落とす"))).toEqual([]);
   });
 
   it("vocabulary の deny に挙げた語を error で報告する", () => {
-    const vocabulary = { deny: ["預かり"], allow: [] };
+    const vocabulary = { banned: [], deny: ["預かり"], allow: [] };
 
     expect(
       lintSource("sample.ts", sourceWith("預かり"), { vocabulary }),
@@ -649,7 +667,7 @@ export function f() {}
         line: 6,
         rule: "comments/noBannedWord",
         message:
-          "「預かり」は使わない。代わりに 直叙な語（.coding-standards-vocab-deny が足した語）",
+          "「預かり」は使わない。代わりに 直叙な語（.vocabulary/deny が足した語）",
         severity: "error",
       },
     ]);
@@ -663,7 +681,7 @@ export function f() {}
     expect(toWordList("検査器\n口調")).toEqual(["検査器", "口調"]);
   });
 
-  it(".coding-standards-vocab-allow の語はどれも、コメントに書いても報告しない", () => {
+  it(".vocabulary/allow の語はどれも、コメントに書いても報告しない", () => {
     const vocabulary = loadRepositoryVocabulary();
     const reported = vocabulary.allow.filter(
       (word) => rulesWith(sourceWith(word), vocabulary).length > 0,
@@ -673,7 +691,7 @@ export function f() {}
     expect(reported).toEqual([]);
   });
 
-  it(".coding-standards-vocab-deny の語はどれも、コメントに書けば報告する", () => {
+  it(".vocabulary/deny の語はどれも、コメントに書けば報告する", () => {
     const vocabulary = loadRepositoryVocabulary();
     const missed = vocabulary.deny.filter(
       (word) =>
@@ -686,6 +704,84 @@ export function f() {}
     expect(missed).toEqual([]);
   });
 });
+
+describe("禁止語の一覧", () => {
+  it("禁止語のファイルの行を、語・言い換え先・空白区切りの除外語に分ける", () => {
+    expect(
+      toBannedWordList(
+        "# 説明\n\n口\tエントリポイント\t入口 出口\n引く\t取得する\t\n",
+      ),
+    ).toEqual([
+      { word: "口", instead: "エントリポイント", allow: ["入口", "出口"] },
+      { word: "引く", instead: "取得する", allow: [] },
+    ]);
+  });
+
+  it("タブで区切った列が 3 つでない行があれば throw する", () => {
+    expect(() => toBannedWordList("引く\t取得する\n")).toThrow(
+      "引く\t取得する",
+    );
+  });
+
+  it("禁止語のファイルの語は、writing.md の禁止語の表の 1 列目に並ぶ語と一致する", () => {
+    const bannedWords = repositoryVocabulary.banned.map(
+      (banned) => banned.word,
+    );
+
+    expect(bannedWords).not.toEqual([]);
+    expect([...bannedWords].sort()).toEqual(
+      listTableWords(readFileSync(findWritingRules(), "utf8")).sort(),
+    );
+  });
+});
+
+/**
+ * リポジトリの中の `writing.md` のパスを返す。
+ *
+ * 見つからなければ throw する。
+ * 配布先では `.claude/rules/` の直下、雛形そのものを持つリポジトリでは `tools/coding-standards/rules/` に置かれる。
+ */
+function findWritingRules(): string {
+  const root = spawnSync("git", ["rev-parse", "--show-toplevel"], {
+    cwd: import.meta.dirname,
+    encoding: "utf8",
+  }).stdout.trim();
+  const candidates = [
+    path.join(root, ".claude/rules/writing.md"),
+    path.join(root, "tools/coding-standards/rules/writing.md"),
+  ];
+  const found = candidates.find((candidate) => existsSync(candidate));
+
+  if (found === undefined) {
+    throw new Error(`writing.md が見つからない: ${candidates.join(", ")}`);
+  }
+
+  return found;
+}
+
+/**
+ * `writing.md` の本文 `markdown` から、禁止語の表の 1 列目に並ぶ語を返す。
+ * 表が見つからなければ空の配列を返す。
+ *
+ * 1 つのセルは `・` で複数の語を並べうる。
+ * `「〜の側」` のように鉤括弧で囲んだ項目は語でなく用法の型なので、禁止語のファイルに写さず、ここでも数えない。
+ */
+function listTableWords(markdown: string): string[] {
+  const lines = markdown.split("\n");
+  const header = lines.indexOf("| 語 | 代わりに書く語 | 割れ方 |");
+
+  if (header === -1) {
+    return [];
+  }
+
+  const rows = lines.slice(header + 2);
+  const tableEnd = rows.findIndex((line) => !line.startsWith("|"));
+
+  return rows
+    .slice(0, tableEnd === -1 ? rows.length : tableEnd)
+    .flatMap((row) => row.split("|")[1].trim().split("・"))
+    .filter((word) => !word.startsWith("「"));
+}
 
 describe("関数の JSDoc", () => {
   const header = "/**\n * 冒頭。\n */\n\n";

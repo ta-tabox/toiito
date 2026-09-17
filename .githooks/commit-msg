@@ -2,7 +2,7 @@
 #
 # コミット本文の禁止語を検査する。
 #
-# 語の一覧は scripts/lint-vocabulary.sh が持つ(正本は .claude/rules/writing.md「語彙と読み手」節の表)。
+# 語の一覧は .vocabulary/banned.tsv が持ち、scripts/lint-vocabulary.sh が読む(正本は .claude/rules/writing.md「語彙と読み手」節の表)。
 # コミット本文はマージされた後に直せないので、報告でなく commit の前で止める。
 #
 # 導入は2通り。
@@ -37,7 +37,7 @@ report=$(bash "$LINT" --text "$MSG_FILE" 2>/dev/null)
   echo "commit-msg: 本文に禁止語があるのでコミットを止めた:"
   printf '%s\n' "$report" | sed "s|^|  |"
   echo "  言い換え先は .claude/rules/writing.md「語彙と読み手」節の表。"
-  echo "  この領域で比喩でない語なら .coding-standards-vocab-allow へ足す。"
+  echo "  この領域で比喩でない語なら .vocabulary/allow へ足す。"
   echo "  押し切る: git commit --no-verify"
 } >&2
 exit 1

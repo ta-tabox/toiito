@@ -2,7 +2,7 @@
 #
 # ステージした追加行の禁止語を報告する。
 #
-# 語の一覧は scripts/lint-vocabulary.sh が持つ(正本は .claude/rules/writing.md「語彙と読み手」節の表)。
+# 語の一覧は .vocabulary/banned.tsv が持ち、scripts/lint-vocabulary.sh が読む(正本は .claude/rules/writing.md「語彙と読み手」節の表)。
 # 追加行はマージされた後にも直せるので、コミットは止めず、判定は報告を読んだ人間に任せる。
 # マージされた後に直せないコミット本文は、commit-msg フックが止める。
 #
@@ -35,6 +35,6 @@ report=$(bash "$LINT" --cached 2>/dev/null)
   echo "pre-commit: ステージした追加行に禁止語がある（コミットは続ける）:"
   printf '%s\n' "$report" | sed "s|^|  |"
   echo "  言い換え先は .claude/rules/writing.md「語彙と読み手」節の表。"
-  echo "  この領域で比喩でない語なら .coding-standards-vocab-allow へ足す。"
+  echo "  この領域で比喩でない語なら .vocabulary/allow へ足す。"
 } >&2
 exit 0
