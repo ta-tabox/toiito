@@ -133,10 +133,26 @@
 | 領分・綴り・「〜の側」 | 担当・名前・主体の名 | 主体が無い。「クライアント側」のような位置の用法は可 |
 | 器 | リポジトリ・アプリ | vessel / container / repository |
 
-この表が禁止語の正で、直下の `.vocabulary/banned.tsv` はここを機械が読める形へ写したもの（表を直したらこのファイルも直し、両者の一致はテストが見る）。
-`lint-comments.ts` と `lint-vocabulary.sh` はどちらもこのファイルを読む。
-前者は TypeScript のコメントを見て、後者は git の追加行とコミット本文と PR 本文を見る（追加行は `.githooks/pre-commit` が、コミット本文は `.githooks/commit-msg` が、PR 本文は `.github/workflows/lint-pr-body.yml` が渡す）。
-このリポジトリだけの禁止語は直下の `.vocabulary/deny` へ、この領域で比喩でない語は `.vocabulary/allow` へ、どちらも1行1語で足す（表と `.vocabulary/banned.tsv` は変えない）。
+この表が禁止語の正で、機械が読む語は `.vocabulary/` の4ファイルが持つ。
+
+| ファイル | 持つもの | 書式 |
+|---|---|---|
+| `.vocabulary/banned.tsv` | 上の表の写し | 語・言い換え先・除外する複合語の3列（タブ区切り） |
+| `.vocabulary/deny` | このリポジトリだけの禁止語 | 1行1語 |
+| `.vocabulary/allow` | この領域で比喩でない語（判定から外れる） | 1行1語 |
+| `.vocabulary/ignore` | 走査しないパス | 1行1つの pathspec |
+
+`banned.tsv` は表の写しなので表を直したコミットで一緒に直し、一致はテストが見る。
+残る3ファイルはこのリポジトリが足す側で、足すときに表と `banned.tsv` は変えない。
+
+2本の検査が4ファイルの語で判定し、見る面だけが違う。
+
+| 検査 | 見る面 | 呼ぶ側 |
+|---|---|---|
+| `lint-comments.ts` | TypeScript のコメント | `pnpm lint` |
+| `lint-vocabulary.sh` | git の追加行 | `.githooks/pre-commit` |
+| `lint-vocabulary.sh` | コミット本文 | `.githooks/commit-msg` |
+| `lint-vocabulary.sh` | PR 本文 | `.github/workflows/lint-pr-body.yml` |
 
 | 悪例 | 良例 |
 |---|---|
