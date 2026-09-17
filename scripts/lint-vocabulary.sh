@@ -54,8 +54,8 @@ if [ -f "$REPO_ROOT/.coding-standards-vocab-ignore" ]; then
   done < "$REPO_ROOT/.coding-standards-vocab-ignore"
 fi
 
-BANNED_LIST=()
-STRIP_LIST=()
+banned_words=()
+strip_compounds=()
 
 BANNED_FILE="$REPO_ROOT/.coding-standards-vocab-banned"
 [ -f "$BANNED_FILE" ] || BANNED_FILE="$REPO_ROOT/tools/coding-standards/.coding-standards-vocab-banned"
@@ -64,10 +64,10 @@ if [ -f "$BANNED_FILE" ]; then
   while IFS=$'\t' read -r word _instead compounds || [ -n "$word" ]; do
     [ -z "$word" ] && continue
     case "$word" in \#*) continue ;; esac
-    BANNED_LIST+=("$word")
+    banned_words+=("$word")
     # 3列目は空白区切りの語の並びなので、引用符で囲まずに語へ分ける。
     # shellcheck disable=SC2206
-    [ -n "$compounds" ] && STRIP_LIST+=($compounds)
+    [ -n "$compounds" ] && strip_compounds+=($compounds)
   done < "$BANNED_FILE"
 fi
 
@@ -77,15 +77,15 @@ read_word_file() {   # $1 = ファイル, $2 = 足す先の配列名
   while IFS= read -r w || [ -n "$w" ]; do
     [ -z "$w" ] && continue
     case "$w" in \#*) continue ;; esac
-    if [ "$2" = banned ]; then BANNED_LIST+=("$w"); else STRIP_LIST+=("$w"); fi
+    if [ "$2" = banned ]; then banned_words+=("$w"); else strip_compounds+=("$w"); fi
   done < "$f"
 }
 read_word_file "$REPO_ROOT/.coding-standards-vocab-deny" banned
 read_word_file "$REPO_ROOT/.coding-standards-vocab-allow" strip
 
 # bash 3.2 は set -u の下で空の配列を未定義として扱うので、空の側は既定値の空文字にする。
-banned_joined=$(IFS='|'; echo "${BANNED_LIST[*]:-}")
-strip_joined=$(IFS='|'; echo "${STRIP_LIST[*]:-}")
+banned_joined=$(IFS='|'; echo "${banned_words[*]:-}")
+strip_joined=$(IFS='|'; echo "${strip_compounds[*]:-}")
 
 SCAN_AWK='
 function hits(content,   check, i) {
