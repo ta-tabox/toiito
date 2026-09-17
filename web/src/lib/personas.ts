@@ -198,6 +198,7 @@ const AXIS_SECTIONS: Record<PersonaAxis, AxisSection> = {
 /**
  * 既定の二体の設定。
  * DB の版は、この設定から合成した結果の記録である。
+ * 合成した全文は `tests/__snapshots__/system-prompts/ai_a.md` と `ai_b.md` に置き、テストが一致を検査する。
  *
  * 既定の設定の正をコードへ置く理由は `docs/adr/0042-persona-as-records.md` が持つ。
  */

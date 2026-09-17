@@ -70,6 +70,19 @@ describe("システムプロンプトの合成", () => {
   );
 
   describe("既定の二体", () => {
+    // 合成した全文を md として記録し、文言を直した差分をレビューで全文の形で読めるようにする。
+    // 文言を直したら `pnpm exec vitest run -u tests/personas.test.ts` で md を書き直す。
+    it.each(["ai_a", "ai_b"] as const)(
+      "%s: 合成した全文が、記録した md と一致する",
+      async (id) => {
+        const prompt = toSystemPrompt(DEFAULT_PERSONA_SETTINGS[id]);
+
+        await expect(prompt).toMatchFileSnapshot(
+          `./__snapshots__/system-prompts/${id}.md`,
+        );
+      },
+    );
+
     it("ai_a: 共通の節と、自分の段階に対応する各軸の節を持つ", () => {
       const prompt = toSystemPrompt(DEFAULT_PERSONA_SETTINGS.ai_a);
 
