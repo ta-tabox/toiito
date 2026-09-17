@@ -175,6 +175,48 @@ describe("語のファイルの読み込み", () => {
   });
 });
 
+describe(".coding-standards-vocab-banned", () => {
+  /** `.coding-standards-vocab-banned` へ置く架空の禁止語。 */
+  const BANNED_WORD = "表の禁止語";
+
+  /** `BANNED_WORD` を含み、`.coding-standards-vocab-banned` の 3 列目へ置く語。 */
+  const BANNED_COMPOUND = `${BANNED_WORD}録`;
+
+  beforeEach(() => {
+    writeRepositoryFile(
+      ".coding-standards-vocab-banned",
+      `# 説明\n${BANNED_WORD}\t言い換え\t別の複合語 ${BANNED_COMPOUND}\n`,
+    );
+  });
+
+  it("1 列目の語を禁止語として報告する", () => {
+    writeRepositoryFile("body.txt", `${BANNED_WORD}\n`);
+
+    const result = runLintVocabulary(["--text", "body.txt"]);
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe(`body.txt:1: ${BANNED_WORD}\n`);
+  });
+
+  it("差分を見るとき、ルート直下の .coding-standards-vocab-banned の追加行は報告しない", () => {
+    spawnSync("git", ["add", ".coding-standards-vocab-banned"], {
+      cwd: workingRepository,
+    });
+
+    const result = runLintVocabulary([]);
+
+    expect(result).toEqual({ status: 0, stdout: "", stderr: "" });
+  });
+
+  it("3 列目に並べた複合語の中に埋もれた禁止語は報告しない", () => {
+    writeRepositoryFile("body.txt", `${BANNED_COMPOUND}を読む\n`);
+
+    const result = runLintVocabulary(["--text", "body.txt"]);
+
+    expect(result).toEqual({ status: 0, stdout: "", stderr: "" });
+  });
+});
+
 describe("--text の引数", () => {
   it("ファイルが無ければ、終了コード 2 で何も報告しない", () => {
     const result = runLintVocabulary(["--text", "missing.txt"]);
