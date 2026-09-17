@@ -5,8 +5,13 @@
 # テスト用 DB（toiito_test）は初回起動時に initdb スクリプトが作る。
 # 手順の正は docs/HARNESS.md「ローカル Postgres」。
 #
+# name を固定するのは、worktree から起動しても本体と同じコンテナと volume を掴ませるため。
+# 既定の project 名は起動したディレクトリ名なので、worktree ごとに別の Postgres が立ってしまう。
+#
 # volume は 18 以降のパス /var/lib/postgresql へ当てる。
 # 18 からイメージがデータをメジャーごとの部分ディレクトリへ置くようになったので、17 までの /var/lib/postgresql/data を当てると起動時に弾かれる。
+
+name: toiito
 
 services:
   postgres:
