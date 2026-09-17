@@ -60,25 +60,25 @@ ai_b は ai_a への応答であることに意味がある（`docs/ARCHITECTURE
 `send` を反復子へ変えると、確定した本文しか要らない呼び出し（将来の要約・タイトル生成など）まで反復を書くことになる。
 
 - `AiProvider#sendStream(system, userContent, signal)` を abstract で足す
-- `AnthropicProvider#sendStream` は `stream: true` で叩き、`content_block_delta` のうち `delta.type` が `text_delta` のものだけを拾って yield する。
-  `thinking_delta` は捨てる（画面に出さない）。
+- `AnthropicProvider#sendStream` は `stream: true` で叩き、`content_block_delta` のうち `delta.type` が `text_delta` のものだけを拾って yield する
+  `thinking_delta` は捨てる（画面に出さない）
   `input_tokens` は `message_start` の `message.usage`、`stop_reason` と `output_tokens` は `message_delta` が運ぶ
-- 戻り値の型は `AsyncIterable<string>` **でなく** `AsyncGenerator<string, ProviderResponse>` にする。
-  #9 の本文は前者で書いているが、それだと `stop_reason` を返す口が無くなる。
+- 戻り値の型は `AsyncIterable<string>` **でなく** `AsyncGenerator<string, ProviderResponse>` にする
+  #9 の本文は前者で書いているが、それだと `stop_reason` を返す口が無くなる
   打ち切りの判定を捨てられないのは #112（AI の発話が途中で切れる・空で保存される）が実害として出たからで、`stop_reason` を見ない経路を新設すると同じ穴を開け直すことになる
-- `callPersonaStream(call, question, transcript): AsyncGenerator<string, string>` を `index.ts` へ足す。
+- `callPersonaStream(call, question, transcript): AsyncGenerator<string, string>` を `index.ts` へ足す
   yield が断片、return が確定本文
 
 規約層が持つもの（フェイク・記録・上限・打ち切りと空本文の拒否）は同じだが、**掛かる位置が変わる**。
 
-- **上限**: 今は `sendWithTimeout` が `await provider.send(...)` を包んで `timeout.aborted` を見ている。
-  ストリームでは例外が反復の途中で出るので、try/catch を反復の側へ移す。
+- **上限**: 今は `sendWithTimeout` が `await provider.send(...)` を包んで `timeout.aborted` を見ている
+  ストリームでは例外が反復の途中で出るので、try/catch を反復の側へ移す
   `AbortSignal.timeout` は本文の読み出し中も効き続けるので、一体あたり 120 秒という上限の意味は変わらない
-- **打ち切りと空本文の拒否**: 断片は既に画面へ出た後で判明する。
+- **打ち切りと空本文の拒否**: 断片は既に画面へ出た後で判明する
   **拒んでも画面からは消せない。**
-  確定を拒んだときは `error` で「この発話は保存されない」と明示する。
+  確定を拒んだときは `error` で「この発話は保存されない」と明示する
   同期版との最大の差はここにある
-- **記録**: `duration_ms` に加えて TTFT を足す。
+- **記録**: `duration_ms` に加えて TTFT を足す
   入れた後も利得が出続けているかを測れる
 
 フェイクは `fakeStream(id, transcript): AsyncGenerator<string, string>` を `fake.ts` へ足し、`fakeResponse` の文字列を三つ程度へ割って yield する。
@@ -93,20 +93,20 @@ E2E を遅くする理由が無く、逐次に届くことは順序で検証で�
 `messages` は immutable のまま。
 最後にサーバー描画の確定版へ戻る。
 
-1. `api/speak/route.ts` を新設する。
-   中身は `speakAction` の手順そのままで、書き出しだけ SSE にする。
+1. `api/speak/route.ts` を新設する
+   中身は `speakAction` の手順そのままで、書き出しだけ SSE にする
    **`speakAction` は残す**（両方が動く状態を作る）
-2. `SpeakForm` を `action` でなく `onSubmit` で fetch する形へ変える。
+2. `SpeakForm` を `action` でなく `onSubmit` で fetch する形へ変える
    `useFormStatus` は親フォームの Server Action を見るものなので使えなくなり、pending は自前の state になる
-3. 逐次描画の受け皿を決める。
-   既存の `messages.map` はサーバー側で描いており、ストリーミング中の発話は DB にまだ無い。
-   **サーバー描画の列の下へ、client 側の「生成中の枠」を継ぎ足す**形にする。
+3. 逐次描画の受け皿を決める
+   既存の `messages.map` はサーバー側で描いており、ストリーミング中の発話は DB にまだ無い
+   **サーバー描画の列の下へ、client 側の「生成中の枠」を継ぎ足す**形にする
    列そのものを client component へ移さない——メモの配線が `MessageBody` を通じて全発話に掛かっており、client 化すると memos の受け渡しごと動く
-4. `done` を受けたら `router.refresh()` を呼び、サーバー描画の列を確定版へ差し替える。
+4. `done` を受けたら `router.refresh()` を呼び、サーバー描画の列を確定版へ差し替える
    client 側の仮枠を捨てるのは refresh の完了後にする（前後で本文が一瞬二重になるのを避ける）
 5. 実機で一往復を通し、体感が改善したかを人間が判定する
-6. 肯定なら `speakAction` を消す。
-   否定なら route ごと落とす。
+6. 肯定なら `speakAction` を消す
+   否定なら route ごと落とす
    フォームを元へ戻せば済む形を 4 まで保っておく理由がこれ
 
 ## DB 書き込み — 確定時に一括
@@ -133,12 +133,12 @@ AI 側は楽観的更新をしない。
 `web/e2e/dialogue.spec.ts` は `toHaveCount(2)` と `nth(0)` / `nth(1)` で確定後の並びを見ている。
 逐次描画では途中で 1 件しか無い瞬間があるので、そのままだと待ち方に依存する。
 
-- `toHaveCount(2)` は残す。
+- `toHaveCount(2)` は残す
   Playwright の expect はリトライするので、最終状態の検証としては正しいまま
-- `router.refresh()` が効いていることを、リロードせずに本文が残ることで見る。
+- `router.refresh()` が効いていることを、リロードせずに本文が残ることで見る
   ここが落ちると「画面には出たが保存されていない」を見逃す
-- 逐次性そのものを E2E で見るのは**やめる**。
-  ai_a の枠が出た時点で ai_b がまだ無いことを確かめる形は書けるが、フェイクに遅延を入れない以上は競り合いになる。
+- 逐次性そのものを E2E で見るのは**やめる**
+  ai_a の枠が出た時点で ai_b がまだ無いことを確かめる形は書けるが、フェイクに遅延を入れない以上は競り合いになる
   逐次性の正はサーバー側の順序にあり、それは lib のテストで見るのが正しい
 
 ## #8（発話周期の可変化）との競合と、着手順序
@@ -162,11 +162,11 @@ AI 側は楽観的更新をしない。
 
 ## 開いている問い
 
-- ストリーミングは待ちを「読み」へ変える。
-  それは待ちを消すことなのか、待ちの質を変えることなのか。
+- ストリーミングは待ちを「読み」へ変える
+  それは待ちを消すことなのか、待ちの質を変えることなのか
   前者と読んで見送ったが、実機で流れる本文を見るまで確かめようがない
-- 流れてくる文を追うことは、読み終えてから次を読むことより急ぐことに似ている。
+- 流れてくる文を追うことは、読み終えてから次を読むことより急ぐことに似ている
   スローダウンという原理と衝突しないかは、使うまで分からない
-- 思考の時間は流しても沈黙のままである。
-  `effort` を下げれば沈黙は縮むが応答は浅くなるので、ストリーミングを入れるという判断は `effort` を下げるという判断と繋がっている。
+- 思考の時間は流しても沈黙のままである
+  `effort` を下げれば沈黙は縮むが応答は浅くなるので、ストリーミングを入れるという判断は `effort` を下げるという判断と繋がっている
   片方だけを動かすと、もう片方が黙って効く

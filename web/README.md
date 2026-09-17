@@ -27,6 +27,10 @@ pnpm dev
 変更したら `pnpm check`（型 → lint → テスト → ビルド）。
 **赤のままコミットしない**。
 
+worktree では `.env.local` を書かず、リポジトリルートで `bash scripts/setup.sh` を叩く。
+依存・Postgres・worktree 用の開発用 DB（`toiito_wt_<ディレクトリ名>`）を揃え、接続先とサインイン・AI の既定は `scripts/checkout-environment.ts` が導く（`docs/HARNESS.md`「実行環境」）。
+Claude Code のセッション起動フックが同じスクリプトを呼ぶので、手で叩くのは本体で新しく始めるときと、途中で止まったときだけである。
+
 リモート（Claude Code on the web）ではこの節の準備が要らない。
 セッション起動時のフックが Postgres も `.env.local` も依存も用意するので、`pnpm dev` から始められる（`docs/HARNESS.md`「リモート」）。
 
@@ -36,8 +40,8 @@ pnpm dev
 
 | 変数 | 要否 | 既定 | 何に効くか |
 |---|---|---|---|
-| `DATABASE_URL` | 必須 | — | アプリからの接続先。本番 Neon ではプーラー経由 |
-| `DIRECT_URL` | 必須 | — | Prisma Migrate 用の直結。プーラー越しには Migrate が動かないので分ける |
+| `DATABASE_URL` | 必須 | 手元は `scripts/checkout-environment.ts` が導く | アプリからの接続先。本番 Neon ではプーラー経由 |
+| `DIRECT_URL` | 必須 | 同上 | Prisma Migrate 用の直結。プーラー越しには Migrate が動かないので分ける |
 | `ANTHROPIC_API_KEY` | 実 AI を使うなら必須 | — | Claude API のキー。**サーバー側のみ**で使い、クライアントへ露出させない |
 | `TOIITO_API_KEY_ENCRYPTION_KEYS` | 利用者の API キーを扱うなら必須 | — | 利用者の API キーを暗号化・復号する鍵の一覧。形式は表の下 |
 | `BETTER_AUTH_SECRET` | 必須 | — | セッションのトークンと OAuth の state の署名に使う秘密。32 文字以上の乱数 |

@@ -99,6 +99,7 @@
       "includes": [
         "vitest.config.ts",
         "next.config.ts",
+        "prisma.config.ts",
         "tests/setup/**",
         "scripts/**"
       ],
