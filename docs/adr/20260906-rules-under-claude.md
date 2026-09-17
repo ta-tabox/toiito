@@ -11,7 +11,7 @@
 この器の `languages/typescript.md` は Prisma のコメント規約や機械層の一覧まで抱えて 115 行あり、開き忘れの被害がそのぶん大きい。
 
 fermentary の雛形が 2026-09-06 に配布先を `.claude/rules/` へ改めた（`fermentary/playbooks/coding-standards.md` 二層構造節。経緯は同 `coding-standards-rationale.md` #9）。
-coten-atlas と book-atlas は同日に揃えている（coten-atlas ADR-20260909-login-and-fake-sign-in、book-atlas ADR-20260828-production-runtime）。
+coten-atlas と book-atlas は同日に揃えている（coten-atlas ADR-0033、book-atlas ADR-0002）。
 
 ## 決定
 

@@ -9,7 +9,7 @@
 20260906-rules-under-claude は `CODING.md` を `.claude/rules/` へ移したが、ルートに残る 6 本（`VISION.md`・`ARCHITECTURE.md`・`HARNESS.md`・`ROADMAP.md`・`DEPLOY.md`・`DESIGN.md`）の置き場と、`DESIGN.md` を規範と記述へ割るかどうかは「別の作業単位」として切り出していた。
 参照が ADR の外に百箇所あり、一度に動かすとレビューで移動と書き換えが混ざるためである。
 
-雛形（`fermentary/playbooks/terrarium.md`「文書の層」）は「ルートに置くのは道具がそのパスを決め打ちで読むファイルだけ」へ改まっており、coten-atlas は ADR-20260909-persona-as-records・20260909-login-and-fake-sign-in で同じ形へ揃えている。
+雛形（`fermentary/playbooks/terrarium.md`「文書の層」）は「ルートに置くのは道具がそのパスを決め打ちで読むファイルだけ」へ改まっており、coten-atlas は ADR-0032・0033 で同じ形へ揃えている。
 この器だけが雛形と違う位置に留まっている。
 
 ## 決定
