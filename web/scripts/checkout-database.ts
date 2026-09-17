@@ -91,7 +91,7 @@ function derivedNameOf(root: string): string | undefined {
 /**
  * `root` のチェックアウトが使う開発用データベースの名前を返す。
  *
- * worktree ごとに分けるのは、本体の開発用 DB に手で入れた対話が載っており、worktree の migration をそこへ積ませないため。
+ * worktree ごとに分けるのは、本体の開発用 DB に手で入れた行が載っており、worktree の migration をそこへ積ませないため。
  */
 export function developmentDatabaseName(root: string): string {
   return derivedNameOf(root) ?? DEVELOPMENT_DATABASE_NAME;

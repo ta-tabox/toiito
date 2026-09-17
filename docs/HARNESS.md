@@ -230,7 +230,7 @@ check の前提は Postgres が起動していること（`docker compose up -d`
 
 `.env.local` を持たない worktree では、`web/scripts/checkout-environment.ts` が接続先とサインイン・AI の既定（`TOIITO_FAKE_LOGIN`・`TOIITO_ALLOWED_EMAILS`・`BETTER_AUTH_SECRET`・`TOIITO_FAKE_AI`）を導く。
 規則はリモートの起動フックが `.env.local` へ書く値と同じで、環境変数で渡した値が勝つ。
-サインインと AI の既定を worktree に限るのは、`.git` がファイルになるのは手元の worktree だけで、本番・CI・リモートでは当たらないためである。
+サインインと AI の既定を導くのは worktree だけで、理由は `web/scripts/checkout-environment.ts` の `readCheckoutEnvironment` が正。
 
 ステージした追加行の禁止語を報告だけする `.githooks/pre-commit` と、コミット本文の禁止語を止める `.githooks/commit-msg` は、git の既定の `.git/hooks/` に無いので、クローンごとに `git config core.hooksPath .githooks` で有効にする。
 手元では `scripts/setup.sh`、リモートでは下の起動フックがこの設定を入れる。

@@ -3,7 +3,7 @@
  * データの投入は持たず、`seed/index.ts` が持つ。
  *
  * 既にあるデータベースは作り直さない。
- * 本体の開発用 DB には手で入れた対話が載るので、migration を積むかは人間が決める（`check-database-drift.ts` が食い違いを警告する）。
+ * 本体の開発用 DB には手で入れた行が載るので、migration を積むかは人間が決める（`check-database-drift.ts` が食い違いを警告する）。
  * worktree の DB はそのブランチの持ち物なので、毎回積んで追いつかせる。
  * `prisma migrate reset` は使わない（Prisma 7 が人間の同意を毎回要求する。`tests/setup/database.ts` と同じ理由）。
  *
