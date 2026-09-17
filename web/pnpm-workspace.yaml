@@ -3,3 +3,9 @@ allowBuilds:
   prisma: true
   sharp: true
   unrs-resolver: true
+
+# store をリポジトリの設定で固定する。
+# pnpm の既定の store は OS と版で動き（macOS の pnpm 11 は ~/Library/pnpm/store）、本体と worktree で違う store から張ると
+# `pnpm install` と `pnpm exec` の前の依存の検査が ERR_PNPM_UNEXPECTED_STORE で止まる。
+# Linux（CI・リモート）では既定と同じ場所なので何も変わらない。
+storeDir: ${HOME}/.local/share/pnpm/store

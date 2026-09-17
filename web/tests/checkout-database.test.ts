@@ -2,10 +2,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
-  adminUrl,
+  developmentDatabaseName,
+  localDatabaseUrl,
   testDatabaseName,
   toDatabaseSlug,
-} from "@tests/setup/test-database-url";
+} from "@scripts/checkout-database.ts";
+import { adminUrl } from "@tests/setup/test-database-url";
 import { afterEach, describe, expect, it } from "vitest";
 
 /**
@@ -87,6 +89,14 @@ describe("adminUrl", () => {
   });
 });
 
+describe("localDatabaseUrl", () => {
+  it("compose.yaml の Postgres の、その名前のデータベースを指す", () => {
+    expect(localDatabaseUrl("toiito_wt_x")).toBe(
+      "postgresql://toiito:toiito@localhost:5433/toiito_wt_x",
+    );
+  });
+});
+
 describe("testDatabaseName", () => {
   it("worktree はディレクトリ名から派生する", () => {
     const root = makeCheckout("next-memo-implementation-83910e", "file");
@@ -113,5 +123,27 @@ describe("testDatabaseName", () => {
     const root = makeCheckout(`${"long-name-".repeat(8)}83910e`, "file");
 
     expect(testDatabaseName(root).length).toBeLessThanOrEqual(63);
+  });
+});
+
+describe("developmentDatabaseName", () => {
+  it("worktree はテスト用と同じスラグで、_test を付けない名前になる", () => {
+    const root = makeCheckout("next-memo-implementation-83910e", "file");
+
+    expect(developmentDatabaseName(root)).toBe(
+      "toiito_wt_next_memo_implementation_83910e",
+    );
+  });
+
+  it("リポジトリ本体は compose.yaml の toiito を使う", () => {
+    const root = makeCheckout("toiito", "directory");
+
+    expect(developmentDatabaseName(root)).toBe("toiito");
+  });
+
+  it("開発用の名前は _test で終わらない", () => {
+    const root = makeCheckout("issue-300-setup", "file");
+
+    expect(developmentDatabaseName(root).endsWith("_test")).toBe(false);
   });
 });

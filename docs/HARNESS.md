@@ -105,9 +105,15 @@ worktree 間は DB の名前で分かれる。
 名前は worktree のディレクトリ名から派生し（`toiito_wt_<ディレクトリ名>_test`）、リポジトリ本体は既定の `toiito_test` を使う。
 `toiito_wt_` の印を付けるのは、掃除が手で指した DB を巻き込まないため。
 上書きの口は `TOIITO_TEST_DATABASE_URL` で、指定が派生に勝つ。
+導出は `web/scripts/checkout-database.ts` が持つ。
+
+開発用も同じ規則で分かれる（worktree は `toiito_wt_<ディレクトリ名>`、本体は `toiito`）。
+worktree には `web/.env.local` が無いので、`pnpm dev`・`pnpm seed`・Prisma CLI は接続先を `web/scripts/checkout-environment.ts` から受け取る。
+worktree の開発用 DB は `pnpm db:prepare` が無ければ作って migration を積む（`scripts/setup.sh` が呼ぶ）。
+本体の `toiito` は同じスクリプトでも作るだけで、migration は積まない（下の段落）。
 
 worktree を消しても DB は残るので、`pnpm db:prune` で落とす。
-落とすのは派生した名前のうち現存の worktree に対応しないものだけで、手で付けた名前は一覧に出して人間へ渡す。
+削除するのは派生した名前（開発用とテスト用）のうち現存の worktree に対応しないものだけで、手で付けた名前は一覧に出して人間へ渡す。
 
 開発用 `toiito` は作り直さない。
 手で入れた対話が載りうるので、`pnpm dev` の前に食い違いを見て警告するだけに留める（`web/scripts/check-database-drift.ts`）。
@@ -211,8 +217,23 @@ spec は `web/e2e/` に置き、何を見るかは各 spec の冒頭コメント
 
 check の前提は Postgres が起動していること（`docker compose up -d`）。
 
+手元（リポジトリ本体と worktree）の準備は `scripts/setup.sh` 一本で、Claude Code のセッション起動フック（`.claude/hooks/session-start.sh`）が手元でも呼ぶ。
+人間が叩くときはリポジトリのどこからでも `bash scripts/setup.sh`。
+何度走らせても同じ状態に落ち着き、揃えるものは次の表が持つ。
+
+| 揃えるもの | 正 |
+|---|---|
+| git のフックの向き先（`core.hooksPath` を相対の `.githooks` に） | `.githooks/` |
+| 依存と Prisma の生成物（本体と worktree は同じ pnpm の store から張る） | `web/pnpm-lock.yaml`・`web/pnpm-workspace.yaml` の `storeDir` |
+| Postgres（`docker compose up -d --wait`。docker が無ければ飛ばして告げる） | `compose.yaml` |
+| このチェックアウトの開発用 DB と migration（`pnpm db:prepare`） | `web/scripts/checkout-database.ts`・`web/prisma/migrations/` |
+
+`.env.local` を持たない worktree では、`web/scripts/checkout-environment.ts` が接続先とサインイン・AI の既定を導く（一覧は同ファイルの `CHECKOUT_ENVIRONMENT_RULES`）。
+規則はリモートの起動フックが `.env.local` へ書く値と同じで、環境変数で渡した値が勝つ。
+サインインと AI の既定を導くのは worktree だけで、理由は `web/scripts/checkout-environment.ts` の `readCheckoutEnvironment` が正。
+
 ステージした追加行の禁止語を報告だけする `.githooks/pre-commit` と、コミット本文の禁止語を止める `.githooks/commit-msg` は、git の既定の `.git/hooks/` に無いので、クローンごとに `git config core.hooksPath .githooks` で有効にする。
-リモートでは下の起動フックがこの設定を入れる。
+手元では `scripts/setup.sh`、リモートでは下の起動フックがこの設定を入れる。
 
 ### リモート（Claude Code on the web）
 
