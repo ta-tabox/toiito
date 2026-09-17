@@ -467,7 +467,7 @@ function checkSentenceEndLineBreaks(
         continue;
       }
 
-      if (SENTENCE_END.test(current.text) || LIST_MARKER.test(next.text)) {
+      if (SENTENCE_END.test(current.text)) {
         continue;
       }
 
