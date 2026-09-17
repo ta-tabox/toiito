@@ -1,12 +1,18 @@
 /**
  * `lint-vocabulary.sh --text` の終了コードと出力のテストを置く。
  *
- * 禁止語はスクリプトが持つ一覧に依らず、`.coding-standards-vocab-deny` へ置いた架空の語で検査する。
+ * 禁止語はスクリプトが持つ一覧に依らず、`.vocabulary/deny` へ置いた架空の語で検査する。
  * スクリプトは `git rev-parse --show-toplevel` の直下から語のファイルを読むので、ケースごとに一時リポジトリを作り、そこを cwd にして走らせる。
  */
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -43,10 +49,10 @@ function findLintVocabulary(): string {
 
 const lintVocabulary = findLintVocabulary();
 
-/** `.coding-standards-vocab-deny` へ置く架空の禁止語。 */
+/** `.vocabulary/deny` へ置く架空の禁止語。 */
 const DENIED_WORD = "禁止テスト語";
 
-/** `DENIED_WORD` を含み、`.coding-standards-vocab-allow` へ置く語。 */
+/** `DENIED_WORD` を含み、`.vocabulary/allow` へ置く語。 */
 const ALLOWED_COMPOUND = `${DENIED_WORD}録`;
 
 let workingRepository: string;
@@ -54,8 +60,9 @@ let workingRepository: string;
 beforeEach(() => {
   workingRepository = mkdtempSync(path.join(tmpdir(), "lint-vocabulary-"));
   spawnSync("git", ["init", "-q"], { cwd: workingRepository });
+  mkdirSync(path.join(workingRepository, ".vocabulary"));
   writeFileSync(
-    path.join(workingRepository, ".coding-standards-vocab-deny"),
+    path.join(workingRepository, ".vocabulary/deny"),
     `${DENIED_WORD}\n`,
   );
 });
@@ -64,9 +71,12 @@ afterEach(() => {
   rmSync(workingRepository, { recursive: true, force: true });
 });
 
-/** `workingRepository` の直下に `name` のファイルを `content` で書く。 */
+/** `workingRepository` の直下に `name` のファイルを `content` で書き、親のディレクトリが無ければ作る。 */
 function writeRepositoryFile(name: string, content: string): void {
-  writeFileSync(path.join(workingRepository, name), content);
+  const file = path.join(workingRepository, name);
+
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, content);
 }
 
 /** `workingRepository` を cwd にして `lint-vocabulary.sh` を `args` で走らせ、終了コードと出力を返す。 */
@@ -119,12 +129,9 @@ describe("--text の禁止語", () => {
   });
 });
 
-describe(".coding-standards-vocab-allow", () => {
+describe(".vocabulary/allow", () => {
   it("許可語の中に埋もれた禁止語は報告しない", () => {
-    writeRepositoryFile(
-      ".coding-standards-vocab-allow",
-      `${ALLOWED_COMPOUND}\n`,
-    );
+    writeRepositoryFile(".vocabulary/allow", `${ALLOWED_COMPOUND}\n`);
     writeRepositoryFile("body.txt", `${ALLOWED_COMPOUND}を読む\n`);
 
     const result = runLintVocabulary(["--text", "body.txt"]);
@@ -133,10 +140,7 @@ describe(".coding-standards-vocab-allow", () => {
   });
 
   it("許可語の外に現れた禁止語は報告する", () => {
-    writeRepositoryFile(
-      ".coding-standards-vocab-allow",
-      `${ALLOWED_COMPOUND}\n`,
-    );
+    writeRepositoryFile(".vocabulary/allow", `${ALLOWED_COMPOUND}\n`);
     writeRepositoryFile("body.txt", `${ALLOWED_COMPOUND}と${DENIED_WORD}\n`);
 
     const result = runLintVocabulary(["--text", "body.txt"]);
@@ -150,10 +154,7 @@ describe(".coding-standards-vocab-allow", () => {
 
 describe("語のファイルの読み込み", () => {
   it("改行で終わらない最終行の語も禁止語として読む", () => {
-    writeRepositoryFile(
-      ".coding-standards-vocab-deny",
-      `別の語\n${DENIED_WORD}`,
-    );
+    writeRepositoryFile(".vocabulary/deny", `別の語\n${DENIED_WORD}`);
     writeRepositoryFile("body.txt", `${DENIED_WORD}\n`);
 
     const result = runLintVocabulary(["--text", "body.txt"]);
@@ -163,11 +164,50 @@ describe("語のファイルの読み込み", () => {
   });
 
   it("改行で終わらない最終行の語も許可語として読む", () => {
-    writeRepositoryFile(
-      ".coding-standards-vocab-allow",
-      `別の語\n${ALLOWED_COMPOUND}`,
-    );
+    writeRepositoryFile(".vocabulary/allow", `別の語\n${ALLOWED_COMPOUND}`);
     writeRepositoryFile("body.txt", `${ALLOWED_COMPOUND}\n`);
+
+    const result = runLintVocabulary(["--text", "body.txt"]);
+
+    expect(result).toEqual({ status: 0, stdout: "", stderr: "" });
+  });
+});
+
+describe(".vocabulary/banned.tsv", () => {
+  /** `.vocabulary/banned.tsv` へ置く架空の禁止語。 */
+  const BANNED_WORD = "表の禁止語";
+
+  /** `BANNED_WORD` を含み、`.vocabulary/banned.tsv` の 3 列目へ置く語。 */
+  const BANNED_COMPOUND = `${BANNED_WORD}録`;
+
+  beforeEach(() => {
+    writeRepositoryFile(
+      ".vocabulary/banned.tsv",
+      `# 説明\n${BANNED_WORD}\t言い換え\t別の複合語 ${BANNED_COMPOUND}\n`,
+    );
+  });
+
+  it("1 列目の語を禁止語として報告する", () => {
+    writeRepositoryFile("body.txt", `${BANNED_WORD}\n`);
+
+    const result = runLintVocabulary(["--text", "body.txt"]);
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe(`body.txt:1: ${BANNED_WORD}\n`);
+  });
+
+  it("差分を見るとき、ルート直下の .vocabulary/banned.tsv の追加行は報告しない", () => {
+    spawnSync("git", ["add", ".vocabulary/banned.tsv"], {
+      cwd: workingRepository,
+    });
+
+    const result = runLintVocabulary([]);
+
+    expect(result).toEqual({ status: 0, stdout: "", stderr: "" });
+  });
+
+  it("3 列目に並べた複合語の中に埋もれた禁止語は報告しない", () => {
+    writeRepositoryFile("body.txt", `${BANNED_COMPOUND}を読む\n`);
 
     const result = runLintVocabulary(["--text", "body.txt"]);
 
