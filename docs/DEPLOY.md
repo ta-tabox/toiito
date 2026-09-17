@@ -6,7 +6,7 @@
 何をもって「動いた」と言うかは `HARNESS.md`、なぜこの構成なのかは `adr/` が持つ。
 ここは現況の手順だけに閉じる。
 
-アプリは Vercel（Hobby）、DB は Neon の無料プラン（選定の経緯は `adr/0002-production-runtime.md`）。
+アプリは Vercel（Hobby）、DB は Neon の無料プラン（選定の経緯は `adr/20260828-production-runtime.md`）。
 Vercel の Root Directory は `web/`。
 main へ入れば Vercel が本番を差し替え、同じ push で `.github/workflows/migrate.yml` が migration を流す。
 手で叩くものは無い。
@@ -71,8 +71,8 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 ## 初回のセットアップ
 
 1. **Neon 側で自分の組織を切り**、その下に本番プロジェクトを作って接続文字列を 2 本控える
-   Vercel Marketplace の Neon 統合は使わない（理由は `adr/0012-neon-outside-vercel-marketplace.md`）
-   **Postgres は 18 を選ぶ**（ローカルと CI も 18。理由は `adr/0009-postgres-18.md`）
+   Vercel Marketplace の Neon 統合は使わない（理由は `adr/20260829-neon-outside-vercel-marketplace.md`）
+   **Postgres は 18 を選ぶ**（ローカルと CI も 18。理由は `adr/20260829-postgres-18.md`）
    Region は **AWS US East 1 (N. Virginia)** で、Vercel の関数リージョンの既定（`iad1`）と揃える
    揃っていないと DB の往復が毎回大陸をまたぐ
    接続文字列 2 本の違いはホスト名の `-pooler` だけ
@@ -105,7 +105,7 @@ corepack は使わない（`CLAUDE.md`「開発ハーネス」）。
 `mise.toml` を上げたら同じ値へ揃える。
 揃え忘れると本番だけ古い pnpm で install することになり、`web/pnpm-workspace.yaml` の `allowBuilds` が効かずに `prisma generate` が engine 不在で落ちうる。
 
-自動検出に任せない理由と、採らなかった案は `adr/0007-production-pnpm-version.md`。
+自動検出に任せない理由と、採らなかった案は `adr/20260828-production-pnpm-version.md`。
 
 ## migration
 
@@ -121,7 +121,7 @@ Vercel のビルドとは競走するが、`migrate deploy` は秒・`next build
 2. 旧コードが古い列を使わなくなる変更を、次の PR で入れる
 3. 古い列を落とす migration は、さらにその後の PR で入れる
 
-決定の経緯と、この規律が守れなかったときの倒し先は `adr/0008-production-migration-path.md`。
+決定の経緯と、この規律が守れなかったときの倒し先は `adr/20260828-production-migration-path.md`。
 
 **手元から流す口もある**（切り戻しの後の再実行や、自動経路が落ちたとき）。
 
@@ -157,7 +157,7 @@ Preview のサインインは `TOIITO_FAKE_LOGIN=1` が開ける経路だけで�
 欠けていると `lib/auth/index.ts` が最初のリクエストで投げ、Preview の全ページが 500 になる。
 `next build` は設定を読まないのでビルドは通るため、**Vercel のチェックは緑のまま中身だけ壊れる**。
 
-**Preview の露出は引き受けている**（理由は `adr/0022-session-security.md`）。
+**Preview の露出は引き受けている**（理由は `adr/20260901-session-security.md`）。
 外側の Vercel Authentication は共有リンク一本で抜けるので、漏れた共有リンクはログインの画面まで届く。
 そこから先はサインインが要るが、`TOIITO_ALLOWED_EMAILS` に載った email のボタンを押すだけで入れる。
 **引き受ける条件は「Preview に本番のデータが無いこと」**で、条件が崩れればこの構成も崩れる。
@@ -179,7 +179,7 @@ Preview では次を守る。
 - `ANTHROPIC_API_KEY` を Preview へ入れず、`TOIITO_FAKE_AI=1` を外さない
 - `TOIITO_ALLOWED_EMAILS` に実在の email を入れない（ログインの画面が、未サインインの相手へ許可リストの email をボタンとして並べる）
 
-決定の経緯と採らなかった案は `adr/0015-preview-neon-branch.md`。
+決定の経緯と採らなかった案は `adr/20260829-preview-neon-branch.md`。
 
 ### ブランチを切る
 
@@ -270,9 +270,9 @@ Hobby で戻せるのは直前の production デプロイまで（任意の過�
 
 ## ログイン
 
-本番の外周を守るのは**アプリのログイン**である（経緯は `adr/0033-login-and-fake-sign-in.md`）。
+本番の外周を守るのは**アプリのログイン**である（経緯は `adr/20260909-login-and-fake-sign-in.md`）。
 `web/src/proxy.ts` が全リクエストを見て、セッションの cookie が無ければ `/login` へ送る。
-入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（理由は `adr/0022-session-security.md`）。
+入れるのは `TOIITO_ALLOWED_EMAILS` に載った email だけで、照合はサインインのときに一度だけ走る（理由は `adr/20260901-session-security.md`）。
 
 **ホスティング側のアクセス制限は本番に効かない**。
 Hobby で選べる Vercel Authentication の Standard Protection は、API 上の名前が `prod_deployment_urls_and_all_previews` で、守るのは production の**デプロイ URL**（`<project>-<hash>-<team>.vercel.app`）と Preview だけである。
@@ -335,12 +335,12 @@ Better Auth は cookie ヘッダが在るかどうかで照合を始め、cookie
 独自ドメインは当てていない。
 `<project>.vercel.app` のまま使い、当てるのは Hobby から動かすときにする。
 **当てるときは、`BETTER_AUTH_URL` と Google の redirect URI を下の「Google の OAuth クライアント」の「ドメインを変えるとき」の順で動かす**。
-Hobby は非商用限定なので、他人へ開く段では実行環境ごと決め直すことになる（`adr/0002-production-runtime.md`「覆る条件」）。
+Hobby は非商用限定なので、他人へ開く段では実行環境ごと決め直すことになる（`adr/20260828-production-runtime.md`「覆る条件」）。
 
 ## 管理者
 
 `/admin` は、`user` 表の `is_admin` が真のユーザーにだけユーザーの一覧を出し、それ以外のユーザーには 404 を返す。
-フラグを立てる画面は無いので、DB の行を直接更新する（理由は `adr/0046-admin-flag-on-user-row.md`）。
+フラグを立てる画面は無いので、DB の行を直接更新する（理由は `adr/20260915-admin-flag-on-user-row.md`）。
 フラグはサインインの可否を変えないので、立てる相手も `TOIITO_ALLOWED_EMAILS` に載っている必要がある。
 
 ### 本番で最初の管理者を立てる
@@ -455,4 +455,4 @@ Preview のブランチも同じ枠を使う（上の「Preview」）。
 
 Vercel Hobby の関数実行時間の上限は 300 秒で、変更できない。
 一往復は二体分の生成を逐次で待つので、実行時間は主に出力の長さで決まる（上限は `TOIITO_ANTHROPIC_MAX_TOKENS`。既定は `web/README.md` の表）。
-一往復が数十秒に収まる間は上限に届かず、近づいたら実行環境を決め直す（`adr/0002-production-runtime.md`「覆る条件」）。
+一往復が数十秒に収まる間は上限に届かず、近づいたら実行環境を決め直す（`adr/20260828-production-runtime.md`「覆る条件」）。

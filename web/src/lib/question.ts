@@ -35,7 +35,7 @@ export function isQuestionStatus(value: string): value is QuestionStatus {
  * `status` のうち、機械だけが書く値。
  * 人間が選べる値は、`QUESTION_STATUSES` からこの並びを除いた残りである。
  *
- * 書き手を値ごとに分ける理由は `docs/adr/0038-question-status-transitions.md`。
+ * 書き手を値ごとに分ける理由は `docs/adr/20260914-question-status-transitions.md`。
  */
 const MACHINE_WRITTEN_STATUSES = [
   "new",
