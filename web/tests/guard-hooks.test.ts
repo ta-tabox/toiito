@@ -129,7 +129,7 @@ describe("jq が無い環境", () => {
     rmSync(emptyBin, { recursive: true, force: true });
   });
 
-  // PATH を空のディレクトリにして、`command -v jq` を失敗させる。
+  // PATH を空のディレクトリにして、フックが jq を見つけられない環境で走らせる。
   it.each([
     ["guard-force-push.sh", hooks.forcePush, "git push origin main"],
     ["guard-gh-api.sh", hooks.ghApi, "gh api repos/o/r"],
