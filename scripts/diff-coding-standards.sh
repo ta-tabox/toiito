@@ -27,6 +27,7 @@ DISTRIBUTED_FILES=(
   rules/coding.md
   rules/languages/typescript.md
   rules/languages/prisma.md
+  rules/languages/python.md
   skills/coding-standards/SKILL.md
 )
 
