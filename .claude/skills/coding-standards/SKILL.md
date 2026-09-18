@@ -393,6 +393,7 @@ ADR の規約5 に当たる決定なら ADR へ出し、本文へリンク一本
 | 言語 | ファイル | 読み込まれる条件 |
 |---|---|---|
 | TypeScript / JavaScript | `.claude/rules/languages/typescript.md` | `*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}` を Read したとき |
+| Python | `.claude/rules/languages/python.md` | `*.py` を Read したとき |
 | Prisma | `.claude/rules/languages/prisma.md` | `*.prisma` を Read したとき |
 
 新しい言語が要るときは同じ構造（原則→言語イディオムへの写像・frontmatter の `paths` で拡張子を縛る）で 1 ファイル足す。
