@@ -7,8 +7,8 @@
 
 import { createOwner } from "@tests/setup/owner";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import type { PersonaCall } from "@/lib/ai";
 import { ANTHROPIC_DEFAULTS, AnthropicProvider } from "@/lib/ai/anthropic";
+import type { PersonaCall } from "@/lib/ai/persona-call";
 import { AiProvider, type ProviderResponse } from "@/lib/ai/provider";
 import * as db from "@/lib/db";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";

@@ -6,17 +6,13 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  callMaterial,
-  callPersona,
-  type MaterialCall,
-  type PersonaCall,
-} from "@/lib/ai";
-import {
   ANTHROPIC_DEFAULTS,
   AnthropicProvider,
   type AnthropicSettings,
 } from "@/lib/ai/anthropic";
 import { fakeMaterialResponse } from "@/lib/ai/fake";
+import { callMaterial, type MaterialCall } from "@/lib/ai/material-call";
+import { callPersona, type PersonaCall } from "@/lib/ai/persona-call";
 import { readFakeMode } from "@/lib/ai/provider";
 import type { UsageInput } from "@/lib/types";
 

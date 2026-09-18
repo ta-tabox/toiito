@@ -6,7 +6,7 @@
  * 一往復は、人間の発話と二体の応答が揃ったときだけ `messages` へ書き込み、揃わなければ人間の発話を `pending_messages` に残す（理由は `docs/adr/20260902-turn-atomicity-and-pending-utterance.md`）。
  */
 
-import { callPersona, type PersonaCall } from "@/lib/ai";
+import { callPersona, type PersonaCall } from "@/lib/ai/persona-call";
 import type { QuestionRef, Transcript } from "@/lib/ai/prompt";
 import { AI_PROVIDER } from "@/lib/ai/providers";
 import {
