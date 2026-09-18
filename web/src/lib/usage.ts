@@ -17,11 +17,11 @@ export type AiCallKind = (typeof AI_CALL_KINDS)[number];
 /**
  * AI の呼び出しに使った API キーの出所。
  *
- * - `operator`: 運営が持つキー
+ * - `system`: アプリが持つ運営のキー
  * - `user`: 利用者が登録したキー
  *
  * DB の enum `ApiKeySource`（`prisma/schema.prisma`）と同じ並びなので、この配列に値を足したら enum にも足す。
  */
-export const API_KEY_SOURCES = ["operator", "user"] as const;
+export const API_KEY_SOURCES = ["system", "user"] as const;
 
 export type ApiKeySource = (typeof API_KEY_SOURCES)[number];
