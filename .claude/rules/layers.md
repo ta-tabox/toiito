@@ -45,19 +45,22 @@ paths:
 - ログインをまたぐ識別子（匿名セッション・未ログインの下書きの引き継ぎ・自前の「戻り先」cookie）は持たない
   未ログインで何かを書かせたいときは、ログインをまたがない形で解けるかを先に見る
 - DB への書き込みは、UI からも `scripts/seed/` からも `db.ts` の repo 関数を通す
-- クライアント側コンポーネントが読む定数は、`node:*` も Prisma も import しないモジュール（`lib/message.ts`）に置く
 
 ## 層と、import してよい相手
 
+置き場は `web/` で始まるもの以外を `web/src` からの相対で書き、一つのファイルが複数の行に当たるときは名指した行を glob の行より優先する。
+`web/src` の追跡しているファイルがどれかの行か上の表に当たることは、`web/tests/layers.test.ts` が見る。
+
 | 層 | 置き場 | import してよい相手 | 持つもの |
 |---|---|---|---|
-| ドメイン型 | `lib/types.ts` | `lib/question.ts`・`lib/material.ts`・`lib/usage.ts`（型だけ） | 型だけ |
-| 概念のモジュール | `lib/question.ts`・`lib/message.ts`・`lib/usage.ts`・`lib/value-set.ts` | 無し | 取りうる値の定数と判定 |
-| 純粋な計算 | `lib/anchors.ts`・`lib/material.ts`・`lib/format.ts`・`lib/ai/prompt.ts`・`lib/auth/protected-paths.ts` | ドメイン型・概念のモジュール | 関数とテスト |
-| 境界 | 上の表 | 純粋な計算・ドメイン型・概念のモジュール | 境界の道具と検証 |
-| 一往復の手順 | `lib/turn.ts` | `lib/ai`・`lib/db`・`lib/personas` | AI 呼び出しと永続化の順序 |
-| 配線 | `app/actions.ts`・`app/**/page.tsx`・`scripts/seed/index.ts` | 境界・手順・純粋な計算 | 受け取り・呼び出し・`revalidatePath` か `redirect` |
-| クライアント側の部品 | `components/**` | `lib/anchors.ts`・`lib/message.ts`・`lib/question.ts`・`lib/types.ts`・`components/ui/*` | DOM の読み書きと描画 |
+| ドメイン型 | `lib/types.ts` | 純粋な計算（型だけ） | 型だけ |
+| 純粋な計算 | `lib/*.ts`・`lib/ai/prompt.ts`・`lib/auth/protected-paths.ts` | ドメイン型・純粋な計算 | 取りうる値の定数と判定・関数とテスト |
+| 境界 | 上の表・`lib/ai/**`・`lib/auth/**` | 純粋な計算・ドメイン型・境界 | 境界の道具と検証 |
+| 一往復の手順 | `lib/turn.ts` | 境界・純粋な計算・ドメイン型 | AI 呼び出しと永続化の順序 |
+| 配線 | `app/**`・`web/scripts/seed/index.ts` | クライアント側の部品・手順・境界・純粋な計算 | 受け取り・呼び出し・`revalidatePath` か `redirect` |
+| 全リクエストの入口 | `proxy.ts` | `lib/auth/protected-paths.ts` | cookie の有無だけで `/login` へ送るかの判定 |
+| クライアント側の部品 | `components/**` | クライアント側の部品・`node:*` を import しない純粋な計算 | DOM の読み書きと描画 |
+| ペルソナの定義 | `personas/*.md` | 無し | システムプロンプトの本文（読むのは `lib/personas.ts` だけ） |
 
 ## 一つしか無い状態の正
 
