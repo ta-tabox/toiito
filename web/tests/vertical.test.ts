@@ -6,7 +6,7 @@
 
 import { createOwner } from "@tests/setup/owner";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { callPersona } from "@/lib/ai";
+import { callPersona, type PersonaCall } from "@/lib/ai";
 import { ANTHROPIC_DEFAULTS, AnthropicProvider } from "@/lib/ai/anthropic";
 import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
@@ -31,9 +31,17 @@ beforeEach(async () => {
   owner = await createOwner();
 });
 
-/** ペルソナ一体分の呼び出し指定を、定義ファイルごと組み立てる。 */
-function personaCall(id: PersonaId) {
-  return { id, prompt: loadPersona(id), provider: FAKE_PROVIDER };
+/**
+ * ペルソナ一体分の呼び出し指定を、定義ファイルごと組み立てる。
+ * フェイクモードの呼び出しは利用量を記録しないので、`recordUsage` は呼ばれない。
+ */
+function personaCall(id: PersonaId): PersonaCall {
+  return {
+    id,
+    prompt: loadPersona(id),
+    provider: FAKE_PROVIDER,
+    recordUsage: async () => {},
+  };
 }
 
 describe("縦一本", () => {

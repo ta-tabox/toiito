@@ -7,13 +7,14 @@
 
 import { createOwner } from "@tests/setup/owner";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import type { PersonaCall } from "@/lib/ai";
 import { ANTHROPIC_DEFAULTS, AnthropicProvider } from "@/lib/ai/anthropic";
 import { AiProvider, type ProviderResponse } from "@/lib/ai/provider";
 import * as db from "@/lib/db";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import { loadPersona, type PersonaId } from "@/lib/personas";
 import { type PersonaCalls, retryTurn, runTurn } from "@/lib/turn";
-import type { OwnerId } from "@/lib/types";
+import type { OwnerId, UsageInput } from "@/lib/types";
 
 /** ネットワークに出ず決定的な応答を返すプロバイダ。 */
 const FAKE_PROVIDER = new AnthropicProvider({
@@ -76,34 +77,72 @@ class GatedProvider extends AiProvider {
   }
 }
 
+/**
+ * 実モードのまま、ネットワークに出ずにトークン数つきの応答を返すプロバイダ。
+ * フェイクモードの呼び出しは利用量を記録しないので、`settings.fake` を false にしてある。
+ */
+class StubProvider extends AiProvider {
+  readonly name = "stub";
+  readonly settings = { ...FAKE_PROVIDER.settings, fake: false };
+
+  /** ネットワークに出ずに、トークン数を持つ決定的な応答を返す。 */
+  async send(): Promise<ProviderResponse> {
+    return {
+      body: "実モードで返した応答",
+      stopReason: "end_turn",
+      inputTokens: 1200,
+      outputTokens: 340,
+      truncated: false,
+    };
+  }
+}
+
 /** 一往復ぶんの話者の並び。 */
 const ONE_TURN = ["human", "ai_a", "ai_b"];
+
+/**
+ * 二体ぶんの呼び出し指定を、`provider` が体ごとに返すプロバイダと、`owner` の利用量を書く関数で組み立てる。
+ */
+function callsFor(
+  owner: OwnerId,
+  provider: (id: PersonaId) => AiProvider,
+): PersonaCalls {
+  const call = (id: PersonaId): PersonaCall => ({
+    id,
+    prompt: loadPersona(id),
+    provider: provider(id),
+    recordUsage: (usage: UsageInput) => db.recordUsage(owner, usage),
+  });
+
+  return { ai_a: call("ai_a"), ai_b: call("ai_b") };
+}
 
 /**
  * 二体ぶんの呼び出し指定を解決する関数を返す。
  * 既定は両方フェイクで、失敗させたい体だけ差し替える。
  */
-function callsResolver(failing?: PersonaId): () => Promise<PersonaCalls> {
-  const call = (id: PersonaId) => ({
-    id,
-    prompt: loadPersona(id),
-    provider: id === failing ? new FailingProvider() : FAKE_PROVIDER,
-  });
-  const calls: PersonaCalls = { ai_a: call("ai_a"), ai_b: call("ai_b") };
-
-  return async () => calls;
+function callsResolver(
+  failing?: PersonaId,
+): (owner: OwnerId) => Promise<PersonaCalls> {
+  return async (owner) =>
+    callsFor(owner, (id) =>
+      id === failing ? new FailingProvider() : FAKE_PROVIDER,
+    );
 }
 
 /** ai_a だけを `gate` で止める呼び出し指定を解決する関数を返す。 */
 function callsResolverGatedBy(
   gate: GatedProvider,
-): () => Promise<PersonaCalls> {
-  const calls: PersonaCalls = {
-    ai_a: { id: "ai_a", prompt: loadPersona("ai_a"), provider: gate },
-    ai_b: { id: "ai_b", prompt: loadPersona("ai_b"), provider: FAKE_PROVIDER },
-  };
+): (owner: OwnerId) => Promise<PersonaCalls> {
+  return async (owner) =>
+    callsFor(owner, (id) => (id === "ai_a" ? gate : FAKE_PROVIDER));
+}
 
-  return async () => calls;
+/** 二体とも `StubProvider` で応答させる呼び出し指定を解決する関数を返す。 */
+function callsResolverStubbed(): (owner: OwnerId) => Promise<PersonaCalls> {
+  const provider = new StubProvider();
+
+  return async (owner) => callsFor(owner, () => provider);
 }
 
 let owner: OwnerId;
@@ -141,6 +180,26 @@ describe("一往復", () => {
     expect(messages[0].body).toBe("急ぐほど問いが痩せる気がする");
     const pending = await db.getPendingBody(owner, target.sessionId);
     expect(pending).toBeUndefined();
+  });
+
+  it("実モードで二体が揃うと、その利用者の利用量の行が二体ぶん入る", async () => {
+    const target = await newDialogue();
+
+    await runTurn({
+      ...target,
+      body: "急ぐほど問いが痩せる気がする",
+      resolveCalls: callsResolverStubbed(),
+    });
+
+    const logs = await db.listUsageLogs(owner);
+
+    expect(logs).toHaveLength(2);
+    expect(logs.map((log) => log.kind)).toEqual(["persona", "persona"]);
+    expect(logs[0]).toMatchObject({
+      provider: "stub",
+      input_tokens: 1200,
+      output_tokens: 340,
+    });
   });
 
   it("ai_b が失敗すると messages は空のままで、pending_messages に本文が残る", async () => {

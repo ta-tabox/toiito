@@ -612,3 +612,38 @@ describe("users", () => {
     expect(serialized).not.toContain("管理者に見せない現在の形");
   });
 });
+
+describe("usage_logs", () => {
+  /** 一往復のペルソナ一体分の記録。 */
+  const PERSONA_USAGE = {
+    provider: "anthropic",
+    model: "claude-sonnet-5",
+    kind: "persona",
+    input_tokens: 1200,
+    output_tokens: 340,
+  } as const;
+
+  it("recordUsage が書いた行は、web 検索の回数が 0、キーの出所が system になる", async () => {
+    await db.recordUsage(owner, PERSONA_USAGE);
+
+    const logs = await db.listUsageLogs(owner);
+
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatchObject({
+      ...PERSONA_USAGE,
+      user_id: owner,
+      web_search_count: 0,
+      key_source: "system",
+    });
+  });
+
+  it("listUsageLogs は、指定した利用者以外の行を返さない", async () => {
+    const other = await createOwner("other@example.com");
+    await db.recordUsage(owner, PERSONA_USAGE);
+    await db.recordUsage(other, PERSONA_USAGE);
+
+    const logs = await db.listUsageLogs(owner);
+
+    expect(logs.map((log) => log.user_id)).toEqual([owner]);
+  });
+});

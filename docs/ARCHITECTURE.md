@@ -81,13 +81,20 @@ memo_links     （将来）メモ間・問い間のリンキング辺
 
 materials      問いに付随する材料で、誰の発話でもない。二体 AI へは渡さず、人間だけが読む（画面の語では培地）
   id, question_id, kind(internal/external/isomorph), topic(論点。同じ値の行が立場の違う材料の組), body, source_url, created_by(auto/human), created_at
+
+usage_logs     AI の呼び出し 1 回ごとの利用量。管理者だけが読む運用の記録で、本文も問い・セッション・発話への参照も持たない
+  id, user_id, provider, model, kind(persona/material), input_tokens, output_tokens, web_search_count, key_source(system/user), created_at
 ```
 
 ### 所有権
 
-`user_id` を持つのは**所有のルートだけ**で、いまは `questions` 一つである。
-`sessions` / `messages` / `memos` は持たず、所有者は親から辿る。
+**所有のルート**は、いまは `questions` 一つである。
+`sessions` / `messages` / `memos` は `user_id` を持たず、所有者は親から辿る。
 下位にも持たせない理由と、却下した案は `adr/20260906-ownership-granularity.md`。
+
+`usage_logs` は `user_id` を持つが、所有のルートではない。
+利用者が読むリソースではなく、列が指すのは呼び出しの費用が乗る利用者である。
+読むのは管理の画面だけで、利用者の画面の repo 関数からは読まない。
 
 **絞り込みは `db.ts` の repo 関数が行う**。
 UI 側でやらない。

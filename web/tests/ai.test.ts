@@ -12,6 +12,7 @@ import {
   type AnthropicSettings,
 } from "@/lib/ai/anthropic";
 import { readFakeMode } from "@/lib/ai/provider";
+import type { UsageInput } from "@/lib/types";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -38,7 +39,21 @@ const PROVIDER = new AnthropicProvider(SETTINGS);
  * 既定は実モードの ai_b で、そのケースが見たい一点だけ上書きする。
  */
 function personaCall(overrides: Partial<PersonaCall> = {}): PersonaCall {
-  return { id: "ai_b", prompt: "# 抽象派", provider: PROVIDER, ...overrides };
+  return {
+    id: "ai_b",
+    prompt: "# 抽象派",
+    provider: PROVIDER,
+    recordUsage: async () => {},
+    ...overrides,
+  };
+}
+
+/**
+ * 渡された利用量を覚えるだけで、どこにも書かない記録の関数。
+ * 何が記録されたかを、DB を立てずに読むために使う。
+ */
+function usageRecorder() {
+  return vi.fn<(usage: UsageInput) => Promise<void>>(async () => {});
 }
 
 /** フェイクモードの指定を組み立てる。 */
@@ -68,6 +83,24 @@ function stubOkResponse() {
     content: [{ type: "text", text: "応答" }],
     stop_reason: "end_turn",
   });
+}
+
+/**
+ * signal が切れるまで返らない fetch に差し替える。
+ * 上限を設定していなければ、これを使うテストは応答を待ち続けてタイムアウトで落ちる。
+ */
+function stubHangingResponse() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => {
+            reject(init.signal?.reason);
+          });
+        }),
+    ),
+  );
 }
 
 /** モックした fetch が送ったリクエストボディを読む。 */
@@ -141,24 +174,6 @@ describe("応答の受け取り", () => {
 });
 
 describe("待つ上限", () => {
-  /**
-   * signal が切れるまで返らない fetch に差し替える。
-   * 上限を設定していなければ、このテストは応答を待ち続けてタイムアウトで落ちる。
-   */
-  function stubHangingResponse() {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        (_url: string, init: RequestInit) =>
-          new Promise<Response>((_resolve, reject) => {
-            init.signal?.addEventListener("abort", () => {
-              reject(init.signal?.reason);
-            });
-          }),
-      ),
-    );
-  }
-
   it("上限を超えて返らない呼び出しは、上限を添えて失敗する", async () => {
     stubHangingResponse();
     const call = personaCall({
@@ -229,6 +244,73 @@ describe("呼び出しログ", () => {
     expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
       stop_reason: "max_tokens",
     });
+  });
+});
+
+describe("利用量の記録", () => {
+  it("応答を受け取った時点で、プロバイダが返したトークン数を 1 件記録する", async () => {
+    const recorded = usageRecorder();
+    stubApiResponse({
+      content: [{ type: "text", text: "応答" }],
+      stop_reason: "end_turn",
+      usage: { input_tokens: 1200, output_tokens: 340 },
+    });
+
+    await callPersona(
+      personaCall({ recordUsage: recorded }),
+      { body: "q" },
+      [],
+    );
+
+    expect(recorded).toHaveBeenCalledTimes(1);
+    expect(recorded.mock.calls[0][0]).toEqual({
+      provider: "anthropic",
+      model: ANTHROPIC_DEFAULTS.model,
+      kind: "persona",
+      input_tokens: 1200,
+      output_tokens: 340,
+    });
+  });
+
+  it("打ち切られた呼び出しも、例外を投げる前に記録する", async () => {
+    const recorded = usageRecorder();
+    stubApiResponse({
+      content: [{ type: "text", text: "途中で切れた発" }],
+      stop_reason: "max_tokens",
+      usage: { input_tokens: 1200, output_tokens: 16000 },
+    });
+
+    await expect(
+      callPersona(personaCall({ recordUsage: recorded }), { body: "q" }, []),
+    ).rejects.toThrow();
+
+    expect(recorded).toHaveBeenCalledTimes(1);
+    expect(recorded.mock.calls[0][0]).toMatchObject({ output_tokens: 16000 });
+  });
+
+  it("フェイクモードの呼び出しは記録しない", async () => {
+    const recorded = usageRecorder();
+
+    await callPersona(
+      { ...fakeCall("ai_a"), recordUsage: recorded },
+      { body: "q" },
+      [],
+    );
+
+    expect(recorded).not.toHaveBeenCalled();
+  });
+
+  it("応答が上限を超えて返らない呼び出しは記録しない", async () => {
+    const recorded = usageRecorder();
+    stubHangingResponse();
+    const call = personaCall({
+      provider: new AnthropicProvider({ ...SETTINGS, timeoutMs: 10 }),
+      recordUsage: recorded,
+    });
+
+    await expect(callPersona(call, { body: "q" }, [])).rejects.toThrow();
+
+    expect(recorded).not.toHaveBeenCalled();
   });
 });
 

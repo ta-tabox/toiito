@@ -14,10 +14,11 @@ import {
   getPendingBody,
   getQuestionOfSession,
   listMessages,
+  recordUsage,
   savePendingBody,
 } from "@/lib/db";
 import { loadPersona, type PersonaId } from "@/lib/personas";
-import type { OwnerId } from "@/lib/types";
+import type { OwnerId, UsageInput } from "@/lib/types";
 
 /** 一往復で呼ぶ二体。 */
 export type PersonaCalls = Record<PersonaId, PersonaCall>;
@@ -32,25 +33,30 @@ export type PersonaCalls = Record<PersonaId, PersonaCall>;
 type TurnTarget = {
   readonly owner: OwnerId;
   readonly sessionId: string;
-  readonly resolveCalls: () => Promise<PersonaCalls>;
+  readonly resolveCalls: (owner: OwnerId) => Promise<PersonaCalls>;
 };
 
 /**
- * 二体の呼び出しの指定を、env から解決済みのプロバイダで組み立てて返す。
+ * 二体の呼び出しの指定を、env から解決済みのプロバイダと、`owner` の利用量を書く関数で組み立てて返す。
  *
  * `runTurn` が `AI_PROVIDER` を直接参照するとテストが失敗するプロバイダを差し込めなくなるので、`AI_PROVIDER` を参照するのは `personaCalls` だけにする。
+ * 利用者を `runTurn` から受け取るのは、一往復の所有者と、利用量が乗る利用者を食い違わせないため。
  */
-export async function personaCalls(): Promise<PersonaCalls> {
+export async function personaCalls(owner: OwnerId): Promise<PersonaCalls> {
+  const record = (usage: UsageInput) => recordUsage(owner, usage);
+
   return {
     ai_a: {
       id: "ai_a",
       prompt: loadPersona("ai_a"),
       provider: AI_PROVIDER,
+      recordUsage: record,
     },
     ai_b: {
       id: "ai_b",
       prompt: loadPersona("ai_b"),
       provider: AI_PROVIDER,
+      recordUsage: record,
     },
   };
 }
@@ -78,15 +84,16 @@ function logTurnFailure(sessionId: string, error: unknown): void {
  * 並列にしないのは、ai_b が ai_a への応答であることに意味があるため（衝突と転位）。
  */
 async function callBoth(input: {
+  readonly owner: OwnerId;
   readonly resolveCalls: TurnTarget["resolveCalls"];
   readonly question: QuestionRef;
   readonly transcript: Transcript;
   readonly sessionId: string;
 }): Promise<{ ai_a: string; ai_b: string } | undefined> {
-  const { resolveCalls, question, transcript } = input;
+  const { owner, resolveCalls, question, transcript } = input;
 
   try {
-    const calls = await resolveCalls();
+    const calls = await resolveCalls(owner);
 
     const aiA = await callPersona(calls.ai_a, question, transcript);
     const aiB = await callPersona(calls.ai_b, question, [
@@ -123,6 +130,7 @@ export async function runTurn(
   const messages = await listMessages(owner, sessionId);
   const transcript: Transcript = [...messages, { speaker: "human", body }];
   const responses = await callBoth({
+    owner,
     resolveCalls,
     question,
     transcript,

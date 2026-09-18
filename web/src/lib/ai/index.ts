@@ -16,11 +16,12 @@ import {
 } from "@/lib/ai/prompt";
 import type { AiProvider, ProviderResponse } from "@/lib/ai/provider";
 import type { PersonaId } from "@/lib/personas";
+import type { UsageInput } from "@/lib/types";
 
 /**
  * ペルソナ一体を呼ぶときの指定。
  *
- * どの体か（id）・何を渡すか（prompt）と、どこへ送るか（provider）を一つの値にまとめる。
+ * どの体か（id）・何を渡すか（prompt）と、どこへ送るか（provider）と、利用量をどう残すか（recordUsage）を一つの値にまとめる。
  * 識別子を prompt から復元しない。
  * ペルソナ定義の見出しに依存すると、見出しを変えた回に黙って壊れる。
  */
@@ -28,6 +29,12 @@ export type PersonaCall = {
   readonly id: PersonaId;
   readonly prompt: string;
   readonly provider: AiProvider;
+
+  /**
+   * 一回分の利用量を書く関数。
+   * `callPersona` は書き込みに失敗した例外を捕まえずに呼び出し元へ伝える。
+   */
+  readonly recordUsage: (usage: UsageInput) => Promise<void>;
 };
 
 /**
@@ -84,6 +91,9 @@ async function sendWithTimeout(
  * transcript はここまでの全発話で、呼ぶ側が順序を保証する。
  * 応答が打ち切られたときと本文が空のときは例外を投げる（欠けた本文を返さない）。
  * 設定の上限を超えて返らないときも同じく例外を投げる。
+ *
+ * 応答を受け取った呼び出しは、この後で例外を投げるものも含めて `recordUsage` で記録する。
+ * フェイクモードの呼び出しと、応答を受け取れなかった呼び出しは記録しない。
  */
 export async function callPersona(
   call: PersonaCall,
@@ -113,6 +123,14 @@ export async function callPersona(
     output_tokens: response.outputTokens,
     duration_ms: Date.now() - startedAt,
     body_length: response.body.length,
+  });
+
+  await call.recordUsage({
+    provider: provider.name,
+    model: settings.model,
+    kind: "persona",
+    input_tokens: response.inputTokens,
+    output_tokens: response.outputTokens,
   });
 
   // 切れた本文を messages へ入れると、immutable なので後から直せない。
