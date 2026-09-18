@@ -199,7 +199,7 @@ export function readAnthropicSettings(
  * `web_search_tool_result` の `content` は、検索が成功すれば結果の配列、失敗すれば一つのエラーの object になる。
  * 結果が一件も無い検索は空配列を返すので、配列であること自体は成功を意味する。
  */
-type MessageResponse = {
+type AnthropicMessageResponse = {
   content: {
     type: string;
     text?: string;
@@ -221,7 +221,9 @@ type MessageResponse = {
  *
  * 検索の失敗を URL ゼロ件として返すと、出典の照合（`listMaterialViolations`）が結果ゼロ件として違反を返すので、失敗の理由がどこにも残らない。
  */
-function listSearchResultUrls(content: MessageResponse["content"]): string[] {
+function listSearchResultUrls(
+  content: AnthropicMessageResponse["content"],
+): string[] {
   const urls: string[] = [];
 
   for (const block of content) {
@@ -307,7 +309,7 @@ export class AnthropicProvider extends AiProvider {
       );
     }
 
-    const data: MessageResponse = await res.json();
+    const data: AnthropicMessageResponse = await res.json();
 
     // 応答を送り返して続きを出させる経路を持たないので、途中で止まった応答は失敗として扱う。
     if (data.stop_reason === "pause_turn") {
