@@ -29,6 +29,7 @@ DISTRIBUTED_FILES=(
   rules/languages/prisma.md
   rules/languages/python.md
   skills/coding-standards/SKILL.md
+  skills/review-checklist/SKILL.md
 )
 
 status=0

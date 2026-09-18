@@ -108,6 +108,9 @@ const DEFAULT_TARGETS = ["src", "scripts", "tests", "e2e"];
 /**
  * 関数の JSDoc で、空行の下に置く理由の文の上限。
  * 3 文目は ADR へ移し、コメントにはリンク一行を残す。
+ *
+ * 「コメントは why 専用」「関数には例外なく JSDoc」「理由は結論の前」を同時に守ると、全関数に理由の段落が付く。
+ * 書き手はどの行にも「知らないと間違える」理由を一つ作れるので、行ごとに要るかを問うだけでは止まらず、数で止める。
  */
 const MAX_REASON_SENTENCES = 2;
 
@@ -323,7 +326,9 @@ export function collectKnownNames(sources: readonly SourceText[]): KnownNames {
 }
 
 /**
- * 冒頭コメントを、飾っている本体の直前まで遡って探す。
+ * モジュールの冒頭コメントが有るか、`/**` で始まるか、直後に空行があるかを見る。
+ * 冒頭コメントは、飾っている本体の直前まで遡って探す。
+ * 中身（何に責任を持ち、何に持たないか）は `coding.md`「コメント」節が持ち、この検査は形だけを見る。
  *
  * "use server" のようなディレクティブは本体に数えない。
  * ディレクティブの前後どちらに冒頭コメントを置いても構文上は正しく、位置まで縛る理由が無い。
@@ -655,8 +660,9 @@ function jsDocOf(text: string, node: ts.Node): ts.CommentRange | undefined {
 
 /**
  * 関数に JSDoc が付いているかを見る。
- *
  * `//` で書いた説明は `noLineCommentBeforeDeclaration` が別に報告する。
+ *
+ * 自明に見える関数ほど、書こうとして初めて「何を保証するか」が言えないことに気付くので、export の有無と行数を問わない。
  */
 function checkJsDocOnFunctions(
   source: ts.SourceFile,
@@ -683,8 +689,9 @@ function checkJsDocOnFunctions(
 
 /**
  * 宣言の直前に `//` の説明を置いていないかを見る。
- *
  * 対象はトップレベルの関数・変数・クラス・型・enum の宣言と、クラスのメンバである。
+ *
+ * 関数・クラス・型・定数の直上の `//` はエディタのホバーにも型定義の参照にも出ないので、書いた説明が呼び出し側へ届かなくなる。
  * 空行を挟んだ `//` は宣言に付いた説明ではなく、ファイルの最初のコメントは `useJsDocModuleHeader` が見る冒頭コメントの候補なので、どちらも見ない。
  */
 function checkLineCommentBeforeDeclaration(

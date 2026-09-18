@@ -94,7 +94,7 @@ jobs:
           retention-days: 2
 
   # 上の job（/code-review）は正しさを見るだけで、人間のレビューが繰り返し拾ってきた命名・コメント・構造の型を見ない。
-  # この job はリポジトリの規約（.claude/rules/ と skill coding-standards の「レビューで繰り返し指摘される型」の表）を差分へ当て、当たった行にだけインラインコメントを付ける。
+  # この job はリポジトリの規約（.claude/rules/ と skill review-checklist の表）を差分へ当て、当たった行にだけインラインコメントを付ける。
   # プラグインのコマンドは手順が固定で、system prompt の追記が規約の側まで届く保証が無いので、job を分ける。
   claude-style-review:
     # 絞りは上の job と同じ（同一リポジトリ由来の PR に限る。理由は上の job のコメント）。
@@ -129,7 +129,7 @@ jobs:
           track_progress: true
           prompt: |
             PR #${{ github.event.pull_request.number }} の差分を、このリポジトリの命名・コメント・構造の規約に照らしてレビューする。
-            1. `.claude/rules/writing.md`「語彙と読み手」、`.claude/rules/coding.md`「命名」「コメント」、`.claude/skills/coding-standards/SKILL.md`「レビューで繰り返し指摘される型」を Read する。
+            1. `.claude/rules/writing.md`「語彙と読み手」、`.claude/rules/coding.md`「命名」「コメント」、`.claude/skills/review-checklist/SKILL.md` を Read する。
             2. `gh pr diff ${{ github.event.pull_request.number }}` で差分を取り、追加・変更した各コメント・名前（表・列・enum・型・関数・ファイル）・ファイルの分割に、表の「判定」を一行ずつ当てる。
             3. 当たった行にだけ mcp__github_inline_comment__create_inline_comment でインラインコメントを付ける。本文は、型の名前・判定に当たった理由・直し方の三文にし、直し方は表の語で書く。
             4. 正しさ（バグ・境界・性能）は見ない。別の job が見る。
