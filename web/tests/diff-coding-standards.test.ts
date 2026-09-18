@@ -5,7 +5,13 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -20,14 +26,30 @@ const diffCodingStandards = path.join(
   "scripts/diff-coding-standards.sh",
 );
 
-/** スクリプトが比べる、テンプレートの中の相対パス。 */
-const DISTRIBUTED_FILES = [
-  "rules/writing.md",
-  "rules/coding.md",
-  "rules/languages/typescript.md",
-  "rules/languages/prisma.md",
-  "skills/coding-standards/SKILL.md",
-];
+/**
+ * スクリプトが比べる相対パスを、スクリプトの `DISTRIBUTED_FILES` から読む。
+ *
+ * 一覧をテストにも書くと、スクリプトから消えたファイルをテストだけが作り続け、比べていないことに気付けない。
+ * 見つからなければ throw する。
+ */
+function readDistributedFiles(): string[] {
+  const script = readFileSync(diffCodingStandards, "utf8");
+  const declaration = /DISTRIBUTED_FILES=\(([^)]*)\)/.exec(script);
+
+  if (declaration === null) {
+    throw new Error(
+      `DISTRIBUTED_FILES の宣言が見つからない: ${diffCodingStandards}`,
+    );
+  }
+
+  return declaration[1].split("\n").flatMap((line) => {
+    const entry = line.trim();
+
+    return entry === "" || entry.startsWith("#") ? [] : [entry];
+  });
+}
+
+const DISTRIBUTED_FILES = readDistributedFiles();
 
 let workingDirectory: string;
 let workingRepository: string;
@@ -108,20 +130,21 @@ describe("テンプレートの渡し方", () => {
 
 describe("配布物の差", () => {
   it("配布物がテンプレートと違えば、終了コード 1 で unified diff を標準出力へ出す", () => {
+    const [distributed] = DISTRIBUTED_FILES;
     writeFile(
-      path.join(workingRepository, ".claude/rules/coding.md"),
+      path.join(workingRepository, ".claude", distributed),
       "書き換えた行\n",
     );
 
     const result = runDiffCodingStandards([template]);
 
     expect(result.status).toBe(1);
-    expect(result.stdout).toContain("-rules/coding.md");
+    expect(result.stdout).toContain(`-${distributed}`);
     expect(result.stdout).toContain("+書き換えた行");
   });
 
   it("配布物がリポジトリに無ければ、終了コード 1 を返す", () => {
-    rmSync(path.join(workingRepository, ".claude/rules/languages/prisma.md"));
+    rmSync(path.join(workingRepository, ".claude", DISTRIBUTED_FILES[0]));
 
     const result = runDiffCodingStandards([template]);
 
