@@ -39,8 +39,6 @@ function sectionOf(markdown: string, heading: string): string {
 
 /**
  * `markdown` の置き場の節の表の行から、バッククォートで囲んだ語を `web/src` からの相対の glob として返す。
- *
- * 識別子や env の名前も語として返るが、ファイルのパスには当たらないので判定を変えない。
  */
 function listPlacementGlobs(markdown: string): string[] {
   const tableRows = PLACEMENT_SECTIONS.flatMap((heading) =>
