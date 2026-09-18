@@ -18,7 +18,12 @@ export type MaterialCall = {
   readonly prompt: string;
   readonly provider: AiProvider;
 
-  /** 一回の呼び出しで許す web 検索の回数の上限。 */
+  /**
+   * 一回の呼び出しで許す web 検索の回数の上限。
+   *
+   * 材料の呼び出しの費用は、トークン単価よりこの値で大きく変わる。
+   * 検索一回ごとに料金がかかるうえ、検索の結果がすべて入力トークンとして数えられる。
+   */
   readonly maxSearches: number;
 
   readonly fakeResponse: () => FakeMaterialResponse;
