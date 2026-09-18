@@ -57,6 +57,10 @@
                   "@/lib/auth/index.*"
                 ],
                 "message": "セッションを読む経路は src/lib/auth/current-user.ts の一本に絞る"
+              },
+              {
+                "group": ["@/generated/**"],
+                "message": "Prisma のクライアントと生成型を import してよいのは src/lib/db.ts だけ"
               }
             ]
           }
@@ -65,11 +69,15 @@
       "complexity": {
         "noExcessiveCognitiveComplexity": {
           "level": "error",
-          "options": { "maxAllowedComplexity": 15 }
+          "options": {
+            "maxAllowedComplexity": 15
+          }
         },
         "useMaxParams": {
           "level": "error",
-          "options": { "max": 3 }
+          "options": {
+            "max": 3
+          }
         }
       },
       "suspicious": {
@@ -112,12 +120,124 @@
       }
     },
     {
+      "includes": ["src/components/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "better-auth": "Better Auth を組み立ててよいのは src/lib/auth/index.ts だけ"
+                },
+                "patterns": [
+                  {
+                    "group": ["./**", "../**", "!./**/*.css", "!../**/*.css"],
+                    "message": "import は @ 起点の絶対パスで書く"
+                  },
+                  {
+                    "group": [
+                      "@/lib/auth",
+                      "@/lib/auth/index",
+                      "@/lib/auth/index.*"
+                    ],
+                    "message": "セッションを読む経路は src/lib/auth/current-user.ts の一本に絞る"
+                  },
+                  {
+                    "group": ["@/generated/**"],
+                    "message": "Prisma のクライアントと生成型を import してよいのは src/lib/db.ts だけ"
+                  },
+                  {
+                    "group": ["node:*"],
+                    "message": "src/components の部品はクライアントのバンドルに入りうるので、node:* を import しない"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/lib/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "better-auth": "Better Auth を組み立ててよいのは src/lib/auth/index.ts だけ"
+                },
+                "patterns": [
+                  {
+                    "group": ["./**", "../**", "!./**/*.css", "!../**/*.css"],
+                    "message": "import は @ 起点の絶対パスで書く"
+                  },
+                  {
+                    "group": [
+                      "@/lib/auth",
+                      "@/lib/auth/index",
+                      "@/lib/auth/index.*"
+                    ],
+                    "message": "セッションを読む経路は src/lib/auth/current-user.ts の一本に絞る"
+                  },
+                  {
+                    "group": ["@/generated/**"],
+                    "message": "Prisma のクライアントと生成型を import してよいのは src/lib/db.ts だけ"
+                  },
+                  {
+                    "group": ["@/app", "@/app/**"],
+                    "message": "依存は src/app から src/lib への一方向なので、src/lib から src/app を import しない"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/lib/db.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "better-auth": "Better Auth を組み立ててよいのは src/lib/auth/index.ts だけ"
+                },
+                "patterns": [
+                  {
+                    "group": ["./**", "../**", "!./**/*.css", "!../**/*.css"],
+                    "message": "import は @ 起点の絶対パスで書く"
+                  },
+                  {
+                    "group": [
+                      "@/lib/auth",
+                      "@/lib/auth/index",
+                      "@/lib/auth/index.*"
+                    ],
+                    "message": "セッションを読む経路は src/lib/auth/current-user.ts の一本に絞る"
+                  },
+                  {
+                    "group": ["@/app", "@/app/**"],
+                    "message": "依存は src/app から src/lib への一方向なので、src/lib から src/app を import しない"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": [
         "src/lib/auth/index.ts",
         "src/lib/auth/fake-login.ts",
         "src/lib/auth/current-user.ts",
-        "src/lib/auth/sign-in.ts",
-        "src/app/api/auth/\\[...all\\]/route.ts"
+        "src/lib/auth/sign-in.ts"
       ],
       "linter": {
         "rules": {
@@ -129,6 +249,38 @@
                   {
                     "group": ["./**", "../**", "!./**/*.css", "!../**/*.css"],
                     "message": "import は @ 起点の絶対パスで書く"
+                  },
+                  {
+                    "group": ["@/generated/**"],
+                    "message": "Prisma のクライアントと生成型を import してよいのは src/lib/db.ts だけ"
+                  },
+                  {
+                    "group": ["@/app", "@/app/**"],
+                    "message": "依存は src/app から src/lib への一方向なので、src/lib から src/app を import しない"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/app/api/auth/\\[...all\\]/route.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["./**", "../**", "!./**/*.css", "!../**/*.css"],
+                    "message": "import は @ 起点の絶対パスで書く"
+                  },
+                  {
+                    "group": ["@/generated/**"],
+                    "message": "Prisma のクライアントと生成型を import してよいのは src/lib/db.ts だけ"
                   }
                 ]
               }
