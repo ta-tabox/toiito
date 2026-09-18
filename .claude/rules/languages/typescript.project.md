@@ -27,6 +27,9 @@ error は赤にし、warn は報告だけにする。
 | 関数の JSDoc の理由が 2 文以内か（雛形は warn） | 同上 | error |
 | バッククォートで名指した識別子・ファイルの実在 | 同上 | warn |
 | import は `@` 起点（`.css` と、下の例外は除外） | biome `style/noRestrictedImports` | error |
+| Prisma の生成物（`@/generated/**`）を import するのは `src/lib/db.ts` だけ（上の例外は除外） | 同上 | error |
+| `src/components/**` から `node:*` を import しない | 同上 | error |
+| `src/lib/**` から `src/app/**` を import しない | 同上 | error |
 | 1 行 if を分ける | biome `style/useBlockStatements` | error |
 | 三項の多重ネスト・複数代入・多重宣言 | biome `noNestedTernary` / `noMultiAssign` / `useSingleVarDeclarator` | error |
 | floating promise | biome `nursery/noFloatingPromises` | error |
@@ -54,5 +57,6 @@ DB 由来の列名が snake_case のまま型と往復するため、誤検出�
 - **異常は例外で表す**（雛形の既定どおり。Result 型は使わない）
 - **import の `@` の例外は `biome.json` の `overrides` が持つ**
   設定ファイル（`vitest.config.ts`・`next.config.ts`・`prisma.config.ts`。`@` が解決される前に道具が読む）・`tests/setup/**`（`vitest.config.ts` が読む）・`scripts/**`（素の node が読み、tsconfig の `paths` を見ない）
+  Biome の `overrides` は `noRestrictedImports` の options を合成せず丸ごと置き換え、一つのファイルに複数当たると後ろのものだけが効くので、各 `overrides` は制限の全体を持ち、広い `includes` を前に置く
 - **文字境界の丸めは書記素クラスタで**（`Intl.Segmenter`）
   サロゲートペア判定では、異体字セレクタ（`神︀` = U+795E + U+FE00）・ZWJ 連結・肌色修飾が漏れて字が割れる
