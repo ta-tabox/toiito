@@ -82,7 +82,7 @@
 - **いまの状態を持つ文書とソースコードは、値・一覧・判定の表を自分の側に持ち、ADR へは理由と経緯の参照だけを書く**
   対象は、作業のたびに読まれていまの状態を持つもの（ソースコードとそのコメント、`CLAUDE.md`、`.claude/` の rules と skill、`.github/` のワークフローとテンプレ、上の項が言う現況の文書）である
   ADR は決定の理由と経緯を持つ記録で、supersede されても本文が残るので、値の置き場として指すと、読み手が古い版を基準にするか、作業のたびに長い経緯を読むことになる
-  悪例は「`status` の取りうる値と各値の意味は `docs/adr/0017-status-value-set.md` が持つ」、良例は「値を一般語で持つ理由は `docs/adr/0017-status-value-set.md` が持つ」
+  悪例は「`status` の取りうる値と各値の意味は `docs/adr/20260830-status-value-set.md` が持つ」、良例は「値を一般語で持つ理由は `docs/adr/20260830-status-value-set.md` が持つ」
   現況を述べる文の末尾へ ADR 番号を出典として添える形（「本番は Vercel に立っている（ADR-0002）」）も、読み手を ADR へ送るだけで理由を持たないので同じ扱いにする
 
 ## 語彙と読み手
@@ -133,9 +133,26 @@
 | 領分・綴り・「〜の側」 | 担当・名前・主体の名 | 主体が無い。「クライアント側」のような位置の用法は可 |
 | 器 | リポジトリ・アプリ | vessel / container / repository |
 
-この表が禁止語の正で、`web/scripts/lint-comments.ts` と `scripts/lint-vocabulary.sh` の `BANNED_WORDS` はどちらもここを機械が読める形へ写したもの（表を直したら2本とも直す）。
-前者は TypeScript のコメントを見て、後者は git の追加行とコミット本文と PR 本文を見る（追加行は `.githooks/pre-commit` が、コミット本文は `.githooks/commit-msg` が、PR 本文は `.github/workflows/lint-pr-body.yml` が渡す）。
-このリポジトリだけの禁止語は直下の `.coding-standards-vocab-deny` へ、この領域で比喩でない語は `.coding-standards-vocab-allow` へ、どちらも1行1語で足す（表と機械の2本は変えない）。
+この表が禁止語の正で、機械が読む語は `.vocabulary/` の4ファイルが持つ。
+
+| ファイル | 持つもの | 書式 |
+|---|---|---|
+| `.vocabulary/banned.tsv` | 上の表の写し | 語・言い換え先・除外する複合語の3列（タブ区切り） |
+| `.vocabulary/deny` | このリポジトリだけの禁止語 | 1行1語 |
+| `.vocabulary/allow` | この領域で比喩でない語（判定から外れる） | 1行1語 |
+| `.vocabulary/ignore` | 走査しないパス | 1行1つの pathspec |
+
+`banned.tsv` は表の写しなので表を直したコミットで一緒に直し、一致はテストが見る。
+残る3ファイルはこのリポジトリが足す側で、足すときに表と `banned.tsv` は変えない。
+
+2本の検査が4ファイルの語で判定し、見る面だけが違う。
+
+| 検査 | 見る面 | 呼ぶ側 |
+|---|---|---|
+| `lint-comments.ts` | TypeScript のコメント | `pnpm lint` |
+| `lint-vocabulary.sh` | git の追加行 | `.githooks/pre-commit` |
+| `lint-vocabulary.sh` | コミット本文 | `.githooks/commit-msg` |
+| `lint-vocabulary.sh` | PR 本文 | `.github/workflows/lint-pr-body.yml` |
 
 | 悪例 | 良例 |
 |---|---|
@@ -147,6 +164,3 @@
 | 書き込みの前に呼ぶ | 記事を更新・削除する repo 関数が、最初に呼ぶ |
 | 所有者の記事を一件返す | `id` で記事を 1 件取得する。所有者が `owner` でなければ undefined |
 | ここに値を足したら向こうにも足す | この enum に値を足したら `STATUSES` にも足す |
-
-## プロジェクト固有（育てる欄）
-- （このプロジェクトで決めた逸脱・追加をここに追記する。理由を一行添える）

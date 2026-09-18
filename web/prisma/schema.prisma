@@ -104,13 +104,13 @@ enum AiCallKind {
 
 /// AI の呼び出しに使った API キーの出所。
 ///
-/// - `operator`: 運営が持つキー
+/// - `system`: アプリが持つ運営のキー
 /// - `user`: 利用者が登録したキー
 ///
 /// TS 側の対応は `src/lib/usage.ts` の `API_KEY_SOURCES`。
 /// この enum に値を足したら `API_KEY_SOURCES` にも足す。
 enum ApiKeySource {
-  operator
+  system
   user
 
   @@map("api_key_source")
@@ -294,7 +294,7 @@ model UsageLog {
   output_tokens    Int?
   /// 呼び出しの中で AI が行った web 検索の回数。検索を要求しない呼び出しは 0。
   web_search_count Int          @default(0)
-  key_source       ApiKeySource @default(operator)
+  key_source       ApiKeySource @default(system)
   created_at       DateTime     @default(now()) @db.Timestamptz(6)
 
   user User @relation(fields: [user_id], references: [id])

@@ -623,7 +623,7 @@ describe("usage_logs", () => {
     output_tokens: 340,
   } as const;
 
-  it("recordUsage が書いた行は、web 検索の回数が 0、キーの出所が operator になる", async () => {
+  it("recordUsage が書いた行は、web 検索の回数が 0、キーの出所が system になる", async () => {
     await db.recordUsage(owner, PERSONA_USAGE);
 
     const logs = await db.listUsageLogs(owner);
@@ -633,7 +633,7 @@ describe("usage_logs", () => {
       ...PERSONA_USAGE,
       user_id: owner,
       web_search_count: 0,
-      key_source: "operator",
+      key_source: "system",
     });
   });
 

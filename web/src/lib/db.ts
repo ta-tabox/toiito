@@ -869,7 +869,7 @@ export async function createQuestionWithTranscript(
 
 /**
  * AI の呼び出し一回分の利用量を 1 行書く。
- * `web_search_count` と `key_source` を省いた `usage` は、列の既定値（0 と `operator`）で入る。
+ * `web_search_count` と `key_source` を省いた `usage` は、列の既定値（0 と `system`）で入る。
  *
  * `owner` は絞り込みの条件ではなく、その呼び出しの費用が乗る利用者を指す（`usage_logs` は所有のルートでない）。
  */

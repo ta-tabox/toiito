@@ -164,7 +164,7 @@ export type UsageLog = {
 
 /**
  * `recordUsage` へ渡す、まだ保存していない利用量の一件。
- * `web_search_count` を省くと 0 に、`key_source` を省くと `operator` になる。
+ * `web_search_count` を省くと 0 に、`key_source` を省くと `system` になる。
  */
 export type UsageInput = {
   provider: string;

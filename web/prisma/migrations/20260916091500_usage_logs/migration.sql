@@ -2,7 +2,7 @@
 CREATE TYPE "ai_call_kind" AS ENUM ('persona', 'material');
 
 -- CreateEnum
-CREATE TYPE "api_key_source" AS ENUM ('operator', 'user');
+CREATE TYPE "api_key_source" AS ENUM ('system', 'user');
 
 -- CreateTable
 CREATE TABLE "usage_logs" (
@@ -14,7 +14,7 @@ CREATE TABLE "usage_logs" (
     "input_tokens" INTEGER,
     "output_tokens" INTEGER,
     "web_search_count" INTEGER NOT NULL DEFAULT 0,
-    "key_source" "api_key_source" NOT NULL DEFAULT 'operator',
+    "key_source" "api_key_source" NOT NULL DEFAULT 'system',
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "usage_logs_pkey" PRIMARY KEY ("id")
