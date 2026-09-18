@@ -1,40 +1,36 @@
 /**
- * AI 呼び出しの規約と、一回の呼び出しの手順（サーバー側のみ）。
+ * AI の呼び出し一回の手順を置く（サーバー側のみ）。
+ * 呼び出しの種別ごとの本文・フェイクモードの応答・戻り値の形は持たず、`persona-call.ts` と `material-call.ts` が持つ。
  *
- * プロバイダに依らない決め事——フェイクモード・呼び出しの記録・待つ上限・欠けた本文を返さないこと——を `callPersona` が持つ。
- * どのプロバイダを叩くかは呼び出し側が解決済みの実装（`AiProvider`）で渡すので、`callPersona` に分岐は無い。
- *
- * env を読まない。
- * プロバイダは providers.ts が env から作る。
+ * 待つ上限・呼び出しの記録・利用量の記録・欠けた本文を返さないことは、どの種別の呼び出しでも同じなので `sendRecorded` 一か所に置く。
+ * どのプロバイダを叩くかは呼び出し側が解決済みの実装（`AiProvider`）で渡すので、分岐は無い。
+ * env を読まず、プロバイダは providers.ts が env から作る。
  */
 
-import { fakeResponse } from "@/lib/ai/fake";
-import {
-  buildUserContent,
-  type QuestionRef,
-  type Transcript,
-} from "@/lib/ai/prompt";
-import type { AiProvider, ProviderResponse } from "@/lib/ai/provider";
+import type {
+  AiProvider,
+  ProviderRequest,
+  ProviderResponse,
+} from "@/lib/ai/provider";
 import type { PersonaId } from "@/lib/personas";
 import type { UsageInput } from "@/lib/types";
+import type { AiCallKind } from "@/lib/usage";
 
 /**
- * ペルソナ一体を呼ぶときの指定。
- *
- * どの体か（id）・何を渡すか（prompt）と、どこへ送るか（provider）と、利用量をどう残すか（recordUsage）を一つの値にまとめる。
- * 識別子を prompt から復元しない。
- * ペルソナ定義の見出しに依存すると、見出しを変えた回に黙って壊れる。
+ * 一回分の利用量を書く関数。
+ * `sendRecorded` は、書き込みに失敗した例外を捕まえずに呼び出し元へ伝える。
  */
-export type PersonaCall = {
-  readonly id: PersonaId;
-  readonly prompt: string;
-  readonly provider: AiProvider;
+export type RecordUsage = (usage: UsageInput) => Promise<void>;
 
-  /**
-   * 一回分の利用量を書く関数。
-   * `callPersona` は書き込みに失敗した例外を捕まえずに呼び出し元へ伝える。
-   */
-  readonly recordUsage: (usage: UsageInput) => Promise<void>;
+/**
+ * `sendRecorded` へ渡す、プロバイダと記録に要る値。
+ * どの種別の呼び出しか（kind）と、ペルソナの呼び出しならどの体か（persona）を持つ。
+ */
+type CallContext = {
+  readonly provider: AiProvider;
+  readonly kind: AiCallKind;
+  readonly persona?: PersonaId;
+  readonly recordUsage: RecordUsage;
 };
 
 /**
@@ -47,10 +43,12 @@ export type PersonaCall = {
 function logCall(fields: {
   provider: string;
   model: string;
-  persona: PersonaId;
+  kind: AiCallKind;
+  persona?: PersonaId;
   stop_reason: string | null;
   input_tokens: number | null;
   output_tokens: number | null;
+  web_search_requests: number;
   duration_ms: number;
   body_length: number;
 }): void {
@@ -58,21 +56,20 @@ function logCall(fields: {
 }
 
 /**
- * `timeoutMs` を上限に設定して一回送る。
+ * `timeoutMs` を上限に設定して `request` を一回送る。
  *
  * 待ち続けた末に実行環境が関数を強制終了すると、打ち切りとも空本文とも付かない不透明な失敗になるので、その手前で `sendWithTimeout` が打ち切る。
  * 上限で切れたのかどうかは、投げられた値の名前に依らせず signal で見分ける。
  */
 async function sendWithTimeout(
   provider: AiProvider,
-  system: string,
-  userContent: string,
+  request: ProviderRequest,
 ): Promise<ProviderResponse> {
   const { timeoutMs } = provider.settings;
   const timeout = AbortSignal.timeout(timeoutMs);
 
   try {
-    return await provider.send(system, userContent, timeout);
+    return await provider.send(request, timeout);
   } catch (cause) {
     if (timeout.aborted) {
       throw new Error(
@@ -86,51 +83,44 @@ async function sendWithTimeout(
 }
 
 /**
- * ペルソナ一体を呼んで発話本文を返す。
- * プロバイダの設定で fake が立っているときはネットワークに出ない。
- * transcript はここまでの全発話で、呼ぶ側が順序を保証する。
+ * `request` を上限つきで一回送り、記録を残した応答を返す。
  * 応答が打ち切られたときと本文が空のときは例外を投げる（欠けた本文を返さない）。
  * 設定の上限を超えて返らないときも同じく例外を投げる。
+ * フェイクモードの分岐は持たないので、呼び出し側が呼ぶ前に済ませる。
  *
- * 応答を受け取った呼び出しは、この後で例外を投げるものも含めて `recordUsage` で記録する。
- * フェイクモードの呼び出しと、応答を受け取れなかった呼び出しは記録しない。
+ * 記録は打ち切りと空本文の検査より前に行う。
+ * 応答が返った時点でトークンは消費されているので、呼び出し側が失敗として扱う応答も利用量に数える。
  */
-export async function callPersona(
-  call: PersonaCall,
-  question: QuestionRef,
-  transcript: Transcript,
-): Promise<string> {
-  const { provider } = call;
+export async function sendRecorded(
+  context: CallContext,
+  request: ProviderRequest,
+): Promise<ProviderResponse> {
+  const { provider } = context;
   const { settings } = provider;
 
-  if (settings.fake) {
-    return fakeResponse(call.id, transcript);
-  }
-
   const startedAt = Date.now();
-  const response = await sendWithTimeout(
-    provider,
-    call.prompt,
-    buildUserContent(question, transcript, call.id),
-  );
+  const response = await sendWithTimeout(provider, request);
 
   logCall({
     provider: provider.name,
     model: settings.model,
-    persona: call.id,
+    kind: context.kind,
+    ...(context.persona ? { persona: context.persona } : {}),
     stop_reason: response.stopReason,
     input_tokens: response.inputTokens,
     output_tokens: response.outputTokens,
+    web_search_requests: response.webSearchCount,
     duration_ms: Date.now() - startedAt,
     body_length: response.body.length,
   });
 
-  await call.recordUsage({
+  await context.recordUsage({
     provider: provider.name,
     model: settings.model,
-    kind: "persona",
+    kind: context.kind,
     input_tokens: response.inputTokens,
     output_tokens: response.outputTokens,
+    web_search_count: response.webSearchCount,
   });
 
   // 切れた本文を messages へ入れると、immutable なので後から直せない。
@@ -145,5 +135,5 @@ export async function callPersona(
     throw new Error(`${provider.name} の応答に本文が無い`);
   }
 
-  return response.body;
+  return response;
 }

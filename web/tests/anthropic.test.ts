@@ -79,6 +79,7 @@ function sentBody(fetchMock: ReturnType<typeof stubApiResponse>) {
     model: string;
     max_tokens: number;
     output_config?: { effort: string };
+    tools?: { type: string; name: string; max_uses?: number }[];
     system: string;
   };
 }
@@ -88,11 +89,27 @@ function sentHeaders(fetchMock: ReturnType<typeof stubApiResponse>) {
   return fetchMock.mock.calls[0][1].headers as Record<string, string>;
 }
 
+/** 検索を要求しない要求の中身。 */
+const REQUEST = {
+  system: "# 抽象派",
+  userContent: "組み立て済みの本文",
+};
+
+/** 検索を 4 回まで許す要求の中身。 */
+const SEARCHING_REQUEST = { ...REQUEST, webSearch: { maxSearches: 4 } };
+
+/** 検索を要求して一回叩く。 */
+function sendSearching(settings: AnthropicSettings = SETTINGS) {
+  return new AnthropicProvider(settings).send(
+    SEARCHING_REQUEST,
+    AbortSignal.timeout(settings.timeoutMs),
+  );
+}
+
 /** 組み立て済みの本文を渡して一回叩く。 */
 function send(settings: AnthropicSettings = SETTINGS) {
   return new AnthropicProvider(settings).send(
-    "# 抽象派",
-    "組み立て済みの本文",
+    REQUEST,
     AbortSignal.timeout(settings.timeoutMs),
   );
 }
@@ -234,11 +251,7 @@ describe("readAnthropicProvider", () => {
     };
     const provider = readAnthropicProvider(env, false, CREDENTIALS);
 
-    await provider.send(
-      "# 抽象派",
-      "組み立て済みの本文",
-      AbortSignal.timeout(SETTINGS.timeoutMs),
-    );
+    await provider.send(REQUEST, AbortSignal.timeout(SETTINGS.timeoutMs));
 
     expect(sentHeaders(fetchMock)["x-api-key"]).toBe(CREDENTIALS.apiKey);
     expect(sentBody(fetchMock).model).toBe(CREDENTIALS.model);
@@ -260,11 +273,7 @@ describe("readAnthropicProvider", () => {
       model: ANTHROPIC_MODELS.haiku45,
     });
 
-    await provider.send(
-      "# 抽象派",
-      "組み立て済みの本文",
-      AbortSignal.timeout(SETTINGS.timeoutMs),
-    );
+    await provider.send(REQUEST, AbortSignal.timeout(SETTINGS.timeoutMs));
 
     expect(sentBody(fetchMock).output_config).toBeUndefined();
   });
@@ -322,7 +331,7 @@ describe("リクエストの組み立て", () => {
     const fetchMock = stubOkResponse();
     const signal = AbortSignal.timeout(SETTINGS.timeoutMs);
 
-    await new AnthropicProvider(SETTINGS).send("# 抽象派", "本文", signal);
+    await new AnthropicProvider(SETTINGS).send(REQUEST, signal);
 
     expect(fetchMock.mock.calls[0][1].signal).toBe(signal);
   });
@@ -333,6 +342,109 @@ describe("リクエストの組み立て", () => {
     await send();
 
     expect(sentBody(fetchMock).system).toBe("# 抽象派");
+  });
+
+  it("検索の指定があると、web 検索のツールと指定の回数の上限を送る", async () => {
+    const fetchMock = stubOkResponse();
+
+    await sendSearching();
+
+    expect(sentBody(fetchMock).tools).toEqual([
+      { type: "web_search_20250305", name: "web_search", max_uses: 4 },
+    ]);
+  });
+
+  it("検索の指定が無いと tools を送らない", async () => {
+    const fetchMock = stubOkResponse();
+
+    await send();
+
+    expect(sentBody(fetchMock).tools).toBeUndefined();
+  });
+});
+
+describe("web 検索の応答の読み取り", () => {
+  /** 検索結果を二件返す応答を一件返す fetch に差し替える。 */
+  function stubSearchedResponse(webSearchRequests: number) {
+    return stubApiResponse({
+      content: [
+        { type: "server_tool_use", name: "web_search" },
+        {
+          type: "web_search_tool_result",
+          content: [
+            {
+              type: "web_search_result",
+              url: "https://example.com/for",
+              title: "支持する立場",
+            },
+            {
+              type: "web_search_result",
+              url: "https://example.com/against",
+              title: "反対する立場",
+            },
+          ],
+        },
+        { type: "text", text: "材料の JSON" },
+      ],
+      stop_reason: "end_turn",
+      usage: {
+        input_tokens: 6039,
+        output_tokens: 931,
+        server_tool_use: { web_search_requests: webSearchRequests },
+      },
+    });
+  }
+
+  it("検索結果の URL と検索の回数を戻り値に入れる", async () => {
+    stubSearchedResponse(2);
+
+    await expect(sendSearching()).resolves.toMatchObject({
+      body: "材料の JSON",
+      searchResultUrls: [
+        "https://example.com/for",
+        "https://example.com/against",
+      ],
+      webSearchCount: 2,
+    });
+  });
+
+  it("検索を要求しない応答は、URL の一覧が空で検索の回数が 0", async () => {
+    stubApiResponse({
+      content: [{ type: "text", text: "応答" }],
+      stop_reason: "end_turn",
+      usage: { input_tokens: 1200, output_tokens: 340 },
+    });
+
+    await expect(send()).resolves.toMatchObject({
+      searchResultUrls: [],
+      webSearchCount: 0,
+    });
+  });
+
+  it("検索が失敗したブロックがあれば、error_code を添えて throw する", async () => {
+    stubApiResponse({
+      content: [
+        {
+          type: "web_search_tool_result",
+          content: {
+            type: "web_search_tool_result_error",
+            error_code: "max_uses_exceeded",
+          },
+        },
+      ],
+      stop_reason: "end_turn",
+    });
+
+    await expect(sendSearching()).rejects.toThrow(/max_uses_exceeded/);
+  });
+
+  it("pause_turn で中断した応答は、続きを送らずに throw する", async () => {
+    stubApiResponse({
+      content: [{ type: "text", text: "途中まで" }],
+      stop_reason: "pause_turn",
+    });
+
+    await expect(sendSearching()).rejects.toThrow(/pause_turn/);
   });
 });
 

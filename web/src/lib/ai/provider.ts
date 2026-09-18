@@ -53,6 +53,26 @@ export type CommonSettings = {
 };
 
 /**
+ * プロバイダのサーバー側で行う web 検索の指定。
+ * `maxSearches` は、一回の呼び出しで許す検索の回数の上限である。
+ */
+export type WebSearchRequest = {
+  readonly maxSearches: number;
+};
+
+/**
+ * プロバイダへ送る一回分の要求。
+ *
+ * `webSearch` を省いた要求は、サーバー側のツールを一つも要求しない。
+ * 検索の結果から材料を作る呼び出しだけが `webSearch` を持つ。
+ */
+export type ProviderRequest = {
+  readonly system: string;
+  readonly userContent: string;
+  readonly webSearch?: WebSearchRequest;
+};
+
+/**
  * プロバイダが返す一回分の応答。
  *
  * 打ち切りの表し方はプロバイダごとに違うので、判定を済ませた `truncated` で受け取る。
@@ -64,6 +84,18 @@ export type ProviderResponse = {
   readonly inputTokens: number | null;
   readonly outputTokens: number | null;
   readonly truncated: boolean;
+
+  /**
+   * 呼び出しの中で行われた web 検索が返した URL。
+   * 検索を要求しない呼び出しでは空配列になる。
+   */
+  readonly searchResultUrls: readonly string[];
+
+  /**
+   * 呼び出しの中で行った web 検索の回数。
+   * 検索を要求しない呼び出しでは 0 になる。
+   */
+  readonly webSearchCount: number;
 };
 
 /**
@@ -78,14 +110,13 @@ export abstract class AiProvider {
   abstract readonly settings: CommonSettings;
 
   /**
-   * 組み立て済みの本文を送る。
+   * 組み立て済みの本文と、`request.webSearch` があればサーバー側の web 検索の要求を送る。
    *
    * 叩けないと分かっている状態（キーの欠落など）は、送る前に throw する。
    * 上限を決めるのは `lib/ai/index.ts` なので、`signal` は作らずに受け取り、待ちに入る操作へそのまま渡す。
    */
   abstract send(
-    system: string,
-    userContent: string,
+    request: ProviderRequest,
     signal: AbortSignal,
   ): Promise<ProviderResponse>;
 }

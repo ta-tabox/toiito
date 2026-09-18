@@ -76,3 +76,20 @@ export function buildUserContent(
     `${SPEAKER_NAME[nextSpeaker]}として、役割定義に従い、次の一手を発話せよ。発話本文のみを出力すること。`,
   ].join("\n\n");
 }
+
+/**
+ * 材料を寄せる呼び出しのユーザーメッセージを、`question` から組み立てる。
+ * 原型と現在の形を両方載せる理由は `QuestionRef` の JSDoc にある。
+ *
+ * 何をどう出力するかの指示は載せず、`MaterialCall` の `prompt` が持つ。
+ */
+export function buildMaterialContent(question: QuestionRef): string {
+  return [
+    `# 材料を集める問い（原型・不変）\n<question>\n${toTagContent(question.body)}\n</question>`,
+    ...(question.current_form
+      ? [
+          `# 現在の形（対話の中で言い直された焦点）\n<current_form>\n${toTagContent(question.current_form)}\n</current_form>`,
+        ]
+      : []),
+  ].join("\n\n");
+}

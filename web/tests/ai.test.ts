@@ -5,12 +5,14 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { callPersona, type PersonaCall } from "@/lib/ai";
 import {
   ANTHROPIC_DEFAULTS,
   AnthropicProvider,
   type AnthropicSettings,
 } from "@/lib/ai/anthropic";
+import { fakeMaterialResponse } from "@/lib/ai/fake";
+import { callMaterial, type MaterialCall } from "@/lib/ai/material-call";
+import { callPersona, type PersonaCall } from "@/lib/ai/persona-call";
 import { readFakeMode } from "@/lib/ai/provider";
 import type { UsageInput } from "@/lib/types";
 
@@ -54,6 +56,21 @@ function personaCall(overrides: Partial<PersonaCall> = {}): PersonaCall {
  */
 function usageRecorder() {
   return vi.fn<(usage: UsageInput) => Promise<void>>(async () => {});
+}
+
+/**
+ * 材料を寄せる呼び出しの指定を組み立てる。
+ * 既定は実モードで、そのケースが見たい一点だけ上書きする。
+ */
+function materialCall(overrides: Partial<MaterialCall> = {}): MaterialCall {
+  return {
+    prompt: "# 材料を寄せる",
+    provider: PROVIDER,
+    maxSearches: 4,
+    fakeResponse: () => fakeMaterialResponse({ body: "フェイクの問い" }),
+    recordUsage: async () => {},
+    ...overrides,
+  };
 }
 
 /** フェイクモードの指定を組み立てる。 */
@@ -207,10 +224,12 @@ describe("呼び出しログ", () => {
       event: "ai_call",
       provider: "anthropic",
       model: ANTHROPIC_DEFAULTS.model,
+      kind: "persona",
       persona: "ai_b",
       stop_reason: "end_turn",
       input_tokens: 1200,
       output_tokens: 340,
+      web_search_requests: 0,
       body_length: 10,
     });
   });
@@ -227,6 +246,25 @@ describe("呼び出しログ", () => {
     expect(String(logged.mock.calls[0][0])).not.toContain(
       "外へ出してはいけない問いの中身",
     );
+  });
+
+  it("材料の呼び出しは、ペルソナの欄を持たず検索の回数を残す", async () => {
+    const logged = captureLog();
+    stubApiResponse({
+      content: [{ type: "text", text: "材料の JSON" }],
+      stop_reason: "end_turn",
+      usage: {
+        input_tokens: 6039,
+        output_tokens: 931,
+        server_tool_use: { web_search_requests: 3 },
+      },
+    });
+
+    await callMaterial(materialCall(), { body: "q" });
+
+    const line = JSON.parse(String(logged.mock.calls[0][0]));
+    expect(line).toMatchObject({ kind: "material", web_search_requests: 3 });
+    expect(line).not.toHaveProperty("persona");
   });
 
   it("打ち切られた呼び出しも、例外を投げる前に残す", async () => {
@@ -269,6 +307,7 @@ describe("利用量の記録", () => {
       kind: "persona",
       input_tokens: 1200,
       output_tokens: 340,
+      web_search_count: 0,
     });
   });
 
@@ -310,6 +349,82 @@ describe("利用量の記録", () => {
 
     await expect(callPersona(call, { body: "q" }, [])).rejects.toThrow();
 
+    expect(recorded).not.toHaveBeenCalled();
+  });
+});
+
+describe("材料を寄せる呼び出し", () => {
+  /** 検索結果を一件返す応答を一件返す fetch に差し替える。 */
+  function stubSearchedResponse() {
+    return stubApiResponse({
+      content: [
+        {
+          type: "web_search_tool_result",
+          content: [
+            { type: "web_search_result", url: "https://example.com/found" },
+          ],
+        },
+        { type: "text", text: "材料の JSON" },
+      ],
+      stop_reason: "end_turn",
+      usage: {
+        input_tokens: 6039,
+        output_tokens: 931,
+        server_tool_use: { web_search_requests: 3 },
+      },
+    });
+  }
+
+  it("検索の回数の上限を送り、本文と検索結果の URL と検索の回数を返す", async () => {
+    const fetchMock = stubSearchedResponse();
+
+    const res = await callMaterial(materialCall(), { body: "問い本文" });
+
+    const sent = JSON.parse(String(fetchMock.mock.calls[0][1].body)) as {
+      tools: { max_uses: number }[];
+      messages: { content: string }[];
+    };
+    expect(sent.tools[0].max_uses).toBe(4);
+    expect(sent.messages[0].content).toContain("問い本文");
+    expect(res).toEqual({
+      body: "材料の JSON",
+      searchResultUrls: ["https://example.com/found"],
+      webSearchCount: 3,
+    });
+  });
+
+  it("検索の回数を添えて、材料の呼び出しとして 1 件記録する", async () => {
+    const recorded = usageRecorder();
+    stubSearchedResponse();
+
+    await callMaterial(materialCall({ recordUsage: recorded }), {
+      body: "問い本文",
+    });
+
+    expect(recorded.mock.calls[0][0]).toEqual({
+      provider: "anthropic",
+      model: ANTHROPIC_DEFAULTS.model,
+      kind: "material",
+      input_tokens: 6039,
+      output_tokens: 931,
+      web_search_count: 3,
+    });
+  });
+
+  it("フェイクモードはネットワークに出ず、渡されたフェイクの応答を検索の回数 0 で返す", async () => {
+    const recorded = usageRecorder();
+    const question = { body: "フェイクの問い" };
+    const call = materialCall({
+      provider: new AnthropicProvider({ ...SETTINGS, fake: true }),
+      recordUsage: recorded,
+    });
+
+    const res = await callMaterial(call, question);
+
+    expect(res).toEqual({
+      ...fakeMaterialResponse(question),
+      webSearchCount: 0,
+    });
     expect(recorded).not.toHaveBeenCalled();
   });
 });

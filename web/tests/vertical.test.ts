@@ -6,8 +6,8 @@
 
 import { createOwner } from "@tests/setup/owner";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { callPersona, type PersonaCall } from "@/lib/ai";
 import { ANTHROPIC_DEFAULTS, AnthropicProvider } from "@/lib/ai/anthropic";
+import { callPersona, type PersonaCall } from "@/lib/ai/persona-call";
 import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
 import { loadPersona, type PersonaId } from "@/lib/personas";
