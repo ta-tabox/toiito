@@ -203,7 +203,7 @@ toiito/
     ├── src/
     │   ├── app/           ルーティング（/ 問い一覧・/q/[id] 対話・/memos 逆引き・/login・/admin 管理者だけが開くユーザーの一覧）と Server Actions
     │   ├── components/    UI 部品（共通部品は ui/）
-    │   ├── lib/           db.ts（Prisma repo 層）・auth/（認証と現在のユーザー）・ai/（AI 呼び出し）・personas.ts・anchors.ts・question.ts・turn.ts
+    │   ├── lib/           境界・純粋な計算・一往復の手順（置き場は .claude/rules/layers.md が正）
     │   ├── personas/      二体のシステムプロンプト（.md で管理）
     │   ├── proxy.ts       全リクエストの入口。cookie が無ければ /login へ送る
     │   └── generated/     Prisma クライアント（生成物・gitignore）
