@@ -60,7 +60,7 @@ warning はゲートを止めない（exit 0）。
 **コメント規約だけは Biome の外**。
 Biome のリンタはコメントを走査対象に持たず、built-in ルールにも GritQL プラグインにもコメント本体へ届く経路が無い。
 そこだけを `web/scripts/lint-comments.ts` が受け持ち、`pnpm lint` が Biome の後に走らせる。
-見るのはコメントの形（冒頭コメント・JSDoc・句点での改行・1 行 1 文・禁止語など）だけである。
+見るのはコメントの形だけで、中身の良し悪しは見ない。
 同じ規約を二箇所に書くといずれ食い違うので、これ以外の作法は biome.json 側に置く。
 判定ロジックは `tests/lint-comments.test.ts` が正。
 
