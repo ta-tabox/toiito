@@ -60,13 +60,16 @@ warning はゲートを止めない（exit 0）。
 **コメント規約だけは Biome の外**。
 Biome のリンタはコメントを走査対象に持たず、built-in ルールにも GritQL プラグインにもコメント本体へ届く経路が無い。
 そこだけを `web/scripts/lint-comments.ts` が受け持ち、`pnpm lint` が Biome の後に走らせる。
-見るのは冒頭コメントの有無とスタイル（`/** */`・直後の空行）・JSDoc の型注釈重複・句点での改行・1 行 1 文・禁止語の五つ（表は `.claude/rules/languages/typescript.md`「機械が見ている分」）。
+見るのは冒頭コメントの有無とスタイル（`/** */`・直後の空行）・JSDoc の型注釈重複・句点での改行・1 行 1 文・禁止語の五つ（表は `.claude/rules/languages/typescript.project.md`「機械が見ている分（toiito）」）。
 同じ規約を二箇所に書くといずれ食い違うので、これ以外の作法は biome.json 側に置く。
 判定ロジックは `tests/lint-comments.test.ts` が正。
 
-規約のうち機械が見ている分の一覧は `.claude/rules/languages/typescript.md`「機械が見ている分（toiito）」節。
+規約のうち機械が見ている分の一覧は `.claude/rules/languages/typescript.project.md`「機械が見ている分（toiito）」節。
 **残りは形しか見ていない**。
 冒頭コメントが責務と境界を語れているか、削除テストに耐えるかは L5 の領分。
+
+規約の配布物と配布元のテンプレートの差は `scripts/diff-coding-standards.sh <テンプレートのディレクトリ>` が報告する（比べるファイルは同スクリプトの `DISTRIBUTED_FILES`）。
+テンプレートは CI から読めないので、このスクリプトは `pnpm check` に載せず手で走らせる。
 
 ## ローカル Postgres
 
