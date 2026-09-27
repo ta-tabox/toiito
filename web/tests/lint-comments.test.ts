@@ -11,6 +11,11 @@ import {
 } from "@scripts/lint-comments.ts";
 import { describe, expect, it } from "vitest";
 
+const repositoryRoot = spawnSync("git", ["rev-parse", "--show-toplevel"], {
+  cwd: import.meta.dirname,
+  encoding: "utf8",
+}).stdout.trim();
+
 const repositoryVocabulary = loadRepositoryVocabulary();
 
 /** `source` をリポジトリの語で検査し、違反した規則の ID だけを並べて返す。 */
@@ -681,28 +686,34 @@ export function f() {}
     expect(toWordList("検査器\n口調")).toEqual(["検査器", "口調"]);
   });
 
-  it(".vocabulary/allow の語はどれも、コメントに書いても報告しない", () => {
-    const vocabulary = loadRepositoryVocabulary();
-    const reported = vocabulary.allow.filter(
-      (word) => rulesWith(sourceWith(word), vocabulary).length > 0,
-    );
+  it.skipIf(!existsSync(path.join(repositoryRoot, ".vocabulary/allow")))(
+    ".vocabulary/allow の語はどれも、コメントに書いても報告しない",
+    () => {
+      const vocabulary = loadRepositoryVocabulary();
+      const reported = vocabulary.allow.filter(
+        (word) => rulesWith(sourceWith(word), vocabulary).length > 0,
+      );
 
-    expect(vocabulary.allow).not.toEqual([]);
-    expect(reported).toEqual([]);
-  });
+      expect(vocabulary.allow).not.toEqual([]);
+      expect(reported).toEqual([]);
+    },
+  );
 
-  it(".vocabulary/deny の語はどれも、コメントに書けば報告する", () => {
-    const vocabulary = loadRepositoryVocabulary();
-    const missed = vocabulary.deny.filter(
-      (word) =>
-        !rulesWith(sourceWith(word), vocabulary).includes(
-          "comments/noBannedWord",
-        ),
-    );
+  it.skipIf(!existsSync(path.join(repositoryRoot, ".vocabulary/deny")))(
+    ".vocabulary/deny の語はどれも、コメントに書けば報告する",
+    () => {
+      const vocabulary = loadRepositoryVocabulary();
+      const missed = vocabulary.deny.filter(
+        (word) =>
+          !rulesWith(sourceWith(word), vocabulary).includes(
+            "comments/noBannedWord",
+          ),
+      );
 
-    expect(vocabulary.deny).not.toEqual([]);
-    expect(missed).toEqual([]);
-  });
+      expect(vocabulary.deny).not.toEqual([]);
+      expect(missed).toEqual([]);
+    },
+  );
 });
 
 describe("禁止語の一覧", () => {
@@ -742,13 +753,9 @@ describe("禁止語の一覧", () => {
  * 配布先では `.claude/rules/` の直下、雛形そのものを持つリポジトリでは `tools/coding-standards/rules/` に置かれる。
  */
 function findWritingRules(): string {
-  const root = spawnSync("git", ["rev-parse", "--show-toplevel"], {
-    cwd: import.meta.dirname,
-    encoding: "utf8",
-  }).stdout.trim();
   const candidates = [
-    path.join(root, ".claude/rules/writing.md"),
-    path.join(root, "tools/coding-standards/rules/writing.md"),
+    path.join(repositoryRoot, ".claude/rules/writing.md"),
+    path.join(repositoryRoot, "tools/coding-standards/rules/writing.md"),
   ];
   const found = candidates.find((candidate) => existsSync(candidate));
 
