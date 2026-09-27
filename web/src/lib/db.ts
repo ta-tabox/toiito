@@ -31,6 +31,7 @@ import type {
   SessionWithKeywords,
   UsageInput,
   UsageLog,
+  UsageSummary,
   User,
   Utterance,
 } from "@/lib/types";
@@ -890,6 +891,31 @@ export async function listUsageLogs(userId: string): Promise<UsageLog[]> {
     where: { user_id: userId },
     orderBy: { created_at: "asc" },
   });
+}
+
+/**
+ * 起点（`since`）以降に記録した AI の利用量を、利用者と API キーの出所の組ごとに合計して返す。
+ * 行が一つも無い組は返さない。
+ *
+ * 呼び出し側は `requireAdmin` を通してから呼ぶ。
+ */
+export async function summarizeUsage(since: Date): Promise<UsageSummary[]> {
+  const groups = await db().usageLog.groupBy({
+    by: ["user_id", "key_source"],
+    where: { created_at: { gte: since } },
+    _count: { _all: true },
+    _sum: { input_tokens: true, output_tokens: true, web_search_count: true },
+    orderBy: [{ user_id: "asc" }, { key_source: "asc" }],
+  });
+
+  return groups.map((group) => ({
+    user_id: group.user_id,
+    key_source: group.key_source,
+    call_count: group._count._all,
+    input_tokens: group._sum.input_tokens ?? 0,
+    output_tokens: group._sum.output_tokens ?? 0,
+    web_search_count: group._sum.web_search_count ?? 0,
+  }));
 }
 
 /**
