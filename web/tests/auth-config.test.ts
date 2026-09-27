@@ -1,5 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { createOwner } from "@tests/setup/owner";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { isAllowedEmail, readAuthConfig } from "@/lib/auth/config";
+import { disconnect } from "@/lib/db";
 
 /** サインインの手段だけを差し替えられるよう、必須の 2 本を既定で埋めた環境変数。 */
 function env(overrides: Record<string, string | undefined> = {}) {
@@ -100,5 +110,71 @@ describe("isAllowedEmail", () => {
 
   it("載っていない email を拒否する", () => {
     expect(isAllowedEmail(allowed, "second@example.com")).toBe(false);
+  });
+});
+
+describe("POST /api/auth/sign-in/fake", () => {
+  beforeEach(async () => {
+    await createOwner("first@example.com");
+    await createOwner("second@example.com");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  afterAll(async () => {
+    await disconnect();
+  });
+
+  /**
+   * 環境変数を差し替えて `@/lib/auth` を読み込み直し、fake サインインを一回投げて応答の status を返す。
+   *
+   * `auth()` は最初の呼び出しで読んだ環境変数のインスタンスを使い回すので、設定を変えるたびにモジュールを評価し直す。
+   * ルートハンドラと同じ `handler` を通すので、`databaseHooks` とプラグインの配線ごと検査に入る。
+   */
+  async function signInFakeStatus(
+    email: string,
+    overrides: Record<string, string | undefined>,
+  ): Promise<number> {
+    for (const [name, value] of Object.entries(env(overrides))) {
+      vi.stubEnv(name, value);
+    }
+
+    vi.resetModules();
+    // biome-ignore lint/style/noRestrictedImports: サインインの配線そのものを検査するので、ルートハンドラと同じインスタンスを読む
+    const { auth } = await import("@/lib/auth");
+    const db = await import("@/lib/db");
+
+    try {
+      const response = await auth().handler(
+        new Request("http://localhost:3000/api/auth/sign-in/fake", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email }),
+        }),
+      );
+
+      return response.status;
+    } finally {
+      await db.disconnect();
+    }
+  }
+
+  it("許可リストに載っている email はサインインできる", async () => {
+    expect(await signInFakeStatus("first@example.com", {})).toBe(200);
+  });
+
+  it("user 表に行があっても、許可リストに無い email はセッションを作れない", async () => {
+    expect(await signInFakeStatus("second@example.com", {})).toBe(403);
+  });
+
+  it("TOIITO_FAKE_LOGIN が未設定なら、許可リストに載っている email でも 404 になる", async () => {
+    const status = await signInFakeStatus("first@example.com", {
+      ...GOOGLE,
+      TOIITO_FAKE_LOGIN: undefined,
+    });
+
+    expect(status).toBe(404);
   });
 });
