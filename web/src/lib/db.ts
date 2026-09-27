@@ -699,7 +699,6 @@ export async function addMemo(
  * メモが無いか、owner 以外が所有するか、既に削除済みなら throw する。
  *
  * 行は削除せずに残すので、メモを返す読み取りは `deleted_at` が null の行だけを返す。
- * 所有者の条件は UPDATE の where に含めてあり、発話から問いの `user_id` を辿る判定は `addMemo` と同じ。
  */
 export async function deleteMemo(
   owner: OwnerId,
