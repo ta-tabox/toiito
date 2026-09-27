@@ -817,7 +817,7 @@ function checkReasonSentences(
     violations.push({
       line: reasons[MAX_REASON_SENTENCES].line,
       rule: "comments/maxReasonSentences",
-      message: `理由が ${reasons.length} 文ある。理由は 1 関数 ${MAX_REASON_SENTENCES} 文までにし、3 文目からは ADR へ移してリンク一行を残す。呼び手が実際に踏んだ誤りを挙げられる関数だけは、JSDoc と宣言の間に // lint-comments-allow comments/maxReasonSentences: <その誤り> を置いて上限から外せる`,
+      message: `理由が ${reasons.length} 文あり、上限の ${MAX_REASON_SENTENCES} 文を超えている（上限から外す宣言は REASON_LIMIT_EXCEPTION の JSDoc が書く）。3 文目からは ADR へ移してリンク一行を残す`,
       severity: "error",
     });
   }
