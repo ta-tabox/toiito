@@ -9,6 +9,7 @@
 import { createOwner } from "@tests/setup/owner";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { ANTHROPIC_DEFAULTS, AnthropicProvider } from "@/lib/ai/anthropic";
+import { FAKE_FAIL_ONCE_MARKER } from "@/lib/ai/fake";
 import type { PersonaCall } from "@/lib/ai/persona-call";
 import {
   AiProvider,
@@ -400,6 +401,25 @@ describe("再送", () => {
 
     expect(messages).toEqual([]);
     expect(pending).toBe("急ぐほど問いが痩せる気がする");
+  });
+
+  it("フェイクモードで失敗の目印を含む発話は、一度目は pending_messages に残り、再送で三行が入る", async () => {
+    const target = await newDialogue();
+    const body = `一度は届かない発話 ${FAKE_FAIL_ONCE_MARKER}`;
+
+    await runTurn({ ...target, body, resolveCalls: callsResolver() });
+    const pendingAfterFailure = await db.getPendingBody(
+      owner,
+      target.sessionId,
+    );
+
+    await retryTurn({ ...target, resolveCalls: callsResolver() });
+    const messages = await db.listMessages(owner, target.sessionId);
+    const pendingAfterRetry = await db.getPendingBody(owner, target.sessionId);
+
+    expect(pendingAfterFailure).toBe(body);
+    expect(messages.map((m) => m.speaker)).toEqual(ONE_TURN);
+    expect(pendingAfterRetry).toBeUndefined();
   });
 
   it("pending_messages に行が無ければ何もしない", async () => {
