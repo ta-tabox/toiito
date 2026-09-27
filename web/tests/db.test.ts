@@ -646,4 +646,68 @@ describe("usage_logs", () => {
 
     expect(logs.map((log) => log.user_id)).toEqual([owner]);
   });
+
+  describe("summarizeUsage", () => {
+    const since = new Date("2026-09-20T00:00:00Z");
+    const before = new Date("2026-09-19T23:59:59Z");
+    const after = new Date("2026-09-20T00:00:01Z");
+
+    /** `summarizeUsage` の結果のうち、`owner` の行だけ。 */
+    async function ownerSummaries() {
+      const summaries = await db.summarizeUsage(since);
+
+      return summaries.filter((summary) => summary.user_id === owner);
+    }
+
+    it("起点より前の行は集計に入らず、起点以降の行だけが合計される", async () => {
+      await db.recordUsage(owner, { ...PERSONA_USAGE, created_at: before });
+      await db.recordUsage(owner, {
+        ...PERSONA_USAGE,
+        web_search_count: 2,
+        created_at: after,
+      });
+      await db.recordUsage(owner, { ...PERSONA_USAGE, created_at: after });
+
+      expect(await ownerSummaries()).toEqual([
+        {
+          user_id: owner,
+          key_source: "system",
+          call_count: 2,
+          input_tokens: 2400,
+          output_tokens: 680,
+          web_search_count: 2,
+        },
+      ]);
+    });
+
+    it("キーの出所が違う行は、別の行に分けて合計される", async () => {
+      await db.recordUsage(owner, { ...PERSONA_USAGE, created_at: after });
+      await db.recordUsage(owner, {
+        ...PERSONA_USAGE,
+        key_source: "user",
+        created_at: after,
+      });
+
+      const summaries = await ownerSummaries();
+
+      expect(summaries.map((summary) => summary.key_source)).toEqual([
+        "system",
+        "user",
+      ]);
+      expect(summaries.map((summary) => summary.call_count)).toEqual([1, 1]);
+    });
+
+    it("トークン数が NULL の呼び出しは、回数には入り、トークン数の合計を 0 にする", async () => {
+      await db.recordUsage(owner, {
+        ...PERSONA_USAGE,
+        input_tokens: null,
+        output_tokens: null,
+        created_at: after,
+      });
+
+      expect(await ownerSummaries()).toMatchObject([
+        { call_count: 1, input_tokens: 0, output_tokens: 0 },
+      ]);
+    });
+  });
 });
