@@ -1,7 +1,8 @@
 /**
  * 一往復が途中で失敗したとき・同じセッションへ並走したとき・過去のセッションへ向けられたときに、何が残るかの検査。
+ * 二体をどの順で呼び、どのプロバイダへ何を渡すかの配線も見る。
  *
- * 見るのは `messages` と `pending_messages` の二つだけで、AI の応答の中身は見ない（呼び出し規約は `ai.test.ts` が検査する）。
+ * 見るのは `messages` と `pending_messages` と、プロバイダが受け取った本文までで、AI の応答の中身は見ない（呼び出し規約は `ai.test.ts` が検査する）。
  * 実 API は叩かない（`docs/HARNESS.md`「実 API を自動テストで叩かない」）。
  */
 
@@ -9,11 +10,21 @@ import { createOwner } from "@tests/setup/owner";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { ANTHROPIC_DEFAULTS, AnthropicProvider } from "@/lib/ai/anthropic";
 import type { PersonaCall } from "@/lib/ai/persona-call";
-import { AiProvider, type ProviderResponse } from "@/lib/ai/provider";
+import {
+  AiProvider,
+  type ProviderRequest,
+  type ProviderResponse,
+} from "@/lib/ai/provider";
+import { AI_PROVIDER } from "@/lib/ai/providers";
 import * as db from "@/lib/db";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import { loadPersona, type PersonaId } from "@/lib/personas";
-import { type PersonaCalls, retryTurn, runTurn } from "@/lib/turn";
+import {
+  type PersonaCalls,
+  personaCalls,
+  retryTurn,
+  runTurn,
+} from "@/lib/turn";
 import type { OwnerId, UsageInput } from "@/lib/types";
 
 /** ネットワークに出ず決定的な応答を返すプロバイダ。 */
@@ -94,6 +105,37 @@ class StubProvider extends AiProvider {
       stopReason: "end_turn",
       inputTokens: 1200,
       outputTokens: 340,
+      truncated: false,
+      searchResultUrls: [],
+      webSearchCount: 0,
+    };
+  }
+}
+
+/**
+ * 送られた本文（`userContent`）を記録し、生成時に受け取った本文を応答として返すプロバイダ。
+ * 二体の片方が受け取った transcript に、もう片方の応答が入っているかを見るのに使う。
+ */
+class RecordingProvider extends AiProvider {
+  readonly name = "recording";
+  readonly settings = { ...FAKE_PROVIDER.settings, fake: false };
+  readonly received: string[] = [];
+  readonly #reply: string;
+
+  constructor(reply: string) {
+    super();
+    this.#reply = reply;
+  }
+
+  /** `request.userContent` を `received` へ追記し、生成時に受け取った本文を返す。 */
+  async send(request: ProviderRequest): Promise<ProviderResponse> {
+    this.received.push(request.userContent);
+
+    return {
+      body: this.#reply,
+      stopReason: "end_turn",
+      inputTokens: 0,
+      outputTokens: 0,
       truncated: false,
       searchResultUrls: [],
       webSearchCount: 0,
@@ -204,6 +246,32 @@ describe("一往復", () => {
       input_tokens: 1200,
       output_tokens: 340,
     });
+  });
+
+  it("ai_b へ送る本文には、同じ一往復で ai_a が返した応答が入る", async () => {
+    const target = await newDialogue();
+    const providers = {
+      ai_a: new RecordingProvider("具体の側が返した応答"),
+      ai_b: new RecordingProvider("抽象の側が返した応答"),
+    };
+
+    await runTurn({
+      ...target,
+      body: "急ぐほど問いが痩せる気がする",
+      resolveCalls: async (owner) => callsFor(owner, (id) => providers[id]),
+    });
+
+    expect(providers.ai_a.received).toHaveLength(1);
+    expect(providers.ai_a.received[0]).not.toContain("具体の側が返した応答");
+    expect(providers.ai_b.received).toHaveLength(1);
+    expect(providers.ai_b.received[0]).toContain("具体の側が返した応答");
+  });
+
+  it("env から組み立てた呼び出し指定は、二体へ同じプロバイダを渡す", async () => {
+    const calls = await personaCalls(owner);
+
+    expect(calls.ai_a.provider).toBe(AI_PROVIDER);
+    expect(calls.ai_b.provider).toBe(AI_PROVIDER);
   });
 
   it("ai_b が失敗すると messages は空のままで、pending_messages に本文が残る", async () => {
