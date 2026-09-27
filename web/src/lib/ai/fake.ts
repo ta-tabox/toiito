@@ -9,12 +9,36 @@
 import type { QuestionRef, Transcript } from "@/lib/ai/prompt";
 import type { PersonaId } from "@/lib/personas";
 
-/** ペルソナ一体分の決定的応答を組み立てる。 */
+/**
+ * 直近の人間発話がこの文字列を含むと、`fakeResponse` がその本文で最初に呼ばれた一回だけ throw する。
+ *
+ * 応答の失敗から再送で成立するまでを E2E（`e2e/retry.spec.ts`）で通すための目印で、本物のプロバイダは見ない。
+ */
+export const FAKE_FAIL_ONCE_MARKER = "[fake:fail-once]";
+
+/**
+ * `FAKE_FAIL_ONCE_MARKER` を含む本文のうち、既に一度 throw したもの。
+ *
+ * プロセスの中でだけ保つので、サーバーを立て直すと、同じ本文でもう一度 throw する。
+ */
+const failedBodies = new Set<string>();
+
+/**
+ * ペルソナ一体分の決定的応答を組み立てる。
+ * 直近の人間発話が `FAKE_FAIL_ONCE_MARKER` を含み、その本文で初めて呼ばれたときは throw する。
+ */
 export function fakeResponse(id: PersonaId, transcript: Transcript): string {
   const lastHuman = [...transcript]
     .reverse()
     .find((m) => m.speaker === "human");
-  return `[fake:${id}] 「${lastHuman?.body ?? "(発話なし)"}」への応答`;
+  const body = lastHuman?.body;
+
+  if (body?.includes(FAKE_FAIL_ONCE_MARKER) && !failedBodies.has(body)) {
+    failedBodies.add(body);
+    throw new Error(`[fake:${id}] 目印を含む本文の最初の呼び出しで失敗する`);
+  }
+
+  return `[fake:${id}] 「${body ?? "(発話なし)"}」への応答`;
 }
 
 /**
