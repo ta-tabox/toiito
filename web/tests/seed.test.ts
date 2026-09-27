@@ -1,5 +1,6 @@
 import { seed } from "@scripts/seed/index.ts";
 import { OTHER_USER_INPUT, SEED_INPUTS } from "@scripts/seed/questions.ts";
+import { SEED_USAGE } from "@scripts/seed/usage.ts";
 import { SEED_USERS } from "@scripts/seed/users.ts";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import * as db from "@/lib/db";
@@ -99,6 +100,23 @@ describe("シードの投入", () => {
 
     expect(first?.is_admin).toBe(true);
     expect(second?.is_admin).toBe(false);
+  });
+
+  it("利用量の見本は、宣言した利用者の行として入る", async () => {
+    const summary = await seed();
+
+    const first = await seededOwner(SEED_USERS[0].email);
+    const second = await seededOwner(SEED_USERS[1].email);
+    const firstLogs = await db.listUsageLogs(first);
+    const secondLogs = await db.listUsageLogs(second);
+
+    expect(summary.usageLogs).toBe(SEED_USAGE.length);
+    expect(firstLogs).toHaveLength(
+      SEED_USAGE.filter((row) => row.user === "first").length,
+    );
+    expect(secondLogs).toHaveLength(
+      SEED_USAGE.filter((row) => row.user === "second").length,
+    );
   });
 
   it("NODE_ENV=production では投入せず落ちる", async () => {

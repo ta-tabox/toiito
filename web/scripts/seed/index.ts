@@ -1,8 +1,8 @@
 /**
  * 開発用データの投入。
  *
- * ユーザー二人と、その持ち物としての問い・対話・メモを一式入れて、UI を手触りで確かめられる状態にする。
- * `seed/index.ts` が持つのは投入のステップと誰が何を持つかだけで、入れる値は `users.ts` と `questions.ts`、書き込みの手順は `db.ts` の `createQuestionWithTranscript` が持つ。
+ * ユーザー二人と、その持ち物としての問い・対話・メモと、二人の AI の利用量を一式入れて、UI を手触りで確かめられる状態にする。
+ * `seed/index.ts` が持つのは投入のステップと誰が何を持つかだけで、入れる値は `users.ts`・`questions.ts`・`usage.ts`、書き込みの手順は `db.ts` の `createQuestionWithTranscript` と `recordUsage` が持つ。
  * アプリと同じ経路を通らない書き込み経路を増やさない（docs/ARCHITECTURE.md「DB への書き込み経路」）。
  * 接続先は `DATABASE_URL` 一点で、投入先を選ぶ引数を `seed` に作らない（受け取り方を二つ持つと、env は開発用・引数はテスト用という食い違いが起こる）。
  * 動くのはユーザーが一人も居ない DB に対してだけで、既に入っている DB へは何も入れずに終わる。
@@ -14,6 +14,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { registerSrcAlias } from "../node-alias.ts";
+import { SEED_USAGE } from "./usage.ts";
 import { SEED_USERS } from "./users.ts";
 
 /**
@@ -34,6 +35,7 @@ export type SeedSummary = {
   questionIds: string[];
   messages: number;
   memos: number;
+  usageLogs: number;
 };
 
 /**
@@ -72,6 +74,7 @@ export async function seed(): Promise<SeedSummary> {
     questionIds: [],
     messages: 0,
     memos: 0,
+    usageLogs: 0,
   };
 
   try {
@@ -101,6 +104,19 @@ export async function seed(): Promise<SeedSummary> {
       summary.questionIds.push(created.question.id);
       summary.messages += created.messages.length;
       summary.memos += created.memos.length;
+    }
+
+    const now = Date.now();
+    const userIds = { first: owner.id, second: other.id };
+
+    for (const { user, daysAgo, usage } of SEED_USAGE) {
+      const createdAt = new Date(now - daysAgo * 24 * 60 * 60 * 1000);
+
+      await repo.recordUsage(userIds[user], {
+        ...usage,
+        created_at: createdAt,
+      });
+      summary.usageLogs += 1;
     }
 
     return summary;
@@ -137,7 +153,7 @@ async function main(): Promise<void> {
   // 件数ゼロを重ねて報告しない。
   if (summary.questionIds.length > 0) {
     console.log(
-      `投入した: ユーザー ${summary.users} 人 / 問い ${summary.questionIds.length} 件 / 発話 ${summary.messages} 件 / メモ ${summary.memos} 件`,
+      `投入した: ユーザー ${summary.users} 人 / 問い ${summary.questionIds.length} 件 / 発話 ${summary.messages} 件 / メモ ${summary.memos} 件 / 利用量 ${summary.usageLogs} 行`,
     );
   }
 
