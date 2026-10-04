@@ -5,6 +5,7 @@
 
 import Link from "next/link";
 import { Fragment } from "react";
+import { NumberCell } from "@/components/ui/number-cell";
 import { requireAdmin } from "@/lib/auth/current-user";
 import { listUsersForAdmin, summarizeUsage } from "@/lib/db";
 import type { ApiKeySource } from "@/lib/usage";
@@ -94,18 +95,8 @@ export default async function AdminPage() {
                   >
                     {user.email}
                   </td>
-                  <td
-                    rowSpan={rowSpan}
-                    className="px-2 py-2 text-right align-top tabular-nums"
-                  >
-                    {user.question_count}
-                  </td>
-                  <td
-                    rowSpan={rowSpan}
-                    className="px-2 py-2 text-right align-top tabular-nums"
-                  >
-                    {user.session_count}
-                  </td>
+                  <NumberCell value={user.question_count} rowSpan={rowSpan} />
+                  <NumberCell value={user.session_count} rowSpan={rowSpan} />
                 </>
               );
 
@@ -135,18 +126,10 @@ export default async function AdminPage() {
                       <td className="whitespace-nowrap px-2 py-2">
                         {KEY_SOURCE_LABELS[usage.key_source]}
                       </td>
-                      <td className="px-2 py-2 text-right tabular-nums">
-                        {usage.call_count.toLocaleString("ja-JP")}
-                      </td>
-                      <td className="px-2 py-2 text-right tabular-nums">
-                        {usage.input_tokens.toLocaleString("ja-JP")}
-                      </td>
-                      <td className="px-2 py-2 text-right tabular-nums">
-                        {usage.output_tokens.toLocaleString("ja-JP")}
-                      </td>
-                      <td className="px-2 py-2 text-right tabular-nums">
-                        {usage.web_search_count.toLocaleString("ja-JP")}
-                      </td>
+                      <NumberCell value={usage.call_count} />
+                      <NumberCell value={usage.input_tokens} />
+                      <NumberCell value={usage.output_tokens} />
+                      <NumberCell value={usage.web_search_count} />
                     </tr>
                   ))}
                 </Fragment>
