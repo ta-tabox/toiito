@@ -25,6 +25,7 @@ const failedBodies = new Set<string>();
 
 /**
  * ペルソナ一体分の決定的応答を組み立てる。
+ *
  * 直近の人間発話が `FAKE_FAIL_ONCE_MARKER` を含み、その本文で初めて呼ばれたときは throw する。
  */
 export function fakeResponse(id: PersonaId, transcript: Transcript): string {
