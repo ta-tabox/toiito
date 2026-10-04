@@ -1,6 +1,7 @@
 /**
  * ハーネス用フェイクモードの応答（docs/HARNESS.md 参照）。
  * ネットワークに出ず決定的なテキストを返す。
+ * 発話が `FAKE_FAIL_ONCE_MARKER` を含むときだけ、最初の一回は throw する。
  *
  * ペルソナ ID と直近の人間発話を含むのは、E2E から「どの体が・何を受けて」応答したかをアサートするため。
  * この書式を変えると `e2e/dialogue.spec.ts` と `e2e/memo.spec.ts` が応答を拾えなくなる。
@@ -12,7 +13,7 @@ import type { PersonaId } from "@/lib/personas";
 /**
  * 直近の人間発話がこの文字列を含むと、`fakeResponse` がその本文で最初に呼ばれた一回だけ throw する。
  *
- * 応答の失敗から再送で成立するまでを E2E（`e2e/retry.spec.ts`）で通すための目印で、本物のプロバイダは見ない。
+ * 一回だけにするのは、同じ本文の再送を成功させ、再送が届いたことを二体の応答が並ぶかで判定するため（`e2e/retry.spec.ts`）。
  */
 export const FAKE_FAIL_ONCE_MARKER = "[fake:fail-once]";
 
@@ -26,7 +27,8 @@ const failedBodies = new Set<string>();
 /**
  * ペルソナ一体分の決定的応答を組み立てる。
  *
- * 直近の人間発話が `FAKE_FAIL_ONCE_MARKER` を含み、その本文で初めて呼ばれたときは throw する。
+ * 直近の人間発話が `FAKE_FAIL_ONCE_MARKER` を含むときは、その本文で最初に呼ばれた一回だけ、応答を返さずに throw する。
+ * フェイクモードの応答は常に成功するので、AI の呼び出しが失敗したときの画面（再送の枠）を E2E で出すには、この目印で失敗を起こす。
  */
 export function fakeResponse(id: PersonaId, transcript: Transcript): string {
   const lastHuman = [...transcript]
