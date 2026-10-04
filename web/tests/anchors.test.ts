@@ -45,6 +45,34 @@ describe("segmentBody", () => {
     ]);
   });
 
+  it("空の本文はセグメントを一つも返さない", () => {
+    expect(segmentBody("", [])).toEqual([]);
+  });
+
+  it("同じ範囲の二つのメモは、一つのセグメントが両方の id を持つ", () => {
+    const segments = segmentBody("abcd", [
+      { id: "m1", anchor_start: 1, anchor_end: 3 },
+      { id: "m2", anchor_start: 1, anchor_end: 3 },
+    ]);
+
+    expect(segments).toEqual([
+      { text: "a", start: 0, memoIds: [] },
+      { text: "bc", start: 1, memoIds: ["m1", "m2"] },
+      { text: "d", start: 3, memoIds: [] },
+    ]);
+  });
+
+  it("始点と終点が同じメモは、どのセグメントにも付かず、空のセグメントも作らない", () => {
+    const segments = segmentBody("abcd", [
+      { id: "m1", anchor_start: 2, anchor_end: 2 },
+    ]);
+
+    expect(segments).toEqual([
+      { text: "ab", start: 0, memoIds: [] },
+      { text: "cd", start: 2, memoIds: [] },
+    ]);
+  });
+
   it("単一のメモで前後に分割される", () => {
     const segments = segmentBody("hello world", [
       { id: "m1", anchor_start: 6, anchor_end: 11 },
@@ -144,6 +172,14 @@ describe("clampToGraphemeBoundary", () => {
 
   it("サロゲートペアの途中はペア手前へ丸める", () => {
     expect(clampToGraphemeBoundary(body, 2)).toBe(1);
+  });
+
+  it("本文長を超える index は丸めずにそのまま返す", () => {
+    expect(clampToGraphemeBoundary(body, 5)).toBe(5);
+  });
+
+  it("空の本文では 0 をそのまま返す", () => {
+    expect(clampToGraphemeBoundary("", 0)).toBe(0);
   });
 
   it("異体字セレクタは分断しない（サロゲートペアを含まないので code point 判定では漏れる）", () => {
