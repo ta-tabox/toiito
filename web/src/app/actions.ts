@@ -11,6 +11,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { MaterialFormState } from "@/components/material-form";
 import { parseAnchor } from "@/lib/anchors";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { LOGIN_PATH } from "@/lib/auth/protected-paths";
@@ -25,6 +26,7 @@ import {
   createSession,
   setQuestionStatus,
 } from "@/lib/db";
+import { addMaterialFromAi, materialCall } from "@/lib/material-from-ai";
 import { parseMemoKeyword } from "@/lib/memo";
 import { parseSelectableStatus } from "@/lib/question";
 import { questionPathOf, ROUTES } from "@/lib/routes";
@@ -54,6 +56,24 @@ export async function setQuestionStatusAction(
   const { id: owner } = await requireCurrentUser();
   await setQuestionStatus(owner, questionId, status);
   revalidatePath(questionPathOf(questionId));
+}
+
+/**
+ * 問い `questionId` に AI が寄せた材料を付け、付いたかどうかをフォームへ返す。
+ * 付かなかったときは何も保存されていない。
+ *
+ * `useActionState` から呼ばれるので、直前の状態とフォームの値を受け取るが、どちらも読まない。
+ */
+export async function addMaterialAction(
+  questionId: string,
+  _state: MaterialFormState,
+  _formData: FormData,
+): Promise<MaterialFormState> {
+  const { id: owner } = await requireCurrentUser();
+  const result = await addMaterialFromAi(owner, questionId, materialCall);
+  revalidatePath(questionPathOf(questionId));
+
+  return { ok: result.ok };
 }
 
 /**
