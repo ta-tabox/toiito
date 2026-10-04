@@ -6,6 +6,7 @@ import { MessageBody } from "@/components/message-body";
 import { SpeakForm } from "@/components/speak-form";
 import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
+import { questionPathOf } from "@/lib/routes";
 import type { Memo, Message, OwnerId } from "@/lib/types";
 
 /**
@@ -49,6 +50,46 @@ function elementsOf(node: ReactNode): ReactElement[] {
   const { children } = node.props as { children?: ReactNode };
 
   return [node, ...elementsOf(children)];
+}
+
+/** `notFound()` が throw する例外の `digest`。 */
+const NOT_FOUND_DIGEST = "NEXT_HTTP_ERROR_FALLBACK;404";
+
+/**
+ * 要素ツリーの文字列を連結して返す。
+ * 要素が undefined なら空文字列を返す。
+ */
+function textOf(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(textOf).join("");
+  }
+
+  if (!isValidElement(node)) {
+    return "";
+  }
+
+  const { children } = node.props as { children?: ReactNode };
+
+  return textOf(children);
+}
+
+/**
+ * 平らにした要素ツリーから、再送の枠（`PendingTurn`）が受け取った本文を集める。
+ *
+ * `PendingTurn` は export されていないので、関数の名前で要素を見分ける。
+ */
+function pendingBodiesOf(tree: ReactElement[]): unknown[] {
+  return tree
+    .filter(
+      (element) =>
+        typeof element.type === "function" &&
+        element.type.name === "PendingTurn",
+    )
+    .map((element) => (element.props as { body?: unknown }).body);
 }
 
 /** 二つの発話を持ち、後ろの発話にだけメモが付いた問いを作る。 */
@@ -151,5 +192,58 @@ describe("/q/[id]", () => {
       [],
       [memos[0].id],
     ]);
+  });
+
+  it("?s に他の問いのセッション id を渡すと 404 になる", async () => {
+    const { question } = await questionWithMemoOnSecondMessage();
+    const other = await db.createQuestion(owner, "別の問い");
+
+    await expect(
+      renderTree(question.id, other.session.id),
+    ).rejects.toMatchObject({ digest: NOT_FOUND_DIGEST });
+  });
+
+  it("最新セッションに送れなかった発話があると、その本文を再送の枠に出す", async () => {
+    const { question, session } = await questionWithMemoOnSecondMessage();
+    await db.savePendingBody(owner, session.id, "送れなかった発話");
+
+    const tree = await renderTree(question.id);
+
+    expect(pendingBodiesOf(tree)).toEqual(["送れなかった発話"]);
+  });
+
+  it("過去セッションを読むときは、最新セッションの送れなかった発話を出さない", async () => {
+    const { question, session } = await questionWithMemoOnSecondMessage();
+    const latest = await db.createSession(owner, question.id);
+    await db.savePendingBody(owner, latest.id, "送れなかった発話");
+
+    const tree = await renderTree(question.id, session.id);
+
+    expect(pendingBodiesOf(tree)).toEqual([]);
+  });
+
+  it("セッション切替のリンクには、そのセッションのキーワードを先頭の 3 語まで出す", async () => {
+    const { question, session } = await db.createQuestionWithTranscript(owner, {
+      body: "キーワードが多いセッション",
+      messages: [
+        {
+          speaker: "human",
+          body: "一二三四",
+          memos: ["一", "二", "三", "四"].map((keyword, index) => ({
+            anchor: parseAnchor(index, index + 1),
+            keyword,
+          })),
+        },
+      ],
+    });
+    await db.createSession(owner, question.id);
+
+    const tree = await renderTree(question.id);
+    const pastHref = questionPathOf(question.id, { sessionId: session.id });
+    const pastLink = tree.find(
+      (element) => (element.props as { href?: unknown }).href === pastHref,
+    );
+
+    expect(textOf(pastLink)).toMatch(/ · 一・二・三$/);
   });
 });

@@ -138,6 +138,21 @@ describe("/memos", () => {
     );
   });
 
+  it("クエリが存在しないメモの id を指していれば、拡大表示を出さずに一覧を描く", async () => {
+    const { question, session, message, memo } =
+      await memoInLongMessage("残る一覧の対象");
+
+    const opened = await MemosPage({
+      searchParams: Promise.resolve({ memo: "存在しないメモの id" }),
+    });
+    const hrefs = hrefsOf(opened);
+
+    expect(hrefs).toContain(`/memos?memo=${memo.id}`);
+    expect(hrefs).not.toContain(
+      `/q/${question.id}?s=${session.id}#msg-${message.id}`,
+    );
+  });
+
   it("キーワード・メモ・前後を添えた引用・問い本文を並べる", async () => {
     const keyword = "焦点の語";
     const { question, before, after } = await memoInLongMessage(
