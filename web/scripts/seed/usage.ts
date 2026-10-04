@@ -6,6 +6,7 @@
  */
 
 import type { UsageInput } from "@/lib/types";
+import type { AiCallKind } from "@/lib/usage";
 
 /**
  * 利用量の一行の宣言。
@@ -17,17 +18,18 @@ type UsageSeed = {
   usage: Omit<UsageInput, "created_at">;
 };
 
-const PERSONA = {
-  provider: "anthropic",
-  model: "claude-sonnet-5",
-  kind: "persona",
-} as const;
-
-const MATERIAL = {
-  provider: "anthropic",
-  model: "claude-sonnet-5",
-  kind: "material",
-} as const;
+/** 呼び出しの種別ごとの、プロバイダとモデルと種別の組。 */
+const CALLS_BY_KIND = {
+  persona: { provider: "anthropic", model: "claude-sonnet-5", kind: "persona" },
+  material: {
+    provider: "anthropic",
+    model: "claude-sonnet-5",
+    kind: "material",
+  },
+} as const satisfies Record<
+  AiCallKind,
+  Pick<UsageInput, "provider" | "model" | "kind">
+>;
 
 /**
  * 入れる行。
@@ -37,13 +39,13 @@ export const SEED_USAGE: UsageSeed[] = [
   {
     user: "first",
     daysAgo: 0.1,
-    usage: { ...PERSONA, input_tokens: 1200, output_tokens: 340 },
+    usage: { ...CALLS_BY_KIND.persona, input_tokens: 1200, output_tokens: 340 },
   },
   {
     user: "first",
     daysAgo: 1,
     usage: {
-      ...MATERIAL,
+      ...CALLS_BY_KIND.material,
       input_tokens: 2400,
       output_tokens: 900,
       web_search_count: 3,
@@ -53,7 +55,7 @@ export const SEED_USAGE: UsageSeed[] = [
     user: "first",
     daysAgo: 2,
     usage: {
-      ...PERSONA,
+      ...CALLS_BY_KIND.persona,
       input_tokens: null,
       output_tokens: null,
       key_source: "user",
@@ -62,18 +64,18 @@ export const SEED_USAGE: UsageSeed[] = [
   {
     user: "first",
     daysAgo: 30,
-    usage: { ...PERSONA, input_tokens: 1000, output_tokens: 300 },
+    usage: { ...CALLS_BY_KIND.persona, input_tokens: 1000, output_tokens: 300 },
   },
   {
     user: "second",
     daysAgo: 3,
-    usage: { ...PERSONA, input_tokens: 800, output_tokens: 200 },
+    usage: { ...CALLS_BY_KIND.persona, input_tokens: 800, output_tokens: 200 },
   },
   {
     user: "second",
     daysAgo: 6,
     usage: {
-      ...MATERIAL,
+      ...CALLS_BY_KIND.material,
       input_tokens: 1500,
       output_tokens: 600,
       web_search_count: 1,
