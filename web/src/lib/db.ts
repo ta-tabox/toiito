@@ -895,8 +895,8 @@ export async function listUsageLogs(userId: string): Promise<UsageLog[]> {
 
 /**
  * 起点（`since`）以降に記録した AI の利用量を、利用者と API キーの出所の組ごとに合計して返す。
- * 行が一つも無い組は返さない。
  *
+ * 行が一つも無い組は返さない。
  * 呼び出し側は `requireAdmin` を通してから呼ぶ。
  */
 export async function summarizeUsage(since: Date): Promise<UsageSummary[]> {
