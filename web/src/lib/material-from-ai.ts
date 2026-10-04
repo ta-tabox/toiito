@@ -5,8 +5,6 @@
  * AI の失敗と検査に通らない応答では一件も保存せず、失敗を結果値で返す（理由は `docs/adr/20260915-culture-paired-sourced-material.md` 決定 6 と `docs/adr/20260915-culture-explicit-sync-trigger.md` 決定 4）。
  */
 
-import fs from "node:fs";
-import path from "node:path";
 import { AnthropicProvider } from "@/lib/ai/anthropic";
 import { fakeMaterialResponse } from "@/lib/ai/fake";
 import { callMaterial, type MaterialCall } from "@/lib/ai/material-call";
@@ -14,6 +12,7 @@ import type { QuestionRef } from "@/lib/ai/prompt";
 import { AI_PROVIDER } from "@/lib/ai/providers";
 import { addMaterials, getQuestion, recordUsage } from "@/lib/db";
 import { listMaterialViolations, parseMaterialDrafts } from "@/lib/material";
+import { loadMaterialPrompt } from "@/lib/material-prompt";
 import type { Material, MaterialDraft, OwnerId } from "@/lib/types";
 
 /**
@@ -39,15 +38,6 @@ export const MATERIAL_MAX_TOKENS = 8000;
 export type MaterialResult =
   | { readonly ok: true; readonly materials: Material[] }
   | { readonly ok: false };
-
-/**
- * 付与のシステムプロンプトを `src/prompts/material.md` から読む。
- * ファイルが無ければ throw する。
- */
-function loadMaterialPrompt(): string {
-  const p = path.join(process.cwd(), "src", "prompts", "material.md");
-  return fs.readFileSync(p, "utf-8");
-}
 
 /**
  * 付与の呼び出しの指定を、`MATERIAL_MAX_TOKENS` で出力を絞ったプロバイダと、`owner` の利用量を書く関数で組み立てて返す。
