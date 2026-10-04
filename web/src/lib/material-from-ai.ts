@@ -53,9 +53,9 @@ function loadMaterialPrompt(): string {
  * 付与の呼び出しの指定を、`MATERIAL_MAX_TOKENS` で出力を絞ったプロバイダと、`owner` の利用量を書く関数で組み立てて返す。
  * フェイクモードでは `question` から決定的な材料を作る。
  *
- * `addMaterialFromAi` が `AI_PROVIDER` を直接参照するとテストが失敗するプロバイダを差し込めなくなるので、`AI_PROVIDER` を参照するのは `materialCall` だけにする。
+ * `addMaterialFromAi` が `AI_PROVIDER` を直接参照するとテストが失敗するプロバイダを差し込めなくなるので、`AI_PROVIDER` を参照するのは `materialCallOf` だけにする。
  */
-export function materialCall(
+export function materialCallOf(
   owner: OwnerId,
   question: QuestionRef,
 ): MaterialCall {

@@ -26,7 +26,7 @@ import {
   createSession,
   setQuestionStatus,
 } from "@/lib/db";
-import { addMaterialFromAi, materialCall } from "@/lib/material-from-ai";
+import { addMaterialFromAi, materialCallOf } from "@/lib/material-from-ai";
 import { parseMemoKeyword } from "@/lib/memo";
 import { parseSelectableStatus } from "@/lib/question";
 import { questionPathOf, ROUTES } from "@/lib/routes";
@@ -70,7 +70,7 @@ export async function addMaterialAction(
   _formData: FormData,
 ): Promise<MaterialFormState> {
   const { id: owner } = await requireCurrentUser();
-  const result = await addMaterialFromAi(owner, questionId, materialCall);
+  const result = await addMaterialFromAi(owner, questionId, materialCallOf);
   revalidatePath(questionPathOf(questionId));
 
   return { ok: result.ok };
