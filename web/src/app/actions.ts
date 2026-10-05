@@ -23,6 +23,7 @@ import {
   addMemo,
   createQuestion,
   createSession,
+  deleteMemo,
   setQuestionStatus,
 } from "@/lib/db";
 import { parseMemoKeyword } from "@/lib/memo";
@@ -109,6 +110,20 @@ export async function createMemoAction(formData: FormData) {
 
   // 発話とメモの action は問いの id を受け取らないので、個々の URL でなくルートの型で再検証する。
   revalidatePath(ROUTES.question, "page");
+}
+
+/**
+ * メモ `memoId` を論理削除し、クエリの無いメモの一覧へ送る。
+ *
+ * 削除したメモを開いていた拡大表示を残さないため、送り先は `?memo=` を持たない。
+ */
+export async function deleteMemoAction(memoId: string) {
+  const { id: owner } = await requireCurrentUser();
+  await deleteMemo(owner, memoId);
+
+  // 対話画面の下線も消えるので、メモを付けたときと同じくルートの型で再検証する。
+  revalidatePath(ROUTES.question, "page");
+  redirect("/memos");
 }
 
 /** Google の同意画面へ送る。 */

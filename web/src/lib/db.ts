@@ -499,6 +499,7 @@ export async function listSessionsWithKeywords(
 
   const memos = await db().memo.findMany({
     where: {
+      deleted_at: null,
       message: {
         session: { question_id: questionId, question: { user_id: owner } },
       },
@@ -694,6 +695,30 @@ export async function addMemo(
 }
 
 /**
+ * メモ `memoId` に削除した時刻を書き、以後の読み取りから除く。
+ * メモが無いか、owner 以外が所有するか、既に削除済みなら throw する。
+ *
+ * 行は削除せずに残すので、メモを返す読み取りは `deleted_at` が null の行だけを返す。
+ */
+export async function deleteMemo(
+  owner: OwnerId,
+  memoId: string,
+): Promise<void> {
+  const { count } = await db().memo.updateMany({
+    where: {
+      id: memoId,
+      deleted_at: null,
+      message: { session: { question: { user_id: owner } } },
+    },
+    data: { deleted_at: new Date() },
+  });
+
+  if (count === 0) {
+    throw new Error(`メモが見つからない: ${memoId}`);
+  }
+}
+
+/**
  * セッション内の全メモを投稿順で返す。
  *
  * 対話画面のアンダーライン描画用。
@@ -704,6 +729,7 @@ export async function listMemosForSession(
 ): Promise<Memo[]> {
   return db().memo.findMany({
     where: {
+      deleted_at: null,
       message: {
         session_id: sessionId,
         session: { question: { user_id: owner } },
@@ -724,7 +750,10 @@ export async function listMemosWithContext(
   owner: OwnerId,
 ): Promise<MemoWithContext[]> {
   const rows = await db().memo.findMany({
-    where: { message: { session: { question: { user_id: owner } } } },
+    where: {
+      deleted_at: null,
+      message: { session: { question: { user_id: owner } } },
+    },
     include: {
       message: { include: { session: { include: { question: true } } } },
     },

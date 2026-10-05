@@ -73,8 +73,8 @@ messages       発話。人間 + AI二体の三者
 pending_messages  送信されたが一往復が完了していない人間の発話。1 セッションに 1 行
   session_id(主キー), body, created_at
 
-memos          キーワードメモ。文字選択で残す
-  id, message_id, anchor_start, anchor_end, keyword, note, created_at
+memos          キーワードメモ。文字選択で残す。削除は論理削除で、deleted_at を持つ行はどの表示にも出さない
+  id, message_id, anchor_start, anchor_end, keyword, note, created_at, deleted_at
 
 memo_links     （将来）メモ間・問い間のリンキング辺
   id, from_memo_id, to_memo_id, kind
