@@ -647,6 +647,20 @@ describe("usage_logs", () => {
     expect(logs.map((log) => log.user_id)).toEqual([owner]);
   });
 
+  it("deleteUsageLogs は指定した利用者の行だけを削除し、他の利用者の行を残す", async () => {
+    const other = await createOwner("other@example.com");
+    await db.recordUsage(owner, PERSONA_USAGE);
+    await db.recordUsage(other, PERSONA_USAGE);
+
+    await db.deleteUsageLogs(owner);
+
+    const ownerLogs = await db.listUsageLogs(owner);
+    const otherLogs = await db.listUsageLogs(other);
+
+    expect(ownerLogs).toEqual([]);
+    expect(otherLogs).toHaveLength(1);
+  });
+
   describe("summarizeUsage", () => {
     const since = new Date("2026-09-20T00:00:00Z");
     const before = new Date("2026-09-19T23:59:59Z");

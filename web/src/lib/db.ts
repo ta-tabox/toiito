@@ -894,6 +894,16 @@ export async function listUsageLogs(userId: string): Promise<UsageLog[]> {
 }
 
 /**
+ * `userId` が呼んだ AI の利用量の行をすべて削除する。
+ *
+ * 利用量の行は管理者が利用者を止めるかを判断する記録なので、アプリの画面と Server Action からは呼ばない。
+ * 開発用シードが見本の行を入れ直すときだけ呼ぶ。
+ */
+export async function deleteUsageLogs(userId: string): Promise<void> {
+  await db().usageLog.deleteMany({ where: { user_id: userId } });
+}
+
+/**
  * 起点（`since`）以降に記録した AI の利用量を、利用者と API キーの出所の組ごとに合計して返す。
  *
  * 行が一つも無い組は返さない。
