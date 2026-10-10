@@ -164,7 +164,11 @@ export type UsageLog = {
 
 /**
  * `recordUsage` へ渡す、まだ保存していない利用量の一件。
- * `web_search_count` を省くと 0 に、`key_source` を省くと `system` に、`created_at` を省くと書き込んだ時刻になる。
+ *
+ * 省いた欄に入る値:
+ * - `web_search_count`: 0
+ * - `key_source`: `system`
+ * - `created_at`: 書き込んだ時刻
  */
 export type UsageInput = {
   provider: string;
