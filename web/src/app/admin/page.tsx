@@ -29,7 +29,7 @@ export default async function AdminPage() {
   const summaries = await summarizeUsage(usageWindowStartOf(new Date()));
 
   return (
-    <main className="mx-auto w-full max-w-reading flex-1 px-5 py-10">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-10">
       <Link href="/" className="text-aux text-ink-weak hover:underline">
         ← 問いの発酵槽
       </Link>
@@ -91,7 +91,7 @@ export default async function AdminPage() {
                   </td>
                   <td
                     rowSpan={rowSpan}
-                    className="break-all px-2 py-2 align-top"
+                    className="whitespace-nowrap px-2 py-2 align-top"
                   >
                     {user.email}
                   </td>
@@ -104,7 +104,10 @@ export default async function AdminPage() {
                 return (
                   <tr key={user.id} className="border-rule border-b">
                     {userCells}
-                    <td colSpan={5} className="px-2 py-2 text-ink-weak">
+                    <td
+                      colSpan={5}
+                      className="px-2 py-2 align-top text-ink-weak"
+                    >
                       利用なし
                     </td>
                   </tr>
