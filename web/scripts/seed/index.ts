@@ -5,14 +5,16 @@
  * `seed/index.ts` が持つのは投入のステップと誰が何を持つかだけで、入れる値は `users.ts`・`questions.ts`・`usage.ts`、書き込みの手順は `db.ts` の `createQuestionWithTranscript` と `recordUsage` が持つ。
  * アプリと同じ経路を通らない書き込み経路を増やさない（docs/ARCHITECTURE.md「DB への書き込み経路」）。
  * 接続先は `DATABASE_URL` 一点で、投入先を選ぶ引数を `seed` に作らない（受け取り方を二つ持つと、env は開発用・引数はテスト用という食い違いが起こる）。
- * 動くのはユーザーが一人も居ない DB に対してだけで、既に入っている DB へは何も入れずに終わる。
+ * `seed` が動くのはユーザーが一人も居ない DB に対してだけで、既に入っている DB へは何も入れずに終わる。
+ * 利用量の見本は時刻が投入した時刻からの日数で決まり、日が経つと集計の期間から外れるので、`reseedUsage` だけはユーザーが居る DB で見本を入れ直す。
  * 本番（NODE_ENV=production）では、空でも投入しない。
  *
- * エントリポイントは `seed`（CLI は pnpm seed）。
+ * エントリポイントは `seed`（CLI は pnpm seed）と `reseedUsage`（CLI は pnpm seed:usage。本体は `reseed-usage.ts`）。
  */
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { OwnerId } from "@/lib/types";
 import { registerSrcAlias } from "../node-alias.ts";
 import { SEED_USAGE } from "./usage.ts";
 import { SEED_USERS } from "./users.ts";
@@ -106,20 +108,65 @@ export async function seed(): Promise<SeedSummary> {
       summary.memos += created.memos.length;
     }
 
-    const now = Date.now();
-    const userIds = { first: owner.id, second: other.id };
-
-    for (const { user, daysAgo, usage } of SEED_USAGE) {
-      const createdAt = new Date(now - daysAgo * 24 * 60 * 60 * 1000);
-
-      await repo.recordUsage(userIds[user], {
-        ...usage,
-        created_at: createdAt,
-      });
-      summary.usageLogs += 1;
-    }
+    summary.usageLogs = await recordSampleUsage(repo, {
+      first: owner.id,
+      second: other.id,
+    });
 
     return summary;
+  } catch (cause) {
+    throw repo.withSetupGuidance(cause);
+  }
+}
+
+/**
+ * シードの二人（`userIds`）へ、利用量の見本（`SEED_USAGE`）を現在時刻を基準にした時刻で書き、書いた行数を返す。
+ */
+async function recordSampleUsage(
+  repo: Repo,
+  userIds: Record<"first" | "second", OwnerId>,
+): Promise<number> {
+  const now = Date.now();
+
+  for (const { user, daysAgo, usage } of SEED_USAGE) {
+    const createdAt = new Date(now - daysAgo * 24 * 60 * 60 * 1000);
+
+    await repo.recordUsage(userIds[user], { ...usage, created_at: createdAt });
+  }
+
+  return SEED_USAGE.length;
+}
+
+/**
+ * シードの二人の利用量の行を削除し、利用量の見本を現在時刻を基準に入れ直して、入れた行数を返す。
+ * 接続先は DATABASE_URL で、接続は閉じない（呼び出し側の CLI・テストが閉じる）。
+ *
+ * シードの二人のどちらかが居ない DB では、何も削除せずに throw する。
+ * シードの二人以外の利用者の行には触れない。
+ */
+export async function reseedUsage(): Promise<number> {
+  assertNotProduction();
+
+  const repo: Repo = await import("@/lib/db");
+
+  try {
+    const [first, second] = await Promise.all(
+      SEED_USERS.map((user) => repo.getUserByEmail(user.email)),
+    );
+
+    if (!first || !second) {
+      throw new Error(
+        `シードのユーザー（${SEED_USERS.map((user) => user.email).join("・")}）が居ない DB には利用量の見本を入れない。先に pnpm seed を実行するか、投入先（DATABASE_URL）を確かめる`,
+      );
+    }
+
+    await repo.deleteUsageLogs(first.id);
+    await repo.deleteUsageLogs(second.id);
+
+    return await recordSampleUsage(repo, {
+      first: first.id,
+      second: second.id,
+    });
   } catch (cause) {
     throw repo.withSetupGuidance(cause);
   }
@@ -130,7 +177,7 @@ export async function seed(): Promise<SeedSummary> {
  *
  * どこへ入れたのかを取り違えさせないために報告へ出す。
  */
-function databaseName(): string {
+export function databaseName(): string {
   const url = process.env.DATABASE_URL;
 
   return url ? path.basename(new URL(url).pathname) : "(DATABASE_URL 未設定)";
