@@ -164,7 +164,11 @@ export type UsageLog = {
 
 /**
  * `recordUsage` へ渡す、まだ保存していない利用量の一件。
- * `web_search_count` を省くと 0 に、`key_source` を省くと `system` になる。
+ *
+ * 省いた欄に入る値:
+ * - `web_search_count`: 0
+ * - `key_source`: `system`
+ * - `created_at`: 書き込んだ時刻
  */
 export type UsageInput = {
   provider: string;
@@ -174,4 +178,20 @@ export type UsageInput = {
   output_tokens: number | null;
   web_search_count?: number;
   key_source?: ApiKeySource;
+  created_at?: Date;
+};
+
+/**
+ * 一人の利用者が一つの出所の API キーで呼んだ AI の利用量を、期間の中で合計した値。
+ * `summarizeUsage` が作り、管理の画面が利用者の行に並べる。
+ *
+ * トークン数が NULL の呼び出しは、回数には入り、トークン数の合計には 0 として入る。
+ */
+export type UsageSummary = {
+  user_id: string;
+  key_source: ApiKeySource;
+  call_count: number;
+  input_tokens: number;
+  output_tokens: number;
+  web_search_count: number;
 };

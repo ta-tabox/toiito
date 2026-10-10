@@ -1,6 +1,8 @@
-import { seed } from "@scripts/seed/index.ts";
+import { reseedUsage, seed } from "@scripts/seed/index.ts";
 import { OTHER_USER_INPUT, SEED_INPUTS } from "@scripts/seed/questions.ts";
+import { SEED_USAGE } from "@scripts/seed/usage.ts";
 import { SEED_USERS } from "@scripts/seed/users.ts";
+import { createOwner } from "@tests/setup/owner";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import * as db from "@/lib/db";
 import type { OwnerId } from "@/lib/types";
@@ -101,6 +103,23 @@ describe("シードの投入", () => {
     expect(second?.is_admin).toBe(false);
   });
 
+  it("利用量の見本は、宣言した利用者の行として入る", async () => {
+    const summary = await seed();
+
+    const first = await seededOwner(SEED_USERS[0].email);
+    const second = await seededOwner(SEED_USERS[1].email);
+    const firstLogs = await db.listUsageLogs(first);
+    const secondLogs = await db.listUsageLogs(second);
+
+    expect(summary.usageLogs).toBe(SEED_USAGE.length);
+    expect(firstLogs).toHaveLength(
+      SEED_USAGE.filter((row) => row.user === "first").length,
+    );
+    expect(secondLogs).toHaveLength(
+      SEED_USAGE.filter((row) => row.user === "second").length,
+    );
+  });
+
   it("NODE_ENV=production では投入せず落ちる", async () => {
     vi.stubEnv("NODE_ENV", "production");
 
@@ -127,5 +146,58 @@ describe("シードの投入", () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+describe("利用量の見本の入れ直し", () => {
+  it("見本を入れた後に入れ直しても、シードの二人の行は宣言の行数のまま増えない", async () => {
+    await seed();
+
+    const count = await reseedUsage();
+    const first = await seededOwner(SEED_USERS[0].email);
+    const second = await seededOwner(SEED_USERS[1].email);
+    const firstLogs = await db.listUsageLogs(first);
+    const secondLogs = await db.listUsageLogs(second);
+
+    expect(count).toBe(SEED_USAGE.length);
+    expect(firstLogs.length + secondLogs.length).toBe(SEED_USAGE.length);
+  });
+
+  it("入れ直した見本の時刻は、入れ直した時刻を基準にする", async () => {
+    await seed();
+    const first = await seededOwner(SEED_USERS[0].email);
+    await db.deleteUsageLogs(first);
+    const before = Date.now();
+
+    await reseedUsage();
+
+    const logs = await db.listUsageLogs(first);
+    const newest = logs[logs.length - 1];
+
+    // 見本の最新の行は数時間前に置かれるので、入れ直した時刻から一日以内に収まる。
+    expect(before - newest.created_at.getTime()).toBeLessThan(
+      24 * 60 * 60 * 1000,
+    );
+  });
+
+  it("シードの二人以外の利用者の行は削除しない", async () => {
+    await seed();
+    const outsider = await createOwner("outsider@example.com");
+    await db.recordUsage(outsider, {
+      provider: "anthropic",
+      model: "claude-sonnet-5",
+      kind: "persona",
+      input_tokens: 1,
+      output_tokens: 1,
+    });
+
+    await reseedUsage();
+
+    const outsiderLogs = await db.listUsageLogs(outsider);
+    expect(outsiderLogs).toHaveLength(1);
+  });
+
+  it("シードのユーザーが居ない DB では、何も書かずに throw する", async () => {
+    await expect(reseedUsage()).rejects.toThrow(/pnpm seed/);
   });
 });

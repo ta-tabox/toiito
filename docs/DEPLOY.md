@@ -381,6 +381,21 @@ Preview でサインインできるのはシードの二人だけなので、管
 上の「本番で最初の管理者を立てる」の手順 2〜4 を、email をシードの一人目に、`DIRECT_URL_PROD` を `DIRECT_URL_PREVIEW` に、手順 3 の比べる先を `preview` ブランチに替えて行う。
 列が無ければ SQL が止まるので、先に上の「migration を含む PR」の `pnpm migrate:preview` を実行する。
 
+### Preview で利用量の列を確かめる
+
+フェイクの AI は利用量を記録しないので、`/admin` の利用量の列に出るのはシードの見本の行だけになる。
+見本の行の時刻は投入した時刻から数えた日数で決まり、集計の期間（直近 7 日）から日ごとに外れていく。
+`pnpm seed:usage` はシードの二人の利用量の行を削除し、実行した時刻を基準に見本を入れ直す。
+シードの二人以外の行には触れない。
+
+`web/` で次を実行する。
+
+```bash
+env DATABASE_URL="$(node --env-file-if-exists=.env.local -p 'process.env.DIRECT_URL_PREVIEW')" pnpm seed:usage
+```
+
+手元の開発用 DB は、`web/` で `pnpm seed:usage` だけを実行すればよい。
+
 ## Google の OAuth クライアント
 
 本番と手元で、別々の OAuth クライアントを使う。
