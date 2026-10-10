@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { Fragment } from "react";
-import { NumberCell } from "@/components/ui/number-cell";
+import { NumberCell } from "@/components/ui/table/number-cell";
 import { requireAdmin } from "@/lib/auth/current-user";
 import { listUsersForAdmin, summarizeUsage } from "@/lib/db";
 import { USAGE_WINDOW_DAYS, usageWindowStartOf } from "@/lib/usage-window";
