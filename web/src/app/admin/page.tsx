@@ -8,16 +8,9 @@ import { Fragment } from "react";
 import { NumberCell } from "@/components/ui/number-cell";
 import { requireAdmin } from "@/lib/auth/current-user";
 import { listUsersForAdmin, summarizeUsage } from "@/lib/db";
-import type { ApiKeySource } from "@/lib/usage";
 import { USAGE_WINDOW_DAYS, usageWindowStartOf } from "@/lib/usage-window";
 
 export const dynamic = "force-dynamic";
-
-/** 利用量の行に出す、API キーの出所の見出し。 */
-const KEY_SOURCE_LABELS: Record<ApiKeySource, string> = {
-  system: "運営",
-  user: "利用者",
-};
 
 /**
  * 管理の画面。
@@ -127,7 +120,7 @@ export default async function AdminPage() {
                     >
                       {index === 0 ? userCells : null}
                       <td className="whitespace-nowrap px-2 py-2">
-                        {KEY_SOURCE_LABELS[usage.key_source]}
+                        {usage.key_source}
                       </td>
                       <NumberCell value={usage.call_count} />
                       <NumberCell value={usage.input_tokens} />
