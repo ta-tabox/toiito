@@ -22,12 +22,12 @@ PG_PORT=5433
 BIN_DIR="$HOME/.local/bin"
 
 # mise.toml の値を正として読む。二重管理にしないため、ここには版を書かない。
-NODE_MAJOR="$(sed -n 's/^node *= *"\(.*\)"/\1/p' "$REPO_ROOT/mise.toml")"
+NODE_VERSION="$(sed -n 's/^node *= *"\(.*\)"/\1/p' "$REPO_ROOT/mise.toml")"
 PNPM_VERSION="$(sed -n 's/^"npm:pnpm" *= *"\(.*\)"/\1/p' "$REPO_ROOT/mise.toml")"
-NODE_PREFIX="/opt/node-$NODE_MAJOR"
+NODE_PREFIX="/opt/node-$NODE_VERSION"
 
 # 読めなければ止める。空のまま進むと `pnpm@` が latest を掴み、ピンを外したことに誰も気づかない。
-if [ -z "$NODE_MAJOR" ] || [ -z "$PNPM_VERSION" ]; then
+if [ -z "$NODE_VERSION" ] || [ -z "$PNPM_VERSION" ]; then
   echo "mise.toml から node / pnpm の版を読めなかった。書式が変わっていないか確認する" >&2
   exit 1
 fi
@@ -74,26 +74,12 @@ install_node() {
     return
   fi
 
-  # マイナー版は固定しない（mise.toml が持つのはメジャーまで）。最新を引く。
-  #
-  # 失敗は下の診断で伝えるので、パイプラインの終了状態はここで捨てる。
-  # 捨てないと set -e がこの代入で抜け、診断へ到達しない。
-  # head が途中でパイプを閉じるため、成功時も上流が非ゼロで終わりうる。
-  local version archive tarball
-  version="$(curl -fsSL https://nodejs.org/dist/index.json \
-    | grep -o "\"version\":\"v${NODE_MAJOR}\.[0-9]\+\.[0-9]\+\"" \
-    | head -1 | cut -d'"' -f4 || true)"
-
-  if [ -z "$version" ]; then
-    echo "nodejs.org から node $NODE_MAJOR 系の版を引けなかった" >&2
-    return 1
-  fi
-
-  archive="node-$version-linux-$(node_arch)"
+  local archive tarball
+  archive="node-v$NODE_VERSION-linux-$(node_arch)"
   tarball="$(mktemp)"
 
-  log "node $version を入れる"
-  curl -fsSL "https://nodejs.org/dist/$version/$archive.tar.xz" -o "$tarball"
+  log "node v$NODE_VERSION を入れる"
+  curl -fsSL "https://nodejs.org/dist/v$NODE_VERSION/$archive.tar.xz" -o "$tarball"
   mkdir -p "$NODE_PREFIX"
   tar -xJf "$tarball" -C "$NODE_PREFIX" --strip-components=1
   rm -f "$tarball"
