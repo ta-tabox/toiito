@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { getMemoDeletedAt } from "@tests/setup/memo-rows";
 import { createOwner } from "@tests/setup/owner";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { parseAnchor } from "@/lib/anchors";
@@ -387,6 +388,76 @@ describe("memos", () => {
     const ids = listed.map((m) => m.id);
 
     expect(ids).toEqual([newer.id, older.id]);
+  });
+
+  describe("deleteMemo", () => {
+    /** 同じ発話に付いた、削除するメモと残すメモ。 */
+    async function twoMemosOnOneMessage() {
+      const { question, session } = await db.createQuestion(
+        owner,
+        "問い11: 削除の検査",
+      );
+      const message = await db.addMessage(owner, session.id, {
+        speaker: "ai_a",
+        body: "消す語と残す語",
+      });
+      const deleted = await db.addMemo(owner, message.id, {
+        anchor: parseAnchor(0, 3),
+        keyword: "消す語",
+      });
+      const kept = await db.addMemo(owner, message.id, {
+        anchor: parseAnchor(4, 7),
+        keyword: "残す語",
+      });
+
+      return { question, session, deleted, kept };
+    }
+
+    it("削除したメモは三つの読み取りから消え、同じ発話の他のメモは残る", async () => {
+      const { question, session, deleted, kept } = await twoMemosOnOneMessage();
+
+      await db.deleteMemo(owner, deleted.id);
+
+      const forSession = await db.listMemosForSession(owner, session.id);
+      const withContext = await db.listMemosWithContext(owner);
+      const [withKeywords] = await db.listSessionsWithKeywords(
+        owner,
+        question.id,
+      );
+
+      expect(forSession.map((m) => m.id)).toEqual([kept.id]);
+      expect(withContext.map((m) => m.id)).toEqual([kept.id]);
+      expect(withKeywords.keywords).toEqual(["残す語"]);
+    });
+
+    it("削除したメモの行は memos に残り、deleted_at に時刻が入る", async () => {
+      const { deleted, kept } = await twoMemosOnOneMessage();
+
+      await db.deleteMemo(owner, deleted.id);
+
+      expect(await getMemoDeletedAt(deleted.id)).toBeInstanceOf(Date);
+      expect(await getMemoDeletedAt(kept.id)).toBeNull();
+    });
+
+    it("削除済みのメモをもう一度削除すると throw する", async () => {
+      const { deleted } = await twoMemosOnOneMessage();
+
+      await db.deleteMemo(owner, deleted.id);
+
+      await expect(db.deleteMemo(owner, deleted.id)).rejects.toThrow(
+        /メモが見つからない/,
+      );
+    });
+
+    it("owner 以外が所有するメモは削除できず、deleted_at は null のまま", async () => {
+      const { deleted } = await twoMemosOnOneMessage();
+      const other = await createOwner("other@example.com");
+
+      await expect(db.deleteMemo(other, deleted.id)).rejects.toThrow(
+        /メモが見つからない/,
+      );
+      expect(await getMemoDeletedAt(deleted.id)).toBeNull();
+    });
   });
 });
 

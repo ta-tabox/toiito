@@ -4,13 +4,16 @@
  * 取得は `listMemosWithContext` 一本で、行ごとに問いやセッションを取得し直さない。
  * 開いているメモの正は URL のクエリ（`?memo=<id>`）で、client の state には持たない。
  * 対話画面の下線から特定のメモを名指しで開く経路があり、その経路から指せる手段が URL しか無いため。
+ * 削除の確認を出しているかの正も URL のクエリ（`&delete=confirm`）で、確認の一手を client の JS 無しで挟む。
  *
  * 逆引きのリンクは、セッションと発話を名指しして `questionPathOf` で組み立てる（書式の正は `lib/routes.ts`）。
  * セッションを名指しするのは、再訪で最新が入れ替わってもメモを付けた当時の発話へ着地させるため。
  */
 
 import Link from "next/link";
+import { deleteMemoAction } from "@/app/actions";
 import { MemoDialog } from "@/components/memo-dialog";
+import { Button } from "@/components/ui/button";
 import { Row } from "@/components/ui/row";
 import { excerptParts, parseAnchor } from "@/lib/anchors";
 import { requireCurrentUser } from "@/lib/auth/current-user";
@@ -47,9 +50,9 @@ const MARKED_STYLE =
 export default async function MemosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ memo?: string }>;
+  searchParams: Promise<{ memo?: string; delete?: string }>;
 }) {
-  const { memo: openedId } = await searchParams;
+  const { memo: openedId, delete: deleteStep } = await searchParams;
   const { id: owner } = await requireCurrentUser();
   const memos = await listMemosWithContext(owner);
   const opened = memos.find((memo) => memo.id === openedId);
@@ -135,6 +138,25 @@ export default async function MemosPage({
           >
             この発話へ →
           </Link>
+
+          {deleteStep === "confirm" ? (
+            <form
+              action={deleteMemoAction.bind(null, opened.id)}
+              className="mt-6 border-rule border-t pt-4"
+            >
+              <p className="text-aux text-ink">消したメモは戻せない。</p>
+              <Button type="submit" className="mt-2">
+                消す
+              </Button>
+            </form>
+          ) : (
+            <Link
+              href={`/memos?memo=${opened.id}&delete=confirm`}
+              className="mt-4 ml-4 inline-block text-aux text-ink-weak hover:underline"
+            >
+              このメモを消す
+            </Link>
+          )}
         </MemoDialog>
       )}
     </main>
