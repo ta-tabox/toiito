@@ -22,6 +22,7 @@ paths:
 | 環境変数（利用者の API キーを暗号化する鍵） | `web/src/lib/secrets-config.ts`（写像は `secrets.ts` の `readEncryptionKeyRing`） | `EncryptionKeyRing`（`secrets.ts` の `encryptApiKey` と `decryptApiKey` へ渡す） |
 | Claude API（HTTP） | `web/src/lib/ai/anthropic.ts` | `ProviderResponse` |
 | ペルソナ定義（ファイル） | `web/src/lib/personas.ts` | プロンプトの文字列 |
+| 材料を寄せるプロンプト（ファイル） | `web/src/lib/material-prompt.ts` | プロンプトの文字列 |
 | 現在のユーザー（セッション） | `web/src/lib/auth/current-user.ts` | `User`（`id` は `OwnerId`） |
 | DOM（選択範囲） | `web/src/components/message-body.tsx` | セグメントとセグメント内オフセットの数値 |
 
@@ -56,11 +57,12 @@ paths:
 | ドメイン型 | `lib/types.ts` | 純粋な計算（型だけ） | 型だけ |
 | 純粋な計算 | `lib/*.ts`・`lib/ai/prompt.ts`・`lib/auth/protected-paths.ts` | ドメイン型・純粋な計算 | 取りうる値の定数と判定・関数とテスト |
 | 境界 | 上の表・`lib/ai/**`・`lib/auth/**` | 純粋な計算・ドメイン型・境界 | 境界の道具と検証 |
-| 一往復の手順 | `lib/turn.ts` | 境界・純粋な計算・ドメイン型 | AI 呼び出しと永続化の順序 |
+| 一往復の手順 | `lib/turn.ts`・`lib/material-from-ai.ts` | 境界・純粋な計算・ドメイン型 | AI 呼び出しと永続化の順序 |
 | 配線 | `app/**`・`web/scripts/seed/index.ts` | クライアント側の部品・手順・境界・純粋な計算 | 受け取り・呼び出し・`revalidatePath` か `redirect` |
 | 全リクエストの入口 | `proxy.ts` | `lib/auth/protected-paths.ts` | cookie の有無だけで `/login` へ送るかの判定 |
 | クライアント側の部品 | `components/**` | クライアント側の部品・`node:*` を import しない純粋な計算 | DOM の読み書きと描画 |
 | ペルソナの定義 | `personas/*.md` | 無し | システムプロンプトの本文（読むのは `lib/personas.ts` だけ） |
+| 材料を寄せるプロンプト | `prompts/*.md` | 無し | システムプロンプトの本文（読むのは `lib/material-prompt.ts` だけ） |
 
 ## 一つしか無い状態の正
 
