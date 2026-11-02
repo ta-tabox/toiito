@@ -550,18 +550,10 @@ const UTTERANCE_PERSONA_COLUMNS = {
 } as const;
 
 /**
- * 版を指す前の発話の種別（`ai_a`・`ai_b`）が表す、既定の二体の鍵。
- *
- * 一往復が版の id を書く前のコードは、発話を `ai_a`・`ai_b` で書き、版を指さない。
- */
-const LEGACY_SPEAKER_PERSONAS: Record<"ai_a" | "ai_b", DefaultPersonaKey> = {
-  ai_a: "concrete",
-  ai_b: "abstract",
-};
-
-/**
  * 発話の行の種別（`speaker`）と版の列（`persona_config`）を、ドメイン型の `UtteranceSpeaker` へ写す。
- * 版を指さない `ai_a`・`ai_b` の行は、コードにある既定の二体の呼び名と抽象度で返し、版を指さない `ai` の行は throw する。
+ * 版を指さない `ai` の行は throw する。
+ *
+ * `ai` の行が版を指すことは DB の check 制約（`messages_speaker_persona_config_check`）も守るが、Prisma の型は列の対応を知らない。
  */
 function toUtteranceSpeaker(row: {
   speaker: SpeakerRow;
@@ -573,23 +565,11 @@ function toUtteranceSpeaker(row: {
     return { speaker };
   }
 
-  if (persona_config) {
-    return { speaker, persona: persona_config };
-  }
-
-  if (speaker === "ai") {
+  if (!persona_config) {
     throw new Error("speaker が ai の発話が版を指していない");
   }
 
-  const key = LEGACY_SPEAKER_PERSONAS[speaker];
-
-  return {
-    speaker,
-    persona: {
-      name: DEFAULT_PERSONA_NAMES[key],
-      abstraction: DEFAULT_PERSONA_SETTINGS[key].parameters.abstraction,
-    },
-  };
+  return { speaker, persona: persona_config };
 }
 
 /** 発話の行を、ドメイン型の `Message` へ写す。 */

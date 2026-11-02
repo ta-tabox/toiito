@@ -52,14 +52,11 @@ enum QuestionStatus {
 ///
 /// - `human`: 人間
 /// - `ai`: AI で、どのペルソナのどの版かは `Message.persona_config_id` が持つ
-/// - `ai_a`・`ai_b`: `ai` へ移る前の値で、一往復が版を書く前に書いた行にだけ残る
 ///
 /// TS 側の対応は `src/lib/types.ts` の `Speaker`。ずれの検出は QuestionStatus と同じ。
 enum Speaker {
   human
   ai
-  ai_a
-  ai_b
 
   @@map("speaker")
 }
@@ -187,7 +184,7 @@ model DialogueSession {
 
 /// 送信されたが、一往復が完了していない人間の発話。
 ///
-/// `messages` へは human / ai_a / ai_b の三行が同時に入るため、AI 呼び出しが失敗すると発話が残らない。
+/// `messages` へは一往復の人間と二体の発話が同時に入るため、AI 呼び出しが失敗すると発話が残らない。
 /// この行があることが、直前の送信が失敗した状態を表す（理由は `docs/adr/20260902-turn-atomicity-and-pending-utterance.md`）。
 ///
 /// 1 セッションに 1 行なので `session_id` が主キー。
@@ -204,6 +201,11 @@ model PendingMessage {
 
 /// 発話。人間 + AI 二体の三者。
 /// 追記のみで編集しない（immutable）。メモのアンカーが腐らないための不変条件。
+///
+/// **DB 側に check 制約が効いている**（`messages_speaker_persona_config_check`）:
+/// `speaker` が `human` の行は `persona_config_id` が NULL、`ai` の行は NULL でない。
+/// Prisma スキーマでは表現できないので実体は migration の SQL にある。
+/// `speaker` か `persona_config_id` を動かすときは、migration の SQL も一緒に見ること。
 model Message {
   id         String   @id @default(uuid(4)) @db.Uuid
   session_id String   @db.Uuid
@@ -212,12 +214,12 @@ model Message {
   created_at DateTime @default(now()) @db.Timestamptz(6)
   /// 挿入順の通し番号。発話の並びを実装依存にしないための列。
   /// created_at は同一マイクロ秒で並びうるし、id は乱数の UUIDv4 で順序を持たない。
-  /// 二つだけでは全順序にならず、ai_a と ai_b が入れ替わりうる（ai_b は ai_a への応答なので、並びは意味そのもの）。
+  /// 二つだけでは全順序にならず、一往復の二体の発話が入れ替わりうる（2 番手は 1 番手への応答なので、並びは意味そのもの）。
   /// 並べ替え専用の列で、表示にも意味の判断にも使わないので、ドメイン型には出さない（db.ts が omit する）。
   seq        BigInt   @default(autoincrement()) @unique
 
   /// AI の発話が、話した時点で使ったペルソナの版。
-  /// 人間の発話は NULL で、AI の発話も `speaker` が `ai_a`・`ai_b` の行は NULL でありうる。
+  /// 人間の発話は NULL で、AI の発話は NULL でない。
   persona_config_id String? @db.Uuid
 
   session        DialogueSession @relation(fields: [session_id], references: [id])

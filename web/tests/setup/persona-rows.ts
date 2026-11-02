@@ -1,8 +1,8 @@
 /**
- * 既定のペルソナの行と、版を指さない発話の行を、repo 関数を通さずに削除・作成・読み直す関数を置く。
+ * 既定のペルソナの行と発話の行を、repo 関数を通さずに削除・作成・読み直す関数を置く。
  *
  * 同期のテストは、同期より前の状態（既定のペルソナが無い DB・移行の版 1 だけがある DB）を作る必要があり、その状態を作る repo 関数は無い。
- * 発話を `ai_a`・`ai_b` で書いて版を指さない旧コードの行も、いまの repo 関数では作れない。
+ * 種別と版の対応が合わない発話も、repo 関数の型では作れないので、DB の check 制約を確かめるテストはこの関数で書く。
  */
 
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -71,13 +71,17 @@ export async function countSystemUsers(): Promise<number> {
   return prisma.user.count({ where: { email: SYSTEM_USER_EMAIL } });
 }
 
-/** 種別が `speaker` で版を指さない発話を、セッション（`sessionId`）へ一件作る。 */
-export async function createLegacyMessage(
+/** 種別（`speaker`）と版の id（`personaConfigId`）を指定した発話を、セッション（`sessionId`）へ一件作る。 */
+export async function createMessageRow(
   sessionId: string,
-  speaker: "ai_a" | "ai_b",
-  body: string,
+  row: { speaker: "human" | "ai"; personaConfigId: string | null },
 ): Promise<void> {
   await prisma.message.create({
-    data: { session_id: sessionId, speaker, body },
+    data: {
+      session_id: sessionId,
+      speaker: row.speaker,
+      persona_config_id: row.personaConfigId,
+      body: "種別と版の対応を確かめる発話",
+    },
   });
 }
