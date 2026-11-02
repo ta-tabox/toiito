@@ -22,12 +22,10 @@ import {
 import type {
   OwnerId,
   PersonaConfig,
+  TurnPosition,
   UsageInput,
   Utterance,
 } from "@/lib/types";
-
-/** 一往復で AI が発話する順番。 */
-export type TurnPosition = "first" | "second";
 
 /** 一往復で呼ぶ二体を、発話する順番ごとに持つ。 */
 export type PersonaCalls = Record<TurnPosition, PersonaCall>;

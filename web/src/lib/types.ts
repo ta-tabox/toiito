@@ -248,3 +248,12 @@ export type Persona = {
   is_default: boolean;
   latest: PersonaConfig;
 };
+
+/** 一往復で AI が発話する順番。 */
+export type TurnPosition = "first" | "second";
+
+/**
+ * セッションが一往復の順番ごとに使うペルソナの id。
+ * 問いの投入と再訪で選び、`db.ts` がセッションの行へ書く。
+ */
+export type PersonaSelection = Record<TurnPosition, string>;

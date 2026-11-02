@@ -173,12 +173,21 @@ model DialogueSession {
   started_at  DateTime @default(now()) @db.Timestamptz(6)
   /// 挿入順の通し番号。同着を割るための列（意図は Message.seq）。
   seq         BigInt   @default(autoincrement()) @unique
+  /// 一往復の 1 番手が話すペルソナ。
+  /// 版でなくペルソナを指し、一往復のたびにその最新の版で話す（理由は `docs/adr/20261102-session-persona-selection.md`）。
+  first_persona_id  String @db.Uuid
+  /// 一往復の 2 番手が話すペルソナ。
+  second_persona_id String @db.Uuid
 
-  question Question  @relation(fields: [question_id], references: [id])
-  messages Message[]
-  pending  PendingMessage?
+  question       Question        @relation(fields: [question_id], references: [id])
+  first_persona  Persona         @relation("SessionFirstPersona", fields: [first_persona_id], references: [id], onDelete: Restrict)
+  second_persona Persona         @relation("SessionSecondPersona", fields: [second_persona_id], references: [id], onDelete: Restrict)
+  messages       Message[]
+  pending        PendingMessage?
 
   @@index([question_id])
+  @@index([first_persona_id])
+  @@index([second_persona_id])
   @@map("sessions")
 }
 
@@ -313,8 +322,10 @@ model Persona {
   user_id    String
   created_at DateTime @default(now()) @db.Timestamptz(6)
 
-  user    User            @relation(fields: [user_id], references: [id])
-  configs PersonaConfig[]
+  user            User              @relation(fields: [user_id], references: [id])
+  configs         PersonaConfig[]
+  first_sessions  DialogueSession[] @relation("SessionFirstPersona")
+  second_sessions DialogueSession[] @relation("SessionSecondPersona")
 
   @@index([user_id])
   @@map("persona")

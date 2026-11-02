@@ -27,9 +27,8 @@ import {
   personaCalls,
   retryTurn,
   runTurn,
-  type TurnPosition,
 } from "@/lib/turn";
-import type { OwnerId } from "@/lib/types";
+import type { OwnerId, TurnPosition } from "@/lib/types";
 
 /** ネットワークに出ず決定的な応答を返すプロバイダ。 */
 const FAKE_PROVIDER = new AnthropicProvider({
