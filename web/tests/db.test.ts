@@ -1,15 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { getDefaultPersonaConfigIds } from "@tests/setup/default-personas";
 import { createOwner } from "@tests/setup/owner";
-import { createLegacyMessage } from "@tests/setup/persona-rows";
+import { createMessageRow } from "@tests/setup/persona-rows";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
-import {
-  DEFAULT_PERSONA_NAMES,
-  DEFAULT_PERSONA_SETTINGS,
-  type DefaultPersonaKey,
-} from "@/lib/personas";
+import { DEFAULT_PERSONA_NAMES, type DefaultPersonaKey } from "@/lib/personas";
 import { QUESTION_STATUSES } from "@/lib/question";
 import type { Anchor, MaterialDraft, OwnerId } from "@/lib/types";
 
@@ -244,29 +240,23 @@ describe("messages", () => {
     expect(msgs.map((m) => m.speaker)).toEqual(["human", "ai", "ai"]);
   });
 
-  it("版を指さない ai_a と ai_b の発話は、既定の二体の呼び名と抽象度で返る", async () => {
-    const { session } = await db.createQuestion(owner, "問い3-旧");
+  it("人間の発話が版を指すと、DB が拒否する", async () => {
+    const { session } = await db.createQuestion(owner, "問い3-人間");
 
-    await createLegacyMessage(session.id, "ai_a", "旧コードの具体の応答");
-    await createLegacyMessage(session.id, "ai_b", "旧コードの抽象の応答");
-    const msgs = await db.listMessages(owner, session.id);
+    await expect(
+      createMessageRow(session.id, {
+        speaker: "human",
+        personaConfigId: configIds.concrete,
+      }),
+    ).rejects.toThrow(/messages_speaker_persona_config_check/);
+  });
 
-    expect(msgs).toMatchObject([
-      {
-        speaker: "ai_a",
-        persona: {
-          name: DEFAULT_PERSONA_NAMES.concrete,
-          abstraction: DEFAULT_PERSONA_SETTINGS.concrete.parameters.abstraction,
-        },
-      },
-      {
-        speaker: "ai_b",
-        persona: {
-          name: DEFAULT_PERSONA_NAMES.abstract,
-          abstraction: DEFAULT_PERSONA_SETTINGS.abstract.parameters.abstraction,
-        },
-      },
-    ]);
+  it("AI の発話が版を指さないと、DB が拒否する", async () => {
+    const { session } = await db.createQuestion(owner, "問い3-AI");
+
+    await expect(
+      createMessageRow(session.id, { speaker: "ai", personaConfigId: null }),
+    ).rejects.toThrow(/messages_speaker_persona_config_check/);
   });
 
   it("不正な speaker は enum で弾かれる", async () => {

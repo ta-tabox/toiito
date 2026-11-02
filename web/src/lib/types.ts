@@ -72,9 +72,9 @@ export type SessionWithKeywords = Session & { keywords: string[] };
 
 /**
  * 発話の種別。
- * AI の発話は `ai` で、`ai_a`・`ai_b` は版を指す前の発話の行にだけ残る。
+ * AI の発話は、どのペルソナの版かを `UtterancePersona` で持つ。
  */
-export type Speaker = "human" | "ai" | "ai_a" | "ai_b";
+export type Speaker = "human" | "ai";
 
 /**
  * AI の発話を書いたペルソナの版の、呼び名と抽象度。
@@ -88,7 +88,7 @@ export type UtterancePersona = {
 /** 発話の種別と、AI の発話ならそれを書いた版（`persona`）の組。 */
 export type UtteranceSpeaker =
   | { speaker: "human" }
-  | { speaker: Exclude<Speaker, "human">; persona: UtterancePersona };
+  | { speaker: "ai"; persona: UtterancePersona };
 
 /**
  * 発話の話者と本文の組。

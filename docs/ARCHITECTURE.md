@@ -67,7 +67,8 @@ sessions       一つの問いに対する対話セッション（複数回あ�
   id, question_id, started_at
 
 messages       発話。人間 + AI二体の三者。AI の発話は話した時点のペルソナの版を指す
-  id, session_id, speaker(human/ai/ai_a/ai_b), persona_config_id(AI の発話の版。人間の発話は NULL), body, created_at
+  id, session_id, speaker(human/ai), persona_config_id(AI の発話の版。人間の発話は NULL), body, created_at
+  speaker が ai の行だけが persona_config_id を持つことは、check 制約 messages_speaker_persona_config_check が守る
 
 pending_messages  送信されたが一往復が完了していない人間の発話。1 セッションに 1 行
   session_id(主キー), body, created_at
