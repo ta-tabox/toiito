@@ -314,13 +314,16 @@ describe("一往復", () => {
     expect(messages.slice(1)).toMatchObject([
       {
         speaker: "ai",
-        persona: { name: "版 2 の具体さん", abstraction: "level_1" },
+        persona: {
+          name: "版 2 の具体さん",
+          abstraction: DEFAULT_PERSONA_SETTINGS.concrete.parameters.abstraction,
+        },
       },
       {
         speaker: "ai",
         persona: {
           name: DEFAULT_PERSONA_NAMES.abstract,
-          abstraction: "level_5",
+          abstraction: DEFAULT_PERSONA_SETTINGS.abstract.parameters.abstraction,
         },
       },
     ]);

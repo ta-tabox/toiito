@@ -14,6 +14,7 @@ import { fakeMaterialResponse } from "@/lib/ai/fake";
 import { callMaterial, type MaterialCall } from "@/lib/ai/material-call";
 import { callPersona, type PersonaCall } from "@/lib/ai/persona-call";
 import { readFakeMode } from "@/lib/ai/provider";
+import { DEFAULT_PERSONA_SETTINGS } from "@/lib/personas";
 import type { PersonaConfig, UsageInput, Utterance } from "@/lib/types";
 
 afterEach(() => {
@@ -42,11 +43,7 @@ const CONFIG: PersonaConfig = {
   persona_id: "persona-abstract",
   version: 1,
   name: "抽象さん",
-  parameters: {
-    abstraction: "level_5",
-    dissent: "level_4",
-    convergence: "level_2",
-  },
+  parameters: DEFAULT_PERSONA_SETTINGS.abstract.parameters,
   description: "",
   system_prompt: "# 抽象派",
   created_at: new Date(0),
