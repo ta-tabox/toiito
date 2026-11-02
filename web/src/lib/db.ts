@@ -184,7 +184,14 @@ export async function createUser(user: {
 }
 
 /**
- * 全ユーザーを、ユーザーごとの問いの数とセッションの数と一緒に、登録の古い順で返す。
+ * 既定のペルソナを持つシステムのユーザーの email。
+ *
+ * ログインは Google OAuth だけで、`.invalid` のアドレスを持つアカウントは存在しないので、このユーザーとしてサインインする経路は無い。
+ */
+const SYSTEM_USER_EMAIL = "system@toiito.invalid";
+
+/**
+ * システムのユーザーを除く全ユーザーを、ユーザーごとの問いの数とセッションの数と一緒に、登録の古い順で返す。
  * 問いの本文も発話も返さない。
  *
  * 呼び出し側は `requireAdmin` を通してから呼ぶ。
@@ -192,6 +199,7 @@ export async function createUser(user: {
  */
 export async function listUsersForAdmin(): Promise<AdminUserRow[]> {
   const rows = await db().user.findMany({
+    where: { email: { not: SYSTEM_USER_EMAIL } },
     select: {
       id: true,
       email: true,
