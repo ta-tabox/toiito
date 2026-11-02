@@ -2,7 +2,7 @@
  * 既定のペルソナの版を、コードの設定から合成した全文に揃える CLI。
  *
  * 書き込みは `db.ts` の `addDefaultPersonaConfigs` だけが行い、この CLI は接続先の表示・呼び出し・結果の報告だけを持つ。
- * 接続先は `DATABASE_URL` で、migration を適用した後の DB に対して実行する（本番は `.github/workflows/migrate.yml`、Preview と本番の手元からは `scripts/migrate.ts`）。
+ * 接続先は `DATABASE_URL` で、migration を適用した後の DB に対して実行する。
  *
  * エントリポイントは CLI（`pnpm personas:sync`）。
  */
