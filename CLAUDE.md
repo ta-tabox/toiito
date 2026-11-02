@@ -59,6 +59,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   スコープもプロジェクト名も添えない
 - **push・issue と PR の起票・コメント・close は Claude が叩いてよい**（どれも追記か、reopen で戻る）
 - **戻せない操作（force push・履歴の書き換え・ブランチやタグの削除）と PR のマージは、その都度人間に諾否を訊く**
+  積み直しは段ごとに毎回起き、lease は他者が後から push した ref を上書きせずに失敗するので、Claude が積んだスタック型 PR のブランチを main 以外の名前付きブランチへ `git push --force-with-lease` で送るときは訊かずに叩いてよい
   マージは main への push が本番デプロイと migration を起こすので、戻る操作に入れない
 - 機械の判定は `.claude/settings.json` の `permissions` と、コマンド全文を見る `.claude/hooks/guard-force-push.sh`・`guard-gh-api.sh` が持つ
   機械は保険で、正はこの節
