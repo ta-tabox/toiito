@@ -1,5 +1,5 @@
 /**
- * テスト用データベースをケースごとに空にする。
+ * テスト用データベースをケースごとに空にし、既定のペルソナの版を同期し直す。
  *
  * `truncate.ts` が隔離の境界で、migration を積むのは globalSetup（`database.ts`）が持つ。
  *
@@ -13,6 +13,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
+import { addDefaultPersonaConfigs } from "@/lib/db";
 import { assertIsTestDatabase, TEST_DATABASE_URL } from "./test-database-url";
 
 assertIsTestDatabase(TEST_DATABASE_URL);
@@ -50,7 +51,15 @@ async function truncateAllTables(): Promise<void> {
   );
 }
 
-beforeEach(truncateAllTables);
+/**
+ * 全表を空にした後で、既定のペルソナの版を本番のデプロイと同じ関数で作る。
+ *
+ * 空にした DB には既定のペルソナが無く、一往復が版を取得できない。
+ */
+beforeEach(async () => {
+  await truncateAllTables();
+  await addDefaultPersonaConfigs();
+});
 
 afterAll(async () => {
   await prisma.$disconnect();

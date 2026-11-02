@@ -20,6 +20,14 @@ import {
 } from "@/generated/prisma/client";
 import { DATABASE_URL } from "@/lib/config";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
+import {
+  DEFAULT_PERSONA_IDS,
+  DEFAULT_PERSONA_NAMES,
+  DEFAULT_PERSONA_SETTINGS,
+  type PersonaId,
+  type PersonaSettings,
+  toSystemPrompt,
+} from "@/lib/personas";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
 import type {
   AdminUserRow,
@@ -30,6 +38,7 @@ import type {
   MemoWithContext,
   Message,
   OwnerId,
+  PersonaConfig,
   Question,
   Session,
   SessionWithKeywords,
@@ -188,7 +197,7 @@ export async function createUser(user: {
  *
  * ログインは Google OAuth だけで、`.invalid` のアドレスを持つアカウントは存在しないので、このユーザーとしてサインインする経路は無い。
  */
-const SYSTEM_USER_EMAIL = "system@toiito.invalid";
+export const SYSTEM_USER_EMAIL = "system@toiito.invalid";
 
 /**
  * システムのユーザーを除く全ユーザーを、ユーザーごとの問いの数とセッションの数と一緒に、登録の古い順で返す。
@@ -957,6 +966,157 @@ export async function summarizeUsage(since: Date): Promise<UsageSummary[]> {
     output_tokens: group._sum.output_tokens ?? 0,
     web_search_count: group._sum.web_search_count ?? 0,
   }));
+}
+
+/** 版番号の一意制約に当たったときに、番号を取り直して書き直す回数の上限。 */
+const PERSONA_VERSION_ATTEMPTS = 3;
+
+/** `persona_config` の行を、ドメイン型の `PersonaConfig` へ写す。 */
+function fromPersonaConfigRow(
+  row: Prisma.PersonaConfigGetPayload<true>,
+): PersonaConfig {
+  return {
+    id: row.id,
+    persona_id: row.persona_id,
+    version: row.version,
+    name: row.name,
+    parameters: {
+      abstraction: row.abstraction,
+      dissent: row.dissent,
+      convergence: row.convergence,
+    },
+    description: row.description,
+    system_prompt: row.system_prompt,
+    created_at: row.created_at,
+  };
+}
+
+/** Prisma の失敗（`cause`）が、一意制約の違反（P2002）かどうか。 */
+function isUniqueViolation(cause: unknown): boolean {
+  return (
+    typeof cause === "object" &&
+    cause !== null &&
+    "code" in cause &&
+    cause.code === "P2002"
+  );
+}
+
+/**
+ * 版を書く処理（`write`）を、版番号の一意制約に当たったら最初からやり直し、`write` の戻り値を返す。
+ * `PERSONA_VERSION_ATTEMPTS` 回続けて当たるか、一意制約の違反でない失敗なら throw する。
+ *
+ * 版番号は最新の版の番号に 1 を足して決めるので、同じペルソナへ同時に二つ書くと同じ番号を取りうる。
+ */
+async function withPersonaVersionRetry<T>(write: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await write();
+    } catch (cause) {
+      if (!isUniqueViolation(cause) || attempt >= PERSONA_VERSION_ATTEMPTS) {
+        throw cause;
+      }
+    }
+  }
+}
+
+/**
+ * システムのユーザーの id を返す。
+ * 行が無ければ作る。
+ */
+async function requireSystemUserId(): Promise<string> {
+  const row = await db().user.upsert({
+    where: { email: SYSTEM_USER_EMAIL },
+    create: { id: randomUUID(), email: SYSTEM_USER_EMAIL, name: "システム" },
+    update: {},
+    select: { id: true },
+  });
+
+  return row.id;
+}
+
+/**
+ * ペルソナの版にする呼び名と設定の組。
+ * 合成した全文は `toSystemPrompt` が設定から作るので、組に持たせない。
+ */
+type PersonaConfigInput = { name: string; settings: PersonaSettings };
+
+/**
+ * ペルソナ（`personaId`）の最新の版の全文が、呼び名と設定（`input`）から合成した全文と違えば、次の版を追記して返す。
+ * 同じなら何も書かずに undefined を返す。
+ */
+async function addPersonaConfigIfChanged(
+  personaId: string,
+  input: PersonaConfigInput,
+): Promise<PersonaConfig | undefined> {
+  const systemPrompt = toSystemPrompt(input.settings);
+
+  return withPersonaVersionRetry(async () => {
+    const latest = await db().personaConfig.findFirst({
+      where: { persona_id: personaId },
+      orderBy: { version: "desc" },
+    });
+
+    if (latest?.system_prompt === systemPrompt) {
+      return undefined;
+    }
+
+    const row = await db().personaConfig.create({
+      data: {
+        persona_id: personaId,
+        version: (latest?.version ?? 0) + 1,
+        name: input.name,
+        ...input.settings.parameters,
+        description: input.settings.description,
+        system_prompt: systemPrompt,
+      },
+    });
+
+    return fromPersonaConfigRow(row);
+  });
+}
+
+/** コードが正を持つ、既定の二体の呼び名と設定。 */
+const DEFAULT_PERSONA_INPUTS: Record<PersonaId, PersonaConfigInput> = {
+  ai_a: {
+    name: DEFAULT_PERSONA_NAMES.ai_a,
+    settings: DEFAULT_PERSONA_SETTINGS.ai_a,
+  },
+  ai_b: {
+    name: DEFAULT_PERSONA_NAMES.ai_b,
+    settings: DEFAULT_PERSONA_SETTINGS.ai_b,
+  },
+};
+
+/**
+ * 既定の二体について、呼び名と設定（`defaults`）から合成した全文が最新の版と違えば次の版を追記し、追記した版を返す。
+ * システムのユーザーと既定の二体の `persona` が無ければ作り、どちらの全文も最新の版と同じなら空配列を返す。
+ *
+ * 既定の設定の正はコードにあり DB の版はその記録なので、デプロイのたびに migration の後で呼ぶ。
+ * `defaults` を渡すのはテストだけで、アプリとスクリプトは省略してコードの設定を使う。
+ */
+export async function addDefaultPersonaConfigs(
+  defaults: Record<PersonaId, PersonaConfigInput> = DEFAULT_PERSONA_INPUTS,
+): Promise<PersonaConfig[]> {
+  const userId = await requireSystemUserId();
+  const added: PersonaConfig[] = [];
+
+  for (const key of Object.keys(DEFAULT_PERSONA_IDS) as PersonaId[]) {
+    const personaId = DEFAULT_PERSONA_IDS[key];
+
+    await db().persona.upsert({
+      where: { id: personaId },
+      create: { id: personaId, user_id: userId },
+      update: {},
+    });
+
+    const config = await addPersonaConfigIfChanged(personaId, defaults[key]);
+
+    if (config) {
+      added.push(config);
+    }
+  }
+
+  return added;
 }
 
 /**

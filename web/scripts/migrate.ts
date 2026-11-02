@@ -1,5 +1,5 @@
 /**
- * 本番と Preview の DB へ migration を適用する。
+ * 本番と Preview の DB へ migration を適用し、既定のペルソナの版を同期する。
  *
  * main への push で本番へ適用する経路（`.github/workflows/migrate.yml`）とは別の、手元から叩くコマンド。
  * Preview には自動経路が無いので（理由は `docs/adr/20260829-preview-neon-branch.md`）、migration を含む PR の画面を見るにはこのスクリプトを通る。
@@ -107,6 +107,20 @@ function main(): void {
     stdio: "inherit",
     env: { ...process.env, DIRECT_URL: target.directUrl },
   });
+
+  // 同期は `db.ts` を通り `DATABASE_URL` へ繋ぐので、適用先の接続文字列を `DATABASE_URL` にも渡す。
+  execFileSync(
+    process.execPath,
+    [fileURLToPath(new URL("./sync-default-personas.ts", import.meta.url))],
+    {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        DATABASE_URL: target.directUrl,
+        DIRECT_URL: target.directUrl,
+      },
+    },
+  );
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

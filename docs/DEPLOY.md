@@ -112,6 +112,11 @@ corepack は使わない（`CLAUDE.md`「開発ハーネス」）。
 main への push で `.github/workflows/migrate.yml` が `prisma migrate deploy` を流す。
 流すものが無ければ何もしないので、migration を含まない push でも走らせている。
 
+**migration の後に、既定のペルソナの版を同期する**。
+同じ workflow の次の step が `scripts/sync-default-personas.ts` を実行し、コードで合成した既定の二体の全文が最新の版と違えば次の版を足す。
+同じなら何も足さないので、ペルソナを変えない push でも走らせている。
+デプロイから同期が終わるまでは、既定のペルソナが一つ前の版で動く。
+
 Vercel のビルドとは競走するが、`migrate deploy` は秒・`next build` は分なので、順序は構造上ほぼ守られる。
 
 **後方非互換な変更はこの前提が効かない**。
@@ -131,6 +136,8 @@ pnpm migrate:prod
 
 接続先は `.env.local` の `DIRECT_URL_PROD`（`web/README.md` の表）。
 流す前に接続先のホストとデータベース名を表示するので、本番と Preview の取り違えはそこで見る。
+`pnpm migrate:prod` と `pnpm migrate:preview` は、migration の後に同じ接続先で既定のペルソナの版も同期する。
+手元の開発用 DB へ同期だけを実行するときは `pnpm personas:sync` を叩く。
 
 ## Preview
 

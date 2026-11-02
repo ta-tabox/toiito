@@ -278,6 +278,25 @@ export const DEFAULT_PERSONA_SETTINGS: Record<PersonaId, PersonaSettings> = {
 };
 
 /**
+ * 既定の二体の `persona.id`。
+ *
+ * 値はペルソナの表を足す migration（`20261102120000_persona_tables`）が版 1 を作った id と同じで、変えると既存の版 1 と別のペルソナになる。
+ */
+export const DEFAULT_PERSONA_IDS: Record<PersonaId, string> = {
+  ai_a: "00000000-0000-4000-8000-000000000001",
+  ai_b: "00000000-0000-4000-8000-000000000002",
+};
+
+/**
+ * 既定の二体の呼び名。
+ * DB の版の `name` へ、合成した全文と一緒に書く。
+ */
+export const DEFAULT_PERSONA_NAMES: Record<PersonaId, string> = {
+  ai_a: "具体さん",
+  ai_b: "抽象さん",
+};
+
+/**
  * `settings` からシステムプロンプトの全文を作る。
  * 節の順序は、禁止事項・材料の供給規律・軸ごとの傾向・自由記述で、`description` が空なら自由記述の節を作らない。
  */

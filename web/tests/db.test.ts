@@ -601,8 +601,7 @@ describe("users", () => {
   });
 
   it("listUsersForAdmin は、既定のペルソナを持つシステムのユーザーを返さない", async () => {
-    await db.createUser({ email: "system@toiito.invalid", name: "システム" });
-
+    // システムのユーザーは、前準備の同期（`tests/setup/truncate.ts`）が作っている。
     const rows = await db.listUsersForAdmin();
 
     expect(rows.map(({ id }) => id)).toEqual([owner]);
