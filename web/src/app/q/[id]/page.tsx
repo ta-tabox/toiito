@@ -22,6 +22,7 @@ import {
 } from "@/app/actions";
 import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
+import { MessageBubble } from "@/components/message-bubble";
 import { RetryForm, SpeakForm } from "@/components/speak-form";
 import { StatusForm } from "@/components/status-form";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -35,9 +36,7 @@ import {
   questionText,
 } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
-import type { PersonaAxisLevel } from "@/lib/personas";
 import { messageElementIdOf, questionPathOf } from "@/lib/routes";
-import type { UtteranceSpeaker } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -46,41 +45,6 @@ export const dynamic = "force-dynamic";
  * どのセッションだったか思い出せれば足りるので、全部は並べない。
  */
 const SWITCHER_KEYWORDS = 3;
-
-/** 発話者の名前のラベルと、吹き出しの class。 */
-type SpeakerStyle = { label: string; bubble: string; name: string };
-
-/**
- * 人間の発話の吹き出し。
- *
- * 三者は同じ幅で並べ、違いは背景色と角丸の位置だけに置く（`.claude/rules/design.md`「話者の描き分け」）。
- * 背景色は周辺視で拾う手掛かりであって識別の正ではないので、`label` の表示は消さない。
- */
-const HUMAN_STYLE: SpeakerStyle = {
-  label: "あなた",
-  bubble: "rounded-bubble rounded-tr-notch bg-moss-surface",
-  name: "text-right",
-};
-
-/** AI の発話の吹き出しを、版の抽象度の段階ごとに持つ。 */
-const AI_BUBBLE: Record<PersonaAxisLevel, string> = {
-  level_1: "rounded-bubble rounded-tl-notch bg-surface-warm",
-  level_2: "rounded-bubble rounded-tl-notch bg-surface-warm",
-  level_3: "rounded-bubble rounded-tl-notch bg-surface-warm",
-  level_4: "rounded-bubble border border-rule bg-surface-cool",
-  level_5: "rounded-bubble border border-rule bg-surface-cool",
-};
-
-/** 発話（`utterance`）の吹き出しを、人間か、AI ならそれを書いた版の呼び名と抽象度から決める。 */
-function speakerStyleOf(utterance: UtteranceSpeaker): SpeakerStyle {
-  if (utterance.speaker === "human") {
-    return HUMAN_STYLE;
-  }
-
-  const { name, abstraction } = utterance.persona;
-
-  return { label: name, bubble: AI_BUBBLE[abstraction], name: "" };
-}
 
 /**
  * 一つの問いの対話画面。
@@ -185,26 +149,15 @@ export default async function QuestionPage({
       )}
 
       <div data-recedes-while-writing="" className="mt-8 space-y-4">
-        {messages.map((m) => {
-          const style = speakerStyleOf(m);
-
-          return (
-            <div
-              key={m.id}
-              id={messageElementIdOf(m.id)}
-              className={`p-3 md:p-4 ${style.bubble}`}
-            >
-              <div className={`mb-2 text-meta text-ink-weak ${style.name}`}>
-                {style.label}
-              </div>
-              <MessageBody
-                message={m}
-                memos={memos.filter((memo) => memo.message_id === m.id)}
-                action={createMemoAction}
-              />
-            </div>
-          );
-        })}
+        {messages.map((m) => (
+          <MessageBubble key={m.id} id={messageElementIdOf(m.id)} speaker={m}>
+            <MessageBody
+              message={m}
+              memos={memos.filter((memo) => memo.message_id === m.id)}
+              action={createMemoAction}
+            />
+          </MessageBubble>
+        ))}
         {messages.length === 0 && (
           <p className="text-aux text-ink-weak">
             まだ発話がない。問いについて口火を切ると、二体が応答する。
