@@ -237,3 +237,15 @@ export type PersonaConfig = {
   system_prompt: string;
   created_at: Date;
 };
+
+/**
+ * 利用者に見えるペルソナ一体と、その最新の版。
+ * `db.ts` が作り、ペルソナを選ぶ画面と編集する画面が読む。
+ *
+ * `is_default` は持ち主がシステムのユーザーかどうかで、既定のペルソナを編集すると利用者が持つ別のペルソナができる。
+ */
+export type Persona = {
+  id: string;
+  is_default: boolean;
+  latest: PersonaConfig;
+};

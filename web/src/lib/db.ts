@@ -26,7 +26,9 @@ import {
   DEFAULT_PERSONA_NAMES,
   DEFAULT_PERSONA_SETTINGS,
   type DefaultPersonaKey,
+  type PersonaConfigDraft,
   type PersonaConfigInput,
+  parsePersonaConfigDraft,
   toSystemPrompt,
 } from "@/lib/personas";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
@@ -40,6 +42,7 @@ import type {
   Message,
   NewUtterance,
   OwnerId,
+  Persona,
   PersonaConfig,
   Question,
   Session,
@@ -1072,6 +1075,19 @@ async function requireSystemUserId(): Promise<string> {
 }
 
 /**
+ * ペルソナ（`personaId`）の版のうち、版番号が最大の行を返す。
+ * 版が一つも無ければ undefined を返す。
+ */
+async function findLatestPersonaConfigRow(personaId: string) {
+  const row = await db().personaConfig.findFirst({
+    where: { persona_id: personaId },
+    orderBy: { version: "desc" },
+  });
+
+  return row ?? undefined;
+}
+
+/**
  * ペルソナ（`personaId`）の最新の版の全文が、呼び名と設定（`input`）から合成した全文と違えば、次の版を追記して返す。
  * 同じなら何も書かずに undefined を返す。
  */
@@ -1079,15 +1095,12 @@ async function addPersonaConfigIfChanged(
   personaId: string,
   input: PersonaConfigInput,
 ): Promise<PersonaConfig | undefined> {
-  const systemPrompt = toSystemPrompt(input.settings);
+  const columns = toPersonaConfigColumns(input);
 
   return withPersonaVersionRetry(async () => {
-    const latest = await db().personaConfig.findFirst({
-      where: { persona_id: personaId },
-      orderBy: { version: "desc" },
-    });
+    const latest = await findLatestPersonaConfigRow(personaId);
 
-    if (latest?.system_prompt === systemPrompt) {
+    if (latest?.system_prompt === columns.system_prompt) {
       return undefined;
     }
 
@@ -1095,10 +1108,135 @@ async function addPersonaConfigIfChanged(
       data: {
         persona_id: personaId,
         version: (latest?.version ?? 0) + 1,
-        name: input.name,
-        ...input.settings.parameters,
-        description: input.settings.description,
-        system_prompt: systemPrompt,
+        ...columns,
+      },
+    });
+
+    return fromPersonaConfigRow(row);
+  });
+}
+
+/**
+ * 呼び名と設定（`input`）を、版の行の列（呼び名・三つの軸・自由記述・合成した全文）へ写す。
+ * 全文は版を作る時点の `toSystemPrompt` の結果で、後から作り直さない。
+ */
+function toPersonaConfigColumns(input: PersonaConfigInput) {
+  return {
+    name: input.name,
+    ...input.settings.parameters,
+    description: input.settings.description,
+    system_prompt: toSystemPrompt(input.settings),
+  };
+}
+
+/**
+ * `owner` に見えるペルソナの絞り込み。
+ * 持ち主が `owner` か、システムのユーザー（既定のペルソナの持ち主）であるペルソナに絞る。
+ */
+function visiblePersonaWhere(owner: OwnerId): Prisma.PersonaWhereInput {
+  return { OR: [{ user_id: owner }, { user: { email: SYSTEM_USER_EMAIL } }] };
+}
+
+/** ペルソナの行と一緒に取得する、持ち主の email と最新の版。 */
+const PERSONA_COLUMNS = {
+  user: { select: { email: true } },
+  configs: { orderBy: { version: "desc" }, take: 1 },
+} as const;
+
+/**
+ * ペルソナの行を、ドメイン型の `Persona` へ写す。
+ * 版が一つも無いペルソナは throw する。
+ *
+ * ペルソナと版 1 は同じ書き込みで作るので、版の無いペルソナは書き込みの途中でしか生じない。
+ */
+function fromPersonaRow(
+  row: Prisma.PersonaGetPayload<{ include: typeof PERSONA_COLUMNS }>,
+): Persona {
+  const [latest] = row.configs;
+  if (!latest) {
+    throw new Error(`ペルソナに版が無い: ${row.id}`);
+  }
+
+  return {
+    id: row.id,
+    is_default: row.user.email === SYSTEM_USER_EMAIL,
+    latest: fromPersonaConfigRow(latest),
+  };
+}
+
+/**
+ * `owner` に見えるペルソナを、それぞれの最新の版と一緒に返す。
+ * 既定のペルソナを先に、`owner` のペルソナを後に、どちらも作った順に並べる。
+ *
+ * 並びはペルソナを選ぶ画面の選択肢の並びで、既定の二体が利用者の数に依らず先頭に出る。
+ */
+export async function listPersonas(owner: OwnerId): Promise<Persona[]> {
+  const rows = await db().persona.findMany({
+    where: visiblePersonaWhere(owner),
+    include: PERSONA_COLUMNS,
+    orderBy: [{ created_at: "asc" }, { id: "asc" }],
+  });
+
+  const personas = rows.map(fromPersonaRow);
+
+  return [
+    ...personas.filter((persona) => persona.is_default),
+    ...personas.filter((persona) => !persona.is_default),
+  ];
+}
+
+/**
+ * `owner` に見えるペルソナ（`personaId`）を、最新の版と一緒に返す。
+ * 無いペルソナと、他の利用者のペルソナは undefined を返す。
+ */
+export async function getPersona(
+  owner: OwnerId,
+  personaId: string,
+): Promise<Persona | undefined> {
+  const row = await db().persona.findFirst({
+    where: { id: personaId, ...visiblePersonaWhere(owner) },
+    include: PERSONA_COLUMNS,
+  });
+
+  return row ? fromPersonaRow(row) : undefined;
+}
+
+/**
+ * `owner` に見えるペルソナ（`personaId`）を下書き（`draft`）の内容で編集し、作った版を返す。
+ * 既定のペルソナを編集すると、`owner` が持つ新しいペルソナとその版 1 を作り、`owner` のペルソナを編集すると次の版を足す。
+ * 下書きが `parsePersonaConfigDraft` の検証に通らなければ throw し、無いペルソナと他の利用者のペルソナは同じ文面で throw する。
+ *
+ * 既定のペルソナの版はコードの設定の記録なので、利用者の編集を既定のペルソナへ書き込まない。
+ */
+export async function addPersonaConfig(
+  owner: OwnerId,
+  personaId: string,
+  draft: PersonaConfigDraft,
+): Promise<PersonaConfig> {
+  const columns = toPersonaConfigColumns(parsePersonaConfigDraft(draft));
+
+  const persona = await getPersona(owner, personaId);
+  if (!persona) {
+    throw new Error(`ペルソナが見つからない: ${personaId}`);
+  }
+
+  if (persona.is_default) {
+    const created = await db().persona.create({
+      data: { user_id: owner, configs: { create: { version: 1, ...columns } } },
+      include: { configs: true },
+    });
+
+    return fromPersonaConfigRow(created.configs[0]);
+  }
+
+  return withPersonaVersionRetry(async () => {
+    const latest = await findLatestPersonaConfigRow(personaId);
+
+    const row = await db().personaConfig.create({
+      data: {
+        persona_id: personaId,
+        version: (latest?.version ?? 0) + 1,
+        ...columns,
       },
     });
 
@@ -1125,10 +1263,7 @@ const DEFAULT_PERSONA_INPUTS: Record<DefaultPersonaKey, PersonaConfigInput> = {
 export async function getLatestDefaultPersonaConfig(
   key: DefaultPersonaKey,
 ): Promise<PersonaConfig | undefined> {
-  const row = await db().personaConfig.findFirst({
-    where: { persona_id: DEFAULT_PERSONA_IDS[key] },
-    orderBy: { version: "desc" },
-  });
+  const row = await findLatestPersonaConfigRow(DEFAULT_PERSONA_IDS[key]);
 
   return row ? fromPersonaConfigRow(row) : undefined;
 }
