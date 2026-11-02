@@ -14,6 +14,7 @@
     "lint": "biome check && node scripts/lint-comments.ts",
     "seed": "node scripts/checkout-environment.ts node scripts/seed/index.ts",
     "seed:usage": "node scripts/checkout-environment.ts node scripts/seed/reseed-usage.ts",
+    "personas:sync": "node scripts/checkout-environment.ts node scripts/sync-default-personas.ts",
     "db:prepare": "node scripts/prepare-checkout-database.ts",
     "db:prune": "node scripts/prune-test-databases.ts",
     "migrate:prod": "node --env-file-if-exists=.env.local scripts/migrate.ts prod",

@@ -1,5 +1,5 @@
 /**
- * このチェックアウトの開発用データベースを、無ければ作り、worktree なら migration を積む CLI を置く。
+ * このチェックアウトの開発用データベースを、無ければ作り、worktree なら migration を積んで既定のペルソナの版を同期する CLI を置く。
  * データの投入は持たず、`seed/index.ts` が持つ。
  *
  * 既にあるデータベースは作り直さない。
@@ -72,8 +72,24 @@ function runMigrateDeploy(url: string): void {
 }
 
 /**
+ * `url` のデータベースで、既定のペルソナの版を `scripts/sync-default-personas.ts` で同期する。
+ * 版がコードと同じなら何もしない。
+ */
+function runPersonaSync(url: string): void {
+  execFileSync(
+    process.execPath,
+    [path.join(webRoot, "scripts", "sync-default-personas.ts")],
+    {
+      cwd: webRoot,
+      stdio: "inherit",
+      env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url },
+    },
+  );
+}
+
+/**
  * CLI の本体。
- * 接続先を告げ、無ければ作り、worktree なら migration を積む。
+ * 接続先を告げ、無ければ作り、worktree なら migration を積んで既定のペルソナの版を同期する。
  */
 async function main(): Promise<void> {
   const { DIRECT_URL } = setCheckoutEnvironment();
@@ -91,6 +107,7 @@ async function main(): Promise<void> {
 
   if (isWorktree(repositoryRoot)) {
     runMigrateDeploy(DIRECT_URL);
+    runPersonaSync(DIRECT_URL);
   }
 }
 

@@ -57,7 +57,7 @@ paths:
 | 純粋な計算 | `lib/*.ts`・`lib/ai/prompt.ts`・`lib/auth/protected-paths.ts` | ドメイン型・純粋な計算 | 取りうる値の定数と判定・関数とテスト |
 | 境界 | 上の表・`lib/ai/**`・`lib/auth/**` | 純粋な計算・ドメイン型・境界 | 境界の道具と検証 |
 | 一往復の手順 | `lib/turn.ts` | 境界・純粋な計算・ドメイン型 | AI 呼び出しと永続化の順序 |
-| 配線 | `app/**`・`web/scripts/seed/index.ts` | クライアント側の部品・手順・境界・純粋な計算 | 受け取り・呼び出し・`revalidatePath` か `redirect` |
+| 配線 | `app/**`・`web/scripts/seed/index.ts`・`web/scripts/sync-default-personas.ts` | クライアント側の部品・手順・境界・純粋な計算 | 受け取り・呼び出し・`revalidatePath` か `redirect` |
 | 全リクエストの入口 | `proxy.ts` | `lib/auth/protected-paths.ts` | cookie の有無だけで `/login` へ送るかの判定 |
 | クライアント側の部品 | `components/**` | クライアント側の部品・`node:*` を import しない純粋な計算 | DOM の読み書きと描画 |
 | ペルソナの定義 | `personas/*.md` | 無し | システムプロンプトの本文（読むのは `lib/personas.ts` だけ） |

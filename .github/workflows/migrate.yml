@@ -1,4 +1,4 @@
-# main へ入った migration を本番 Neon へ流す一本。
+# main へ入った migration を本番 Neon へ流し、既定のペルソナの版を同期する一本。
 # Vercel に release_command 相当が無いので、経路をここへ分けている（決定の経緯は docs/adr/20260828-production-migration-path.md）。
 #
 # Vercel のデプロイとは競走するが、migrate deploy は秒・next build は分なので、順序は構造上ほぼ守られる。
@@ -53,3 +53,11 @@ jobs:
 
       - name: migration を流す
         run: pnpm exec prisma migrate deploy
+
+      # 既定のペルソナの正はコードにあり、DB の版はその記録なので、migration の後に揃える（docs/DEPLOY.md「migration」）。
+      # 同期は db.ts を通り、db.ts は DATABASE_URL へ繋ぐ。
+      # プーラーを経ない DIRECT_URL でもアプリの問い合わせは通るので、secret を足さずに同じ値を渡す。
+      - name: 既定のペルソナの版を同期する
+        run: node scripts/sync-default-personas.ts
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DIRECT_URL }}

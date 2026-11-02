@@ -114,7 +114,7 @@ function recreateDatabase(): void {
 }
 
 /**
- * 空のデータベースへスキーマを積み、開発用シードを入れる。
+ * 空のデータベースへスキーマを積み、既定のペルソナの版を同期してから、開発用シードを入れる。
  *
  * どちらも E2E の接続先を明示して子プロセスへ渡す。
  * `.env.local` を読ませないのは、`.env.local` に書いてある開発用の接続先を掴ませないため。
@@ -127,6 +127,12 @@ function migrateAndSeed(): void {
   };
 
   execFileSync("pnpm", ["exec", "prisma", "migrate", "deploy"], {
+    cwd: webRoot,
+    stdio: "inherit",
+    env,
+  });
+
+  execFileSync(process.execPath, ["scripts/sync-default-personas.ts"], {
     cwd: webRoot,
     stdio: "inherit",
     env,
