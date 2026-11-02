@@ -8,6 +8,10 @@
 #
 # 前方一致では表現できない形も拾う——短オプションの束（`-fu`）・`+src:dst` の force refspec・`:branch` の削除 refspec。
 #
+# 例外は、main 以外の名前付きブランチへの `--force-with-lease` だけで、スタック型 PR の積み直しに使う。
+# lease は最後に取得した後に他者が push した ref を上書きせずに失敗するので、人間に ask を出さず settings.json の allow へ委ねる。
+# 経緯は docs/adr/20261102-stacked-pull-requests.md が持つ。
+#
 # 判定は「戻せない形か」だけで、それ以外は何も言わず settings.json の判定へ委ねる。
 # 迷ったら ask へ倒す。
 # 余計に訊かれるのは摩擦で済むが、素通りは事故になる。
@@ -68,6 +72,49 @@ destructive+='|(^|[[:space:]])-[a-zA-Z]*[fd][a-zA-Z]*([[:space:]]|$)'
 destructive+='|(^|[[:space:]])\+[^[:space:]]+:'
 destructive+='|(^|[[:space:]]):[^[:space:]]+'
 
-if grep -qE "$destructive" <<< "$arguments"; then
+# lease 付きのフラグを語の列から抜き出し、残りの語だけで破壊的な形を検査する。
+# 抜かずに検査すると `--force-with-lease` が `--force` の形に当たる。
+read -ra words <<< "$arguments"
+has_lease=false
+words_without_lease=()
+for word in "${words[@]}"; do
+  case "$word" in
+    --force-with-lease | --force-with-lease=* | --force-if-includes) has_lease=true ;;
+    *) words_without_lease+=("$word") ;;
+  esac
+done
+
+if grep -qE "$destructive" <<< "${words_without_lease[*]}"; then
   ask "戻せない push の可能性がある（force / delete / mirror）。人間の諾否が要る"
+  exit 0
 fi
+
+if [[ $has_lease == false ]]; then
+  exit 0
+fi
+
+# 送り先は、remote 名の後に並ぶ refspec の `:` より後ろ（`:` が無ければ refspec 全体）である。
+# 送り先を書かない push は現在のブランチへ送るので、main に居るかを見ずに人間へ回す。
+positionals=()
+for word in "${words_without_lease[@]}"; do
+  if [[ $word != -* ]]; then
+    positionals+=("$word")
+  fi
+done
+
+if ((${#positionals[@]} < 2)); then
+  ask "force-with-lease の送り先のブランチが書かれていない。人間の諾否が要る"
+  exit 0
+fi
+
+for refspec in "${positionals[@]:1}"; do
+  destination=${refspec#*:}
+  destination=${destination//[\"\']/}
+  destination=${destination#+}
+  destination=${destination#refs/heads/}
+
+  if [[ -z $destination || $destination == main || $destination == HEAD || $destination == *'*'* ]]; then
+    ask "main か名前の決まらないブランチへの force-with-lease。人間の諾否が要る"
+    exit 0
+  fi
+done

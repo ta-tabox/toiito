@@ -23,9 +23,12 @@
 - 心拍: 変更 → `web/` で `pnpm check` → 緑ならコミット。**赤のままコミットしない**
 - 作る順: **lib 関数 + テスト → UI 配線**（`.claude/rules/coding.md`「置き場と依存の向き」）
 - AI を伴う動作確認は `TOIITO_FAKE_AI=1`。実 API は自動テストで叩かない
-- 1 セッション = 1 PR
-  同じセッションで取り組める issue は 1 PR にまとめてよく、PR 本文に issue ごとの `closes #N` を並べる
-  CI 緑 + マージで閉じる
+- 1 セッション = 1 スタック
+  列を一つの PR にまとめるとレビューの単位が列全体になるので、前の段を前提にする issue の列は 1 issue 1 PR で積み、各 PR のベースを一つ下の段のブランチにする
+  列を持たない issue は 1 PR にまとめてよく、PR 本文に issue ごとの `closes #N` を並べる
+  下の段が変わったら上の段を rebase し、`--force-with-lease` で push する
+  マージは下の段から一つずつ main へ行い、上の段のベースを main へ付け替える
+  CI 緑 + main へのマージで閉じる（`closes #N` は main へマージされたときにだけ効く）
 - コミット規約・署名は `CLAUDE.md` の git 節が正（prefix は変更の型、author は人間名義）
 
 ## 完了条件の判定を二本に分ける

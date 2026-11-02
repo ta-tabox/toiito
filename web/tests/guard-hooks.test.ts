@@ -71,6 +71,22 @@ describe("guard-force-push.sh", () => {
     ["+src:dst の refspec", "git push origin +main:main"],
     [":branch の削除 refspec", "git push origin :old-branch"],
     ["コマンド置換の中の -f", "echo $(git push -f)"],
+    ["main への --force-with-lease", "git push --force-with-lease origin main"],
+    [
+      "HEAD:main への --force-with-lease",
+      "git push --force-with-lease origin HEAD:main",
+    ],
+    ["送り先の無い --force-with-lease", "git push --force-with-lease origin"],
+    [
+      "--force と並べた --force-with-lease",
+      "git push --force-with-lease --force origin stack/a",
+    ],
+    [
+      "削除の refspec と並べた --force-with-lease",
+      "git push --force-with-lease origin stack/a :stack/b",
+    ],
+    ["引用した main", "git push --force-with-lease origin 'main'"],
+    ["+ 付きの main", "git push --force-with-lease origin +main"],
   ])("%s を含む push は ask になる", (_label, command) => {
     expect(decisionOf(hooks.forcePush, command)).toBe("ask");
   });
@@ -83,6 +99,14 @@ describe("guard-force-push.sh", () => {
       'git status; echo "--- 未 push の有無 ---"',
     ],
     ["push の前にある -f", "gh api graphql -f query=x; git push origin main"],
+    [
+      "main 以外への --force-with-lease",
+      "git push --force-with-lease origin stack/263-persona-tables",
+    ],
+    [
+      "値を持つ --force-with-lease と --force-if-includes",
+      "git push -u --force-with-lease=stack/a:abc123 --force-if-includes origin HEAD:stack/a",
+    ],
   ])("%s は何も出さない", (_label, command) => {
     expect(decisionOf(hooks.forcePush, command)).toBeUndefined();
   });

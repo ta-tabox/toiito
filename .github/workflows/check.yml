@@ -1,4 +1,4 @@
-# `pnpm check`（L0 型 → L1 静的 → L2 ユニット → L3 ビルド）を PR と main で機械的に回す。
+# `pnpm check`（L0 型 → L1 静的 → L2 ユニット → L3 ビルド）を、すべての PR と main で機械的に回す。
 # docs/ROADMAP.md「進め方の横断規約」が issue を閉じる条件に置く CI の緑を、ローカルの自己申告でなくマージの条件として持つための一本。
 #
 # 設計の芯はローカルとの対称——ハーネスが保証するのは「どこで走らせても pnpm check が同じ意味を持つ」ことなので、
@@ -7,9 +7,10 @@
 
 name: check
 
+# pull_request はベースのブランチを絞らない。
+# スタック型 PR の上の段はベースが main でないので、絞ると main へ付け替えるまで検査されない。
 on:
   pull_request:
-    branches: [main]
   push:
     branches: [main]
 
