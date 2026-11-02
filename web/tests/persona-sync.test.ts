@@ -23,8 +23,8 @@ afterAll(async () => {
 });
 
 const COMPOSED = {
-  ai_a: toSystemPrompt(DEFAULT_PERSONA_SETTINGS.ai_a),
-  ai_b: toSystemPrompt(DEFAULT_PERSONA_SETTINGS.ai_b),
+  concrete: toSystemPrompt(DEFAULT_PERSONA_SETTINGS.concrete),
+  abstract: toSystemPrompt(DEFAULT_PERSONA_SETTINGS.abstract),
 };
 
 describe("addDefaultPersonaConfigs", () => {
@@ -33,36 +33,55 @@ describe("addDefaultPersonaConfigs", () => {
 
     expect(added).toEqual([]);
     expect(await listPersonaConfigRows()).toEqual([
-      { persona_id: PERSONA_ID.ai_a, version: 1, system_prompt: COMPOSED.ai_a },
-      { persona_id: PERSONA_ID.ai_b, version: 1, system_prompt: COMPOSED.ai_b },
+      {
+        persona_id: PERSONA_ID.concrete,
+        version: 1,
+        system_prompt: COMPOSED.concrete,
+      },
+      {
+        persona_id: PERSONA_ID.abstract,
+        version: 1,
+        system_prompt: COMPOSED.abstract,
+      },
     ]);
   });
 
   it("節の文言を変えたコードで同期すると次の版が足され、既存の版の全文は変わらない", async () => {
     const changed = {
-      ai_a: {
+      concrete: {
         name: "具体さん",
         settings: {
-          ...DEFAULT_PERSONA_SETTINGS.ai_a,
+          ...DEFAULT_PERSONA_SETTINGS.concrete,
           description: "俳句で話す。",
         },
       },
-      ai_b: { name: "抽象さん", settings: DEFAULT_PERSONA_SETTINGS.ai_b },
+      abstract: {
+        name: "抽象さん",
+        settings: DEFAULT_PERSONA_SETTINGS.abstract,
+      },
     };
 
     const added = await db.addDefaultPersonaConfigs(changed);
 
     expect(
       added.map(({ persona_id, version }) => ({ persona_id, version })),
-    ).toEqual([{ persona_id: PERSONA_ID.ai_a, version: 2 }]);
+    ).toEqual([{ persona_id: PERSONA_ID.concrete, version: 2 }]);
     expect(await listPersonaConfigRows()).toEqual([
-      { persona_id: PERSONA_ID.ai_a, version: 1, system_prompt: COMPOSED.ai_a },
       {
-        persona_id: PERSONA_ID.ai_a,
-        version: 2,
-        system_prompt: toSystemPrompt(changed.ai_a.settings),
+        persona_id: PERSONA_ID.concrete,
+        version: 1,
+        system_prompt: COMPOSED.concrete,
       },
-      { persona_id: PERSONA_ID.ai_b, version: 1, system_prompt: COMPOSED.ai_b },
+      {
+        persona_id: PERSONA_ID.concrete,
+        version: 2,
+        system_prompt: toSystemPrompt(changed.concrete.settings),
+      },
+      {
+        persona_id: PERSONA_ID.abstract,
+        version: 1,
+        system_prompt: COMPOSED.abstract,
+      },
     ]);
   });
 
@@ -73,15 +92,23 @@ describe("addDefaultPersonaConfigs", () => {
 
     expect(await countSystemUsers()).toBe(1);
     expect(await listPersonaConfigRows()).toEqual([
-      { persona_id: PERSONA_ID.ai_a, version: 1, system_prompt: COMPOSED.ai_a },
-      { persona_id: PERSONA_ID.ai_b, version: 1, system_prompt: COMPOSED.ai_b },
+      {
+        persona_id: PERSONA_ID.concrete,
+        version: 1,
+        system_prompt: COMPOSED.concrete,
+      },
+      {
+        persona_id: PERSONA_ID.abstract,
+        version: 1,
+        system_prompt: COMPOSED.abstract,
+      },
     ]);
   });
 
   it("移行の版 1 がある DB で、合成した全文の版 2 を足す", async () => {
     await deletePersonas();
     await createMigratedPersonas(
-      [PERSONA_ID.ai_a, PERSONA_ID.ai_b],
+      [PERSONA_ID.concrete, PERSONA_ID.abstract],
       "移行の時点の全文",
     );
 
@@ -90,17 +117,25 @@ describe("addDefaultPersonaConfigs", () => {
     expect(await countSystemUsers()).toBe(1);
     expect(await listPersonaConfigRows()).toEqual([
       {
-        persona_id: PERSONA_ID.ai_a,
+        persona_id: PERSONA_ID.concrete,
         version: 1,
         system_prompt: "移行の時点の全文",
       },
-      { persona_id: PERSONA_ID.ai_a, version: 2, system_prompt: COMPOSED.ai_a },
       {
-        persona_id: PERSONA_ID.ai_b,
+        persona_id: PERSONA_ID.concrete,
+        version: 2,
+        system_prompt: COMPOSED.concrete,
+      },
+      {
+        persona_id: PERSONA_ID.abstract,
         version: 1,
         system_prompt: "移行の時点の全文",
       },
-      { persona_id: PERSONA_ID.ai_b, version: 2, system_prompt: COMPOSED.ai_b },
+      {
+        persona_id: PERSONA_ID.abstract,
+        version: 2,
+        system_prompt: COMPOSED.abstract,
+      },
     ]);
   });
 });

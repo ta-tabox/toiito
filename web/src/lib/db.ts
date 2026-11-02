@@ -22,9 +22,10 @@ import { DATABASE_URL } from "@/lib/config";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import {
   DEFAULT_PERSONA_IDS,
+  DEFAULT_PERSONA_KEYS,
   DEFAULT_PERSONA_NAMES,
   DEFAULT_PERSONA_SETTINGS,
-  type PersonaId,
+  type DefaultPersonaKey,
   type PersonaSettings,
   toSystemPrompt,
 } from "@/lib/personas";
@@ -1076,14 +1077,14 @@ async function addPersonaConfigIfChanged(
 }
 
 /** コードが正を持つ、既定の二体の呼び名と設定。 */
-const DEFAULT_PERSONA_INPUTS: Record<PersonaId, PersonaConfigInput> = {
-  ai_a: {
-    name: DEFAULT_PERSONA_NAMES.ai_a,
-    settings: DEFAULT_PERSONA_SETTINGS.ai_a,
+const DEFAULT_PERSONA_INPUTS: Record<DefaultPersonaKey, PersonaConfigInput> = {
+  concrete: {
+    name: DEFAULT_PERSONA_NAMES.concrete,
+    settings: DEFAULT_PERSONA_SETTINGS.concrete,
   },
-  ai_b: {
-    name: DEFAULT_PERSONA_NAMES.ai_b,
-    settings: DEFAULT_PERSONA_SETTINGS.ai_b,
+  abstract: {
+    name: DEFAULT_PERSONA_NAMES.abstract,
+    settings: DEFAULT_PERSONA_SETTINGS.abstract,
   },
 };
 
@@ -1095,12 +1096,15 @@ const DEFAULT_PERSONA_INPUTS: Record<PersonaId, PersonaConfigInput> = {
  * `defaults` を渡すのはテストだけで、アプリとスクリプトは省略してコードの設定を使う。
  */
 export async function addDefaultPersonaConfigs(
-  defaults: Record<PersonaId, PersonaConfigInput> = DEFAULT_PERSONA_INPUTS,
+  defaults: Record<
+    DefaultPersonaKey,
+    PersonaConfigInput
+  > = DEFAULT_PERSONA_INPUTS,
 ): Promise<PersonaConfig[]> {
   const userId = await requireSystemUserId();
   const added: PersonaConfig[] = [];
 
-  for (const key of Object.keys(DEFAULT_PERSONA_IDS) as PersonaId[]) {
+  for (const key of DEFAULT_PERSONA_KEYS) {
     const personaId = DEFAULT_PERSONA_IDS[key];
 
     await db().persona.upsert({
