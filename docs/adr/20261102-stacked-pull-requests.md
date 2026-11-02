@@ -1,6 +1,6 @@
 # 前の段を前提にする issue の列をスタック型 PR で進め、積み直しは main 以外への force-with-lease で行う
 
-- **状態**: 採用
+- **状態**: supersede 済み（→ 20261102-native-stacked-pull-requests）
 - **決定日**: 2026-11-02
 - **関係する ADR**: なし
 
