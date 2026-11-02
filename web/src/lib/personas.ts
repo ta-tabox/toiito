@@ -278,6 +278,15 @@ export const DEFAULT_PERSONA_SETTINGS: Record<PersonaId, PersonaSettings> = {
 };
 
 /**
+ * 既定の二体の呼び名。
+ * DB の版の `name` へ、合成した全文と一緒に書く。
+ */
+export const DEFAULT_PERSONA_NAMES: Record<PersonaId, string> = {
+  ai_a: "具体さん",
+  ai_b: "抽象さん",
+};
+
+/**
  * `settings` からシステムプロンプトの全文を作る。
  * 節の順序は、禁止事項・材料の供給規律・軸ごとの傾向・自由記述で、`description` が空なら自由記述の節を作らない。
  */

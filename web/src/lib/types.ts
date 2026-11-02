@@ -10,6 +10,7 @@
  */
 
 import type { MaterialCreator, MaterialKind } from "@/lib/material";
+import type { PersonaParameters } from "@/lib/personas";
 import type { QuestionStatus } from "@/lib/question";
 import type { AiCallKind, ApiKeySource } from "@/lib/usage";
 
@@ -194,4 +195,21 @@ export type UsageSummary = {
   input_tokens: number;
   output_tokens: number;
   web_search_count: number;
+};
+
+/**
+ * ペルソナの設定の一つの版（`persona_config` の行）。
+ * `db.ts` が作り、一往復がシステムプロンプトを、画面が発話者の呼び名を読む。
+ *
+ * `system_prompt` は版を作った時点の合成の結果で、`parameters` と `description` から作り直した文と一致するとは限らない。
+ */
+export type PersonaConfig = {
+  id: string;
+  persona_id: string;
+  version: number;
+  name: string;
+  parameters: PersonaParameters;
+  description: string;
+  system_prompt: string;
+  created_at: Date;
 };
