@@ -6,7 +6,9 @@ import {
   isPersonaAxisLevel,
   PERSONA_AXES,
   PERSONA_AXIS_LEVELS,
+  type PersonaConfigDraft,
   type PersonaParameters,
+  parsePersonaConfigDraft,
   toSystemPrompt,
 } from "@/lib/personas";
 
@@ -190,5 +192,54 @@ describe("システムプロンプトの合成", () => {
         expect(isPersonaAxisLevel(value)).toBe(false);
       },
     );
+  });
+});
+
+describe("ペルソナの下書きの検証", () => {
+  const DRAFT: PersonaConfigDraft = {
+    name: "  俳句さん  ",
+    parameters: {
+      abstraction: "level_2",
+      dissent: "level_3",
+      convergence: "level_4",
+    },
+    description: "五七五で話す。",
+  };
+
+  it("値域の内の下書きは、前後の空白を除いた呼び名と、同じ段階の設定になる", () => {
+    expect(parsePersonaConfigDraft(DRAFT)).toEqual({
+      name: "俳句さん",
+      settings: {
+        parameters: DRAFT.parameters,
+        description: DRAFT.description,
+      },
+    });
+  });
+
+  it.each([
+    ['"', '具体"さん'],
+    ["<", "具体<さん"],
+    [">", "具体>さん"],
+    ["&", "具体&さん"],
+    ["改行", "具体\nさん"],
+  ])("呼び名が %s を含むと throw する", (_, name) => {
+    expect(() => parsePersonaConfigDraft({ ...DRAFT, name })).toThrow(
+      /呼び名に使えない文字/,
+    );
+  });
+
+  it("呼び名が空白だけなら throw する", () => {
+    expect(() => parsePersonaConfigDraft({ ...DRAFT, name: "   " })).toThrow(
+      /呼び名が空/,
+    );
+  });
+
+  it("軸の段階が値域の外なら throw する", () => {
+    expect(() =>
+      parsePersonaConfigDraft({
+        ...DRAFT,
+        parameters: { ...DRAFT.parameters, dissent: "level_6" },
+      }),
+    ).toThrow(/軸 dissent の段階が値域の外/);
   });
 });

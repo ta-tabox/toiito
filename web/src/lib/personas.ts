@@ -55,6 +55,75 @@ export type PersonaSettings = {
 };
 
 /**
+ * ペルソナの版にする呼び名と設定の組。
+ * 合成した全文は `toSystemPrompt` が設定から作るので、組に持たせない。
+ */
+export type PersonaConfigInput = { name: string; settings: PersonaSettings };
+
+/**
+ * 利用者が書いた、検証する前のペルソナの呼び名・軸ごとの段階・自由記述。
+ * `parsePersonaConfigDraft` が `PersonaConfigInput` へ検証する。
+ */
+export type PersonaConfigDraft = {
+  name: string;
+  parameters: Record<PersonaAxis, string>;
+  description: string;
+};
+
+/**
+ * 呼び名に含められない文字。
+ *
+ * 呼び名はプロンプトの `<utterance speaker="…">` の属性値へ実体参照に置き換えずに入るので、`"`・`<`・`>`・`&` を含むと属性とタグが閉じ、別の発話者の発話を偽れる。
+ */
+const PERSONA_NAME_FORBIDDEN_CHARACTERS = /["<>&\r\n]/;
+
+/**
+ * 軸（`axis`）の段階として書かれた文字列（`level`）を、`PersonaAxisLevel` へ絞り込んで返す。
+ * 値域の外なら throw する。
+ */
+function parseAxisLevel(axis: PersonaAxis, level: string): PersonaAxisLevel {
+  if (!isPersonaAxisLevel(level)) {
+    throw new Error(`軸 ${axis} の段階が値域の外: ${JSON.stringify(level)}`);
+  }
+
+  return level;
+}
+
+/**
+ * 利用者が書いたペルソナの下書き（`draft`）を検証し、前後の空白を除いた呼び名と、値域に絞り込んだ設定の組を返す。
+ * 呼び名が空か、`"`・`<`・`>`・`&`・改行を含むか、軸の段階が値域の外なら throw する。
+ */
+export function parsePersonaConfigDraft(
+  draft: PersonaConfigDraft,
+): PersonaConfigInput {
+  const name = draft.name.trim();
+
+  if (!name) {
+    throw new Error("呼び名が空である");
+  }
+
+  if (PERSONA_NAME_FORBIDDEN_CHARACTERS.test(name)) {
+    throw new Error(
+      `呼び名に使えない文字（" < > & 改行）を含む: ${JSON.stringify(name)}`,
+    );
+  }
+
+  const { parameters } = draft;
+
+  return {
+    name,
+    settings: {
+      parameters: {
+        abstraction: parseAxisLevel("abstraction", parameters.abstraction),
+        dissent: parseAxisLevel("dissent", parameters.dissent),
+        convergence: parseAxisLevel("convergence", parameters.convergence),
+      },
+      description: draft.description,
+    },
+  };
+}
+
+/**
  * 一つの軸の、システムプロンプトに出る見出し・軸の説明・段階ごとの振る舞い。
  * `levels` の本文は頻度の語で書いた箇条と締めの一文で、見出し・軸の説明・度合いの行は `toSystemPrompt` が付ける。
  */

@@ -26,7 +26,7 @@ import {
   DEFAULT_PERSONA_NAMES,
   DEFAULT_PERSONA_SETTINGS,
   type DefaultPersonaKey,
-  type PersonaSettings,
+  type PersonaConfigInput,
   toSystemPrompt,
 } from "@/lib/personas";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
@@ -1070,12 +1070,6 @@ async function requireSystemUserId(): Promise<string> {
 
   return row.id;
 }
-
-/**
- * ペルソナの版にする呼び名と設定の組。
- * 合成した全文は `toSystemPrompt` が設定から作るので、組に持たせない。
- */
-type PersonaConfigInput = { name: string; settings: PersonaSettings };
 
 /**
  * ペルソナ（`personaId`）の最新の版の全文が、呼び名と設定（`input`）から合成した全文と違えば、次の版を追記して返す。
