@@ -110,6 +110,7 @@ fi
 for refspec in "${positionals[@]:1}"; do
   destination=${refspec#*:}
   destination=${destination//[\"\']/}
+  destination=${destination#+}
   destination=${destination#refs/heads/}
 
   if [[ -z $destination || $destination == main || $destination == HEAD || $destination == *'*'* ]]; then

@@ -86,6 +86,7 @@ describe("guard-force-push.sh", () => {
       "git push --force-with-lease origin stack/a :stack/b",
     ],
     ["引用した main", "git push --force-with-lease origin 'main'"],
+    ["+ 付きの main", "git push --force-with-lease origin +main"],
   ])("%s を含む push は ask になる", (_label, command) => {
     expect(decisionOf(hooks.forcePush, command)).toBe("ask");
   });
