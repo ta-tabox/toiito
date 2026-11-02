@@ -12,7 +12,6 @@ import type {
   ProviderRequest,
   ProviderResponse,
 } from "@/lib/ai/provider";
-import type { PersonaId } from "@/lib/personas";
 import type { UsageInput } from "@/lib/types";
 import type { AiCallKind } from "@/lib/usage";
 
@@ -24,12 +23,12 @@ export type RecordUsage = (usage: UsageInput) => Promise<void>;
 
 /**
  * `sendRecorded` へ渡す、プロバイダと記録に要る値。
- * どの種別の呼び出しか（kind）と、ペルソナの呼び出しならどの体か（persona）を持つ。
+ * どの種別の呼び出しか（kind）と、ペルソナの呼び出しならどの版か（personaConfigId）を持つ。
  */
 type CallContext = {
   readonly provider: AiProvider;
   readonly kind: AiCallKind;
-  readonly persona?: PersonaId;
+  readonly personaConfigId?: string;
   readonly recordUsage: RecordUsage;
 };
 
@@ -44,7 +43,7 @@ function logCall(fields: {
   provider: string;
   model: string;
   kind: AiCallKind;
-  persona?: PersonaId;
+  persona_config_id?: string;
   stop_reason: string | null;
   input_tokens: number | null;
   output_tokens: number | null;
@@ -105,7 +104,9 @@ export async function sendRecorded(
     provider: provider.name,
     model: settings.model,
     kind: context.kind,
-    ...(context.persona ? { persona: context.persona } : {}),
+    ...(context.personaConfigId
+      ? { persona_config_id: context.personaConfigId }
+      : {}),
     stop_reason: response.stopReason,
     input_tokens: response.inputTokens,
     output_tokens: response.outputTokens,

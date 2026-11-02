@@ -11,18 +11,16 @@ import {
   type Transcript,
 } from "@/lib/ai/prompt";
 import type { AiProvider } from "@/lib/ai/provider";
-import type { PersonaId } from "@/lib/personas";
+import type { PersonaConfig } from "@/lib/types";
 
 /**
  * ペルソナ一体を呼ぶときの指定。
  *
- * どの体か（id）・何を渡すか（prompt）と、どこへ送るか（provider）と、利用量をどう残すか（recordUsage）を一つの値にまとめる。
- * 識別子を prompt から復元しない。
- * ペルソナ定義の見出しに依存すると、見出しを変えた回に黙って壊れる。
+ * どの版で話すか（config）と、どこへ送るか（provider）と、利用量をどう残すか（recordUsage）を一つの値にまとめる。
+ * システムプロンプトは版の全文（`config.system_prompt`）で、発話者名は版の呼び名（`config.name`）である。
  */
 export type PersonaCall = {
-  readonly id: PersonaId;
-  readonly prompt: string;
+  readonly config: PersonaConfig;
   readonly provider: AiProvider;
   readonly recordUsage: RecordUsage;
 };
@@ -38,22 +36,22 @@ export async function callPersona(
   question: QuestionRef,
   transcript: Transcript,
 ): Promise<string> {
-  const { provider } = call;
+  const { config, provider } = call;
 
   if (provider.settings.fake) {
-    return fakeResponse(call.id, transcript);
+    return fakeResponse(config.name, transcript);
   }
 
   const response = await sendRecorded(
     {
       provider,
       kind: "persona",
-      persona: call.id,
+      personaConfigId: config.id,
       recordUsage: call.recordUsage,
     },
     {
-      system: call.prompt,
-      userContent: buildUserContent(question, transcript, call.id),
+      system: config.system_prompt,
+      userContent: buildUserContent(question, transcript, config.name),
     },
   );
 

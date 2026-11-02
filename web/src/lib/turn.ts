@@ -1,5 +1,5 @@
 /**
- * 一往復（human → ai_a → ai_b）の、AI 呼び出しと永続化の順序を決める手順を置く。
+ * 一往復（人間 → 1 番手の AI → 2 番手の AI）の、AI 呼び出しと永続化の順序を決める手順を置く。
  * モデルへ渡す本文と一回の呼び出しの規約は持たず、`lib/ai` が持つ。
  * 行の読み書きは持たず、`lib/db` が持つ。
  *
@@ -11,17 +11,26 @@ import type { QuestionRef, Transcript } from "@/lib/ai/prompt";
 import { AI_PROVIDER } from "@/lib/ai/providers";
 import {
   commitTurn,
+  getLatestDefaultPersonaConfig,
   getPendingBody,
   getQuestionOfSession,
   listMessages,
   recordUsage,
   savePendingBody,
+  type TurnResponse,
 } from "@/lib/db";
-import { loadPersona, type PersonaId } from "@/lib/personas";
-import type { OwnerId, UsageInput } from "@/lib/types";
+import type {
+  OwnerId,
+  PersonaConfig,
+  UsageInput,
+  Utterance,
+} from "@/lib/types";
 
-/** 一往復で呼ぶ二体。 */
-export type PersonaCalls = Record<PersonaId, PersonaCall>;
+/** 一往復で AI が発話する順番。 */
+export type TurnPosition = "first" | "second";
+
+/** 一往復で呼ぶ二体を、発話する順番ごとに持つ。 */
+export type PersonaCalls = Record<TurnPosition, PersonaCall>;
 
 /**
  * `runTurn` と `retryTurn` に渡す、一往復の実行の指定。
@@ -37,7 +46,8 @@ type TurnTarget = {
 };
 
 /**
- * 二体の呼び出しの指定を、env から解決済みのプロバイダと、`owner` の利用量を書く関数で組み立てて返す。
+ * 既定の二体の最新の版を順番に当て、env から解決済みのプロバイダと、`owner` の利用量を書く関数で組み立てた二体の呼び出しの指定を返す。
+ * 既定の二体のどちらかに版が無ければ throw する。
  *
  * `runTurn` が `AI_PROVIDER` を直接参照するとテストが失敗するプロバイダを差し込めなくなるので、`AI_PROVIDER` を参照するのは `personaCalls` だけにする。
  * 利用者を `runTurn` から受け取るのは、一往復の所有者と、利用量が乗る利用者を食い違わせないため。
@@ -45,19 +55,26 @@ type TurnTarget = {
 export async function personaCalls(owner: OwnerId): Promise<PersonaCalls> {
   const record = (usage: UsageInput) => recordUsage(owner, usage);
 
+  const concrete = await getLatestDefaultPersonaConfig("concrete");
+  const abstract = await getLatestDefaultPersonaConfig("abstract");
+  if (!concrete || !abstract) {
+    throw new Error(
+      "既定のペルソナの版が無い。`pnpm personas:sync` で既定の版を同期する（docs/DEPLOY.md「migration」）",
+    );
+  }
+
   return {
-    ai_a: {
-      id: "ai_a",
-      prompt: loadPersona("ai_a"),
-      provider: AI_PROVIDER,
-      recordUsage: record,
-    },
-    ai_b: {
-      id: "ai_b",
-      prompt: loadPersona("ai_b"),
-      provider: AI_PROVIDER,
-      recordUsage: record,
-    },
+    first: { config: concrete, provider: AI_PROVIDER, recordUsage: record },
+    second: { config: abstract, provider: AI_PROVIDER, recordUsage: record },
+  };
+}
+
+/** 版（`config`）が書いた本文（`body`）を、transcript の一行にする。 */
+function toAiUtterance(config: PersonaConfig, body: string): Utterance {
+  return {
+    speaker: "ai",
+    persona: { name: config.name, abstraction: config.parameters.abstraction },
+    body,
   };
 }
 
@@ -78,10 +95,10 @@ function logTurnFailure(sessionId: string, error: unknown): void {
 }
 
 /**
- * `resolveCalls` で応答させるペルソナを決め、二体を逐次に呼んで、揃った本文を返す。
+ * `resolveCalls` で応答させるペルソナを決め、二体を逐次に呼んで、揃った本文を発話する順番で返す。
  * ペルソナの決定か、どちらかの呼び出しに失敗すれば undefined。
  *
- * 並列にしないのは、ai_b が ai_a への応答であることに意味があるため（衝突と転位）。
+ * 並列にしないのは、2 番手の発話が 1 番手への応答であることに意味があるため（衝突と転位）。
  */
 async function callBoth(input: {
   readonly owner: OwnerId;
@@ -89,19 +106,22 @@ async function callBoth(input: {
   readonly question: QuestionRef;
   readonly transcript: Transcript;
   readonly sessionId: string;
-}): Promise<{ ai_a: string; ai_b: string } | undefined> {
+}): Promise<TurnResponse[] | undefined> {
   const { owner, resolveCalls, question, transcript } = input;
 
   try {
     const calls = await resolveCalls(owner);
 
-    const aiA = await callPersona(calls.ai_a, question, transcript);
-    const aiB = await callPersona(calls.ai_b, question, [
+    const first = await callPersona(calls.first, question, transcript);
+    const second = await callPersona(calls.second, question, [
       ...transcript,
-      { speaker: "ai_a", body: aiA },
+      toAiUtterance(calls.first.config, first),
     ]);
 
-    return { ai_a: aiA, ai_b: aiB };
+    return [
+      { body: first, persona_config_id: calls.first.config.id },
+      { body: second, persona_config_id: calls.second.config.id },
+    ];
   } catch (error) {
     logTurnFailure(input.sessionId, error);
 
@@ -111,7 +131,7 @@ async function callBoth(input: {
 
 /**
  * `body` を `pending_messages` へ書き込み、二体の応答が揃えば、`body` と二体の応答を一往復として `messages` へ書き込む。
- * ペルソナの決定か、ai_a か ai_b の呼び出しに失敗したら、`messages` へ書き込まず、`pending_messages` の行を残して戻る。
+ * ペルソナの決定か、どちらかの AI の呼び出しに失敗したら、`messages` へ書き込まず、`pending_messages` の行を残して戻る。
  * 二体の応答を待つあいだに、同じセッションへ別の一往復が書き込まれたか、問いに新しいセッションが作られていたら、`messages` へ書き込まずに戻る。
  * セッションが問いの最新のセッションでなければ、何も書き込まずに throw する。
  */
@@ -141,7 +161,8 @@ export async function runTurn(
   }
 
   const isCommitted = await commitTurn(owner, sessionId, {
-    bodies: { human: body, ...responses },
+    human: body,
+    responses,
     messageCountAtStart: messages.length,
   });
 

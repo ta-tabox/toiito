@@ -14,6 +14,7 @@
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { DefaultPersonaKey } from "@/lib/personas";
 import type { OwnerId } from "@/lib/types";
 import { registerSrcAlias } from "../node-alias.ts";
 import { SEED_USAGE } from "./usage.ts";
@@ -56,6 +57,25 @@ function assertNotProduction(): void {
 }
 
 /**
+ * 既定の二体の版を同期し、それぞれの最新の版の id を返す。
+ *
+ * シードの AI の発話は既定の二体の最新の版を指すので、版が無い DB（migration だけ積んだ DB）でも投入できるよう先に同期する。
+ */
+async function requireDefaultPersonaConfigIds(
+  repo: Repo,
+): Promise<Record<DefaultPersonaKey, string>> {
+  await repo.addDefaultPersonaConfigs();
+
+  const concrete = await repo.getLatestDefaultPersonaConfig("concrete");
+  const abstract = await repo.getLatestDefaultPersonaConfig("abstract");
+  if (!concrete || !abstract) {
+    throw new Error("同期した後も、既定のペルソナの版が無い");
+  }
+
+  return { concrete: concrete.id, abstract: abstract.id };
+}
+
+/**
  * シードを投入する。
  * 接続先は DATABASE_URL。
  * 一人目が既に居る DB へは何も入れずに戻り、接続は閉じない（呼び出し側の CLI・テストが閉じる）。
@@ -69,7 +89,9 @@ export async function seed(): Promise<SeedSummary> {
   const repo: Repo = await import("@/lib/db");
 
   // `questions.ts` も src を import するので、`@/lib/db` と同じく `registerSrcAlias` の登録後に読み込む。
-  const { OTHER_USER_INPUT, SEED_INPUTS } = await import("./questions.ts");
+  const { OTHER_USER_INPUT, SEED_INPUTS, withPersonaConfigIds } = await import(
+    "./questions.ts"
+  );
 
   const summary: SeedSummary = {
     users: 0,
@@ -95,13 +117,17 @@ export async function seed(): Promise<SeedSummary> {
     const other = await repo.createUser(second);
     summary.users = 2;
 
+    const configIds = await requireDefaultPersonaConfigIds(repo);
     const plan = [
       ...SEED_INPUTS.map((input) => ({ ownerId: owner.id, input })),
       { ownerId: other.id, input: OTHER_USER_INPUT },
     ];
 
     for (const { ownerId, input } of plan) {
-      const created = await repo.createQuestionWithTranscript(ownerId, input);
+      const created = await repo.createQuestionWithTranscript(
+        ownerId,
+        withPersonaConfigIds(input, configIds),
+      );
 
       summary.questionIds.push(created.question.id);
       summary.messages += created.messages.length;

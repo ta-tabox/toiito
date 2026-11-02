@@ -4,8 +4,6 @@
  * 直前の migration まで積んだ別のデータベースへ行を入れてから適用し、生の SQL で読み直す。
  */
 
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import {
   createDatabaseBefore,
   type MigrationDatabase,
@@ -106,30 +104,6 @@ describe("AI の発話がある DB", () => {
     expect(owners).toEqual([
       { persona_id: DEFAULT_PERSONA_ID.ai_a, email: "system@toiito.invalid" },
       { persona_id: DEFAULT_PERSONA_ID.ai_b, email: "system@toiito.invalid" },
-    ]);
-  });
-
-  it("版 1 の全文は src/personas の md の全文と一致する", async () => {
-    const configs = await database.client.$queryRawUnsafe<
-      { persona_id: string; system_prompt: string }[]
-    >(`
-      select "persona_id"::text as "persona_id", "system_prompt"
-        from "persona_config"
-       order by "persona_id"
-    `);
-
-    const markdownOf = (id: string) =>
-      readFileSync(path.join("src", "personas", `${id}.md`), "utf-8");
-
-    expect(configs).toEqual([
-      {
-        persona_id: DEFAULT_PERSONA_ID.ai_a,
-        system_prompt: markdownOf("ai_a"),
-      },
-      {
-        persona_id: DEFAULT_PERSONA_ID.ai_b,
-        system_prompt: markdownOf("ai_b"),
-      },
     ]);
   });
 });

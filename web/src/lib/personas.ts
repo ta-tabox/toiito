@@ -2,29 +2,9 @@
  * ペルソナの設定（軸ごとの段階と自由記述）から、モデルへ渡すシステムプロンプトの全文を作る純関数と、その材料を置く。
  * 材料は、軸の値域・軸と段階の組ごとの節・共通の節・既定の二体の設定である。
  * 設定の永続化は持たない。
- *
- * 一往復がいま渡しているシステムプロンプトは合成した全文でなく、`loadPersona` が `src/personas/*.md` から読む文面である。
  */
 
-import fs from "node:fs";
-import path from "node:path";
 import { valueSet } from "@/lib/value-set";
-
-export type PersonaId = "ai_a" | "ai_b";
-
-export const PERSONA_LABEL: Record<PersonaId, string> = {
-  ai_a: "具体",
-  ai_b: "抽象",
-};
-
-/**
- * `id` のペルソナのシステムプロンプトを `src/personas/<id>.md` から読む。
- * ファイルが無ければ throw する。
- */
-export function loadPersona(id: PersonaId): string {
-  const p = path.join(process.cwd(), "src", "personas", `${id}.md`);
-  return fs.readFileSync(p, "utf-8");
-}
 
 /**
  * ペルソナの傾向を表す軸（axis は「軸」、axes はその複数形）。

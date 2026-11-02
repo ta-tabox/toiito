@@ -10,7 +10,7 @@
  */
 
 import type { MaterialCreator, MaterialKind } from "@/lib/material";
-import type { PersonaParameters } from "@/lib/personas";
+import type { PersonaAxisLevel, PersonaParameters } from "@/lib/personas";
 import type { QuestionStatus } from "@/lib/question";
 import type { AiCallKind, ApiKeySource } from "@/lib/usage";
 
@@ -70,19 +70,43 @@ export type Session = { id: string; question_id: string; started_at: Date };
  */
 export type SessionWithKeywords = Session & { keywords: string[] };
 
-export type Speaker = "human" | "ai_a" | "ai_b";
+/**
+ * 発話の種別。
+ * AI の発話は `ai` で、`ai_a`・`ai_b` は版を指す前の発話の行にだけ残る。
+ */
+export type Speaker = "human" | "ai" | "ai_a" | "ai_b";
+
+/**
+ * AI の発話を書いたペルソナの版の、呼び名と抽象度。
+ * `db.ts` が発話の行から作り、画面が発話者の名前と吹き出しを、プロンプトが発話者名を決める。
+ */
+export type UtterancePersona = {
+  name: string;
+  abstraction: PersonaAxisLevel;
+};
+
+/** 発話の種別と、AI の発話ならそれを書いた版（`persona`）の組。 */
+export type UtteranceSpeaker =
+  | { speaker: "human" }
+  | { speaker: Exclude<Speaker, "human">; persona: UtterancePersona };
 
 /**
  * 発話の話者と本文の組。
- * `messages` へ追記する前の発話で、AI へ渡す transcript の一行でもある。
+ * `db.ts` が発話の行から作り、AI へ渡す transcript の一行になる。
  */
-export type Utterance = { speaker: Speaker; body: string };
+export type Utterance = UtteranceSpeaker & { body: string };
 
-export type Message = {
+/**
+ * `messages` へ追記する前の発話。
+ * AI の発話は、それを書いた版の id（`persona_config_id`）を持つ。
+ */
+export type NewUtterance =
+  | { speaker: "human"; body: string }
+  | { speaker: "ai"; body: string; persona_config_id: string };
+
+export type Message = Utterance & {
   id: string;
   session_id: string;
-  speaker: Speaker;
-  body: string;
   created_at: Date;
 };
 
@@ -111,13 +135,13 @@ export type Memo = {
 };
 
 /** メモからの逆引きで使う、メモとその出所をまとめた形。 */
-export type MemoWithContext = Memo & {
-  session_id: string;
-  question_id: string;
-  question_body: string;
-  speaker: Speaker;
-  message_body: string;
-};
+export type MemoWithContext = Memo &
+  UtteranceSpeaker & {
+    session_id: string;
+    question_id: string;
+    question_body: string;
+    message_body: string;
+  };
 
 /**
  * 問いに付随する材料（`materials` の行）。

@@ -3,12 +3,11 @@
  * ネットワークに出ず決定的なテキストを返す。
  * 発話が `FAKE_FAIL_ONCE_MARKER` を含むときだけ、最初の一回は throw する。
  *
- * ペルソナ ID と直近の人間発話を含むのは、E2E から「どの体が・何を受けて」応答したかをアサートするため。
+ * 版の呼び名と直近の人間発話を含むのは、E2E から「どの版が・何を受けて」応答したかをアサートするため。
  * この書式を変えると `e2e/dialogue.spec.ts` と `e2e/memo.spec.ts` が応答を拾えなくなる。
  */
 
 import type { QuestionRef, Transcript } from "@/lib/ai/prompt";
-import type { PersonaId } from "@/lib/personas";
 
 /**
  * 直近の人間発話がこの文字列を含むと、`fakeResponse` がその本文で最初に呼ばれた一回だけ throw する。
@@ -25,12 +24,12 @@ export const FAKE_FAIL_ONCE_MARKER = "[fake:fail-once]";
 const failedBodies = new Set<string>();
 
 /**
- * ペルソナ一体分の決定的応答を組み立てる。
+ * 呼び名 `name` の版の、ペルソナ一体分の決定的応答を組み立てる。
  *
  * 直近の人間発話が `FAKE_FAIL_ONCE_MARKER` を含むときは、その本文で最初に呼ばれた一回だけ、応答を返さずに throw する。
  * フェイクモードの応答は常に成功するので、AI の呼び出しが失敗したときの画面（再送の枠）を E2E で出すには、この目印で失敗を起こす。
  */
-export function fakeResponse(id: PersonaId, transcript: Transcript): string {
+export function fakeResponse(name: string, transcript: Transcript): string {
   const lastHuman = [...transcript]
     .reverse()
     .find((m) => m.speaker === "human");
@@ -38,10 +37,10 @@ export function fakeResponse(id: PersonaId, transcript: Transcript): string {
 
   if (body?.includes(FAKE_FAIL_ONCE_MARKER) && !failedBodies.has(body)) {
     failedBodies.add(body);
-    throw new Error(`[fake:${id}] 目印を含む本文の最初の呼び出しで失敗する`);
+    throw new Error(`[fake:${name}] 目印を含む本文の最初の呼び出しで失敗する`);
   }
 
-  return `[fake:${id}] 「${body ?? "(発話なし)"}」への応答`;
+  return `[fake:${name}] 「${body ?? "(発話なし)"}」への応答`;
 }
 
 /**

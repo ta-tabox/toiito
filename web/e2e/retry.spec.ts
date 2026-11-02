@@ -9,6 +9,7 @@ import { signIn } from "@e2e/setup/sign-in";
 import { expect, test } from "@playwright/test";
 import { SEED_USERS } from "@scripts/seed/users";
 import { FAKE_FAIL_ONCE_MARKER } from "@/lib/ai/fake";
+import { DEFAULT_PERSONA_NAMES } from "@/lib/personas";
 
 /** この spec にしか出ない問いと、最初の呼び出しで失敗させる発話。 */
 const SCENARIO = {
@@ -34,14 +35,23 @@ test("応答に失敗した発話は再送の枠に残り、再送すると二�
   await page.getByRole("button", { name: /^発話する/ }).click();
 
   const failure = page.getByText("応答の取得に失敗した。");
-  const responses = page.getByText(/\[fake:ai_/);
+  // 人間の発話も目印の `[fake:` を含むので、既定の二体の呼び名で絞る。
+  const responses = page.getByText(
+    new RegExp(
+      `\\[fake:(${Object.values(DEFAULT_PERSONA_NAMES).join("|")})\\]`,
+    ),
+  );
   await expect(failure).toBeVisible();
   await expect(responses).toHaveCount(0);
 
   await page.getByRole("button", { name: "再送" }).click();
 
   await expect(responses).toHaveCount(2);
-  await expect(responses.nth(0)).toContainText("[fake:ai_a");
-  await expect(responses.nth(1)).toContainText("[fake:ai_b");
+  await expect(responses.nth(0)).toContainText(
+    `[fake:${DEFAULT_PERSONA_NAMES.concrete}`,
+  );
+  await expect(responses.nth(1)).toContainText(
+    `[fake:${DEFAULT_PERSONA_NAMES.abstract}`,
+  );
   await expect(failure).toHaveCount(0);
 });

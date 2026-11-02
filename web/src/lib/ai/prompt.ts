@@ -3,11 +3,11 @@
  * 何をどの順で見せるかはプロバイダに依らないので、API の作法とは別に置く。
  *
  * 出来上がるのは一本のユーザーメッセージで、三者対話の transcript をそのメッセージへまとめる。
- * ai_b の呼び出し時には直前の ai_a の発話も含まれている前提（二体は並列でなく逐次——ai_b は ai_a への応答であることに意味がある）。
+ * 一往復の 2 番手の呼び出し時には、直前の 1 番手の発話も transcript に含まれている前提で、2 番手の発話は 1 番手への応答として組み立てる。
  * 利用者が書いた文字列（問い・現在の形・発話）は XML 風のタグの内側にだけ置き、タグの外の見出しと指示文はこのモジュールが書く文字列だけにする。
  */
 
-import type { Speaker, Utterance } from "@/lib/types";
+import type { Utterance } from "@/lib/types";
 
 /** ここまでの全発話。 */
 export type Transcript = Utterance[];
@@ -18,21 +18,24 @@ export type Transcript = Utterance[];
  */
 export type QuestionRef = { body: string; current_form?: string | null };
 
-/** 次に発話する AI の発話者。 */
-type AiSpeaker = Exclude<Speaker, "human">;
+/**
+ * transcript の人間の発話者名。
+ *
+ * モデルはこの文字列をそのまま呼称として使い、指示文は AI を版の呼び名で呼ぶので、ユーザーメッセージの中の「あなた」は人間だけを指す。
+ */
+const HUMAN_SPEAKER_NAME = "あなた";
 
 /**
- * transcript の発話者名。
+ * 発話（`utterance`）の発話者名を返す。
+ * AI の発話は、それを書いた版の呼び名を使う。
  *
- * モデルはこの文字列をそのまま呼称として使うので、対話に出したくない語を置かない。
- * 内部 ID（ai_a / ai_b）を置くと、AI 同士がその ID で呼び合う。
- * AI の名前は、ペルソナ定義の「あなたは<発話者名>である。」の一文と揃える。
+ * 呼び名は `speaker` 属性の値へ実体参照に置き換えずに入るので、`"`・`<`・`>`・`&` と改行を含まない呼び名だけを版へ書く。
  */
-export const SPEAKER_NAME: Record<Speaker, string> = {
-  human: "あなた",
-  ai_a: "具体さん",
-  ai_b: "抽象さん",
-};
+function speakerNameOf(utterance: Utterance): string {
+  return utterance.speaker === "human"
+    ? HUMAN_SPEAKER_NAME
+    : utterance.persona.name;
+}
 
 /**
  * `text` の `&`・`<`・`>` を実体参照へ置き換え、タグの内側に置ける文字列にする。
@@ -47,20 +50,18 @@ function toTagContent(text: string): string {
 }
 
 /**
- * 次に `nextSpeaker` が発話するためのユーザーメッセージを、`question` と `transcript` から組み立てる。
+ * 次に呼び名 `nextSpeakerName` の AI が発話するためのユーザーメッセージを、`question` と `transcript` から組み立てる。
  * 原型と現在の形を両方載せる理由は `QuestionRef` の JSDoc にある。
- *
- * 指示文はモデルを発話者名で呼び、ユーザーメッセージの中の「あなた」は人間の発話者名だけにする。
  */
 export function buildUserContent(
   question: QuestionRef,
   transcript: Transcript,
-  nextSpeaker: AiSpeaker,
+  nextSpeakerName: string,
 ): string {
   const dialogue = transcript
     .map(
       (m) =>
-        `<utterance speaker="${SPEAKER_NAME[m.speaker]}">\n${toTagContent(m.body)}\n</utterance>`,
+        `<utterance speaker="${speakerNameOf(m)}">\n${toTagContent(m.body)}\n</utterance>`,
     )
     .join("\n\n");
 
@@ -72,8 +73,8 @@ export function buildUserContent(
             `※ 原型からずれていると見えたら、それ自体を突いてよい。`,
         ]
       : []),
-    `# ここまでの対話（発話者「${SPEAKER_NAME.human}」は問いを投入した人間）\n${dialogue || "（まだ発話なし。問いへの最初の応答をする）"}`,
-    `${SPEAKER_NAME[nextSpeaker]}として、役割定義に従い、次の一手を発話せよ。発話本文のみを出力すること。`,
+    `# ここまでの対話（発話者「${HUMAN_SPEAKER_NAME}」は問いを投入した人間）\n${dialogue || "（まだ発話なし。問いへの最初の応答をする）"}`,
+    `${nextSpeakerName}として、役割定義に従い、次の一手を発話せよ。発話本文のみを出力すること。`,
   ].join("\n\n");
 }
 

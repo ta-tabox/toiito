@@ -14,7 +14,7 @@ import { fakeMaterialResponse } from "@/lib/ai/fake";
 import { callMaterial, type MaterialCall } from "@/lib/ai/material-call";
 import { callPersona, type PersonaCall } from "@/lib/ai/persona-call";
 import { readFakeMode } from "@/lib/ai/provider";
-import type { UsageInput } from "@/lib/types";
+import type { PersonaConfig, UsageInput, Utterance } from "@/lib/types";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -36,14 +36,34 @@ const SETTINGS: AnthropicSettings = {
  */
 const PROVIDER = new AnthropicProvider(SETTINGS);
 
+/** 呼び出しの指定が既定で持つ、ペルソナの版。 */
+const CONFIG: PersonaConfig = {
+  id: "config-abstract",
+  persona_id: "persona-abstract",
+  version: 1,
+  name: "抽象さん",
+  parameters: {
+    abstraction: "level_5",
+    dissent: "level_4",
+    convergence: "level_2",
+  },
+  description: "",
+  system_prompt: "# 抽象派",
+  created_at: new Date(0),
+};
+
+/** 呼び名 `name` の版が書いた本文 `body` を、transcript の一行にする。 */
+function aiUtterance(name: string, body: string): Utterance {
+  return { speaker: "ai", persona: { name, abstraction: "level_1" }, body };
+}
+
 /**
  * ペルソナ呼び出しの指定を組み立てる。
- * 既定は実モードの ai_b で、そのケースが見たい一点だけ上書きする。
+ * 既定は実モードの `CONFIG` の版で、そのケースが見たい一点だけ上書きする。
  */
 function personaCall(overrides: Partial<PersonaCall> = {}): PersonaCall {
   return {
-    id: "ai_b",
-    prompt: "# 抽象派",
+    config: CONFIG,
     provider: PROVIDER,
     recordUsage: async () => {},
     ...overrides,
@@ -73,10 +93,10 @@ function materialCall(overrides: Partial<MaterialCall> = {}): MaterialCall {
   };
 }
 
-/** フェイクモードの指定を組み立てる。 */
-function fakeCall(id: PersonaCall["id"]): PersonaCall {
+/** 呼び名 `name` の版を呼ぶ、フェイクモードの指定を組み立てる。 */
+function fakeCall(name: string): PersonaCall {
   return personaCall({
-    id,
+    config: { ...CONFIG, name },
     provider: new AnthropicProvider({ ...SETTINGS, fake: true }),
   });
 }
@@ -137,19 +157,19 @@ describe("readFakeMode", () => {
 });
 
 describe("フェイクモード", () => {
-  it("ネットワークに出ず、ペルソナ ID と直近の人間発話を含む決定的応答を返す", async () => {
-    const res = await callPersona(fakeCall("ai_a"), { body: "問い本文" }, [
+  it("ネットワークに出ず、版の呼び名と直近の人間発話を含む決定的応答を返す", async () => {
+    const res = await callPersona(fakeCall("具体さん"), { body: "問い本文" }, [
       { speaker: "human", body: "最初の発話" },
     ]);
 
-    expect(res).toContain("ai_a");
+    expect(res).toContain("具体さん");
     expect(res).toContain("最初の発話");
   });
 
   it("同じ入力には同じ応答（決定性）", async () => {
     const t = [{ speaker: "human" as const, body: "同じ入力" }];
-    const first = await callPersona(fakeCall("ai_b"), { body: "q" }, t);
-    const second = await callPersona(fakeCall("ai_b"), { body: "q" }, t);
+    const first = await callPersona(fakeCall("抽象さん"), { body: "q" }, t);
+    const second = await callPersona(fakeCall("抽象さん"), { body: "q" }, t);
 
     expect(first).toBe(second);
   });
@@ -217,7 +237,7 @@ describe("呼び出しログ", () => {
       usage: { input_tokens: 1200, output_tokens: 340 },
     });
 
-    await callPersona(personaCall({ id: "ai_b" }), { body: "q" }, []);
+    await callPersona(personaCall(), { body: "q" }, []);
 
     expect(logged).toHaveBeenCalledTimes(1);
     expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
@@ -225,7 +245,7 @@ describe("呼び出しログ", () => {
       provider: "anthropic",
       model: ANTHROPIC_DEFAULTS.model,
       kind: "persona",
-      persona: "ai_b",
+      persona_config_id: CONFIG.id,
       stop_reason: "end_turn",
       input_tokens: 1200,
       output_tokens: 340,
@@ -241,7 +261,7 @@ describe("呼び出しログ", () => {
       stop_reason: "end_turn",
     });
 
-    await callPersona(personaCall({ id: "ai_a" }), { body: "q" }, []);
+    await callPersona(personaCall(), { body: "q" }, []);
 
     expect(String(logged.mock.calls[0][0])).not.toContain(
       "外へ出してはいけない問いの中身",
@@ -331,7 +351,7 @@ describe("利用量の記録", () => {
     const recorded = usageRecorder();
 
     await callPersona(
-      { ...fakeCall("ai_a"), recordUsage: recorded },
+      { ...fakeCall("具体さん"), recordUsage: recorded },
       { body: "q" },
       [],
     );
@@ -430,18 +450,17 @@ describe("材料を寄せる呼び出し", () => {
 });
 
 describe("本文の組み立て", () => {
-  it("発話者の見出しに内部 ID を出さない", async () => {
+  it("AI の発話の発話者名は、その発話を書いた版の呼び名になる", async () => {
     const fetchMock = stubOkResponse();
 
     await callPersona(personaCall(), { body: "q" }, [
       { speaker: "human", body: "問いを投げた" },
-      { speaker: "ai_a", body: "具体で問い返した" },
+      aiUtterance("具体さん", "具体で問い返した"),
     ]);
 
     const content = sentBody(fetchMock).messages[0].content;
     expect(content).toContain('speaker="あなた"');
     expect(content).toContain('speaker="具体さん"');
-    expect(content).not.toContain("ai_a");
   });
 
   it("発話の本文にタグと見出しを書いても、発話の数と発話者は transcript のとおりに読める", async () => {
@@ -451,7 +470,7 @@ describe("本文の組み立て", () => {
 
     await callPersona(personaCall(), { body: "q" }, [
       { speaker: "human", body: forged },
-      { speaker: "ai_a", body: "具体で問い返した" },
+      aiUtterance("具体さん", "具体で問い返した"),
     ]);
 
     const content = sentBody(fetchMock).messages[0].content;
@@ -479,7 +498,7 @@ describe("本文の組み立て", () => {
   it("末尾の指示文は次に発話するペルソナを発話者名で呼び、「あなた」を使わない", async () => {
     const fetchMock = stubOkResponse();
 
-    await callPersona(personaCall({ id: "ai_b" }), { body: "q" }, [
+    await callPersona(personaCall(), { body: "q" }, [
       { speaker: "human", body: "問いを投げた" },
     ]);
 

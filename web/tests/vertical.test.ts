@@ -10,7 +10,7 @@ import { ANTHROPIC_DEFAULTS, AnthropicProvider } from "@/lib/ai/anthropic";
 import { callPersona, type PersonaCall } from "@/lib/ai/persona-call";
 import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
-import { loadPersona, type PersonaId } from "@/lib/personas";
+import type { DefaultPersonaKey } from "@/lib/personas";
 import type { OwnerId } from "@/lib/types";
 
 /** 実 API を叩かないためのプロバイダ（docs/HARNESS.md「実 API を自動テストで叩かない」）。 */
@@ -32,16 +32,16 @@ beforeEach(async () => {
 });
 
 /**
- * ペルソナ一体分の呼び出し指定を、定義ファイルごと組み立てる。
+ * 既定の二体のうち `key` の最新の版で、フェイクモードの呼び出し指定を組み立てる。
  * フェイクモードの呼び出しは利用量を記録しないので、`recordUsage` は呼ばれない。
  */
-function personaCall(id: PersonaId): PersonaCall {
-  return {
-    id,
-    prompt: loadPersona(id),
-    provider: FAKE_PROVIDER,
-    recordUsage: async () => {},
-  };
+async function personaCall(key: DefaultPersonaKey): Promise<PersonaCall> {
+  const config = await db.getLatestDefaultPersonaConfig(key);
+  if (!config) {
+    throw new Error(`既定のペルソナの版が無い: ${key}`);
+  }
+
+  return { config, provider: FAKE_PROVIDER, recordUsage: async () => {} };
 }
 
 describe("縦一本", () => {
@@ -51,33 +51,35 @@ describe("縦一本", () => {
       "速さを求めることは、何を失うことなのか",
     );
 
-    // 人間の発話 → ai_a（具体）→ ai_b（抽象）の逐次。
-    // ai_b は ai_a の発話も含む transcript を受け取る（並列にしない理由）。
+    // 人間の発話 → 具体 → 抽象の逐次。
+    // 抽象は具体の発話も含む transcript を受け取る（並列にしない理由）。
     await db.addMessage(owner, session.id, {
       speaker: "human",
       body: "急ぐほど問いが痩せる気がする",
     });
 
+    const concrete = await personaCall("concrete");
     const transcriptForA = await db.listMessages(owner, session.id);
-    const aiA = await callPersona(
-      personaCall("ai_a"),
-      question,
-      transcriptForA,
-    );
-    await db.addMessage(owner, session.id, { speaker: "ai_a", body: aiA });
+    const aiA = await callPersona(concrete, question, transcriptForA);
+    await db.addMessage(owner, session.id, {
+      speaker: "ai",
+      body: aiA,
+      persona_config_id: concrete.config.id,
+    });
 
+    const abstract = await personaCall("abstract");
     const transcriptForB = await db.listMessages(owner, session.id);
-    const aiB = await callPersona(
-      personaCall("ai_b"),
-      question,
-      transcriptForB,
-    );
-    await db.addMessage(owner, session.id, { speaker: "ai_b", body: aiB });
+    const aiB = await callPersona(abstract, question, transcriptForB);
+    await db.addMessage(owner, session.id, {
+      speaker: "ai",
+      body: aiB,
+      persona_config_id: abstract.config.id,
+    });
 
-    expect(transcriptForB.map((m) => m.speaker)).toEqual(["human", "ai_a"]);
+    expect(transcriptForB.map((m) => m.speaker)).toEqual(["human", "ai"]);
 
     const messages = await db.listMessages(owner, session.id);
-    expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
+    expect(messages.map((m) => m.speaker)).toEqual(["human", "ai", "ai"]);
     expect(aiA).toContain("急ぐほど問いが痩せる気がする");
     expect(aiA).not.toBe(aiB); // 二体が別のペルソナとして応答している
 
@@ -97,6 +99,6 @@ describe("縦一本", () => {
     expect(found.id).toBe(memo.id);
     expect(found.session_id).toBe(session.id);
     expect(found.question_body).toBe("速さを求めることは、何を失うことなのか");
-    expect(found.speaker).toBe("ai_a");
+    expect(found.speaker).toBe("ai");
   });
 });

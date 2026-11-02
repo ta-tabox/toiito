@@ -1,63 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { SPEAKER_NAME } from "@/lib/ai/prompt";
 import {
   DEFAULT_PERSONA_KEYS,
   DEFAULT_PERSONA_NAMES,
   DEFAULT_PERSONA_SETTINGS,
   isPersonaAxisLevel,
-  loadPersona,
   PERSONA_AXES,
   PERSONA_AXIS_LEVELS,
-  PERSONA_LABEL,
   type PersonaParameters,
   toSystemPrompt,
 } from "@/lib/personas";
-
-// ペルソナ文書の構造的な健全性のみ検証する。
-// 文体と対話の質は人間が読んで判断する担当で、自動テストは持たない（docs/HARNESS.md「検証の層構造（下から順に回す）」）。
-describe("ペルソナ定義", () => {
-  (["ai_a", "ai_b"] as const).forEach((id) => {
-    it(`${id}: 定義が読め、禁止事項（アプリのアイデンティティ）を含む`, () => {
-      const text = loadPersona(id);
-      expect(text.startsWith(`# ${id}`)).toBe(true);
-      expect(text).toContain("禁止事項");
-      expect(text).toContain("答え");
-    });
-
-    it(`${id}: transcript の自分の発話者名で、自分が誰かを名乗る一文を持つ`, () => {
-      const text = loadPersona(id);
-
-      expect(text).toContain(`あなたは${SPEAKER_NAME[id]}である。`);
-    });
-
-    it(`${id}: 手筋と材料の供給規律を持つ`, () => {
-      const text = loadPersona(id);
-
-      expect(text).toContain("## 手筋");
-      expect(text).toContain("## 材料の供給規律");
-      // 「答えを与えない」の実装可能な形＝一方向に閉じた材料を出さない。
-      // 知識の供給そのものは禁じていない（禁じると発酵の材料が枯れる）
-      expect(text).toContain("対立する材料を必ず添える");
-      expect(text).toContain("一方向に閉じた材料を出さない");
-    });
-  });
-
-  it("二体の手筋が重複していない（同じ角度から掘らないための分業）", () => {
-    const a = loadPersona("ai_a");
-    const b = loadPersona("ai_b");
-
-    expect(a).toContain("出自の具体を聞く");
-    expect(a).toContain("判定基準を要求する");
-    expect(b).toContain("語の同一性を疑う");
-    expect(b).toContain("変数を分解する");
-    expect(a).not.toContain("語の同一性を疑う");
-    expect(b).not.toContain("出自の具体を聞く");
-  });
-
-  it("二体のラベルは互いに異なる", () => {
-    expect(PERSONA_LABEL.ai_a).not.toBe(PERSONA_LABEL.ai_b);
-  });
-});
 
 // 合成の材料（値域・節の文言・既定の二体）はコードが正なので、検査も文書でなく合成結果へ当てる。
 describe("システムプロンプトの合成", () => {

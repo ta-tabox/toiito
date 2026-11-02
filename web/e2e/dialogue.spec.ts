@@ -9,6 +9,7 @@ import { signIn } from "@e2e/setup/sign-in";
 import { expect, test } from "@playwright/test";
 import { OTHER_USER_INPUT } from "@scripts/seed/questions";
 import { SEED_USERS } from "@scripts/seed/users";
+import { DEFAULT_PERSONA_NAMES } from "@/lib/personas";
 
 /**
  * シナリオごとの問いと発話。
@@ -30,7 +31,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page, SEED_USERS[0].email);
 });
 
-test("問いを投入して発話すると、ai_a → ai_b の順にフェイク応答が並ぶ", async ({
+test("問いを投入して発話すると、具体さん → 抽象さんの順にフェイク応答が並ぶ", async ({
   page,
 }) => {
   const { question, utterance } = SCENARIOS.reply;
@@ -48,12 +49,16 @@ test("問いを投入して発話すると、ai_a → ai_b の順にフェイク
   await page.getByPlaceholder("問いについて、いま思うことを").fill(utterance);
   await page.getByRole("button", { name: /^発話する/ }).click();
 
-  // 見るのはペルソナ行のうち ID までにする。
-  // 見出しの言い回し（「具体派」）はペルソナ文書の改稿で動くが、どの体が応答したかは動かない。
+  // 見るのはフェイク応答の前置きの、版の呼び名までにする。
+  // 応答の言い回しはフェイクモードの書式で動くが、どの版が応答したかは動かない。
   const responses = page.getByText("[fake:");
   await expect(responses).toHaveCount(2);
-  await expect(responses.nth(0)).toContainText("[fake:ai_a");
-  await expect(responses.nth(1)).toContainText("[fake:ai_b");
+  await expect(responses.nth(0)).toContainText(
+    `[fake:${DEFAULT_PERSONA_NAMES.concrete}`,
+  );
+  await expect(responses.nth(1)).toContainText(
+    `[fake:${DEFAULT_PERSONA_NAMES.abstract}`,
+  );
 
   await expect(responses.nth(1)).toContainText(`「${utterance}」`);
 });
