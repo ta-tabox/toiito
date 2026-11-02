@@ -10,7 +10,7 @@
 #
 # 例外は、main 以外の名前付きブランチへの `--force-with-lease` だけで、スタック型 PR の積み直しに使う。
 # lease は最後に取得した後に他者が push した ref を上書きせずに失敗するので、人間に ask を出さず settings.json の allow へ委ねる。
-# 経緯は docs/adr/20261102-stacked-pull-requests.md が持つ。
+# 経緯は docs/adr/20261102-native-stacked-pull-requests.md が持つ。
 #
 # 判定は「戻せない形か」だけで、それ以外は何も言わず settings.json の判定へ委ねる。
 # 迷ったら ask へ倒す。
