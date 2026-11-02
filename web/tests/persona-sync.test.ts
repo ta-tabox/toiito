@@ -12,21 +12,15 @@ import {
 } from "@tests/setup/persona-rows";
 import { afterAll, describe, expect, it } from "vitest";
 import * as db from "@/lib/db";
-import { DEFAULT_PERSONA_SETTINGS, toSystemPrompt } from "@/lib/personas";
+import {
+  DEFAULT_PERSONA_SETTINGS,
+  DEFAULT_PERSONA_IDS as PERSONA_ID,
+  toSystemPrompt,
+} from "@/lib/personas";
 
 afterAll(async () => {
   await db.disconnect();
 });
-
-/**
- * 既定の二体の `persona.id`。
- *
- * 値の正は `db.ts`。
- */
-const PERSONA_ID = {
-  ai_a: "00000000-0000-4000-8000-000000000001",
-  ai_b: "00000000-0000-4000-8000-000000000002",
-};
 
 const COMPOSED = {
   ai_a: toSystemPrompt(DEFAULT_PERSONA_SETTINGS.ai_a),

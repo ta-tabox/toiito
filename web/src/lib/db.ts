@@ -21,6 +21,7 @@ import {
 import { DATABASE_URL } from "@/lib/config";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import {
+  DEFAULT_PERSONA_IDS,
   DEFAULT_PERSONA_NAMES,
   DEFAULT_PERSONA_SETTINGS,
   type PersonaId,
@@ -196,7 +197,7 @@ export async function createUser(user: {
  *
  * ログインは Google OAuth だけで、`.invalid` のアドレスを持つアカウントは存在しないので、このユーザーとしてサインインする経路は無い。
  */
-const SYSTEM_USER_EMAIL = "system@toiito.invalid";
+export const SYSTEM_USER_EMAIL = "system@toiito.invalid";
 
 /**
  * システムのユーザーを除く全ユーザーを、ユーザーごとの問いの数とセッションの数と一緒に、登録の古い順で返す。
@@ -966,16 +967,6 @@ export async function summarizeUsage(since: Date): Promise<UsageSummary[]> {
     web_search_count: group._sum.web_search_count ?? 0,
   }));
 }
-
-/**
- * 既定の二体の `persona.id`。
- *
- * 値はペルソナの表を足す migration（`20261102120000_persona_tables`）が版 1 を作った id と同じで、変えると既存の版 1 と別のペルソナになる。
- */
-const DEFAULT_PERSONA_IDS: Record<PersonaId, string> = {
-  ai_a: "00000000-0000-4000-8000-000000000001",
-  ai_b: "00000000-0000-4000-8000-000000000002",
-};
 
 /** 版番号の一意制約に当たったときに、番号を取り直して書き直す回数の上限。 */
 const PERSONA_VERSION_ATTEMPTS = 3;

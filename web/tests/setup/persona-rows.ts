@@ -7,6 +7,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
+import { SYSTEM_USER_EMAIL } from "@/lib/db";
 import { TEST_DATABASE_URL } from "./test-database-url";
 
 /** 行を読み書きするための接続で、読み込んだテストファイルごとに一本張る。 */
@@ -17,8 +18,6 @@ const prisma = new PrismaClient({
 afterAll(async () => {
   await prisma.$disconnect();
 });
-
-const SYSTEM_USER_EMAIL = "system@toiito.invalid";
 
 /** すべてのペルソナの版とペルソナ、システムのユーザーを削除する。 */
 export async function deletePersonas(): Promise<void> {
