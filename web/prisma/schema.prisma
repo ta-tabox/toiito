@@ -52,7 +52,7 @@ enum QuestionStatus {
 ///
 /// - `human`: 人間
 /// - `ai`: AI で、どのペルソナのどの版かは `Message.persona_config_id` が持つ
-/// - `ai_a`・`ai_b`: `ai` へ移る前の値で、一往復はまだこの二つを書く
+/// - `ai_a`・`ai_b`: `ai` へ移る前の値で、一往復が版を書く前に書いた行にだけ残る
 ///
 /// TS 側の対応は `src/lib/types.ts` の `Speaker`。ずれの検出は QuestionStatus と同じ。
 enum Speaker {

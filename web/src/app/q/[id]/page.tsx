@@ -1,6 +1,6 @@
 /**
  * 一つの問いの対話画面。
- * 三者（人間・具体・抽象）の発話を時系列で並べ、次の一手を受け取る。
+ * 三者（人間と二体の AI）の発話を時系列で並べ、次の一手を受け取る。
  *
  * 一度に描くのはセッション一つで、既定は最新、`?s=<session_id>` が指すセッションがあればそのセッションを描く。
  * 過去のセッションは読み取り専用にする。
@@ -22,6 +22,7 @@ import {
 } from "@/app/actions";
 import { LandingMark } from "@/components/landing-mark";
 import { MessageBody } from "@/components/message-body";
+import { MessageBubble } from "@/components/message-bubble";
 import { RetryForm, SpeakForm } from "@/components/speak-form";
 import { StatusForm } from "@/components/status-form";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -35,9 +36,7 @@ import {
   questionText,
 } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
-import { PERSONA_LABEL } from "@/lib/personas";
 import { messageElementIdOf, questionPathOf } from "@/lib/routes";
-import type { Speaker } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -46,33 +45,6 @@ export const dynamic = "force-dynamic";
  * どのセッションだったか思い出せれば足りるので、全部は並べない。
  */
 const SWITCHER_KEYWORDS = 3;
-
-/**
- * 話者ごとの吹き出し。
- *
- * 三者は同じ幅で並べ、違いは背景色と角丸の位置だけに置く（`.claude/rules/design.md`「話者の描き分け」）。
- * 背景色は周辺視で拾う手掛かりであって識別の正ではないので、`label` の表示は消さない。
- */
-const SPEAKER_STYLE: Record<
-  Speaker,
-  { label: string; bubble: string; name: string }
-> = {
-  human: {
-    label: "あなた",
-    bubble: "rounded-bubble rounded-tr-notch bg-moss-surface",
-    name: "text-right",
-  },
-  ai_a: {
-    label: PERSONA_LABEL.ai_a,
-    bubble: "rounded-bubble rounded-tl-notch bg-surface-warm",
-    name: "",
-  },
-  ai_b: {
-    label: PERSONA_LABEL.ai_b,
-    bubble: "rounded-bubble border border-rule bg-surface-cool",
-    name: "",
-  },
-};
 
 /**
  * 一つの問いの対話画面。
@@ -178,22 +150,13 @@ export default async function QuestionPage({
 
       <div data-recedes-while-writing="" className="mt-8 space-y-4">
         {messages.map((m) => (
-          <div
-            key={m.id}
-            id={messageElementIdOf(m.id)}
-            className={`p-3 md:p-4 ${SPEAKER_STYLE[m.speaker].bubble}`}
-          >
-            <div
-              className={`mb-2 text-meta text-ink-weak ${SPEAKER_STYLE[m.speaker].name}`}
-            >
-              {SPEAKER_STYLE[m.speaker].label}
-            </div>
+          <MessageBubble key={m.id} id={messageElementIdOf(m.id)} speaker={m}>
             <MessageBody
               message={m}
               memos={memos.filter((memo) => memo.message_id === m.id)}
               action={createMemoAction}
             />
-          </div>
+          </MessageBubble>
         ))}
         {messages.length === 0 && (
           <p className="text-aux text-ink-weak">

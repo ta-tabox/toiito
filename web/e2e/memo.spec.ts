@@ -10,6 +10,7 @@
 import { signIn } from "@e2e/setup/sign-in";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { SEED_USERS } from "@scripts/seed/users";
+import { DEFAULT_PERSONA_NAMES } from "@/lib/personas";
 
 /** シナリオ一つ分の文言。 */
 type Scenario = { question: string; utterance: string };
@@ -125,8 +126,8 @@ test("発話の一部を選ぶとメモを作れ、その区間にアンダー�
   await page.getByLabel("メモ").fill("この言い換えが効いた");
   await page.getByRole("button", { name: "メモする" }).click();
 
-  // 下線は ai_a の枠の中の、リンクになっている区間だけを見る。
-  // 同じ文字列は人間の発話にも ai_b の引用にも出るので枠で絞り、選択直後はフォームの引用にも出るので role で絞る。
+  // 下線は具体さんの枠の中の、リンクになっている区間だけを見る。
+  // 同じ文字列は人間の発話にも抽象さんの引用にも出るので枠で絞り、選択直後はフォームの引用にも出るので role で絞る。
   const marked = markedSegment(aiA, utterance);
   await expect(underlinesOf(marked)).toHaveCount(1);
   await expect(underlinesOf(marked)).toHaveCSS(
@@ -307,7 +308,9 @@ test("別の発話を選ぶと下書きはそちらへ移り、やめれば選�
   page,
 }) => {
   const aiA = await postQuestionAndSpeak(page, SCENARIOS.single);
-  const aiB = page.locator('[id^="msg-"]').filter({ hasText: "[fake:ai_b" });
+  const aiB = page
+    .locator('[id^="msg-"]')
+    .filter({ hasText: `[fake:${DEFAULT_PERSONA_NAMES.abstract}` });
   const [first, second] = SCENARIOS.single.words;
 
   await selectTextIn(page, aiA, first);
@@ -452,10 +455,10 @@ test("再訪すると切り替え口が出て、過去セッションを読み�
 
 /**
  * 問いを投入して一度発話し、二体の応答が出るまで待つ。
- * 返すのは ai_a の応答が入った枠で、メモを付ける対象になる。
+ * 返すのは具体さんの応答が入った枠で、メモを付ける対象になる。
  *
- * どの体かの判定は `[fake:` の行に寄せる。
- * 見出しの言い回しはペルソナ文書の改稿で動くが、`[fake:` という前置きは動かない。
+ * どの体かの判定は `[fake:<版の呼び名>]` の前置きに寄せる。
+ * 発話者のラベルは版の呼び名と同じ文字列で枠ごとに出るが、`[fake:` という前置きは応答の本文にしか出ない。
  */
 async function postQuestionAndSpeak(page: Page, scenario: Scenario) {
   const { question, utterance } = scenario;
@@ -468,7 +471,9 @@ async function postQuestionAndSpeak(page: Page, scenario: Scenario) {
   await page.getByPlaceholder("問いについて、いま思うことを").fill(utterance);
   await page.getByRole("button", { name: /^発話する/ }).click();
 
-  const aiA = page.locator('[id^="msg-"]').filter({ hasText: "[fake:ai_a" });
+  const aiA = page
+    .locator('[id^="msg-"]')
+    .filter({ hasText: `[fake:${DEFAULT_PERSONA_NAMES.concrete}` });
   await expect(aiA).toHaveCount(1);
 
   return aiA;

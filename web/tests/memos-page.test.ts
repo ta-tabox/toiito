@@ -1,3 +1,4 @@
+import { getDefaultPersonaConfigIds } from "@tests/setup/default-personas";
 import { createOwner } from "@tests/setup/owner";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -80,8 +81,10 @@ async function memoInLongMessage(keyword: string, note?: string) {
   const before = "前".repeat(100);
   const after = "後".repeat(100);
   const { question, session } = await db.createQuestion(owner, "逆引きの検査");
+  const { concrete } = await getDefaultPersonaConfigIds();
   const message = await db.addMessage(owner, session.id, {
-    speaker: "ai_a",
+    speaker: "ai",
+    persona_config_id: concrete,
     body: `${before}${keyword}${after}`,
   });
   const memo = await db.addMemo(owner, message.id, {

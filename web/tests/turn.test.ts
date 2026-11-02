@@ -10,7 +10,6 @@ import { createOwner } from "@tests/setup/owner";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { ANTHROPIC_DEFAULTS, AnthropicProvider } from "@/lib/ai/anthropic";
 import { FAKE_FAIL_ONCE_MARKER } from "@/lib/ai/fake";
-import type { PersonaCall } from "@/lib/ai/persona-call";
 import {
   AiProvider,
   type ProviderRequest,
@@ -19,14 +18,18 @@ import {
 import { AI_PROVIDER } from "@/lib/ai/providers";
 import * as db from "@/lib/db";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
-import { loadPersona, type PersonaId } from "@/lib/personas";
+import {
+  DEFAULT_PERSONA_NAMES,
+  DEFAULT_PERSONA_SETTINGS,
+} from "@/lib/personas";
 import {
   type PersonaCalls,
   personaCalls,
   retryTurn,
   runTurn,
+  type TurnPosition,
 } from "@/lib/turn";
-import type { OwnerId, UsageInput } from "@/lib/types";
+import type { OwnerId } from "@/lib/types";
 
 /** ネットワークに出ず決定的な応答を返すプロバイダ。 */
 const FAKE_PROVIDER = new AnthropicProvider({
@@ -145,23 +148,37 @@ class RecordingProvider extends AiProvider {
 }
 
 /** 一往復ぶんの話者の並び。 */
-const ONE_TURN = ["human", "ai_a", "ai_b"];
+const ONE_TURN = ["human", "ai", "ai"];
 
 /**
- * 二体ぶんの呼び出し指定を、`provider` が体ごとに返すプロバイダと、`owner` の利用量を書く関数で組み立てる。
+ * `owner` の一往復の呼び出し指定を `personaCalls` で組み、プロバイダだけを `provider` が順番ごとに返すものへ差し替えて返す。
  */
-function callsFor(
+async function callsFor(
   owner: OwnerId,
-  provider: (id: PersonaId) => AiProvider,
-): PersonaCalls {
-  const call = (id: PersonaId): PersonaCall => ({
-    id,
-    prompt: loadPersona(id),
-    provider: provider(id),
-    recordUsage: (usage: UsageInput) => db.recordUsage(owner, usage),
-  });
+  provider: (position: TurnPosition) => AiProvider,
+): Promise<PersonaCalls> {
+  const calls = await personaCalls(owner);
 
-  return { ai_a: call("ai_a"), ai_b: call("ai_b") };
+  return {
+    first: { ...calls.first, provider: provider("first") },
+    second: { ...calls.second, provider: provider("second") },
+  };
+}
+
+/**
+ * `commitTurn` へ渡す、既定の二体の最新の版が書いた体の AI の発話二つを返す。
+ */
+async function defaultTurnResponses(): Promise<db.TurnResponse[]> {
+  const concrete = await db.getLatestDefaultPersonaConfig("concrete");
+  const abstract = await db.getLatestDefaultPersonaConfig("abstract");
+  if (!concrete || !abstract) {
+    throw new Error("テストの前準備が既定のペルソナの版を同期していない");
+  }
+
+  return [
+    { body: "具体の応答", persona_config_id: concrete.id },
+    { body: "抽象の応答", persona_config_id: abstract.id },
+  ];
 }
 
 /**
@@ -169,20 +186,22 @@ function callsFor(
  * 既定は両方フェイクで、失敗させたい体だけ差し替える。
  */
 function callsResolver(
-  failing?: PersonaId,
+  failing?: TurnPosition,
 ): (owner: OwnerId) => Promise<PersonaCalls> {
   return async (owner) =>
-    callsFor(owner, (id) =>
-      id === failing ? new FailingProvider() : FAKE_PROVIDER,
+    callsFor(owner, (position) =>
+      position === failing ? new FailingProvider() : FAKE_PROVIDER,
     );
 }
 
-/** ai_a だけを `gate` で止める呼び出し指定を解決する関数を返す。 */
+/** 1 番手だけを `gate` で止める呼び出し指定を解決する関数を返す。 */
 function callsResolverGatedBy(
   gate: GatedProvider,
 ): (owner: OwnerId) => Promise<PersonaCalls> {
   return async (owner) =>
-    callsFor(owner, (id) => (id === "ai_a" ? gate : FAKE_PROVIDER));
+    callsFor(owner, (position) =>
+      position === "first" ? gate : FAKE_PROVIDER,
+    );
 }
 
 /** 二体とも `StubProvider` で応答させる呼び出し指定を解決する関数を返す。 */
@@ -213,7 +232,7 @@ afterAll(async () => {
 });
 
 describe("一往復", () => {
-  it("ai_a と ai_b が揃えば三行が入り、pending_messages の行は消える", async () => {
+  it("二体の応答が揃えば三行が入り、pending_messages の行は消える", async () => {
     const target = await newDialogue();
 
     await runTurn({
@@ -223,7 +242,7 @@ describe("一往復", () => {
     });
 
     const messages = await db.listMessages(owner, target.sessionId);
-    expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
+    expect(messages.map((m) => m.speaker)).toEqual(ONE_TURN);
     expect(messages[0].body).toBe("急ぐほど問いが痩せる気がする");
     const pending = await db.getPendingBody(owner, target.sessionId);
     expect(pending).toBeUndefined();
@@ -249,56 +268,98 @@ describe("一往復", () => {
     });
   });
 
-  it("ai_b へ送る本文には、同じ一往復で ai_a が返した応答が入る", async () => {
+  it("2 番手へ送る本文には、同じ一往復で 1 番手が返した応答が入る", async () => {
     const target = await newDialogue();
     const providers = {
-      ai_a: new RecordingProvider("具体の側が返した応答"),
-      ai_b: new RecordingProvider("抽象の側が返した応答"),
+      first: new RecordingProvider("具体の側が返した応答"),
+      second: new RecordingProvider("抽象の側が返した応答"),
     };
 
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      resolveCalls: async (owner) => callsFor(owner, (id) => providers[id]),
+      resolveCalls: async (owner) =>
+        callsFor(owner, (position) => providers[position]),
     });
 
-    expect(providers.ai_a.received).toHaveLength(1);
-    expect(providers.ai_a.received[0]).not.toContain("具体の側が返した応答");
-    expect(providers.ai_b.received).toHaveLength(1);
-    expect(providers.ai_b.received[0]).toContain("具体の側が返した応答");
+    expect(providers.first.received).toHaveLength(1);
+    expect(providers.first.received[0]).not.toContain("具体の側が返した応答");
+    expect(providers.second.received).toHaveLength(1);
+    expect(providers.second.received[0]).toContain("具体の側が返した応答");
+  });
+
+  it("一往復の AI の二行は、既定の二体の最新の版の呼び名と抽象度を持つ", async () => {
+    await db.addDefaultPersonaConfigs({
+      concrete: {
+        name: "版 2 の具体さん",
+        settings: {
+          ...DEFAULT_PERSONA_SETTINGS.concrete,
+          description: "俳句で話す。",
+        },
+      },
+      abstract: {
+        name: DEFAULT_PERSONA_NAMES.abstract,
+        settings: DEFAULT_PERSONA_SETTINGS.abstract,
+      },
+    });
+    const target = await newDialogue();
+
+    await runTurn({
+      ...target,
+      body: "急ぐほど問いが痩せる気がする",
+      resolveCalls: callsResolver(),
+    });
+
+    const messages = await db.listMessages(owner, target.sessionId);
+    expect(messages.slice(1)).toMatchObject([
+      {
+        speaker: "ai",
+        persona: {
+          name: "版 2 の具体さん",
+          abstraction: DEFAULT_PERSONA_SETTINGS.concrete.parameters.abstraction,
+        },
+      },
+      {
+        speaker: "ai",
+        persona: {
+          name: DEFAULT_PERSONA_NAMES.abstract,
+          abstraction: DEFAULT_PERSONA_SETTINGS.abstract.parameters.abstraction,
+        },
+      },
+    ]);
   });
 
   it("env から組み立てた呼び出し指定は、二体へ同じプロバイダを渡す", async () => {
     const calls = await personaCalls(owner);
 
-    expect(calls.ai_a.provider).toBe(AI_PROVIDER);
-    expect(calls.ai_b.provider).toBe(AI_PROVIDER);
+    expect(calls.first.provider).toBe(AI_PROVIDER);
+    expect(calls.second.provider).toBe(AI_PROVIDER);
   });
 
-  it("ai_b が失敗すると messages は空のままで、pending_messages に本文が残る", async () => {
+  it("2 番手が失敗すると messages は空のままで、pending_messages に本文が残る", async () => {
     const target = await newDialogue();
 
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      resolveCalls: callsResolver("ai_b"),
+      resolveCalls: callsResolver("second"),
     });
 
     const messages = await db.listMessages(owner, target.sessionId);
     const pending = await db.getPendingBody(owner, target.sessionId);
 
-    // ai_a は成功しているが、成立していない一往復の断片は置かない。
+    // 1 番手は成功しているが、成立していない一往復の断片は置かない。
     expect(messages).toEqual([]);
     expect(pending).toBe("急ぐほど問いが痩せる気がする");
   });
 
-  it("ai_a が落ちたときも同じ", async () => {
+  it("1 番手が失敗したときも同じ", async () => {
     const target = await newDialogue();
 
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      resolveCalls: callsResolver("ai_a"),
+      resolveCalls: callsResolver("first"),
     });
 
     const messages = await db.listMessages(owner, target.sessionId);
@@ -328,11 +389,11 @@ describe("一往復", () => {
     const target = await newDialogue();
     const body = "急ぐほど問いが痩せる気がする";
 
-    await runTurn({ ...target, body, resolveCalls: callsResolver("ai_b") });
+    await runTurn({ ...target, body, resolveCalls: callsResolver("second") });
     await runTurn({ ...target, body, resolveCalls: callsResolver() });
 
     const messages = await db.listMessages(owner, target.sessionId);
-    expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
+    expect(messages.map((m) => m.speaker)).toEqual(ONE_TURN);
   });
 
   it("前の一往復が成立していれば、次の発話はその上へ積まれる", async () => {
@@ -342,14 +403,7 @@ describe("一往復", () => {
     await runTurn({ ...target, body: "二つ目", resolveCalls: callsResolver() });
 
     const messages = await db.listMessages(owner, target.sessionId);
-    expect(messages.map((m) => m.speaker)).toEqual([
-      "human",
-      "ai_a",
-      "ai_b",
-      "human",
-      "ai_a",
-      "ai_b",
-    ]);
+    expect(messages.map((m) => m.speaker)).toEqual([...ONE_TURN, ...ONE_TURN]);
     expect(messages[3].body).toBe("二つ目");
   });
 
@@ -375,12 +429,12 @@ describe("再送", () => {
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      resolveCalls: callsResolver("ai_b"),
+      resolveCalls: callsResolver("second"),
     });
     await retryTurn({ ...target, resolveCalls: callsResolver() });
 
     const messages = await db.listMessages(owner, target.sessionId);
-    expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
+    expect(messages.map((m) => m.speaker)).toEqual(ONE_TURN);
     expect(messages[0].body).toBe("急ぐほど問いが痩せる気がする");
     const pending = await db.getPendingBody(owner, target.sessionId);
     expect(pending).toBeUndefined();
@@ -392,9 +446,9 @@ describe("再送", () => {
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      resolveCalls: callsResolver("ai_b"),
+      resolveCalls: callsResolver("second"),
     });
-    await retryTurn({ ...target, resolveCalls: callsResolver("ai_b") });
+    await retryTurn({ ...target, resolveCalls: callsResolver("second") });
 
     const messages = await db.listMessages(owner, target.sessionId);
     const pending = await db.getPendingBody(owner, target.sessionId);
@@ -438,11 +492,8 @@ describe("再送", () => {
     // 二つの Server Action が同時に走ると起きるので、行を上書きしてから commitTurn する。
     await db.savePendingBody(owner, target.sessionId, "あとから送った発話");
     await db.commitTurn(owner, target.sessionId, {
-      bodies: {
-        human: "再送していた発話",
-        ai_a: "具体の応答",
-        ai_b: "抽象の応答",
-      },
+      human: "再送していた発話",
+      responses: await defaultTurnResponses(),
       messageCountAtStart: 0,
     });
 
@@ -455,17 +506,14 @@ describe("再送", () => {
 
     await expect(
       db.commitTurn(owner, target.sessionId, {
-        bodies: {
-          human: "預けていない発話",
-          ai_a: "具体の応答",
-          ai_b: "抽象の応答",
-        },
+        human: "預けていない発話",
+        responses: await defaultTurnResponses(),
         messageCountAtStart: 0,
       }),
     ).resolves.toBe(true);
 
     const messages = await db.listMessages(owner, target.sessionId);
-    expect(messages.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
+    expect(messages.map((m) => m.speaker)).toEqual(ONE_TURN);
   });
 });
 
@@ -476,7 +524,7 @@ describe("再訪", () => {
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      resolveCalls: callsResolver("ai_b"),
+      resolveCalls: callsResolver("second"),
     });
     await db.createSession(owner, target.questionId);
 
@@ -576,7 +624,8 @@ describe("並走", () => {
   it("書き込む時点で発話の数が一往復を始めたときと違えば、commitTurn は何も書かずに false を返す", async () => {
     const target = await newDialogue();
     const turn = {
-      bodies: { human: "発話", ai_a: "具体の応答", ai_b: "抽象の応答" },
+      human: "発話",
+      responses: await defaultTurnResponses(),
       messageCountAtStart: 0,
     };
 

@@ -1,3 +1,4 @@
+import { getDefaultPersonaConfigIds } from "@tests/setup/default-personas";
 import { createOwner } from "@tests/setup/owner";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -94,12 +95,14 @@ function pendingBodiesOf(tree: ReactElement[]): unknown[] {
 
 /** 二つの発話を持ち、後ろの発話にだけメモが付いた問いを作る。 */
 async function questionWithMemoOnSecondMessage() {
+  const { concrete } = await getDefaultPersonaConfigIds();
   const created = await db.createQuestionWithTranscript(owner, {
     body: "対話画面にメモが出るか",
     messages: [
       { speaker: "human", body: "口火を切る" },
       {
-        speaker: "ai_a",
+        speaker: "ai",
+        persona_config_id: concrete,
         body: "具体の応答",
         memos: [{ anchor: parseAnchor(0, 2), keyword: "具体" }],
       },

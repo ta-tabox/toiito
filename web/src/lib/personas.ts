@@ -2,29 +2,9 @@
  * ペルソナの設定（軸ごとの段階と自由記述）から、モデルへ渡すシステムプロンプトの全文を作る純関数と、その材料を置く。
  * 材料は、軸の値域・軸と段階の組ごとの節・共通の節・既定の二体の設定である。
  * 設定の永続化は持たない。
- *
- * 一往復がいま渡しているシステムプロンプトは合成した全文でなく、`loadPersona` が `src/personas/*.md` から読む文面である。
  */
 
-import fs from "node:fs";
-import path from "node:path";
 import { valueSet } from "@/lib/value-set";
-
-export type PersonaId = "ai_a" | "ai_b";
-
-export const PERSONA_LABEL: Record<PersonaId, string> = {
-  ai_a: "具体",
-  ai_b: "抽象",
-};
-
-/**
- * `id` のペルソナのシステムプロンプトを `src/personas/<id>.md` から読む。
- * ファイルが無ければ throw する。
- */
-export function loadPersona(id: PersonaId): string {
-  const p = path.join(process.cwd(), "src", "personas", `${id}.md`);
-  return fs.readFileSync(p, "utf-8");
-}
 
 /**
  * ペルソナの傾向を表す軸（axis は「軸」、axes はその複数形）。
@@ -232,15 +212,23 @@ const AXIS_SECTIONS: Record<PersonaAxis, AxisSection> = {
   },
 };
 
+/** 既定の二体を区別する鍵。 */
+export const DEFAULT_PERSONA_KEYS = ["concrete", "abstract"] as const;
+
+export type DefaultPersonaKey = (typeof DEFAULT_PERSONA_KEYS)[number];
+
 /**
  * 既定の二体の設定。
  * DB の版は、この設定から合成した結果の記録である。
- * 合成した全文は `tests/__snapshots__/system-prompts/ai_a.md` と `ai_b.md` に置き、テストが一致を検査する。
+ * 合成した全文は `tests/__snapshots__/system-prompts/concrete.md` と `abstract.md` に置き、テストが一致を検査する。
  *
  * 既定の設定の正をコードへ置く理由は `docs/adr/20260915-persona-as-records.md` が持つ。
  */
-export const DEFAULT_PERSONA_SETTINGS: Record<PersonaId, PersonaSettings> = {
-  ai_a: {
+export const DEFAULT_PERSONA_SETTINGS: Record<
+  DefaultPersonaKey,
+  PersonaSettings
+> = {
+  concrete: {
     parameters: {
       abstraction: "level_1",
       dissent: "level_4",
@@ -257,7 +245,7 @@ export const DEFAULT_PERSONA_SETTINGS: Record<PersonaId, PersonaSettings> = {
 - 相手の言葉を借りて話す（言い換えで奪わない）
 - 出自が重い（喪失・病い・関係の傷など）と分かったら、深掘りの速度を下げる。問いの進捗より人間の状態が優先で、踏み込む前に一度確かめる`,
   },
-  ai_b: {
+  abstract: {
     parameters: {
       abstraction: "level_5",
       dissent: "level_4",
@@ -282,18 +270,18 @@ export const DEFAULT_PERSONA_SETTINGS: Record<PersonaId, PersonaSettings> = {
  *
  * 値はペルソナの表を足す migration（`20261102120000_persona_tables`）が版 1 を作った id と同じで、変えると既存の版 1 と別のペルソナになる。
  */
-export const DEFAULT_PERSONA_IDS: Record<PersonaId, string> = {
-  ai_a: "00000000-0000-4000-8000-000000000001",
-  ai_b: "00000000-0000-4000-8000-000000000002",
+export const DEFAULT_PERSONA_IDS: Record<DefaultPersonaKey, string> = {
+  concrete: "00000000-0000-4000-8000-000000000001",
+  abstract: "00000000-0000-4000-8000-000000000002",
 };
 
 /**
  * 既定の二体の呼び名。
  * DB の版の `name` へ、合成した全文と一緒に書く。
  */
-export const DEFAULT_PERSONA_NAMES: Record<PersonaId, string> = {
-  ai_a: "具体さん",
-  ai_b: "抽象さん",
+export const DEFAULT_PERSONA_NAMES: Record<DefaultPersonaKey, string> = {
+  concrete: "具体さん",
+  abstract: "抽象さん",
 };
 
 /**

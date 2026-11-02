@@ -1,8 +1,15 @@
 import { randomUUID } from "node:crypto";
+import { getDefaultPersonaConfigIds } from "@tests/setup/default-personas";
 import { createOwner } from "@tests/setup/owner";
+import { createLegacyMessage } from "@tests/setup/persona-rows";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
+import {
+  DEFAULT_PERSONA_NAMES,
+  DEFAULT_PERSONA_SETTINGS,
+  type DefaultPersonaKey,
+} from "@/lib/personas";
 import { QUESTION_STATUSES } from "@/lib/question";
 import type { Anchor, MaterialDraft, OwnerId } from "@/lib/types";
 
@@ -11,9 +18,11 @@ afterAll(async () => {
 });
 
 let owner: OwnerId;
+let configIds: Record<DefaultPersonaKey, string>;
 
 beforeEach(async () => {
   owner = await createOwner();
+  configIds = await getDefaultPersonaConfigIds();
 });
 
 describe("questions / sessions", () => {
@@ -65,7 +74,8 @@ describe("questions / sessions", () => {
         body: "どのセッションで言った語か",
         messages: [
           {
-            speaker: "ai_a",
+            speaker: "ai",
+            persona_config_id: configIds.concrete,
             body: "一度目の応答",
             memos: [{ anchor: parseAnchor(0, 2), keyword: "一度" }],
           },
@@ -74,7 +84,8 @@ describe("questions / sessions", () => {
     );
     const second = await db.createSession(owner, question.id);
     const laterMessage = await db.addMessage(owner, second.id, {
-      speaker: "ai_a",
+      speaker: "ai",
+      persona_config_id: configIds.concrete,
       body: "二度目の応答",
     });
     await db.addMemo(owner, laterMessage.id, {
@@ -96,7 +107,13 @@ describe("questions / sessions", () => {
       owner,
       {
         body: "同じ語に何度も印を付ける",
-        messages: [{ speaker: "ai_a", body: "惰性と惰性" }],
+        messages: [
+          {
+            speaker: "ai",
+            persona_config_id: configIds.concrete,
+            body: "惰性と惰性",
+          },
+        ],
       },
     );
     await db.addMemo(owner, messages[0].id, {
@@ -213,16 +230,43 @@ describe("messages", () => {
 
     await db.addMessage(owner, session.id, { speaker: "human", body: "口火" });
     await db.addMessage(owner, session.id, {
-      speaker: "ai_a",
+      speaker: "ai",
+      persona_config_id: configIds.concrete,
       body: "具体の応答",
     });
     await db.addMessage(owner, session.id, {
-      speaker: "ai_b",
+      speaker: "ai",
+      persona_config_id: configIds.abstract,
       body: "抽象の応答",
     });
     const msgs = await db.listMessages(owner, session.id);
 
-    expect(msgs.map((m) => m.speaker)).toEqual(["human", "ai_a", "ai_b"]);
+    expect(msgs.map((m) => m.speaker)).toEqual(["human", "ai", "ai"]);
+  });
+
+  it("版を指さない ai_a と ai_b の発話は、既定の二体の呼び名と抽象度で返る", async () => {
+    const { session } = await db.createQuestion(owner, "問い3-旧");
+
+    await createLegacyMessage(session.id, "ai_a", "旧コードの具体の応答");
+    await createLegacyMessage(session.id, "ai_b", "旧コードの抽象の応答");
+    const msgs = await db.listMessages(owner, session.id);
+
+    expect(msgs).toMatchObject([
+      {
+        speaker: "ai_a",
+        persona: {
+          name: DEFAULT_PERSONA_NAMES.concrete,
+          abstraction: DEFAULT_PERSONA_SETTINGS.concrete.parameters.abstraction,
+        },
+      },
+      {
+        speaker: "ai_b",
+        persona: {
+          name: DEFAULT_PERSONA_NAMES.abstract,
+          abstraction: DEFAULT_PERSONA_SETTINGS.abstract.parameters.abstraction,
+        },
+      },
+    ]);
   });
 
   it("不正な speaker は enum で弾かれる", async () => {
@@ -242,7 +286,8 @@ describe("memos", () => {
   it("正常系: 選択区間から作れて note は保存される", async () => {
     const { session } = await db.createQuestion(owner, "問い5");
     const message = await db.addMessage(owner, session.id, {
-      speaker: "ai_a",
+      speaker: "ai",
+      persona_config_id: configIds.concrete,
       body: "これは本文である",
     });
     const memo = await db.addMemo(owner, message.id, {
@@ -261,7 +306,8 @@ describe("memos", () => {
   it("note は省略可で、省略時は null になる", async () => {
     const { session } = await db.createQuestion(owner, "問い6");
     const message = await db.addMessage(owner, session.id, {
-      speaker: "ai_b",
+      speaker: "ai",
+      persona_config_id: configIds.abstract,
       body: "省略のテスト文",
     });
     const memo = await db.addMemo(owner, message.id, {
@@ -323,11 +369,13 @@ describe("memos", () => {
     const { session: sessionA } = await db.createQuestion(owner, "問い8-A");
     const { session: sessionB } = await db.createQuestion(owner, "問い8-B");
     const msgA = await db.addMessage(owner, sessionA.id, {
-      speaker: "ai_a",
+      speaker: "ai",
+      persona_config_id: configIds.concrete,
       body: "セッションAの本文",
     });
     const msgB = await db.addMessage(owner, sessionB.id, {
-      speaker: "ai_a",
+      speaker: "ai",
+      persona_config_id: configIds.concrete,
       body: "セッションBの本文",
     });
     const memoA = await db.addMemo(owner, msgA.id, {
@@ -350,7 +398,8 @@ describe("memos", () => {
       "問い9: 逆引き元の問い",
     );
     const message = await db.addMessage(owner, session.id, {
-      speaker: "ai_b",
+      speaker: "ai",
+      persona_config_id: configIds.abstract,
       body: "逆引き対象の本文",
     });
     const memo = await db.addMemo(owner, message.id, {
@@ -364,14 +413,18 @@ describe("memos", () => {
     expect(found.session_id).toBe(session.id);
     expect(found.question_id).toBe(question.id);
     expect(found.question_body).toBe("問い9: 逆引き元の問い");
-    expect(found.speaker).toBe("ai_b");
+    expect(found).toMatchObject({
+      speaker: "ai",
+      persona: { name: DEFAULT_PERSONA_NAMES.abstract },
+    });
     expect(found.message_body).toBe("逆引き対象の本文");
   });
 
   it("listMemosWithContext は新しい順に返す", async () => {
     const { session } = await db.createQuestion(owner, "問い10: 並びの検査");
     const message = await db.addMessage(owner, session.id, {
-      speaker: "ai_a",
+      speaker: "ai",
+      persona_config_id: configIds.concrete,
       body: "先の語と後の語",
     });
     const older = await db.addMemo(owner, message.id, {
@@ -399,7 +452,8 @@ describe("所有権", () => {
         body: "アクセス権の無い問い",
         messages: [
           {
-            speaker: "ai_a",
+            speaker: "ai",
+            persona_config_id: configIds.concrete,
             body: "アクセス権の無い発話",
             memos: [{ anchor: parseAnchor(0, 2), keyword: "アクセス" }],
           },
@@ -459,7 +513,10 @@ describe("所有権", () => {
     ).rejects.toThrow(/セッションが見つからない/);
     await expect(
       db.commitTurn(owner, session.id, {
-        bodies: { human: "割り込み", ai_a: "具体の応答", ai_b: "抽象の応答" },
+        human: "割り込み",
+        responses: [
+          { body: "具体の応答", persona_config_id: configIds.concrete },
+        ],
         messageCountAtStart: 1,
       }),
     ).rejects.toThrow(/セッションが見つからない/);

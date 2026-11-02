@@ -22,9 +22,10 @@ import { DATABASE_URL } from "@/lib/config";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import {
   DEFAULT_PERSONA_IDS,
+  DEFAULT_PERSONA_KEYS,
   DEFAULT_PERSONA_NAMES,
   DEFAULT_PERSONA_SETTINGS,
-  type PersonaId,
+  type DefaultPersonaKey,
   type PersonaSettings,
   toSystemPrompt,
 } from "@/lib/personas";
@@ -37,17 +38,18 @@ import type {
   Memo,
   MemoWithContext,
   Message,
+  NewUtterance,
   OwnerId,
   PersonaConfig,
   Question,
   Session,
   SessionWithKeywords,
-  Speaker,
   UsageInput,
   UsageLog,
   UsageSummary,
   User,
-  Utterance,
+  UtterancePersona,
+  UtteranceSpeaker,
 } from "@/lib/types";
 
 /**
@@ -542,18 +544,61 @@ export async function listSessionsWithKeywords(
   }));
 }
 
+/** 発話の行と一緒に取得する、版の列。 */
+const UTTERANCE_PERSONA_COLUMNS = {
+  persona_config: { select: { name: true, abstraction: true } },
+} as const;
+
 /**
- * 発話の行の `speaker` を、ドメイン型の `Speaker` へ絞り込む。
- * `speaker` が `ai` の行は throw する。
+ * 版を指す前の発話の種別（`ai_a`・`ai_b`）が表す、既定の二体の鍵。
  *
- * 一往復はまだ `ai_a`・`ai_b` で書くので、`ai` の行を書く経路はこのコードに無い。
+ * 一往復が版の id を書く前のコードは、発話を `ai_a`・`ai_b` で書き、版を指さない。
  */
-function toSpeaker(speaker: SpeakerRow): Speaker {
-  if (speaker === "ai") {
-    throw new Error("speaker が ai の発話は読めない");
+const LEGACY_SPEAKER_PERSONAS: Record<"ai_a" | "ai_b", DefaultPersonaKey> = {
+  ai_a: "concrete",
+  ai_b: "abstract",
+};
+
+/**
+ * 発話の行の種別（`speaker`）と版の列（`persona_config`）を、ドメイン型の `UtteranceSpeaker` へ写す。
+ * 版を指さない `ai_a`・`ai_b` の行は、コードにある既定の二体の呼び名と抽象度で返し、版を指さない `ai` の行は throw する。
+ */
+function toUtteranceSpeaker(row: {
+  speaker: SpeakerRow;
+  persona_config: UtterancePersona | null;
+}): UtteranceSpeaker {
+  const { speaker, persona_config } = row;
+
+  if (speaker === "human") {
+    return { speaker };
   }
 
-  return speaker;
+  if (persona_config) {
+    return { speaker, persona: persona_config };
+  }
+
+  if (speaker === "ai") {
+    throw new Error("speaker が ai の発話が版を指していない");
+  }
+
+  const key = LEGACY_SPEAKER_PERSONAS[speaker];
+
+  return {
+    speaker,
+    persona: {
+      name: DEFAULT_PERSONA_NAMES[key],
+      abstraction: DEFAULT_PERSONA_SETTINGS[key].parameters.abstraction,
+    },
+  };
+}
+
+/** 発話の行を、ドメイン型の `Message` へ写す。 */
+function fromMessageRow(
+  row: Prisma.MessageGetPayload<{ include: typeof UTTERANCE_PERSONA_COLUMNS }>,
+): Message {
+  const { id, session_id, body, created_at } = row;
+
+  return { ...toUtteranceSpeaker(row), id, session_id, body, created_at };
 }
 
 /**
@@ -567,10 +612,11 @@ export async function listMessages(
 ): Promise<Message[]> {
   const rows = await db().message.findMany({
     where: { session_id: sessionId, session: { question: { user_id: owner } } },
+    include: UTTERANCE_PERSONA_COLUMNS,
     orderBy: [{ created_at: "asc" }, { seq: "asc" }],
   });
 
-  return rows.map((row) => ({ ...row, speaker: toSpeaker(row.speaker) }));
+  return rows.map(fromMessageRow);
 }
 
 /**
@@ -582,38 +628,42 @@ export async function listMessages(
 export async function addMessage(
   owner: OwnerId,
   sessionId: string,
-  utterance: Utterance,
+  utterance: NewUtterance,
 ): Promise<Message> {
   await requireOwnedSession(owner, sessionId);
 
   const row = await db().message.create({
-    data: {
-      session_id: sessionId,
-      speaker: utterance.speaker,
-      body: utterance.body,
-    },
+    data: { session_id: sessionId, ...utterance },
+    include: UTTERANCE_PERSONA_COLUMNS,
   });
 
-  return { ...row, speaker: toSpeaker(row.speaker) };
+  return fromMessageRow(row);
 }
 
 /**
- * human / ai_a / ai_b の三行を `messages` へ追記し、`pending_messages` の行を削除して true を返す。
+ * 一往復の AI の発話一つで、本文とそれを書いた版の id の組。
+ * `commitTurn` が、人間の発話の後に並びの順で `messages` へ追記する。
+ */
+export type TurnResponse = { body: string; persona_config_id: string };
+
+/**
+ * 人間の発話（`turn.human`）と AI の発話（`turn.responses`）を並びの順で `messages` へ追記し、`pending_messages` の行を削除して true を返す。
  * セッションが問いの最新セッションでなくなっていたか、発話の数が `turn.messageCountAtStart` と違えば、何も書かずに false を返す。
  * セッションが無いか owner 以外が所有するセッションなら throw する。
  *
- * 三行が揃わない turn を残さないため、一トランザクションで行う。
+ * 一往復の発話が揃わない turn を残さないため、一トランザクションで行う。
  * 発話は追記のみで減らないので、数が一往復を始めたときと同じなら、AI を待つあいだに他の一往復は書き込んでいない。
  */
 export async function commitTurn(
   owner: OwnerId,
   sessionId: string,
   turn: {
-    readonly bodies: { human: string; ai_a: string; ai_b: string };
+    readonly human: string;
+    readonly responses: readonly TurnResponse[];
     readonly messageCountAtStart: number;
   },
 ): Promise<boolean> {
-  const { bodies, messageCountAtStart } = turn;
+  const { human, responses, messageCountAtStart } = turn;
 
   return db().$transaction(async (tx) => {
     const session = await getSessionForUpdate(tx, owner, sessionId);
@@ -625,16 +675,20 @@ export async function commitTurn(
       return false;
     }
 
-    for (const speaker of ["human", "ai_a", "ai_b"] as const) {
+    await tx.message.create({
+      data: { session_id: sessionId, speaker: "human", body: human },
+    });
+
+    for (const response of responses) {
       await tx.message.create({
-        data: { session_id: sessionId, speaker, body: bodies[speaker] },
+        data: { session_id: sessionId, speaker: "ai", ...response },
       });
     }
 
     // 再送を待つあいだに次の発話が送られると、`pending_messages` の行はその発話へ差し替わっている。
     // `body` でも絞るのは、差し替わった行まで削除しないため。
     await tx.pendingMessage.deleteMany({
-      where: { session_id: sessionId, body: bodies.human },
+      where: { session_id: sessionId, body: human },
     });
 
     return true;
@@ -767,17 +821,22 @@ export async function listMemosWithContext(
   const rows = await db().memo.findMany({
     where: { message: { session: { question: { user_id: owner } } } },
     include: {
-      message: { include: { session: { include: { question: true } } } },
+      message: {
+        include: {
+          ...UTTERANCE_PERSONA_COLUMNS,
+          session: { include: { question: true } },
+        },
+      },
     },
     orderBy: [{ created_at: "desc" }, { seq: "desc" }],
   });
 
   return rows.map(({ message, ...memo }) => ({
     ...memo,
+    ...toUtteranceSpeaker(message),
     session_id: message.session_id,
     question_id: message.session.question_id,
     question_body: message.session.question.body,
-    speaker: toSpeaker(message.speaker),
     message_body: message.body,
   }));
 }
@@ -846,7 +905,7 @@ export async function listMaterials(
 export type MemoInput = { anchor: Anchor; keyword: string; note?: string };
 
 /** 対話とメモをまとめて作るときの、一件の発話と、その発話に付けるメモ。 */
-export type MessageInput = Utterance & { memos?: MemoInput[] };
+export type MessageInput = NewUtterance & { memos?: MemoInput[] };
 
 /**
  * 問いを対話ごと作るときの入力。
@@ -893,13 +952,11 @@ export async function createQuestionWithTranscript(
   const memos: Memo[] = [];
 
   for (const messageInput of input.messages) {
-    const message = await addMessage(owner, session.id, {
-      speaker: messageInput.speaker,
-      body: messageInput.body,
-    });
+    const { memos: memoInputs, ...utterance } = messageInput;
+    const message = await addMessage(owner, session.id, utterance);
     messages.push(message);
 
-    for (const memoInput of messageInput.memos ?? []) {
+    for (const memoInput of memoInputs ?? []) {
       const memo = await addMemo(owner, message.id, memoInput);
       memos.push(memo);
     }
@@ -1076,16 +1133,31 @@ async function addPersonaConfigIfChanged(
 }
 
 /** コードが正を持つ、既定の二体の呼び名と設定。 */
-const DEFAULT_PERSONA_INPUTS: Record<PersonaId, PersonaConfigInput> = {
-  ai_a: {
-    name: DEFAULT_PERSONA_NAMES.ai_a,
-    settings: DEFAULT_PERSONA_SETTINGS.ai_a,
+const DEFAULT_PERSONA_INPUTS: Record<DefaultPersonaKey, PersonaConfigInput> = {
+  concrete: {
+    name: DEFAULT_PERSONA_NAMES.concrete,
+    settings: DEFAULT_PERSONA_SETTINGS.concrete,
   },
-  ai_b: {
-    name: DEFAULT_PERSONA_NAMES.ai_b,
-    settings: DEFAULT_PERSONA_SETTINGS.ai_b,
+  abstract: {
+    name: DEFAULT_PERSONA_NAMES.abstract,
+    settings: DEFAULT_PERSONA_SETTINGS.abstract,
   },
 };
+
+/**
+ * 既定の二体のうち `key` のペルソナの、最新の版を返す。
+ * 版が一つも無ければ undefined を返す。
+ */
+export async function getLatestDefaultPersonaConfig(
+  key: DefaultPersonaKey,
+): Promise<PersonaConfig | undefined> {
+  const row = await db().personaConfig.findFirst({
+    where: { persona_id: DEFAULT_PERSONA_IDS[key] },
+    orderBy: { version: "desc" },
+  });
+
+  return row ? fromPersonaConfigRow(row) : undefined;
+}
 
 /**
  * 既定の二体について、呼び名と設定（`defaults`）から合成した全文が最新の版と違えば次の版を追記し、追記した版を返す。
@@ -1095,12 +1167,15 @@ const DEFAULT_PERSONA_INPUTS: Record<PersonaId, PersonaConfigInput> = {
  * `defaults` を渡すのはテストだけで、アプリとスクリプトは省略してコードの設定を使う。
  */
 export async function addDefaultPersonaConfigs(
-  defaults: Record<PersonaId, PersonaConfigInput> = DEFAULT_PERSONA_INPUTS,
+  defaults: Record<
+    DefaultPersonaKey,
+    PersonaConfigInput
+  > = DEFAULT_PERSONA_INPUTS,
 ): Promise<PersonaConfig[]> {
   const userId = await requireSystemUserId();
   const added: PersonaConfig[] = [];
 
-  for (const key of Object.keys(DEFAULT_PERSONA_IDS) as PersonaId[]) {
+  for (const key of DEFAULT_PERSONA_KEYS) {
     const personaId = DEFAULT_PERSONA_IDS[key];
 
     await db().persona.upsert({
