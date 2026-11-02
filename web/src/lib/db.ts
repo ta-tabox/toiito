@@ -8,12 +8,16 @@
  *
  * **アクセス権のないリソースを拒否するのは `db.ts` で、DB の制約（RLS）ではない**（理由は `docs/adr/20260906-ownership-granularity.md`）。
  * 所有者を受け取る repo 関数は、読みも書きも所有者の条件を必ず where に置く（取得してから user_id を比べる形は、比べ忘れても `tsc` が通ってしまう）。
- * 所有者の列を持つのは `questions` だけで、下位のテーブルは親を辿って判定する。
+ * 所有者の列を持つのは `questions` と `persona` だけで、下位のテーブルは親を辿って判定する。
  */
 
 import { randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { type Prisma, PrismaClient } from "@/generated/prisma/client";
+import {
+  type Prisma,
+  PrismaClient,
+  type Speaker as SpeakerRow,
+} from "@/generated/prisma/client";
 import { DATABASE_URL } from "@/lib/config";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
@@ -29,6 +33,7 @@ import type {
   Question,
   Session,
   SessionWithKeywords,
+  Speaker,
   UsageInput,
   UsageLog,
   UsageSummary,
@@ -521,6 +526,20 @@ export async function listSessionsWithKeywords(
 }
 
 /**
+ * 発話の行の `speaker` を、ドメイン型の `Speaker` へ絞り込む。
+ * `speaker` が `ai` の行は throw する。
+ *
+ * 一往復はまだ `ai_a`・`ai_b` で書くので、`ai` の行を書く経路はこのコードに無い。
+ */
+function toSpeaker(speaker: SpeakerRow): Speaker {
+  if (speaker === "ai") {
+    throw new Error("speaker が ai の発話は読めない");
+  }
+
+  return speaker;
+}
+
+/**
  * セッション内の発話を投稿順で返す。
  *
  * この順序が三者対話の中身そのものなので、時刻が並んだときは seq で決める。
@@ -529,10 +548,12 @@ export async function listMessages(
   owner: OwnerId,
   sessionId: string,
 ): Promise<Message[]> {
-  return db().message.findMany({
+  const rows = await db().message.findMany({
     where: { session_id: sessionId, session: { question: { user_id: owner } } },
     orderBy: [{ created_at: "asc" }, { seq: "asc" }],
   });
+
+  return rows.map((row) => ({ ...row, speaker: toSpeaker(row.speaker) }));
 }
 
 /**
@@ -548,13 +569,15 @@ export async function addMessage(
 ): Promise<Message> {
   await requireOwnedSession(owner, sessionId);
 
-  return db().message.create({
+  const row = await db().message.create({
     data: {
       session_id: sessionId,
       speaker: utterance.speaker,
       body: utterance.body,
     },
   });
+
+  return { ...row, speaker: toSpeaker(row.speaker) };
 }
 
 /**
@@ -737,7 +760,7 @@ export async function listMemosWithContext(
     session_id: message.session_id,
     question_id: message.session.question_id,
     question_body: message.session.question.body,
-    speaker: message.speaker,
+    speaker: toSpeaker(message.speaker),
     message_body: message.body,
   }));
 }

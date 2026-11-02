@@ -67,8 +67,8 @@ questions      問い。発酵槽への仕込み単位
 sessions       一つの問いに対する対話セッション（複数回ありうる＝再訪）
   id, question_id, started_at
 
-messages       発話。人間 + AI二体の三者
-  id, session_id, speaker(human/ai_a/ai_b), body, created_at
+messages       発話。人間 + AI二体の三者。AI の発話は話した時点のペルソナの版を指す
+  id, session_id, speaker(human/ai/ai_a/ai_b), persona_config_id(AI の発話の版。人間の発話は NULL), body, created_at
 
 pending_messages  送信されたが一往復が完了していない人間の発話。1 セッションに 1 行
   session_id(主キー), body, created_at
@@ -82,14 +82,21 @@ memo_links     （将来）メモ間・問い間のリンキング辺
 materials      問いに付随する材料で、誰の発話でもない。二体 AI へは渡さず、人間だけが読む（画面の語では培地）
   id, question_id, kind(internal/external/isomorph), topic(論点。同じ値の行が立場の違う材料の組), body, source_url, created_by(auto/human), created_at
 
+persona        AI のペルソナの同一性。questions と並ぶ所有のルートで、既定のペルソナはシステムのユーザー（system@toiito.invalid）が持つ
+  id, user_id, created_at
+
+persona_config ペルソナの設定の版。追記のみで、(persona_id, version) が一意
+  id, persona_id, version, name(呼び名), abstraction, dissent, convergence(三つの軸の段階), description(自由記述), system_prompt(モデルへ渡す全文), created_at
+
 usage_logs     AI の呼び出し 1 回ごとの利用量。管理者だけが読む運用の記録で、本文も問い・セッション・発話への参照も持たない
   id, user_id, provider, model, kind(persona/material), input_tokens, output_tokens, web_search_count, key_source(system/user), created_at
 ```
 
 ### 所有権
 
-**所有のルート**は、いまは `questions` 一つである。
-`sessions` / `messages` / `memos` は `user_id` を持たず、所有者は親から辿る。
+**所有のルート**は、`questions` と `persona` の二つである。
+`sessions` / `messages` / `memos` は `user_id` を持たず、所有者は `questions` から辿る。
+`persona_config` も `user_id` を持たず、所有者は `persona` から辿る。
 下位にも持たせない理由と、却下した案は `adr/20260906-ownership-granularity.md`。
 
 `usage_logs` は `user_id` を持つが、所有のルートではない。
