@@ -19,6 +19,7 @@ import { AI_PROVIDER } from "@/lib/ai/providers";
 import * as db from "@/lib/db";
 import { MESSAGE_BODY_MAX_LENGTH } from "@/lib/message";
 import {
+  DEFAULT_PERSONA_IDS,
   DEFAULT_PERSONA_NAMES,
   DEFAULT_PERSONA_SETTINGS,
 } from "@/lib/personas";
@@ -27,9 +28,8 @@ import {
   personaCalls,
   retryTurn,
   runTurn,
-  type TurnPosition,
 } from "@/lib/turn";
-import type { OwnerId } from "@/lib/types";
+import type { OwnerId, TurnPosition } from "@/lib/types";
 
 /** ネットワークに出ず決定的な応答を返すプロバイダ。 */
 const FAKE_PROVIDER = new AnthropicProvider({
@@ -124,6 +124,7 @@ class RecordingProvider extends AiProvider {
   readonly name = "recording";
   readonly settings = { ...FAKE_PROVIDER.settings, fake: false };
   readonly received: string[] = [];
+  readonly systems: string[] = [];
   readonly #reply: string;
 
   constructor(reply: string) {
@@ -131,9 +132,10 @@ class RecordingProvider extends AiProvider {
     this.#reply = reply;
   }
 
-  /** `request.userContent` を `received` へ追記し、生成時に受け取った本文を返す。 */
+  /** `request.userContent` を `received` へ、`request.system` を `systems` へ追記し、生成時に受け取った本文を返す。 */
   async send(request: ProviderRequest): Promise<ProviderResponse> {
     this.received.push(request.userContent);
+    this.systems.push(request.system);
 
     return {
       body: this.#reply,
@@ -150,14 +152,21 @@ class RecordingProvider extends AiProvider {
 /** 一往復ぶんの話者の並び。 */
 const ONE_TURN = ["human", "ai", "ai"];
 
+/** `runTurn` と `retryTurn` へ渡す、呼び出しの指定を解決する関数。 */
+type CallsResolver = (
+  owner: OwnerId,
+  sessionId: string,
+) => Promise<PersonaCalls>;
+
 /**
- * `owner` の一往復の呼び出し指定を `personaCalls` で組み、プロバイダだけを `provider` が順番ごとに返すものへ差し替えて返す。
+ * `owner` のセッション（`sessionId`）の一往復の呼び出し指定を `personaCalls` で組み、プロバイダだけを `provider` が順番ごとに返すものへ差し替えて返す。
  */
 async function callsFor(
   owner: OwnerId,
+  sessionId: string,
   provider: (position: TurnPosition) => AiProvider,
 ): Promise<PersonaCalls> {
-  const calls = await personaCalls(owner);
+  const calls = await personaCalls(owner, sessionId);
 
   return {
     first: { ...calls.first, provider: provider("first") },
@@ -185,30 +194,26 @@ async function defaultTurnResponses(): Promise<db.TurnResponse[]> {
  * 二体ぶんの呼び出し指定を解決する関数を返す。
  * 既定は両方フェイクで、失敗させたい体だけ差し替える。
  */
-function callsResolver(
-  failing?: TurnPosition,
-): (owner: OwnerId) => Promise<PersonaCalls> {
-  return async (owner) =>
-    callsFor(owner, (position) =>
+function callsResolver(failing?: TurnPosition): CallsResolver {
+  return async (owner, sessionId) =>
+    callsFor(owner, sessionId, (position) =>
       position === failing ? new FailingProvider() : FAKE_PROVIDER,
     );
 }
 
 /** 1 番手だけを `gate` で止める呼び出し指定を解決する関数を返す。 */
-function callsResolverGatedBy(
-  gate: GatedProvider,
-): (owner: OwnerId) => Promise<PersonaCalls> {
-  return async (owner) =>
-    callsFor(owner, (position) =>
+function callsResolverGatedBy(gate: GatedProvider): CallsResolver {
+  return async (owner, sessionId) =>
+    callsFor(owner, sessionId, (position) =>
       position === "first" ? gate : FAKE_PROVIDER,
     );
 }
 
 /** 二体とも `StubProvider` で応答させる呼び出し指定を解決する関数を返す。 */
-function callsResolverStubbed(): (owner: OwnerId) => Promise<PersonaCalls> {
+function callsResolverStubbed(): CallsResolver {
   const provider = new StubProvider();
 
-  return async (owner) => callsFor(owner, () => provider);
+  return async (owner, sessionId) => callsFor(owner, sessionId, () => provider);
 }
 
 let owner: OwnerId;
@@ -278,8 +283,8 @@ describe("一往復", () => {
     await runTurn({
       ...target,
       body: "急ぐほど問いが痩せる気がする",
-      resolveCalls: async (owner) =>
-        callsFor(owner, (position) => providers[position]),
+      resolveCalls: async (owner, sessionId) =>
+        callsFor(owner, sessionId, (position) => providers[position]),
     });
 
     expect(providers.first.received).toHaveLength(1);
@@ -330,7 +335,9 @@ describe("一往復", () => {
   });
 
   it("env から組み立てた呼び出し指定は、二体へ同じプロバイダを渡す", async () => {
-    const calls = await personaCalls(owner);
+    const { sessionId } = await newDialogue();
+
+    const calls = await personaCalls(owner, sessionId);
 
     expect(calls.first.provider).toBe(AI_PROVIDER);
     expect(calls.second.provider).toBe(AI_PROVIDER);
@@ -419,6 +426,71 @@ describe("一往復", () => {
     ).rejects.toThrow();
     const pending = await db.getPendingBody(owner, target.sessionId);
     expect(pending).toBeUndefined();
+  });
+});
+
+describe("セッションの選択", () => {
+  /** 既定の具体さんを元に、呼び名が `name` の `owner` のペルソナを作り、その版を返す。 */
+  async function createOwnPersona(name: string) {
+    return db.addPersonaConfig(owner, DEFAULT_PERSONA_IDS.concrete, {
+      name,
+      parameters: DEFAULT_PERSONA_SETTINGS.concrete.parameters,
+      description: "俳句で話す。",
+    });
+  }
+
+  it("1 番手に自分のペルソナを選んだセッションでは、1 番手へ渡るシステムプロンプトがそのペルソナの版の全文になる", async () => {
+    const own = await createOwnPersona("俳句さん");
+    const { session } = await db.createQuestion(owner, "選んだ二体と話す", {
+      first: own.persona_id,
+      second: DEFAULT_PERSONA_IDS.abstract,
+    });
+    const providers = {
+      first: new RecordingProvider("1 番手の応答"),
+      second: new RecordingProvider("2 番手の応答"),
+    };
+
+    await runTurn({
+      owner,
+      sessionId: session.id,
+      body: "急ぐほど問いが痩せる気がする",
+      resolveCalls: async (owner, sessionId) =>
+        callsFor(owner, sessionId, (position) => providers[position]),
+    });
+
+    const concrete = await db.getLatestDefaultPersonaConfig("concrete");
+    expect(providers.first.systems).toEqual([own.system_prompt]);
+    expect(providers.first.systems[0]).not.toBe(concrete?.system_prompt);
+  });
+
+  it("一往復の後でペルソナを編集しても、それまでの発話は当時の版を指し続け、次の一往復は編集後の版で話す", async () => {
+    const own = await createOwnPersona("編集前の呼び名");
+    const { session } = await db.createQuestion(owner, "途中で話し方を変える", {
+      first: own.persona_id,
+      second: DEFAULT_PERSONA_IDS.abstract,
+    });
+    const target = { owner, sessionId: session.id };
+
+    await runTurn({ ...target, body: "一つ目", resolveCalls: callsResolver() });
+    await db.addPersonaConfig(owner, own.persona_id, {
+      name: "編集後の呼び名",
+      parameters: own.parameters,
+      description: own.description,
+    });
+    await runTurn({ ...target, body: "二つ目", resolveCalls: callsResolver() });
+
+    const messages = await db.listMessages(owner, session.id);
+    const names = messages.map((m) =>
+      m.speaker === "ai" ? m.persona.name : m.speaker,
+    );
+    expect(names).toEqual([
+      "human",
+      "編集前の呼び名",
+      DEFAULT_PERSONA_NAMES.abstract,
+      "human",
+      "編集後の呼び名",
+      DEFAULT_PERSONA_NAMES.abstract,
+    ]);
   });
 });
 

@@ -927,3 +927,85 @@ describe("ペルソナ", () => {
     expect(personas.every((persona) => persona.is_default)).toBe(true);
   });
 });
+
+describe("セッションのペルソナの選択", () => {
+  /** 既定の具体さんを元に、`who` が持つペルソナを作り、その id を返す。 */
+  async function createPersonaOf(who: OwnerId): Promise<string> {
+    const config = await db.addPersonaConfig(
+      who,
+      DEFAULT_PERSONA_IDS.concrete,
+      {
+        name: "俳句さん",
+        parameters: {
+          abstraction: "level_2",
+          dissent: "level_3",
+          convergence: "level_4",
+        },
+        description: "",
+      },
+    );
+
+    return config.persona_id;
+  }
+
+  it("選択を省いたセッションは、既定の二体を順番どおりに使う", async () => {
+    const { session } = await db.createQuestion(owner, "既定の二体と話す");
+
+    const personas = await db.getSessionPersonas(owner, session.id);
+
+    expect(personas?.first.id).toBe(DEFAULT_PERSONA_IDS.concrete);
+    expect(personas?.second.id).toBe(DEFAULT_PERSONA_IDS.abstract);
+  });
+
+  it("再訪で選んだ二体は、新しいセッションにだけ入る", async () => {
+    const own = await createPersonaOf(owner);
+    const { question, session: first } = await db.createQuestion(
+      owner,
+      "再訪で二体を変える",
+    );
+
+    const second = await db.createSession(owner, question.id, {
+      first: DEFAULT_PERSONA_IDS.abstract,
+      second: own,
+    });
+
+    const before = await db.getSessionPersonas(owner, first.id);
+    const after = await db.getSessionPersonas(owner, second.id);
+    expect([before?.first.id, before?.second.id]).toEqual([
+      DEFAULT_PERSONA_IDS.concrete,
+      DEFAULT_PERSONA_IDS.abstract,
+    ]);
+    expect([after?.first.id, after?.second.id]).toEqual([
+      DEFAULT_PERSONA_IDS.abstract,
+      own,
+    ]);
+  });
+
+  it("他人のペルソナを選ぶと、無いペルソナと同じ失敗になり、問いを作らない", async () => {
+    const other = await createOwner("other@example.com");
+    const others = await createPersonaOf(other);
+    const missing = randomUUID();
+
+    await expect(
+      db.createQuestion(owner, "他人のペルソナと話す", {
+        first: others,
+        second: DEFAULT_PERSONA_IDS.abstract,
+      }),
+    ).rejects.toThrow(`ペルソナが見つからない: ${others}`);
+    await expect(
+      db.createQuestion(owner, "無いペルソナと話す", {
+        first: DEFAULT_PERSONA_IDS.concrete,
+        second: missing,
+      }),
+    ).rejects.toThrow(`ペルソナが見つからない: ${missing}`);
+
+    expect(await db.listQuestions(owner)).toEqual([]);
+  });
+
+  it("他人のセッションの選択は取得できない", async () => {
+    const other = await createOwner("other@example.com");
+    const { session } = await db.createQuestion(other, "他人の問い");
+
+    expect(await db.getSessionPersonas(owner, session.id)).toBeUndefined();
+  });
+});

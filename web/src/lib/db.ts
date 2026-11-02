@@ -44,9 +44,11 @@ import type {
   OwnerId,
   Persona,
   PersonaConfig,
+  PersonaSelection,
   Question,
   Session,
   SessionWithKeywords,
+  TurnPosition,
   UsageInput,
   UsageLog,
   UsageSummary,
@@ -82,7 +84,11 @@ function db(): PrismaClient {
       // omit で戻り値がドメイン型とちょうど一致し、BigInt が UI 側へ渡ることも起きない。
       omit: {
         question: { seq: true, user_id: true },
-        dialogueSession: { seq: true },
+        dialogueSession: {
+          seq: true,
+          first_persona_id: true,
+          second_persona_id: true,
+        },
         message: { seq: true },
         memo: { seq: true },
         material: { seq: true },
@@ -233,9 +239,45 @@ export async function listUsersForAdmin(): Promise<AdminUserRow[]> {
   }));
 }
 
+/** 選択を省いた問いの投入と再訪が使う、既定の二体の選択。 */
+const DEFAULT_PERSONA_SELECTION: PersonaSelection = {
+  first: DEFAULT_PERSONA_IDS.concrete,
+  second: DEFAULT_PERSONA_IDS.abstract,
+};
+
+/** ペルソナの選択（`selection`）を、セッションの行の列へ写す。 */
+function toSelectionColumns(selection: PersonaSelection) {
+  return {
+    first_persona_id: selection.first,
+    second_persona_id: selection.second,
+  };
+}
+
+/**
+ * 選択（`selection`）のペルソナがどちらも `owner` に見えることを確かめる。
+ * 見えないペルソナがあれば、無いペルソナと同じ文面で throw する。
+ */
+async function requireVisiblePersonas(
+  tx: Prisma.TransactionClient,
+  owner: OwnerId,
+  selection: PersonaSelection,
+): Promise<void> {
+  for (const personaId of [selection.first, selection.second]) {
+    const persona = await tx.persona.findFirst({
+      where: { id: personaId, ...visiblePersonaWhere(owner) },
+      select: { id: true },
+    });
+
+    if (!persona) {
+      throw new Error(`ペルソナが見つからない: ${personaId}`);
+    }
+  }
+}
+
 /**
  * 問いを作成する。
- * 最初のセッションも同時に作る。
+ * 最初のセッションも同時に作り、一往復の二体は選択（`selection`）のペルソナにする。
+ * 選択を省くと既定の二体にし、`owner` に見えないペルソナを選ぶと、無いペルソナと同じ文面で throw する。
  *
  * 一トランザクションにするのは、セッションを持たない問いを残さないため。
  * 対話画面は最新セッションが在ることを前提にしており、片方だけ在る状態は表示できない。
@@ -243,13 +285,16 @@ export async function listUsersForAdmin(): Promise<AdminUserRow[]> {
 export async function createQuestion(
   owner: OwnerId,
   body: string,
+  selection: PersonaSelection = DEFAULT_PERSONA_SELECTION,
 ): Promise<{ question: Question; session: Session }> {
   return db().$transaction(async (tx) => {
+    await requireVisiblePersonas(tx, owner, selection);
+
     const question = await tx.question.create({
       data: { user_id: owner, body },
     });
     const session = await tx.dialogueSession.create({
-      data: { question_id: question.id },
+      data: { question_id: question.id, ...toSelectionColumns(selection) },
     });
 
     return { question, session };
@@ -491,6 +536,7 @@ export async function latestSession(
 /**
  * 同じ問いに新しいセッションを足す（再訪）。
  * 既存のセッションは閉じずに残し、この問いの `pending_messages` の行は同じトランザクションで削除する。
+ * 一往復の二体と、選択（`selection`）を省いたときと見えないペルソナを選んだときの扱いは `createQuestion` と同じ。
  *
  * 再送の UI は最新のセッションにしか出ないので、`pending_messages` の行を残したまま新しいセッションを作ると再送できない行になる。
  * 問いの行をロックしてから書くのは、AI の応答を待っていた一往復が、新しいセッションの確定と前後して古いセッションへ書き込まないため（`commitTurn`）。
@@ -498,15 +544,45 @@ export async function latestSession(
 export async function createSession(
   owner: OwnerId,
   questionId: string,
+  selection: PersonaSelection = DEFAULT_PERSONA_SELECTION,
 ): Promise<Session> {
   return db().$transaction(async (tx) => {
     await requireOwnedQuestionForUpdate(tx, owner, questionId);
+    await requireVisiblePersonas(tx, owner, selection);
     await tx.pendingMessage.deleteMany({
       where: { session: { question_id: questionId } },
     });
 
-    return tx.dialogueSession.create({ data: { question_id: questionId } });
+    return tx.dialogueSession.create({
+      data: { question_id: questionId, ...toSelectionColumns(selection) },
+    });
   });
+}
+
+/**
+ * `owner` のセッション（`sessionId`）が一往復の順番ごとに使うペルソナを、それぞれの最新の版と一緒に返す。
+ * セッションが無いか、`owner` 以外が所有するセッションなら undefined を返す。
+ */
+export async function getSessionPersonas(
+  owner: OwnerId,
+  sessionId: string,
+): Promise<Record<TurnPosition, Persona> | undefined> {
+  const row = await db().dialogueSession.findFirst({
+    where: { id: sessionId, question: { user_id: owner } },
+    select: {
+      first_persona: { include: PERSONA_COLUMNS },
+      second_persona: { include: PERSONA_COLUMNS },
+    },
+  });
+
+  if (!row) {
+    return undefined;
+  }
+
+  return {
+    first: fromPersonaRow(row.first_persona),
+    second: fromPersonaRow(row.second_persona),
+  };
 }
 
 /**

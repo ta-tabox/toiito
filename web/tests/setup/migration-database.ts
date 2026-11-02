@@ -43,13 +43,17 @@ function migrationDatabaseUrl(): string {
   return url.toString();
 }
 
-/** 接続先（`url`）へ、migration のディレクトリ名（`names`）の `migration.sql` を並びの順に適用する。 */
+/**
+ * 接続先（`url`）へ、migration のディレクトリ名（`names`）の `migration.sql` を並びの順に適用する。
+ *
+ * Postgres は一度に送った複数の文を一つのトランザクションで実行し、enum に足した値を同じトランザクションの中では使えないので、migration の間に `COMMIT` を挟んで別のトランザクションにする。
+ */
 function applyMigrations(url: string, names: string[]): void {
   const sql = names
     .map((name) =>
       readFileSync(path.join(migrationsRoot, name, "migration.sql"), "utf-8"),
     )
-    .join("\n");
+    .join("\nCOMMIT;\n");
 
   runPrisma(["db", "execute", "--stdin"], url, sql);
 }
