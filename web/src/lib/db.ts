@@ -946,7 +946,7 @@ export async function deleteApiKey(owner: OwnerId): Promise<void> {
 /**
  * 暗号化した API キーを持つ全利用者の行を返す。
  *
- * 所有者を受け取らず全員分を返すので、呼んでよいのは暗号化の鍵を回転するスクリプトだけである。
+ * 所有者を受け取らず全員分を返すので、呼んでよいのは暗号化の鍵を回転するスクリプト（`scripts/reencrypt-api-keys.ts`）だけである。
  */
 export async function listEncryptedApiKeys(): Promise<EncryptedApiKeyRow[]> {
   const rows = await db().userModelSetting.findMany({
@@ -966,7 +966,7 @@ export async function listEncryptedApiKeys(): Promise<EncryptedApiKeyRow[]> {
  * 利用者（`row.user_id`）の暗号化した API キーが `row.encrypted_api_key` のままなら、`replacement` へ書き換える。
  * 書き換えたら true、読んだ後に利用者が API キーを差し替えたか削除していたら何もせず false を返す。
  *
- * 所有者を受け取らないので、呼んでよいのは暗号化の鍵を回転するスクリプトだけである。
+ * 所有者を受け取らないので、呼んでよいのは暗号化の鍵を回転するスクリプト（`scripts/reencrypt-api-keys.ts`）だけである。
  */
 export async function replaceEncryptedApiKey(
   row: EncryptedApiKeyRow,
