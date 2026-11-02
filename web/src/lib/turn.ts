@@ -11,9 +11,9 @@ import type { QuestionRef, Transcript } from "@/lib/ai/prompt";
 import { AI_PROVIDER } from "@/lib/ai/providers";
 import {
   commitTurn,
-  getLatestDefaultPersonaConfig,
   getPendingBody,
   getQuestionOfSession,
+  getSessionPersonas,
   listMessages,
   recordUsage,
   savePendingBody,
@@ -40,30 +40,41 @@ export type PersonaCalls = Record<TurnPosition, PersonaCall>;
 type TurnTarget = {
   readonly owner: OwnerId;
   readonly sessionId: string;
-  readonly resolveCalls: (owner: OwnerId) => Promise<PersonaCalls>;
+  readonly resolveCalls: (
+    owner: OwnerId,
+    sessionId: string,
+  ) => Promise<PersonaCalls>;
 };
 
 /**
- * 既定の二体の最新の版を順番に当て、env から解決済みのプロバイダと、`owner` の利用量を書く関数で組み立てた二体の呼び出しの指定を返す。
- * 既定の二体のどちらかに版が無ければ throw する。
+ * `owner` のセッション（`sessionId`）が選んだ二体の最新の版を順番に当て、env から解決済みのプロバイダと、`owner` の利用量を書く関数で組み立てた二体の呼び出しの指定を返す。
+ * セッションが無いか `owner` 以外が所有するセッションなら throw する。
  *
  * `runTurn` が `AI_PROVIDER` を直接参照するとテストが失敗するプロバイダを差し込めなくなるので、`AI_PROVIDER` を参照するのは `personaCalls` だけにする。
  * 利用者を `runTurn` から受け取るのは、一往復の所有者と、利用量が乗る利用者を食い違わせないため。
  */
-export async function personaCalls(owner: OwnerId): Promise<PersonaCalls> {
+export async function personaCalls(
+  owner: OwnerId,
+  sessionId: string,
+): Promise<PersonaCalls> {
   const record = (usage: UsageInput) => recordUsage(owner, usage);
 
-  const concrete = await getLatestDefaultPersonaConfig("concrete");
-  const abstract = await getLatestDefaultPersonaConfig("abstract");
-  if (!concrete || !abstract) {
-    throw new Error(
-      "既定のペルソナの版が無い。`pnpm personas:sync` で既定の版を同期する（docs/DEPLOY.md「migration」）",
-    );
+  const personas = await getSessionPersonas(owner, sessionId);
+  if (!personas) {
+    throw new Error(`セッションが見つからない: ${sessionId}`);
   }
 
   return {
-    first: { config: concrete, provider: AI_PROVIDER, recordUsage: record },
-    second: { config: abstract, provider: AI_PROVIDER, recordUsage: record },
+    first: {
+      config: personas.first.latest,
+      provider: AI_PROVIDER,
+      recordUsage: record,
+    },
+    second: {
+      config: personas.second.latest,
+      provider: AI_PROVIDER,
+      recordUsage: record,
+    },
   };
 }
 
@@ -105,10 +116,10 @@ async function callBoth(input: {
   readonly transcript: Transcript;
   readonly sessionId: string;
 }): Promise<TurnResponse[] | undefined> {
-  const { owner, resolveCalls, question, transcript } = input;
+  const { owner, resolveCalls, question, transcript, sessionId } = input;
 
   try {
-    const calls = await resolveCalls(owner);
+    const calls = await resolveCalls(owner, sessionId);
 
     const first = await callPersona(calls.first, question, transcript);
     const second = await callPersona(calls.second, question, [
@@ -121,7 +132,7 @@ async function callBoth(input: {
       { body: second, persona_config_id: calls.second.config.id },
     ];
   } catch (error) {
-    logTurnFailure(input.sessionId, error);
+    logTurnFailure(sessionId, error);
 
     return undefined;
   }
