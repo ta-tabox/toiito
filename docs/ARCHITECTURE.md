@@ -64,7 +64,7 @@ questions      問い。発酵槽への仕込み単位
   id, user_id, body(原型・不変), current_form(現在の形・可変), status, created_at
 
 sessions       一つの問いに対する対話セッション（複数回ありうる＝再訪）
-  id, question_id, started_at
+  id, question_id, started_at, first_persona_id・second_persona_id(一往復の 1 番手と 2 番手が話すペルソナ。一往復のたびにその最新の版で話す)
 
 messages       発話。人間 + AI二体の三者。AI の発話は話した時点のペルソナの版を指す
   id, session_id, speaker(human/ai), persona_config_id(AI の発話の版。人間の発話は NULL), body, created_at
