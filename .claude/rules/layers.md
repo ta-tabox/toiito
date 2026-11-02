@@ -21,7 +21,6 @@ paths:
 | 環境変数（認証） | `web/src/lib/auth/index.ts`（写像は `auth/config.ts` の `readAuthConfig`） | 組み立て済みの Better Auth と、ログインの画面に並べるサインインの手段（`SignInMethods`） |
 | 環境変数（利用者の API キーを暗号化する鍵） | `web/src/lib/secrets-config.ts`（写像は `secrets.ts` の `readEncryptionKeyRing`） | `EncryptionKeyRing`（`secrets.ts` の `encryptApiKey` と `decryptApiKey` へ渡す） |
 | Claude API（HTTP） | `web/src/lib/ai/anthropic.ts` | `ProviderResponse` |
-| ペルソナ定義（ファイル） | `web/src/lib/personas.ts` | プロンプトの文字列 |
 | 現在のユーザー（セッション） | `web/src/lib/auth/current-user.ts` | `User`（`id` は `OwnerId`） |
 | DOM（選択範囲） | `web/src/components/message-body.tsx` | セグメントとセグメント内オフセットの数値 |
 
@@ -60,7 +59,6 @@ paths:
 | 配線 | `app/**`・`web/scripts/seed/index.ts`・`web/scripts/sync-default-personas.ts` | クライアント側の部品・手順・境界・純粋な計算 | 受け取り・呼び出し・`revalidatePath` か `redirect` |
 | 全リクエストの入口 | `proxy.ts` | `lib/auth/protected-paths.ts` | cookie の有無だけで `/login` へ送るかの判定 |
 | クライアント側の部品 | `components/**` | クライアント側の部品・`node:*` を import しない純粋な計算 | DOM の読み書きと描画 |
-| ペルソナの定義 | `personas/*.md` | 無し | システムプロンプトの本文（読むのは `lib/personas.ts` だけ） |
 
 ## 一つしか無い状態の正
 
