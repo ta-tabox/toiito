@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# 手元のチェックアウト（リポジトリ本体と worktree）で、`pnpm check` と `pnpm dev` が前置き無しで動くところまで揃える。
+# チェックアウト（手元のリポジトリ本体と worktree、クラウドのコンテナ）で、`pnpm check` と `pnpm dev` が前置き無しで動くところまで揃える。
 # 何度走らせても同じ状態に落ち着く。
 #
 # 揃えるもの。
@@ -10,7 +10,8 @@
 #   - このチェックアウトの開発用データベースと migration（`web/scripts/prepare-checkout-database.ts`）
 #
 # 版の正は mise.toml、接続先の正は compose.yaml と web/scripts/checkout-database.ts にあり、ここには書かない。
-# リモート（Claude Code on the web）の準備は .claude/hooks/session-start.sh が別に持ち、手元ではそのフックがこのスクリプトを呼ぶ。
+# .claude/hooks/session-start.sh が毎セッション呼ぶ。
+# クラウドでは、そのフックが PATH と dockerd を整えてから呼ぶ。
 # 人間が叩くときは、リポジトリのどこからでも `bash scripts/setup.sh`。
 
 set -euo pipefail

@@ -2,35 +2,16 @@
 #
 # セッション起動フック。
 # 責務は一点——どの環境でも `pnpm check` と `pnpm dev` が同じ意味を持つところまで組む。
-# 手元（リポジトリ本体と worktree）の準備は scripts/setup.sh が持ち、このファイルが持つのはリモート（Claude Code on the web）の分だけである。
-# リモートは docker が無いコンテナなので、イメージ同梱の Postgres を compose.yaml と同じ形に組み直す。
-#
-# リモート特有の非対称は二つ。どちらも外向きの通信が許可制で塞げないもの（docs/HARNESS.md「実行環境」）:
-#   - Postgres は 18 でなく、イメージに同梱の 16（apt.postgresql.org へ出られない）
-#   - mise は使わず、node と pnpm を mise.toml の版に合わせて直接置く（mise.run へ出られない）
-# 版の正は mise.toml のままにして、ここは読む側に徹する。
+# 準備の本体は手元でもクラウド（Claude Code on the web）でも scripts/setup.sh で、このファイルはその前にクラウドでだけ要る分を持つ。
+# クラウドのスナップショットに残る分（mise・依存・chromium・postgres:18 のイメージ）は scripts/cloud-setup.sh が持ち、ここが持つのはセッションごとに消えるもの（PATH・dockerd のプロセス）である。
 
 set -euo pipefail
 
 REPO_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
-# compose.yaml と同じ口。接続文字列を環境ごとに書き分けずに済ませるため。
-PG_PORT=5433
-
-# PATH の先頭にあるディレクトリ。ここへ置けば、PATH を組み直して起動する子プロセス
-# （.claude/launch.json の dev サーバー）も同じ版を掴む。
-BIN_DIR="$HOME/.local/bin"
-
-# mise.toml の値を正として読む。二重管理にしないため、ここには版を書かない。
-NODE_VERSION="$(sed -n 's/^node *= *"\(.*\)"/\1/p' "$REPO_ROOT/mise.toml")"
-PNPM_VERSION="$(sed -n 's/^"npm:pnpm" *= *"\(.*\)"/\1/p' "$REPO_ROOT/mise.toml")"
-NODE_PREFIX="/opt/node-$NODE_VERSION"
-
-# 読めなければ止める。空のまま進むと `pnpm@` が latest を掴み、ピンを外したことに誰も気づかない。
-if [ -z "$NODE_VERSION" ] || [ -z "$PNPM_VERSION" ]; then
-  echo "mise.toml から node / pnpm の版を読めなかった。書式が変わっていないか確認する" >&2
-  exit 1
-fi
+# mise の shims を先に置く。
+# イメージ同梱の node が後ろにあっても、`mise.toml` の版を掴む。
+TOOL_PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin"
 
 log() {
   echo "[toiito] $1"
@@ -53,189 +34,53 @@ require_git_author() {
   exit 1
 }
 
-# 追加行の禁止語を報告する pre-commit フックと、コミット本文の禁止語を止める commit-msg フックは `.githooks/` にある。
-# git は既定で `.git/hooks/` しか見ないので、このクローンの設定で向け先を替える。
-enable_git_hooks() {
-  git -C "$REPO_ROOT" config core.hooksPath .githooks
-}
-
-# nodejs.org のアーカイブ名に使う表記。uname の表記とは違う。
-node_arch() {
-  case "$(uname -m)" in
-    x86_64) echo "x64" ;;
-    aarch64 | arm64) echo "arm64" ;;
-    *) echo "unsupported arch: $(uname -m)" >&2; return 1 ;;
-  esac
-}
-
-# イメージの node は 22 で mise.toml の指定と違うので、指定の版を別に置く。
-install_node() {
-  if [ -x "$NODE_PREFIX/bin/node" ]; then
+# mise 本体はセットアップスクリプトが入れる。
+# 無いのはセットアップスクリプト欄が空か失敗したときなので、ここで入れ直さず直し方を告げて止める。
+require_mise() {
+  if [ -x "$HOME/.local/bin/mise" ]; then
     return
   fi
 
-  local archive tarball
-  archive="node-v$NODE_VERSION-linux-$(node_arch)"
-  tarball="$(mktemp)"
-
-  log "node v$NODE_VERSION を入れる"
-  curl -fsSL "https://nodejs.org/dist/v$NODE_VERSION/$archive.tar.xz" -o "$tarball"
-  mkdir -p "$NODE_PREFIX"
-  tar -xJf "$tarball" -C "$NODE_PREFIX" --strip-components=1
-  rm -f "$tarball"
+  echo "mise が無い。クラウド環境のセットアップスクリプト欄と許可ドメインを docs/HARNESS.md「設定の置き場」のとおりにし、/root/toiito-setup.log を確かめる" >&2
+  exit 1
 }
 
-# corepack は使わない方針（CLAUDE.md 開発ハーネス）なので、npm でグローバルに置く。
-#
-# node を明示して呼ぶ。npm の shebang は `env node` で、PATH 先頭にイメージ同梱の node があると
-# そちらが実行側になり、グローバルの置き場所もそちらの prefix になってしまう。
-install_pnpm() {
-  if [ "$("$NODE_PREFIX/bin/pnpm" -v 2>/dev/null || true)" = "$PNPM_VERSION" ]; then
+# Claude のツールのシェルへ PATH を渡す。
+# CLAUDE_ENV_FILE は追記専用で resume のたびにこのフックが走るので、同じ行が無いときだけ書く。
+export_tool_path() {
+  export PATH="$TOOL_PATH:$PATH"
+
+  if [ -z "${CLAUDE_ENV_FILE:-}" ]; then
     return
   fi
 
-  log "pnpm $PNPM_VERSION を入れる"
-  "$NODE_PREFIX/bin/node" "$NODE_PREFIX/bin/npm" install -g --silent "pnpm@$PNPM_VERSION"
+  local path_line="export PATH=\"$TOOL_PATH:\$PATH\""
+  grep -qxF "$path_line" "$CLAUDE_ENV_FILE" 2>/dev/null || echo "$path_line" >>"$CLAUDE_ENV_FILE"
 }
 
-link_toolchain() {
-  mkdir -p "$BIN_DIR"
+# スナップショットが `mise.toml` の版を上げる前のものでも、ここで追いつく。
+# 揃っていれば何もしない。
+install_toolchain() {
+  log "mise.toml の版を揃える"
+  (cd "$REPO_ROOT" && mise trust --quiet mise.toml && mise install --quiet)
+}
 
-  for cmd in node npm npx pnpm; do
-    ln -sf "$NODE_PREFIX/bin/$cmd" "$BIN_DIR/$cmd"
+# dockerd はイメージにあるが、セッションの開始時には動いていない。
+start_dockerd() {
+  if docker info >/dev/null 2>&1; then
+    return
+  fi
+
+  log "dockerd を起動する"
+  nohup dockerd >/tmp/dockerd.log 2>&1 &
+
+  for _ in $(seq 1 30); do
+    docker info >/dev/null 2>&1 && return
+    sleep 1
   done
 
-  # PATH の並びはこちらの契約ではないので、Claude のセッションへは明示的にも渡す。
-  # 既に先頭にあるなら渡す先が無いので書かない。
-  # 見るのは有無でなく先頭かどうか。
-  # 別の版の node を持つディレクトリが前にあると、BIN_DIR が PATH にあっても掴む版が変わる。
-  #
-  # フックを起こすプロセスの PATH には前回の追記が反映されない（効くのはツールのシェル側だけ）ので、先頭判定だけでは resume のたびに積まれる。
-  # CLAUDE_ENV_FILE は追記専用なので、書く前に同じ行が無いことも見る。
-  if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-    local path_line="export PATH=\"$BIN_DIR:\$PATH\""
-
-    case ":$PATH:" in
-      ":$BIN_DIR:"*) ;;
-      *) grep -qxF "$path_line" "$CLAUDE_ENV_FILE" 2>/dev/null || echo "$path_line" >> "$CLAUDE_ENV_FILE" ;;
-    esac
-  fi
-}
-
-psql_super() {
-  runuser -u postgres -- psql -p "$PG_PORT" "$@"
-}
-
-# イメージ同梱のクラスタを compose.yaml と同じ口へ移して立てる。
-start_postgres() {
-  local pg_version conf
-  pg_version="$(pg_lsclusters -h | awk 'NR == 1 { print $1 }')"
-  conf="/etc/postgresql/$pg_version/main/postgresql.conf"
-
-  if ! grep -qE "^port = $PG_PORT\b" "$conf"; then
-    sed -i -E "s/^port = [0-9]+/port = $PG_PORT/" "$conf"
-  fi
-
-  if pg_isready -q -h localhost -p "$PG_PORT"; then
-    return
-  fi
-
-  # 既定の 5432 で上がっている場合があるので、落としてから port 変更を反映させる。
-  # 止まっていれば stop は失敗するが、その失敗はここでは正常。
-  pg_ctlcluster "$pg_version" main stop >/dev/null 2>&1 || true
-  log "Postgres $pg_version を localhost:$PG_PORT に立てる"
-  pg_ctlcluster "$pg_version" main start
-}
-
-# compose.yaml の POSTGRES_USER と同じロール。
-# superuser なのはコンテナ側と権限を揃えるため（migrate dev の shadow database 作成に要る）。
-create_role() {
-  if [ "$(psql_super -tAc "select 1 from pg_roles where rolname = 'toiito'")" = "1" ]; then
-    return
-  fi
-
-  psql_super -c "create role toiito with login superuser password 'toiito'"
-}
-
-# 開発用の toiito と、テスト用の toiito_test。
-# 二つを別々に見る。片方を他方の有無で代表させると、途中で落ちた回の欠けが次回以降も埋まらない。
-create_databases() {
-  if [ "$(psql_super -tAc "select 1 from pg_database where datname = 'toiito'")" != "1" ]; then
-    psql_super -c "create database toiito owner toiito"
-  fi
-
-  if [ "$(psql_super -tAc "select 1 from pg_database where datname = 'toiito_test'")" = "1" ]; then
-    return
-  fi
-
-  # テスト用 DB を作るのは compose と同じ SQL（いま initdb にあるのはこの一本だけ）。
-  for sql in "$REPO_ROOT"/docker/initdb/*.sql; do
-    psql_super -v ON_ERROR_STOP=1 -f "$sql"
-  done
-}
-
-# シードが作るユーザーの email を web/scripts/seed/users.ts から読み、カンマ区切りで返す。
-# Google を経ないサインインが指せるのはシードが作った user 行だけなので、許可リストはシードの値を正として読む。
-read_seed_emails() {
-  local emails
-  emails="$(sed -n 's/.*email: "\([^"]*\)".*/\1/p' "$REPO_ROOT/web/scripts/seed/users.ts" | paste -sd, -)"
-
-  if [ -z "$emails" ]; then
-    echo "web/scripts/seed/users.ts からシードの email を読めなかった。書式が変わっていないか確認する" >&2
-    return 1
-  fi
-
-  echo "$emails"
-}
-
-# .env.local は git 管理外なので、リモートのコンテナには存在しない。
-# 人間が手を入れた後のセッションで上書きしないよう、無いときだけ書く。
-write_env_local() {
-  local env_file="$REPO_ROOT/web/.env.local"
-  local url="postgresql://toiito:toiito@localhost:$PG_PORT/toiito"
-  local seed_emails secret
-
-  if [ -f "$env_file" ]; then
-    return
-  fi
-
-  # 書き始める前に値を揃える。
-  # 書く途中で失敗すると書きかけのファイルが残り、次のセッションは上の条件でそれを書き直さない。
-  seed_emails="$(read_seed_emails)"
-  secret="$(openssl rand -base64 32)"
-
-  log "web/.env.local を書く"
-  {
-    echo "DATABASE_URL=$url"
-    echo "DIRECT_URL=$url"
-
-    # 実キーが環境変数で渡っているなら、フェイクで上書きしない。
-    if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
-      echo "TOIITO_FAKE_AI=1"
-    fi
-
-    # Google の OAuth クライアントが環境変数で渡っているなら、Google を経ないサインインを開けない。
-    if [ -z "${GOOGLE_CLIENT_ID:-}" ]; then
-      echo "TOIITO_ALLOWED_EMAILS=$seed_emails"
-      echo "TOIITO_FAKE_LOGIN=1"
-    fi
-
-    # 秘密が環境変数で渡っているなら、コンテナで作った乱数を並べて書かない。
-    if [ -z "${BETTER_AUTH_SECRET:-}" ]; then
-      echo "BETTER_AUTH_SECRET=$secret"
-    fi
-  } > "$env_file"
-}
-
-# postinstall が prisma generate まで走らせる（生成クライアントは git 管理外）。
-install_dependencies() {
-  log "依存を入れる"
-  (cd "$REPO_ROOT/web" && "$BIN_DIR/pnpm" install --frozen-lockfile)
-}
-
-apply_migrations() {
-  log "migration を積む"
-  (cd "$REPO_ROOT/web" && "$BIN_DIR/pnpm" exec prisma migrate deploy)
+  echo "dockerd が 30 秒で応答しない。/tmp/dockerd.log を確かめる" >&2
+  exit 1
 }
 
 main() {
@@ -247,21 +92,15 @@ main() {
   fi
 
   require_git_author
-  enable_git_hooks
-  install_node
-  install_pnpm
-  link_toolchain
-  start_postgres
-  create_role
-  create_databases
-  write_env_local
-  install_dependencies
-  apply_migrations
+  require_mise
+  export_tool_path
+  install_toolchain
+  start_dockerd
+  bash "$REPO_ROOT/scripts/setup.sh"
 
   # 手元との連携に使うファイル（CLAUDE.local.md）は追跡しないので、この環境には存在しない。
   # 無いのが既定だと宣言しておくと、探しに行って止まる形を防げる。
   log "手元専用のファイル（CLAUDE.local.md）はこの環境に無い（既定）"
-  log "準備完了。web/ で pnpm check が走る"
 }
 
 main "$@"
