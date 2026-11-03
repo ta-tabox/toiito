@@ -143,6 +143,29 @@ describe("readCheckoutEnvironment のサインインと AI の既定", () => {
       "DIRECT_URL",
     ]);
   });
+
+  it("クラウドのコンテナでは、リポジトリ本体でもサインインと AI の既定を導く", () => {
+    const root = makeCheckout("toiito", "directory");
+
+    expect(
+      readCheckoutEnvironment({ CLAUDE_CODE_REMOTE: "true" }, root),
+    ).toMatchObject({
+      DATABASE_URL: "postgresql://toiito:toiito@localhost:5433/toiito",
+      TOIITO_FAKE_LOGIN: "1",
+      TOIITO_ALLOWED_EMAILS: "first@example.com,second@example.com",
+      TOIITO_FAKE_AI: "1",
+    });
+  });
+
+  it("CLAUDE_CODE_REMOTE が true 以外なら、リポジトリ本体は接続先しか導かない", () => {
+    const root = makeCheckout("toiito", "directory");
+
+    expect(
+      Object.keys(
+        readCheckoutEnvironment({ CLAUDE_CODE_REMOTE: "false" }, root),
+      ).sort(),
+    ).toEqual(["DATABASE_URL", "DIRECT_URL"]);
+  });
 });
 
 describe("CHECKOUT_ENVIRONMENT_RULES", () => {
