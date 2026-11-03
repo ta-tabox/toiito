@@ -244,10 +244,9 @@ check の前提は Postgres が起動していること（`docker compose up -d`
 
 | 段 | 走る時点 | 持つもの | 正 |
 |---|---|---|---|
-| セットアップスクリプト | 環境のスナップショットを作るとき（結果は数日のあいだ使い回す） | mise・`mise install`・pnpm の store・Playwright の chromium・postgres:18 のイメージ | `scripts/cloud-setup.sh` |
-| セッション起動フック | 毎セッション（resume を含む） | PATH・`mise install`・dockerd の起動・`scripts/setup.sh` | `.claude/hooks/session-start.sh` |
+| セットアップスクリプト | スナップショットを作るとき | スナップショットに残るもの（道具・依存・イメージ） | `scripts/cloud-setup.sh` |
+| セッション起動フック | 毎セッション（resume を含む） | セッションごとに消えるもの（PATH・dockerd のプロセス）と `scripts/setup.sh` の呼び出し | `.claude/hooks/session-start.sh` |
 
-スナップショットに残らないのはプロセスと PATH なので、dockerd の起動と PATH はフックが毎回持つ。
 フックの `mise install` は、スナップショットが `mise.toml` の版を上げる前のものだったときに追いつかせる。
 セットアップスクリプトの各段の所要秒と成否は、コンテナの `/root/toiito-setup.log` に残る。
 
