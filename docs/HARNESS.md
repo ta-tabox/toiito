@@ -222,7 +222,6 @@ check の前提は Postgres が起動していること（`docker compose up -d`
 
 準備の本体は手元（リポジトリ本体と worktree）でもクラウドでも `scripts/setup.sh` 一本で、Claude Code のセッション起動フック（`.claude/hooks/session-start.sh`）が毎セッション呼ぶ。
 手元のフックは標準入力の JSON の `cwd` が指すチェックアウトを準備する。
-デスクトップの worktree セッションでは `CLAUDE_PROJECT_DIR` が本体を指すので、`cwd` を見なければ本体を準備してしまう。
 人間が叩くときはリポジトリのどこからでも `bash scripts/setup.sh`。
 何度走らせても同じ状態に落ち着き、揃えるものは次の表が持つ。
 
