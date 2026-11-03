@@ -252,7 +252,9 @@ check の前提は Postgres が起動していること（`docker compose up -d`
 セットアップスクリプトの各段の所要秒と成否は、コンテナの `/root/toiito-setup.log` に残る。
 
 クラウドの `gh` は GitHub のプロキシを通り、GraphQL が塞がれているので、`gh pr` と `gh issue` は 403 になる。
-issue と PR は `gh api repos/ta-tabox/toiito/...` の REST か、セッションの GitHub ツールで扱う。
+issue と PR は、クラウドのセッションが与える MCP の GitHub ツール（`mcp__github__*`）で扱う。
+`gh api repos/ta-tabox/toiito/...` の REST は、MCP に無い操作にだけ使う。
+戻せない操作に当たる MCP のツールは、`gh` のコマンドと同じく `.claude/settings.json` の ask と deny に入れてある。
 
 #### 設定の置き場
 

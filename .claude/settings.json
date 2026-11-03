@@ -51,7 +51,10 @@
       "Bash(gh pr merge:*)",
       "Bash(gh release:*)",
       "Bash(gh api -X DELETE:*)",
-      "Bash(gh api --method DELETE:*)"
+      "Bash(gh api --method DELETE:*)",
+      "mcp__github__merge_pull_request",
+      "mcp__github__enable_pr_auto_merge",
+      "mcp__github__pull_request_review_write"
     ],
     "deny": [
       "Read(**/.env)",
@@ -64,7 +67,12 @@
       "Bash(gh repo delete:*)",
       "Bash(gh repo edit:*)",
       "Bash(gh secret:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "mcp__github__create_or_update_file",
+      "mcp__github__push_files",
+      "mcp__github__delete_file",
+      "mcp__github__create_repository",
+      "mcp__github__fork_repository"
     ]
   },
   "hooks": {
