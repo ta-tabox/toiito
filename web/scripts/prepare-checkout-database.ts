@@ -1,10 +1,10 @@
 /**
- * このチェックアウトの開発用データベースを、無ければ作り、worktree なら migration を積む CLI を置く。
+ * このチェックアウトの開発用データベースを、無ければ作り、使い捨てのチェックアウト（worktree とクラウドのコンテナ）なら migration を積む CLI を置く。
  * データの投入は持たず、`seed/index.ts` が持つ。
  *
  * 既にあるデータベースは作り直さない。
  * 本体の開発用 DB には手で入れた行が載るので、migration を積むかは人間が決める（`check-database-drift.ts` が食い違いを警告する）。
- * worktree の DB はそのブランチの持ち物なので、毎回積んで追いつかせる。
+ * 使い捨てのチェックアウトの DB はそのブランチの持ち物なので、毎回積んで追いつかせる。
  * `prisma migrate reset` は使わない（Prisma 7 が人間の同意を毎回要求する。`tests/setup/database.ts` と同じ理由）。
  *
  * エントリポイントは CLI（`pnpm db:prepare`。`scripts/setup.sh` が呼ぶ）。
@@ -17,8 +17,10 @@ import { fileURLToPath } from "node:url";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client.ts";
 import { adminUrl } from "../tests/setup/test-database-url.ts";
-import { isWorktree } from "./checkout-database.ts";
-import { setCheckoutEnvironment } from "./checkout-environment.ts";
+import {
+  isDisposableCheckout,
+  setCheckoutEnvironment,
+} from "./checkout-environment.ts";
 
 const webRoot = path.resolve(import.meta.dirname, "..");
 const repositoryRoot = path.resolve(webRoot, "..");
@@ -73,7 +75,7 @@ function runMigrateDeploy(url: string): void {
 
 /**
  * CLI の本体。
- * 接続先を告げ、無ければ作り、worktree なら migration を積む。
+ * 接続先を告げ、無ければ作り、使い捨てのチェックアウトなら migration を積む。
  */
 async function main(): Promise<void> {
   const { DIRECT_URL } = setCheckoutEnvironment();
@@ -89,7 +91,7 @@ async function main(): Promise<void> {
     );
   }
 
-  if (isWorktree(repositoryRoot)) {
+  if (isDisposableCheckout(process.env, repositoryRoot)) {
     runMigrateDeploy(DIRECT_URL);
   }
 }

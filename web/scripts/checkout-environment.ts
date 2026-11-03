@@ -121,7 +121,7 @@ export type CheckoutEnvironment = Partial<
  *
  * 本番と CI はどちらにも当たらないので、秘密や開発用の変数が黙って埋まる経路は無い。
  */
-function isDisposableCheckout(env: Env, root: string): boolean {
+export function isDisposableCheckout(env: Env, root: string): boolean {
   return isWorktree(root) || env.CLAUDE_CODE_REMOTE === "true";
 }
 
