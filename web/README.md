@@ -31,8 +31,8 @@ worktree では `.env.local` を書かず、リポジトリルートで `bash sc
 依存・Postgres・worktree 用の開発用 DB（`toiito_wt_<ディレクトリ名>`）を揃え、接続先とサインイン・AI の既定は `scripts/checkout-environment.ts` が導く（`docs/HARNESS.md`「実行環境」）。
 Claude Code のセッション起動フックが同じスクリプトを呼ぶので、手で叩くのは本体で新しく始めるときと、途中で止まったときだけである。
 
-リモート（Claude Code on the web）ではこの節の準備が要らない。
-セッション起動時のフックが Postgres も `.env.local` も依存も用意するので、`pnpm dev` から始められる（`docs/HARNESS.md`「リモート」）。
+クラウド（Claude Code on the web）でもこの節の準備は要らない。
+セッション起動フックが同じスクリプトを呼び、`.env.local` は worktree と同じく作らないので、`pnpm dev` から始められる（環境の設定は `docs/HARNESS.md`「クラウド」）。
 
 ## 環境変数
 
