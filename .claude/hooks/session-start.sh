@@ -2,7 +2,7 @@
 #
 # セッション起動フック。
 # 責務は一点——どの環境でも `pnpm check` と `pnpm dev` が同じ意味を持つところまで組む。
-# 準備の本体は手元でもクラウド（Claude Code on the web）でも scripts/setup.sh で、このファイルはその前にクラウドでだけ要る分を持つ。
+# 準備の本体は手元でもクラウドでも scripts/setup.sh で、このファイルはその前にクラウドでだけ要る分を持つ。
 # クラウドのスナップショットに残る分（mise・依存・chromium・postgres:18 のイメージ）は scripts/cloud-setup.sh が持ち、ここが持つのはセッションごとに消えるもの（PATH・dockerd のプロセス）である。
 
 set -euo pipefail

@@ -2,7 +2,7 @@
  * チェックアウトで、無い環境変数の既定を導いて環境へ入れる関数と、その環境で別のコマンドを起動する CLI を置く。
  * データベース名の導出は持たず、`checkout-database.ts` が持つ。
  *
- * worktree とクラウド（Claude Code on the web）のコンテナには `web/.env.local` を作らない（`CLAUDE.md`「環境変数」）ので、`pnpm dev`・`pnpm seed`・Prisma CLI は接続先をここから受け取る。
+ * worktree とクラウドのコンテナには `web/.env.local` を作らない（`CLAUDE.md`「環境変数」）ので、`pnpm dev`・`pnpm seed`・Prisma CLI は接続先をここから受け取る。
  * 接続先はどのチェックアウトでも導き、サインインと AI の既定は使い捨てのチェックアウト（worktree とクラウドのコンテナ）でだけ導く。
  * 本番と CI は環境変数を明示で渡すので、ここは何も書き換えない。
  *

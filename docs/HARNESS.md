@@ -237,7 +237,7 @@ check の前提は Postgres が起動していること（`docker compose up -d`
 ステージした追加行の禁止語を報告だけする `.githooks/pre-commit` と、コミット本文の禁止語を止める `.githooks/commit-msg` は、git の既定の `.git/hooks/` に無いので、クローンごとに `git config core.hooksPath .githooks` で有効にする。
 `scripts/setup.sh` がこの設定を入れる。
 
-### クラウド（Claude Code on the web）
+### クラウド
 
 手元と同じ道具（mise の node と pnpm、`compose.yaml` の postgres:18、Playwright の chromium）で、`pnpm check` も `pnpm e2e` も手元と同じ意味で走る。
 準備は二段に分かれる。

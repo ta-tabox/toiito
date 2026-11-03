@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# クラウド（Claude Code on the web）の環境のセットアップスクリプト欄が呼ぶ本体。
+# クラウドの開発環境のセットアップスクリプト欄が呼ぶ本体。
 # 欄には `bash /home/user/toiito/scripts/cloud-setup.sh` の一行だけを置き、中身はこのファイルが持つ。
 #
 # 揃えるもの。
