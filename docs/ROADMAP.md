@@ -24,10 +24,12 @@
 - 作る順: **lib 関数 + テスト → UI 配線**（`.claude/rules/coding.md`「置き場と依存の向き」）
 - AI を伴う動作確認は `TOIITO_FAKE_AI=1`。実 API は自動テストで叩かない
 - 1 セッション = 1 スタック
-  列を一つの PR にまとめるとレビューの単位が列全体になるので、前の段を前提にする issue の列は 1 issue 1 PR で積み、各 PR のベースを一つ下の段のブランチにする
-  列を持たない issue は 1 PR にまとめてよく、PR 本文に issue ごとの `closes #N` を並べる
-  下の段が変わったら上の段を rebase し、`--force-with-lease` で push する
-  マージは下の段から一つずつ main へ行い、上の段のベースを main へ付け替える
+  前の issue に依存する一連の issue を一つの PR にまとめるとレビューの単位がすべての issue の差分になるので、一連の issue は 1 issue 1 PR で積み、各 PR のベースを一つ下の段のブランチにして GitHub のスタックへ入れる
+  他の issue に依存しない複数の issue は 1 PR にまとめてよく、PR 本文に issue ごとの `closes #N` を並べる
+  スタックへ PR を足すのは `gh stack` で、`gh stack` を使えないセッションでは PR を作った後に人間が PR のヘッダの「Add to stack」で足す
+  下の段へコミットを足したら上の段を `gh stack` で積み直し、`gh stack` を使えないセッションでは rebase して `--force-with-lease` で push する
+  上の段でマージを押すと下の未マージの段がまとめて main へ入り、段ごとの本番デプロイと migration が分かれなくなるので、マージを押すのはスタックの最下段にある未マージの PR だけにし、一つずつ人間が判断する
+  マージの後の残りの段の rebase とベースの付け替えは GitHub が行うので、手元のブランチは作業を続ける前にリモートから取得し直す
   CI 緑 + main へのマージで閉じる（`closes #N` は main へマージされたときにだけ効く）
 - コミット規約・署名は `CLAUDE.md` の git 節が正（prefix は変更の型、author は人間名義）
 
