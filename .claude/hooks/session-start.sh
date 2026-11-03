@@ -15,6 +15,8 @@ HOOK_INPUT=""
 if [ ! -t 0 ]; then
   HOOK_INPUT="$(cat || true)"
 fi
+printf '%s\n' "$HOOK_INPUT" > "${TMPDIR:-/tmp}/toiito-hook-input.json" || true
+printf 'pwd=%s CLAUDE_PROJECT_DIR=%s\n' "$(pwd)" "${CLAUDE_PROJECT_DIR:-}" >> "${TMPDIR:-/tmp}/toiito-hook-input.json" || true
 
 # mise の shims を先に置く。
 # イメージ同梱の node が PATH の後ろにあっても、`mise.toml` の版の node を使う。
