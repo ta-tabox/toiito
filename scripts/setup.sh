@@ -22,8 +22,9 @@ log() {
   echo "[setup] $1"
 }
 
-# mise の shims が PATH に無いプロセス（エディタやフックから起動された場合）でも、mise が入れた pnpm と node を掴む。
-if ! command -v pnpm > /dev/null 2>&1; then
+# mise の shims を PATH の先頭に置き、`mise.toml` の版の pnpm と node を掴む。
+# PATH の前の方に別の node（mise のグローバルの版・イメージ同梱の版）があると、pnpm が engines の不一致を告げる。
+if [ -d "$HOME/.local/share/mise/shims" ]; then
   export PATH="$HOME/.local/share/mise/shims:$PATH"
 fi
 
