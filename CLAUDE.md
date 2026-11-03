@@ -63,7 +63,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   マージは main への push が本番デプロイと migration を起こすので、戻る操作に入れない
 - 下の段を直すたびに上の段の積み直しが起き、lease は他者が後から push した ref を上書きせずに失敗するので、`gh stack` を使えないセッションで Claude が積んだスタック型 PR のブランチを main 以外の名前付きブランチへ `git push --force-with-lease` で送るときは訊かずに叩いてよい
   マージの後の積み直しは GitHub が行うので、Claude は手で行わない
-- 機械の判定は `.claude/settings.json` の `permissions` と、コマンド全文を見る `.claude/hooks/guard-force-push.sh`・`guard-gh-api.sh` が持つ
+- 機械の判定は `.claude/settings.json` の `permissions`（`gh` のコマンドと MCP の GitHub ツールの両方）と、コマンド全文を見る `.claude/hooks/guard-force-push.sh`・`guard-gh-api.sh` が持つ
   機械は保険で、正はこの節
 - **PR も author は人間**
   Claude の関与は本文の「判断したこと」節に判断の中身だけを書く（書式は `.github/pull_request_template.md`）
