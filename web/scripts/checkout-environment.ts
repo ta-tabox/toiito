@@ -1,9 +1,9 @@
 /**
- * 手元のチェックアウトで、無い環境変数の既定を導いて環境へ入れる関数と、その環境で別のコマンドを起動する CLI を置く。
+ * チェックアウトで、無い環境変数の既定を導いて環境へ入れる関数と、その環境で別のコマンドを起動する CLI を置く。
  * データベース名の導出は持たず、`checkout-database.ts` が持つ。
  *
- * worktree には `web/.env.local` を作らない（`CLAUDE.md`「環境変数」）ので、`pnpm dev`・`pnpm seed`・Prisma CLI は接続先をここから受け取る。
- * 接続先はどのチェックアウトでも導き、サインインと AI の既定は worktree でだけ導く。
+ * worktree とクラウドのコンテナには `web/.env.local` を作らない（`CLAUDE.md`「環境変数」）ので、`pnpm dev`・`pnpm seed`・Prisma CLI は接続先をここから受け取る。
+ * 接続先はどのチェックアウトでも導き、サインインと AI の既定は使い捨てのチェックアウト（worktree とクラウドのコンテナ）でだけ導く。
  * 本番と CI は環境変数を明示で渡すので、ここは何も書き換えない。
  *
  * エントリポイントは `setCheckoutEnvironment`（CLI は `node scripts/checkout-environment.ts <コマンド> [引数...]`）。
@@ -38,8 +38,8 @@ type Context = {
 
 /** 環境変数一つを導く規則。 */
 type Rule = {
-  /** どのチェックアウトでも導くか、worktree でだけ導くか。 */
-  readonly scope: "checkout" | "worktree";
+  /** どのチェックアウトでも導くか、使い捨てのチェックアウト（`isDisposableCheckout`）でだけ導くか。 */
+  readonly scope: "checkout" | "disposable";
 
   /**
    * `env` にその変数が無いときに、さらに満たす必要のある条件。
@@ -68,8 +68,7 @@ function opensFakeLogin(env: Env): boolean {
  * どの変数も `env` に既にあれば導かず、その値を残す。
  *
  * 値の意味は `web/README.md`「環境変数」の表が持つ。
- * worktree の規則はリモートの起動フック（`.claude/hooks/session-start.sh`）が `.env.local` へ書く値と同じにする。
- * 秘密をチェックアウトのパスから決めるのは、手元の worktree でしか使わない値なので、再起動でサインインが切れない方を採ったためである。
+ * 秘密をチェックアウトのパスから決めるのは、外から届かない開発用サーバーでしか使わない値なので、再起動でサインインが切れない方を採ったためである。
  */
 export const CHECKOUT_ENVIRONMENT_RULES = {
   DATABASE_URL: {
@@ -81,22 +80,22 @@ export const CHECKOUT_ENVIRONMENT_RULES = {
     value: ({ root }) => localDatabaseUrl(developmentDatabaseName(root)),
   },
   TOIITO_FAKE_LOGIN: {
-    scope: "worktree",
+    scope: "disposable",
     when: (env) => !env.GOOGLE_CLIENT_ID,
     value: () => "1",
   },
   TOIITO_ALLOWED_EMAILS: {
-    scope: "worktree",
+    scope: "disposable",
     when: opensFakeLogin,
     value: () => SEED_USERS.map((user) => user.email).join(","),
   },
   BETTER_AUTH_SECRET: {
-    scope: "worktree",
+    scope: "disposable",
     value: ({ root }) =>
       crypto.createHash("sha256").update(root).digest("base64"),
   },
   TOIITO_FAKE_AI: {
-    scope: "worktree",
+    scope: "disposable",
     when: (env) => !env.ANTHROPIC_API_KEY,
     value: () => "1",
   },
@@ -118,17 +117,24 @@ export type CheckoutEnvironment = Partial<
   Record<DatabaseVariable, string>;
 
 /**
- * `env` に無い環境変数を `CHECKOUT_ENVIRONMENT_RULES` に従って導き、接続先の二本は `env` にあればその値で返す。
- * worktree でだけ導く規則は `root` が worktree（`.git` がファイル）のときに限って当てる。
+ * `root` のチェックアウトが、本体の `.env.local` を持たない使い捨てのもの（worktree か、`env` が `CLAUDE_CODE_REMOTE=true` を持つクラウドのコンテナ）かを返す。
  *
- * 本番・CI・リモートでは `.git` がファイルにならないので、本番で秘密や開発用の変数が黙って埋まる経路は無い。
+ * 本番と CI はどちらにも当たらないので、秘密や開発用の変数が黙って埋まる経路は無い。
+ */
+export function isDisposableCheckout(env: Env, root: string): boolean {
+  return isWorktree(root) || env.CLAUDE_CODE_REMOTE === "true";
+}
+
+/**
+ * `env` に無い環境変数を `CHECKOUT_ENVIRONMENT_RULES` に従って導き、接続先の二本は `env` にあればその値で返す。
+ * 使い捨てのチェックアウトでだけ導く規則は、`isDisposableCheckout` が真のときに限って当てる。
  */
 export function readCheckoutEnvironment(
   env: Env,
   root: string,
 ): CheckoutEnvironment {
   const context: Context = { env, root };
-  const worktree = isWorktree(root);
+  const disposable = isDisposableCheckout(env, root);
   const derived: Partial<Record<CheckoutVariable, string>> = {};
 
   for (const name of Object.keys(CHECKOUT_ENVIRONMENT_RULES)) {
@@ -139,7 +145,7 @@ export function readCheckoutEnvironment(
       continue;
     }
 
-    if (rule.scope === "worktree" && !worktree) {
+    if (rule.scope === "disposable" && !disposable) {
       continue;
     }
 

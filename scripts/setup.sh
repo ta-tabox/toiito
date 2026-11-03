@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# 手元のチェックアウト（リポジトリ本体と worktree）で、`pnpm check` と `pnpm dev` が前置き無しで動くところまで揃える。
+# チェックアウト（手元のリポジトリ本体と worktree、クラウドのコンテナ）で、`pnpm check` と `pnpm dev` が前置き無しで動くところまで揃える。
 # 何度走らせても同じ状態に落ち着く。
 #
 # 揃えるもの。
@@ -10,7 +10,8 @@
 #   - このチェックアウトの開発用データベースと migration（`web/scripts/prepare-checkout-database.ts`）
 #
 # 版の正は mise.toml、接続先の正は compose.yaml と web/scripts/checkout-database.ts にあり、ここには書かない。
-# リモート（Claude Code on the web）の準備は .claude/hooks/session-start.sh が別に持ち、手元ではそのフックがこのスクリプトを呼ぶ。
+# .claude/hooks/session-start.sh が毎セッション呼ぶ。
+# クラウドでは、そのフックが PATH と dockerd を整えてから呼ぶ。
 # 人間が叩くときは、リポジトリのどこからでも `bash scripts/setup.sh`。
 
 set -euo pipefail
@@ -22,8 +23,9 @@ log() {
   echo "[setup] $1"
 }
 
-# mise の shims が PATH に無いプロセス（エディタやフックから起動された場合）でも、mise が入れた pnpm と node を掴む。
-if ! command -v pnpm > /dev/null 2>&1; then
+# mise の shims を PATH の先頭に置き、`mise.toml` の版の pnpm と node を使う。
+# PATH の前の方に別の node（mise のグローバルの版・イメージ同梱の版）があると、pnpm が engines の不一致を告げる。
+if [ -d "$HOME/.local/share/mise/shims" ]; then
   export PATH="$HOME/.local/share/mise/shims:$PATH"
 fi
 

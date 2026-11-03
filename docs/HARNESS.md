@@ -1,6 +1,6 @@
 # HARNESS — AI 駆動開発の検証ハーネス
 
-AI（Claude Code / Cowork セッション）が自律的に実装を進めるための自己検証ループの設計。
+AI（Claude Code のセッション）が自律的に実装を進めるための自己検証ループの設計。
 思想は一つ: **AI が自分の変更の正しさを、人間の目を借りずに機械的に確かめられる状態を保つ**。
 検証できない変更は積み上がらない。
 発酵槽に例えるなら、ハーネスは温度計であり、腐敗と発酵を区別する装置。
@@ -132,7 +132,7 @@ Prisma 7 はこれを破壊的操作として検知し、AI エージェント�
 
 `TOIITO_FAKE_AI=1` で `lib/ai/` がネットワークに出ず決定的な応答を返す。
 
-- 目的: API キー無し・ネットワーク遮断環境（Cowork サンドボックス含む）でも縦一本が end-to-end で動く
+- 目的: API キーの無い環境（クラウドのコンテナを含む）でも縦一本が end-to-end で動く
   E2E（L4）もこのモードで回す
 - 応答はペルソナ ID と直近の人間発話を含む決定的テキスト → アサーションで「どの体が・何を受けて」応答したか検証可能
 - 実 API の疎通は L5 側（人間が実キーで常用する）で担保
@@ -220,7 +220,7 @@ spec は `web/e2e/` に置き、何を見るかは各 spec の冒頭コメント
 
 check の前提は Postgres が起動していること（`docker compose up -d`）。
 
-手元（リポジトリ本体と worktree）の準備は `scripts/setup.sh` 一本で、Claude Code のセッション起動フック（`.claude/hooks/session-start.sh`）が手元でも呼ぶ。
+準備の本体は手元（リポジトリ本体と worktree）でもクラウドでも `scripts/setup.sh` 一本で、Claude Code のセッション起動フック（`.claude/hooks/session-start.sh`）が毎セッション呼ぶ。
 人間が叩くときはリポジトリのどこからでも `bash scripts/setup.sh`。
 何度走らせても同じ状態に落ち着き、揃えるものは次の表が持つ。
 
@@ -231,61 +231,54 @@ check の前提は Postgres が起動していること（`docker compose up -d`
 | Postgres（`docker compose up -d --wait`。docker が無ければ飛ばして告げる） | `compose.yaml` |
 | このチェックアウトの開発用 DB と migration（`pnpm db:prepare`） | `web/scripts/checkout-database.ts`・`web/prisma/migrations/` |
 
-`.env.local` を持たない worktree では、`web/scripts/checkout-environment.ts` が接続先とサインイン・AI の既定を導く（一覧は同ファイルの `CHECKOUT_ENVIRONMENT_RULES`）。
-規則はリモートの起動フックが `.env.local` へ書く値と同じで、環境変数で渡した値が勝つ。
-サインインと AI の既定を導くのは worktree だけで、理由は `web/scripts/checkout-environment.ts` の `readCheckoutEnvironment` が正。
+`.env.local` を持たないチェックアウト（worktree とクラウドのコンテナ）では、`web/scripts/checkout-environment.ts` が接続先とサインイン・AI の既定を導く（一覧は同ファイルの `CHECKOUT_ENVIRONMENT_RULES`）。
+環境変数で渡した値が導いた値に勝つ。
 
 ステージした追加行の禁止語を報告だけする `.githooks/pre-commit` と、コミット本文の禁止語を止める `.githooks/commit-msg` は、git の既定の `.git/hooks/` に無いので、クローンごとに `git config core.hooksPath .githooks` で有効にする。
-手元では `scripts/setup.sh`、リモートでは下の起動フックがこの設定を入れる。
+`scripts/setup.sh` がこの設定を入れる。
 
-### リモート（Claude Code on the web）
+### クラウド
 
-docker が無いので `docker compose up -d` は使えない。
-代わりに `.claude/hooks/session-start.sh` がセッション起動時に走り、イメージ同梱の Postgres を `compose.yaml` と同じ `localhost:5433` に立て、node と pnpm を `mise.toml` の版で置き、`web/.env.local` を書いて `pnpm install` と `migrate deploy` まで済ませる。
-接続文字列も `pnpm check` の意味もローカルと同じで、人手の準備は要らない。
-API キーが無いので `.env.local` には `TOIITO_FAKE_AI=1` が入る（環境変数で `ANTHROPIC_API_KEY` が渡っていればフェイクは入れない）。
-Google の OAuth クライアントも無いので、`.env.local` には `TOIITO_FAKE_LOGIN=1` とシードの二人を載せた `TOIITO_ALLOWED_EMAILS` が入る（環境変数で `GOOGLE_CLIENT_ID` が渡っていれば入れない）。
-`BETTER_AUTH_SECRET` はコンテナごとに `openssl rand -base64 32` で作る（環境変数で渡っていれば入れない）。
+手元と同じ道具（mise の node と pnpm、`compose.yaml` の postgres:18、Playwright の chromium）で、`pnpm check` も `pnpm e2e` も手元と同じ意味で走る。
+準備は二段に分かれる。
 
-引き受ける非対称は三つ。
-最初の二つは外向きの通信が許可制で、塞ぐ手段がこの環境に無いことから来る:
+| 段 | 走る時点 | 持つもの | 正 |
+|---|---|---|---|
+| セットアップスクリプト | スナップショットを作るとき | スナップショットに残るもの（道具・依存・イメージ） | `scripts/cloud-setup.sh` |
+| セッション起動フック | 毎セッション（resume を含む） | セッションごとに消えるもの（PATH・dockerd のプロセス）と `scripts/setup.sh` の呼び出し | `.claude/hooks/session-start.sh` |
 
-- Postgres が 18 でなく 16（apt.postgresql.org へ出られない）
-- 版の管理が mise でなく直置き（mise.run へ出られない）
-  版の正は `mise.toml` のままで、フックはそれを読む側
-- L4 の実走は手元（macOS）が担う
-  三つ目だけは通信の話ではない
-  ブラウザは `/opt/pw-browsers` に同梱されているが、その版が `@playwright/test` の要求する版と一致しないので、`executablePath` を差さないと起動しない
-  **その設定は常設しない**（下の表の最終行）ので、リモートで書けるのは設定と spec までになる
+フックの `mise install` は、スナップショットが `mise.toml` の版を上げる前のものだったときに追いつかせる。
+セットアップスクリプトの各段の所要秒と成否は、コンテナの `/root/toiito-setup.log` に残る。
+
+クラウドの `gh` は GitHub のプロキシを通り、GraphQL が塞がれているので、`gh pr` と `gh issue` は 403 になる。
+issue と PR は `gh api repos/ta-tabox/toiito/...` の REST か、セッションの GitHub ツールで扱う。
 
 #### 設定の置き場
 
-リモートの準備には置き場が三つある。
-リポジトリの `.claude/hooks/session-start.sh`、クラウド環境の環境変数欄、同じ画面のセットアップスクリプト欄。
+クラウドの準備には置き場が三つある。
+リポジトリ（`scripts/cloud-setup.sh` と `.claude/hooks/session-start.sh`）、クラウド環境の環境変数欄、同じ画面のネットワークとセットアップスクリプトの欄。
 振り分けの規則は一行:
 
-> **リポジトリの内容から復元できるものはフック、利用者や環境に固有のものはクラウド設定。**
+> **リポジトリの内容から復元できるものはリポジトリ、利用者や環境に固有のものはクラウド設定。**
 
 前者を設定画面へ持つと、版を上げてもリポジトリだけが動いて設定が置いていかれる。
 後者をリポジトリへ持つと、fork した他人のコンテナにこちらの固有値が焼かれる。
 
 | 置くもの | 置き場 | 理由 |
 |---|---|---|
-| node / pnpm の版 | フック | 正は `mise.toml`。上げれば同じコミットでフックが追随する |
-| Postgres の起動・ロール・DB | フック | `compose.yaml` と `docker/initdb/` を復元しているだけ |
-| `web/.env.local` の接続文字列 | フック | 値が上の二つから決まる |
-| `web/.env.local` の認証の 3 本（`BETTER_AUTH_SECRET`・`TOIITO_ALLOWED_EMAILS`・`TOIITO_FAKE_LOGIN`） | フック | 許可リストは `web/scripts/seed/users.ts` から決まり、秘密は本番と Preview の値と無関係な乱数で足りる |
-| `core.hooksPath`（`.githooks` を指す） | フック | 値がリポジトリの `.githooks/` から決まる |
+| node / pnpm の版 | リポジトリ（`mise.toml`） | 手元・CI・クラウドが同じ一つを読む |
+| 準備の手順 | リポジトリ（`scripts/cloud-setup.sh`・起動フック） | セットアップスクリプト欄は `bash /home/user/toiito/scripts/cloud-setup.sh` の一行だけにする |
+| 開発用の環境変数（接続先・サインイン・AI の既定） | リポジトリ（`web/scripts/checkout-environment.ts`） | 値が `compose.yaml` とシードから決まる |
+| `core.hooksPath`（`.githooks` を指す） | リポジトリ（`scripts/setup.sh`） | 値がリポジトリの `.githooks/` から決まる |
+| ネットワーク | クラウド設定 | 「カスタム」で既定のリストを含め、`cdn.playwright.dev` を足す |
 | `GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` | クラウド環境変数 | 利用者に固有。リポジトリへ焼くと、他人が fork で立てたセッションのコミットが持ち主名義で積まれる |
 | `GIT_COMMITTER_*` | どこにも置かない | コンテナの global config が既に Claude 名義で、署名鍵もそこに紐づいている。上書きすると Unverified になる |
-| `ANTHROPIC_API_KEY` | どこにも置かない | 環境変数欄は「この環境を使用するすべてのユーザーに表示される」ので秘密を置けない。リモートはフェイクモードで走る |
-| セットアップスクリプト欄 | 空のまま | 準備の中身はすべてリポジトリから復元できるので、フック一本に集約する |
-| Playwright の `executablePath` | どこにも置かない | 同梱ブラウザの版はイメージ側の都合で動く。リポジトリへ焼けば手元と CI が巻き添えになり、環境変数へ置けば版が動いた日に黙って古いパスを差す。リモートで実走させる回だけ `playwright.config.ts` へ書き捨てる（`channel` は `executablePath` と併記できないので落とす） |
+| `ANTHROPIC_API_KEY` | どこにも置かない | 環境変数欄は「この環境を使用するすべてのユーザーに表示される」ので秘密を置けない。クラウドはフェイクモードで走る |
 
-`GIT_AUTHOR_*` が環境変数で来ない環境では、フックが `exit 1` で止まる。
-黙って Claude 名義のコミットが積まれるより、セッションが立たない方が気づけるため（`CLAUDE.md`「git」）。
+`GIT_AUTHOR_*` が環境変数で来ない環境と、mise が入っていない環境では、フックが `exit 1` で止まる。
+黙って Claude 名義のコミットが積まれたり、別の版の node で走ったりするより、セッションが立たない方が気づけるため（`CLAUDE.md`「git」）。
 
-環境を新しく作るときの順序は、環境変数を入れる → セッションを立てて `env | grep GIT_AUTHOR` で届くのを見る → 作業を始める。
+環境を新しく作るときの順序は、ネットワークと環境変数とセットアップスクリプト欄を入れる → セッションを立てて `env | grep GIT_AUTHOR` と `/root/toiito-setup.log` を見る → 作業を始める。
 
 ## 意図的にやらないこと
 

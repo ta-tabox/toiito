@@ -14,8 +14,9 @@ AI をスピードアップではなくスローダウン（自分の問いを�
 現在地の一枚が要るときは、写しを保守するのでなく三つから取り直して作る。
 
 ## 開発ハーネス（本文は `docs/HARNESS.md`）
-ローカル Postgres を立ててから作業する（ルートで `docker compose up -d`。接続は `web/.env.local` に `DATABASE_URL` と `DIRECT_URL` の二本）。
-手元と worktree の準備（フックの向き先・依存・Postgres・開発用 DB）は `scripts/setup.sh` 一本で、セッション起動フックが呼ぶ。
+Postgres を立ててから作業する（`compose.yaml`。接続は `DATABASE_URL` と `DIRECT_URL` の二本で、`web/.env.local` に無ければ `web/scripts/checkout-environment.ts` が導く）。
+手元・worktree・クラウドの準備（フックの向き先・依存・Postgres・開発用 DB）は `scripts/setup.sh` 一本で、セッション起動フックが呼ぶ。
+クラウド環境の設定（ネットワーク・セットアップスクリプト欄・環境変数）は `docs/HARNESS.md`「設定の置き場」が持つ。
 変更 → `web/` で `pnpm check`（型→lint→テスト→ビルド）→ 緑ならコミット。
 **check が赤のままコミットしない**。
 道具は pnpm・mise（`mise.toml` が正）・Biome（`biome.json` が正。書式は `pnpm format` で機械的に直す）の一本ずつで、npm/yarn・corepack・ESLint/Prettier は使わない。
@@ -31,7 +32,7 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
   実装・テスト追加・バグ修正・レビュー・リファクタのすべてが対象
 - 隣接ファイルを読まずに新規ファイルを書くときは、先に `.claude/rules/coding.md` と該当言語の `languages/<lang>.md`（画面へ触るなら `design.md` も）を Read する
 - 書き終えたら、PR の前に skill `review-checklist` の表を、変更した各コメント・名前・ファイルへ当てる
-- `karpathy-guidelines` は外部由来（https://github.com/multica-ai/andrej-karpathy-skills の 2c60614、MIT）で、リモートの空のコンテナでも初回から効くよう本体を `.claude/skills/` へ同梱してある
+- `karpathy-guidelines` は外部由来（https://github.com/multica-ai/andrej-karpathy-skills の 2c60614、MIT）で、クラウドの空のコンテナでも初回から効くよう本体を `.claude/skills/` へ同梱してある
   上流の更新は手で取り込む
 
 ## 環境変数（`.env*`）
@@ -50,11 +51,11 @@ AI 呼び出しを伴う動作確認は `TOIITO_FAKE_AI=1` で（実 API を自�
 このリポジトリは**公開する**前提で、コミットは時間でなく関心で区切る（粒度と文体の正は `.claude/rules/writing.md`）。
 - **author は人間名義**
   Claude も `-c` を付けず素の `git commit` を使う
-  リモートは committer だけ Claude 名義で、直さない（名義の置き場は `docs/HARNESS.md`「設定の置き場」）
+  クラウドのセッションは committer だけ Claude 名義で、直さない（名義の置き場は `docs/HARNESS.md`「設定の置き場」）
 - **Co-authored-by は、Claude がそのコミットの中身を書いたときに付ける**（文言は `.claude/settings.json` の `attribution`）
   衝突なしのマージには付けず、衝突を解いたマージ・`revert`・`cherry-pick` には自分で足す
 - **Actions 経由の Claude はコメントまで**
-  差分を作るのは人間かローカル／リモートのセッションで、`.github/workflows/claude.yml` の `contents: read` がこれを機械で満たす（決め直すときは issue #19（Actions 経由の Claude の権限）の三案に戻る）
+  差分を作るのは人間か手元／クラウドのセッションで、`.github/workflows/claude.yml` の `contents: read` がこれを機械で満たす（決め直すときは issue #19（Actions 経由の Claude の権限）の三案に戻る）
 - **prefix は変更の型**（`feat:` `fix:` `docs:` `refactor:` `chore:` `test:`）
   スコープもプロジェクト名も添えない
 - **push・issue と PR の起票・コメント・close は Claude が叩いてよい**（どれも追記か、reopen で戻る）
