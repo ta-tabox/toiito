@@ -13,7 +13,7 @@
 # セッションごとの準備（PATH・dockerd の起動・Postgres・開発用 DB）は `.claude/hooks/session-start.sh` が持つ。
 # 欄は root で、クラウド環境の環境変数が入る前に走る。
 # 失敗しても止めずに exit 0 で終える。
-# 欄が失敗すると環境そのものが立たず、ここで取りこぼした分は起動フックの `mise install` と compose の取得が埋める。
+# 欄が失敗すると環境そのものが立たず、このスクリプトが失敗した段は起動フックの `mise install` と compose の取得が補う。
 # 各段の所要秒と成否は `/root/toiito-setup.log` に残す。
 
 set -uo pipefail

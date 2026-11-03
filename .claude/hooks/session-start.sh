@@ -10,7 +10,7 @@ set -euo pipefail
 REPO_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
 # mise の shims を先に置く。
-# イメージ同梱の node が後ろにあっても、`mise.toml` の版を掴む。
+# イメージ同梱の node が PATH の後ろにあっても、`mise.toml` の版の node を使う。
 TOOL_PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin"
 
 log() {

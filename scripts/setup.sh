@@ -23,7 +23,7 @@ log() {
   echo "[setup] $1"
 }
 
-# mise の shims を PATH の先頭に置き、`mise.toml` の版の pnpm と node を掴む。
+# mise の shims を PATH の先頭に置き、`mise.toml` の版の pnpm と node を使う。
 # PATH の前の方に別の node（mise のグローバルの版・イメージ同梱の版）があると、pnpm が engines の不一致を告げる。
 if [ -d "$HOME/.local/share/mise/shims" ]; then
   export PATH="$HOME/.local/share/mise/shims:$PATH"
