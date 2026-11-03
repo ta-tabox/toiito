@@ -270,7 +270,7 @@ issue と PR は `gh api repos/ta-tabox/toiito/...` の REST か、セッショ�
 | 準備の手順 | リポジトリ（`scripts/cloud-setup.sh`・起動フック） | セットアップスクリプト欄は `bash /home/user/toiito/scripts/cloud-setup.sh` の一行だけにする |
 | 開発用の環境変数（接続先・サインイン・AI の既定） | リポジトリ（`web/scripts/checkout-environment.ts`） | 値が `compose.yaml` とシードから決まる |
 | `core.hooksPath`（`.githooks` を指す） | リポジトリ（`scripts/setup.sh`） | 値がリポジトリの `.githooks/` から決まる |
-| ネットワーク | クラウド設定 | 「カスタム」で既定のリストを含め、`mise-versions.jdx.dev`・`cdn.playwright.dev` を足す |
+| ネットワーク | クラウド設定 | 「カスタム」で既定のリストを含め、`cdn.playwright.dev` を足す |
 | `GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` | クラウド環境変数 | 利用者に固有。リポジトリへ焼くと、他人が fork で立てたセッションのコミットが持ち主名義で積まれる |
 | `GIT_COMMITTER_*` | どこにも置かない | コンテナの global config が既に Claude 名義で、署名鍵もそこに紐づいている。上書きすると Unverified になる |
 | `ANTHROPIC_API_KEY` | どこにも置かない | 環境変数欄は「この環境を使用するすべてのユーザーに表示される」ので秘密を置けない。クラウドはフェイクモードで走る |
