@@ -11,7 +11,7 @@ REPO_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && 
 
 # mise の shims を先に置く。
 # イメージ同梱の node が PATH の後ろにあっても、`mise.toml` の版の node を使う。
-TOOL_PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin"
+TOOL_PATH="$HOME/.local/share/mise/shims"
 
 log() {
   echo "[toiito] $1"
@@ -34,10 +34,10 @@ require_git_author() {
   exit 1
 }
 
-# mise 本体はセットアップスクリプトが入れる。
+# mise 本体はセットアップスクリプトが、イメージ同梱の npm のグローバルな置き場へ入れる。
 # 無いのはセットアップスクリプト欄が空か失敗したときなので、ここで入れ直さず直し方を告げて止める。
 require_mise() {
-  if [ -x "$HOME/.local/bin/mise" ]; then
+  if command -v mise >/dev/null 2>&1; then
     return
   fi
 

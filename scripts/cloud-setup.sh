@@ -4,7 +4,7 @@
 # 欄には `bash /home/user/toiito/scripts/cloud-setup.sh` の一行だけを置き、中身はこのファイルが持つ。
 #
 # 揃えるもの。
-#   - mise と、`mise.toml` の版の node と pnpm
+#   - mise（イメージ同梱の npm で `MISE_VERSION` の版を入れる）と、`mise.toml` の版の node と pnpm
 #   - pnpm の store（`pnpm install --frozen-lockfile`）
 #   - Playwright の chromium（`/opt/pw-browsers` の同梱版は `@playwright/test` の要求する版と一致しない）
 #   - `compose.yaml` が使う postgres:18 のイメージ
@@ -21,7 +21,11 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG=/root/toiito-setup.log
 
-export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH"
+# mise 本体の版。
+# npm のレジストリから入れるので、許可ドメインに mise の配布元を足さずに済む。
+MISE_VERSION=2026.10.25
+
+export PATH="$HOME/.local/share/mise/shims:$PATH"
 export MISE_YES=1
 
 # 段の名前と所要秒と成否を `LOG` に一行で書く。
@@ -44,7 +48,7 @@ install_mise() {
     return
   fi
 
-  curl -fsSL https://mise.run | sh
+  npm install -g "mise@$MISE_VERSION"
 }
 
 install_toolchain() {
