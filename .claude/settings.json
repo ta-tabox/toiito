@@ -54,10 +54,7 @@
       "Bash(gh api --method DELETE:*)",
       "mcp__github__merge_pull_request",
       "mcp__github__enable_pr_auto_merge",
-      "mcp__github__pull_request_review_write",
-      "mcp__github__update_pull_request",
-      "mcp__github__update_issue_comment",
-      "mcp__github__issue_write"
+      "mcp__github__pull_request_review_write"
     ],
     "deny": [
       "Read(**/.env)",
