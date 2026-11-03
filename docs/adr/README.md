@@ -147,8 +147,7 @@ ADR の外（コード・現況の文書・issue・PR）から指すときは、
 | [20260915-usage-log-in-db](20260915-usage-log-in-db.md) | 0047 | AI の呼び出しごとの利用量を DB の表に記録し、本文を残さない | 2026-09-15 | 採用 |
 | [20260915-user-api-key-encryption](20260915-user-api-key-encryption.md) | 0044 | 利用者の API キーを暗号化して DB に置き、鍵を環境変数に置いて鍵 ID で回転する | 2026-09-15 | 採用 |
 | [20260917-adr-date-slug-identifier](20260917-adr-date-slug-identifier.md) | — | ADR の識別子を、連番から決定日と slug の組にする | 2026-09-17 | 採用 |
-| [20261102-native-stacked-pull-requests](20261102-native-stacked-pull-requests.md) | — | スタック型 PR を GitHub のスタック機能で積み、マージの後の積み直しを GitHub に任せ、マージは最下段の PR でだけ押す（20261102-stacked-pull-requests の改訂） | 2026-11-02 | 採用 |
-| [20261102-stacked-pull-requests](20261102-stacked-pull-requests.md) | — | 前の段を前提にする issue の列をスタック型 PR で進め、積み直しは main 以外への force-with-lease で行う | 2026-11-02 | supersede 済み（→ 20261102-native-stacked-pull-requests） |
+| [20261102-stacked-pull-requests](20261102-stacked-pull-requests.md) | — | スタック型 PR を GitHub のスタック機能で積み、マージの後の積み直しを GitHub に任せ、マージは最下段の PR でだけ押す | 2026-11-02 | 採用 |
 
 並びは識別子の辞書順で、`docs/adr/` のファイルの並びと一致する。
 `旧番号` は、識別子を決定日と slug の組へ改める前の 4 桁の連番で、書いた順を表す。
