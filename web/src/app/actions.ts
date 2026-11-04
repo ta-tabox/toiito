@@ -11,6 +11,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { parseModelSettingForm } from "@/lib/ai/model-setting-input";
 import { parseAnchor } from "@/lib/anchors";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { LOGIN_PATH } from "@/lib/auth/protected-paths";
@@ -23,11 +24,14 @@ import {
   addMemo,
   createQuestion,
   createSession,
+  deleteApiKey,
+  saveModelSetting,
   setQuestionStatus,
 } from "@/lib/db";
 import { parseMemoKeyword } from "@/lib/memo";
 import { parseSelectableStatus } from "@/lib/question";
 import { questionPathOf, ROUTES } from "@/lib/routes";
+import { encryptionKeyRing } from "@/lib/secrets-config";
 import { personaCalls, retryTurn, runTurn } from "@/lib/turn";
 
 /** 問いを投入し、その対話画面へ送る。 */
@@ -109,6 +113,32 @@ export async function createMemoAction(formData: FormData) {
 
   // 発話とメモの action は問いの id を受け取らないので、個々の URL でなくルートの型で再検証する。
   revalidatePath(ROUTES.question, "page");
+}
+
+/**
+ * フォームのモデルと API キーを、現在の利用者の設定へ書き込む。
+ * API キーの欄が空なら、保存済みの API キーを変えない。
+ * モデルが選べるモデルの外なら throw する。
+ */
+export async function saveModelSettingAction(formData: FormData) {
+  const input = parseModelSettingForm(
+    {
+      model: String(formData.get("model") ?? ""),
+      apiKey: String(formData.get("api_key") ?? ""),
+    },
+    encryptionKeyRing(),
+  );
+
+  const { id: owner } = await requireCurrentUser();
+  await saveModelSetting(owner, input);
+  revalidatePath(ROUTES.settings);
+}
+
+/** 現在の利用者の API キーを削除する。 */
+export async function deleteApiKeyAction() {
+  const { id: owner } = await requireCurrentUser();
+  await deleteApiKey(owner);
+  revalidatePath(ROUTES.settings);
 }
 
 /** Google の同意画面へ送る。 */
