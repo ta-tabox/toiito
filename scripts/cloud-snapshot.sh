@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # クラウドの開発環境のセットアップスクリプト欄が呼ぶ本体。
-# 欄には `bash /home/user/toiito/scripts/cloud-setup.sh` の一行だけを置き、中身はこのファイルが持つ。
+# 欄には `bash /home/user/toiito/scripts/cloud-snapshot.sh` の一行だけを置き、中身はこのファイルが持つ。
 #
 # 揃えるもの。
 #   - mise（イメージ同梱の npm で `MISE_VERSION` の版を入れる）と、`mise.toml` の版の node と pnpm
@@ -10,10 +10,10 @@
 #   - `compose.yaml` が使う postgres:18 のイメージ
 #
 # 欄の結果はファイルシステムのスナップショットとして残り、セッションごとには走らない。
-# セッションごとの準備（PATH・dockerd の起動・Postgres・開発用 DB）は `.claude/hooks/session-start.sh` が持つ。
+# セッションごとの準備は、`scripts/cloud-session.sh`（PATH・dockerd の起動）と `scripts/setup.sh`（依存・Postgres・開発用 DB）が持つ。
 # 欄は root で、クラウド環境の環境変数が入る前に走る。
 # 失敗しても止めずに exit 0 で終える。
-# 欄が失敗すると環境そのものが立たず、このスクリプトが失敗した段は起動フックの `mise install` と compose の取得が補う。
+# 欄が失敗すると環境そのものが立たず、このスクリプトが失敗した段は `scripts/cloud-session.sh` の `mise install` と compose の取得が補う。
 # 各段の所要秒と成否は `/root/toiito-setup.log` に残す。
 
 set -uo pipefail
@@ -37,9 +37,9 @@ run_step() {
   local started=$SECONDS
 
   if "$@" >>"$LOG" 2>&1; then
-    echo "[cloud-setup] $name: ok ($((SECONDS - started))s)" | tee -a "$LOG"
+    echo "[cloud-snapshot] $name: ok ($((SECONDS - started))s)" | tee -a "$LOG"
   else
-    echo "[cloud-setup] $name: failed ($((SECONDS - started))s)" | tee -a "$LOG"
+    echo "[cloud-snapshot] $name: failed ($((SECONDS - started))s)" | tee -a "$LOG"
   fi
 }
 
@@ -87,13 +87,13 @@ pull_postgres_image() {
 main() {
   local started=$SECONDS
 
-  echo "[cloud-setup] start $(date -u +%FT%TZ)" >>"$LOG"
+  echo "[cloud-snapshot] start $(date -u +%FT%TZ)" >>"$LOG"
   run_step mise install_mise
   run_step toolchain install_toolchain
   run_step dependencies install_dependencies
   run_step chromium install_chromium
   run_step postgres-image pull_postgres_image
-  echo "[cloud-setup] total: $((SECONDS - started))s" | tee -a "$LOG"
+  echo "[cloud-snapshot] total: $((SECONDS - started))s" | tee -a "$LOG"
 }
 
 main "$@"
