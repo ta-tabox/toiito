@@ -22,7 +22,7 @@ log() {
 # ここへ焼くと、他人が fork で立てたセッションのコミットが持ち主名義で積まれる。
 #
 # GIT_AUTHOR_* は config より優先されるので、リポジトリ側の user.name / user.email は要らない。
-# committer はコンテナの global config（Claude 名義・署名鍵つき）から落ちるので、こちらも触らない。
+# committer にはコンテナの global config（Claude 名義・署名鍵つき）の値が使われるので、こちらも触らない。
 #
 # 未設定のまま進めると author が Claude になり、
 # 「第三者が出したものを承認した」という嘘の外形を誰も気づかないまま履歴へ残すので、止める。
