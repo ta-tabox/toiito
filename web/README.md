@@ -59,6 +59,8 @@ Claude Code のセッション起動フックが同じスクリプトを呼ぶ�
 | `TOIITO_E2E_DATABASE_URL` | 任意 | `postgresql://toiito:toiito@localhost:5433/toiito_e2e` | E2E の接続先。変えてよいのはサーバーの側だけで、データベース名は `toiito_e2e` から動かせない |
 | `DIRECT_URL_PROD` | `pnpm migrate:prod` を叩くなら必須 | — | 本番 Neon の直結。手元から migration を流す先 |
 | `DIRECT_URL_PREVIEW` | `pnpm migrate:preview` を叩くなら必須 | — | Neon の `preview` ブランチの直結。同上 |
+| `TOIITO_API_KEY_ENCRYPTION_KEYS_PROD` | `pnpm keys:reencrypt prod` を叩くなら必須 | — | 本番の Vercel に入れた `TOIITO_API_KEY_ENCRYPTION_KEYS` と同じ値で、`.env.local` に書かずに実行する間だけ渡す |
+| `TOIITO_API_KEY_ENCRYPTION_KEYS_PREVIEW` | `pnpm keys:reencrypt preview` を叩くなら必須 | — | Preview の Vercel に入れた鍵の一覧と同じ値で、渡し方は同上 |
 
 ローカルの二本はどちらも同じ Postgres を指す。
 

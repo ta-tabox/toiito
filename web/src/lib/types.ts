@@ -195,3 +195,44 @@ export type UsageSummary = {
   output_tokens: number;
   web_search_count: number;
 };
+
+/**
+ * 利用者一人の、AI を呼ぶときのモデルと API キーの設定を画面に出す形。
+ *
+ * API キーは登録済みかどうかだけを持ち、平文も暗号文もその一部も持たない。
+ * 行が無い利用者は、`model` が undefined で `has_api_key` が false になる。
+ */
+export type ModelSettingSummary = {
+  model: string | undefined;
+  has_api_key: boolean;
+};
+
+/**
+ * 一往復で AI を呼ぶ前に読む、利用者が選んだモデル名と、暗号化した API キー。
+ * API キーを登録した利用者にだけ在る。
+ *
+ * `model` は DB の文字列のままで、`ANTHROPIC_MODELS` の値域にあるかは読む側が確かめる。
+ */
+export type ModelCredentials = {
+  model: string | undefined;
+  encrypted_api_key: string;
+};
+
+/**
+ * `saveModelSetting` へ渡す、利用者のモデルと API キーの設定。
+ *
+ * `model` が null なら既定のモデルへ戻す。
+ * `encrypted_api_key` を省くと、保存済みの API キーを変えない。
+ */
+export type ModelSettingInput = {
+  model: string | null;
+  encrypted_api_key?: string;
+};
+
+/**
+ * 暗号化した API キーを持つ利用者一人分の行。
+ */
+export type EncryptedApiKeyRow = {
+  user_id: string;
+  encrypted_api_key: string;
+};
