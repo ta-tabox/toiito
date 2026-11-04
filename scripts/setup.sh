@@ -11,7 +11,7 @@
 #
 # 版の正は mise.toml、接続先の正は compose.yaml と web/scripts/checkout-database.ts にあり、ここには書かない。
 # .claude/hooks/session-start.sh が毎セッション呼ぶ。
-# クラウドでは、そのフックが PATH と dockerd を整えてから呼ぶ。
+# クラウドでは、そのフックが先に `scripts/cloud-session.sh` で名義・mise・dockerd を整えてから呼ぶ。
 # 人間が叩くときは、リポジトリのどこからでも `bash scripts/setup.sh`。
 
 set -euo pipefail

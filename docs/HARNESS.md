@@ -221,7 +221,7 @@ spec は `web/e2e/` に置き、何を見るかは各 spec の冒頭コメント
 check の前提は Postgres が起動していること（`docker compose up -d`）。
 
 準備の本体は手元（リポジトリ本体と worktree）でもクラウドでも `scripts/setup.sh` 一本で、Claude Code のセッション起動フック（`.claude/hooks/session-start.sh`）が毎セッション呼ぶ。
-手元のフックは標準入力の JSON の `cwd` が指すチェックアウトを準備する。
+起動フックは振り分けだけを持ち、標準入力の JSON の `cwd` が指すチェックアウトで、クラウドなら `scripts/cloud-session.sh` を、続けてどの実行環境でも `scripts/setup.sh` を呼ぶ。
 人間が叩くときはリポジトリのどこからでも `bash scripts/setup.sh`。
 何度走らせても同じ状態に落ち着き、揃えるものは次の表が持つ。
 
@@ -241,14 +241,16 @@ check の前提は Postgres が起動していること（`docker compose up -d`
 ### クラウド
 
 手元と同じ道具（mise の node と pnpm、`compose.yaml` の postgres:18、Playwright の chromium）で、`pnpm check` も `pnpm e2e` も手元と同じ意味で走る。
-準備は二段に分かれる。
+準備は次の順に走る。
 
-| 段 | 走る時点 | 持つもの | 正 |
+| 順 | 走る時点 | 持つもの | 正 |
 |---|---|---|---|
-| セットアップスクリプト | スナップショットを作るとき | スナップショットに残るもの（道具・依存・イメージ） | `scripts/cloud-setup.sh` |
-| セッション起動フック | 毎セッション（resume を含む） | セッションごとに消えるもの（PATH・dockerd のプロセス）と `scripts/setup.sh` の呼び出し | `.claude/hooks/session-start.sh` |
+| 1 | スナップショットを作るとき（セットアップスクリプト欄） | スナップショットに残るもの（道具・依存・イメージ） | `scripts/cloud-setup.sh` |
+| 2 | 毎セッション（resume を含む） | 振り分けだけ | `.claude/hooks/session-start.sh` |
+| 3 | 2 の後、4 の前 | クラウドでだけ要る検査（名義・mise）と、セッションごとに消えるもの（PATH・dockerd のプロセス） | `scripts/cloud-session.sh` |
+| 4 | 3 の後 | 手元と共通の準備 | `scripts/setup.sh` |
 
-フックの `mise install` は、スナップショットが `mise.toml` の版を上げる前のものだったときに追いつかせる。
+`scripts/cloud-session.sh` の `mise install` は、スナップショットが `mise.toml` の版を上げる前のものだったときに追いつかせる。
 セットアップスクリプトの各段の所要秒と成否は、コンテナの `/root/toiito-setup.log` に残る。
 
 クラウドの `gh` は GitHub のプロキシを通り、GraphQL が塞がれているので、`gh pr` と `gh issue` は 403 になる。
@@ -259,7 +261,7 @@ issue と PR は、クラウドのセッションが与える MCP の GitHub ツ
 #### 設定の置き場
 
 クラウドの準備には置き場が三つある。
-リポジトリ（`scripts/cloud-setup.sh` と `.claude/hooks/session-start.sh`）、クラウド環境の環境変数欄、同じ画面のネットワークとセットアップスクリプトの欄。
+リポジトリ（`scripts/cloud-setup.sh`・`.claude/hooks/session-start.sh`・`scripts/cloud-session.sh`）、クラウド環境の環境変数欄、同じ画面のネットワークとセットアップスクリプトの欄。
 振り分けの規則は一行:
 
 > **リポジトリの内容から復元できるものはリポジトリ、利用者や環境に固有のものはクラウド設定。**
@@ -270,7 +272,7 @@ issue と PR は、クラウドのセッションが与える MCP の GitHub ツ
 | 置くもの | 置き場 | 理由 |
 |---|---|---|
 | node / pnpm の版 | リポジトリ（`mise.toml`） | 手元・CI・クラウドが同じ一つを読む |
-| 準備の手順 | リポジトリ（`scripts/cloud-setup.sh`・起動フック） | セットアップスクリプト欄は `bash /home/user/toiito/scripts/cloud-setup.sh` の一行だけにする |
+| 準備の手順 | リポジトリ（`scripts/cloud-setup.sh`・`scripts/cloud-session.sh`） | セットアップスクリプト欄は `bash /home/user/toiito/scripts/cloud-setup.sh` の一行だけにする |
 | 開発用の環境変数（接続先・サインイン・AI の既定） | リポジトリ（`web/scripts/checkout-environment.ts`） | 値が `compose.yaml` とシードから決まる |
 | `core.hooksPath`（`.githooks` を指す） | リポジトリ（`scripts/setup.sh`） | 値がリポジトリの `.githooks/` から決まる |
 | ネットワーク | クラウド設定 | 「カスタム」で既定のリストを含め、`cdn.playwright.dev` を足す |
@@ -278,7 +280,7 @@ issue と PR は、クラウドのセッションが与える MCP の GitHub ツ
 | `GIT_COMMITTER_*` | どこにも置かない | コンテナの global config が既に Claude 名義で、署名鍵もそこに紐づいている。上書きすると Unverified になる |
 | `ANTHROPIC_API_KEY` | どこにも置かない | 環境変数欄は「この環境を使用するすべてのユーザーに表示される」ので秘密を置けない。クラウドはフェイクモードで走る |
 
-`GIT_AUTHOR_*` が環境変数で来ない環境と、mise が入っていない環境では、フックが `exit 1` で止まる。
+`GIT_AUTHOR_*` が環境変数で来ない環境と、mise が入っていない環境では、`scripts/cloud-session.sh` が `exit 1` で止まり、起動フックがセッションを止める。
 黙って Claude 名義のコミットが積まれたり、別の版の node で走ったりするより、セッションが立たない方が気づけるため（`CLAUDE.md`「git」）。
 
 環境を新しく作るときの順序は、ネットワークと環境変数とセットアップスクリプト欄を入れる → セッションを立てて `env | grep GIT_AUTHOR` と `/root/toiito-setup.log` を見る → 作業を始める。
