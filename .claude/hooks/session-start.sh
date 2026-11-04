@@ -3,7 +3,7 @@
 # セッション起動フック。
 # 実行環境を見て準備のスクリプトへ振り分けるだけで、準備の中身は持たない。
 # どの実行環境でも `scripts/setup.sh` を呼び、クラウド（`CLAUDE_CODE_REMOTE=true`）ではその前に `scripts/cloud-session.sh` を呼ぶ。
-# スナップショットに残る分は `scripts/cloud-setup.sh` が持ち、セッションの前に一度だけ走る。
+# スナップショットに残る分は `scripts/cloud-snapshot.sh` が持ち、セッションの前に一度だけ走る。
 
 set -euo pipefail
 

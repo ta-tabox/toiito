@@ -245,7 +245,7 @@ check の前提は Postgres が起動していること（`docker compose up -d`
 
 | 順 | 走る時点 | 持つもの | 正 |
 |---|---|---|---|
-| 1 | スナップショットを作るとき（セットアップスクリプト欄） | スナップショットに残るもの（道具・依存・イメージ） | `scripts/cloud-setup.sh` |
+| 1 | スナップショットを作るとき（セットアップスクリプト欄） | スナップショットに残るもの（道具・依存・イメージ） | `scripts/cloud-snapshot.sh` |
 | 2 | 毎セッション（resume を含む） | 振り分けだけ | `.claude/hooks/session-start.sh` |
 | 3 | 2 の後、4 の前 | クラウドでだけ要る検査（名義・mise）と、セッションごとに消えるもの（PATH・dockerd のプロセス） | `scripts/cloud-session.sh` |
 | 4 | 3 の後 | 手元と共通の準備 | `scripts/setup.sh` |
@@ -261,7 +261,7 @@ issue と PR は、クラウドのセッションが与える MCP の GitHub ツ
 #### 設定の置き場
 
 クラウドの準備には置き場が三つある。
-リポジトリ（`scripts/cloud-setup.sh`・`.claude/hooks/session-start.sh`・`scripts/cloud-session.sh`）、クラウド環境の環境変数欄、同じ画面のネットワークとセットアップスクリプトの欄。
+リポジトリ（`scripts/cloud-snapshot.sh`・`.claude/hooks/session-start.sh`・`scripts/cloud-session.sh`）、クラウド環境の環境変数欄、同じ画面のネットワークとセットアップスクリプトの欄。
 振り分けの規則は一行:
 
 > **リポジトリの内容から復元できるものはリポジトリ、利用者や環境に固有のものはクラウド設定。**
@@ -272,7 +272,7 @@ issue と PR は、クラウドのセッションが与える MCP の GitHub ツ
 | 置くもの | 置き場 | 理由 |
 |---|---|---|
 | node / pnpm の版 | リポジトリ（`mise.toml`） | 手元・CI・クラウドが同じ一つを読む |
-| 準備の手順 | リポジトリ（`scripts/cloud-setup.sh`・`scripts/cloud-session.sh`） | セットアップスクリプト欄は `bash /home/user/toiito/scripts/cloud-setup.sh` の一行だけにする |
+| 準備の手順 | リポジトリ（`scripts/cloud-snapshot.sh`・`scripts/cloud-session.sh`） | セットアップスクリプト欄は `bash /home/user/toiito/scripts/cloud-snapshot.sh` の一行だけにする |
 | 開発用の環境変数（接続先・サインイン・AI の既定） | リポジトリ（`web/scripts/checkout-environment.ts`） | 値が `compose.yaml` とシードから決まる |
 | `core.hooksPath`（`.githooks` を指す） | リポジトリ（`scripts/setup.sh`） | 値がリポジトリの `.githooks/` から決まる |
 | ネットワーク | クラウド設定 | 「カスタム」で既定のリストを含め、`cdn.playwright.dev` を足す |
