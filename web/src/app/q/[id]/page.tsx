@@ -1,6 +1,7 @@
 /**
  * 一つの問いの対話画面。
  * 三者（人間・具体・抽象）の発話を時系列で並べ、次の一手を受け取る。
+ * 対話の上には、問いに付いた材料の一覧と、材料を付ける操作を置く。
  *
  * 一度に描くのはセッション一つで、既定は最新、`?s=<session_id>` が指すセッションがあればそのセッションを描く。
  * 過去のセッションは読み取り専用にする。
@@ -14,6 +15,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  addMaterialAction,
   createMemoAction,
   newSessionAction,
   retryTurnAction,
@@ -21,6 +23,8 @@ import {
   speakAction,
 } from "@/app/actions";
 import { LandingMark } from "@/components/landing-mark";
+import { MaterialForm } from "@/components/material-form";
+import { MaterialList } from "@/components/material-list";
 import { MessageBody } from "@/components/message-body";
 import { RetryForm, SpeakForm } from "@/components/speak-form";
 import { StatusForm } from "@/components/status-form";
@@ -29,6 +33,7 @@ import { requireCurrentUser } from "@/lib/auth/current-user";
 import {
   getPendingBody,
   getQuestion,
+  listMaterials,
   listMemosForSession,
   listMessages,
   listSessionsWithKeywords,
@@ -109,11 +114,13 @@ export default async function QuestionPage({
   const messages = await listMessages(owner, session.id);
   const memos = await listMemosForSession(owner, session.id);
   const pendingBody = await getPendingBody(owner, session.id);
+  const materials = await listMaterials(owner, question.id);
 
   const speak = speakAction.bind(null, session.id);
   const retry = retryTurnAction.bind(null, session.id);
   const newSession = newSessionAction.bind(null, question.id);
   const setStatus = setQuestionStatusAction.bind(null, question.id);
+  const addMaterial = addMaterialAction.bind(null, question.id);
 
   return (
     <main className="mx-auto w-full max-w-reading flex-1 px-5 py-10">
@@ -175,6 +182,14 @@ export default async function QuestionPage({
           ))}
         </nav>
       )}
+
+      <section aria-label="培地" className="mt-8">
+        <h2 className="text-meta text-ink-weak">培地</h2>
+        <div className="mt-2 space-y-4">
+          {materials.length > 0 && <MaterialList materials={materials} />}
+          <MaterialForm action={addMaterial} />
+        </div>
+      </section>
 
       <div data-recedes-while-writing="" className="mt-8 space-y-4">
         {messages.map((m) => (
