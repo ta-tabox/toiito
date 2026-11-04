@@ -212,15 +212,18 @@ model Message {
 /// `anchor_end <= 本文長` は Prisma スキーマでは表明できない（DB は本文長を知らない）。
 /// 本文を読める db.ts の addMemo が守る。
 model Memo {
-  id           String   @id @default(uuid(4)) @db.Uuid
-  message_id   String   @db.Uuid
+  id           String    @id @default(uuid(4)) @db.Uuid
+  message_id   String    @db.Uuid
   anchor_start Int
   anchor_end   Int
   keyword      String
   note         String?
-  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
   /// 挿入順の通し番号。同着を割るための列（意図は Message.seq）。
-  seq          BigInt   @default(autoincrement()) @unique
+  seq          BigInt    @default(autoincrement()) @unique
+  /// メモを削除した時刻。
+  /// 削除は行を残してこの列に時刻を書くだけなので、メモを返す読み取りは null の行だけを返す。
+  deleted_at   DateTime? @db.Timestamptz(6)
 
   message    Message    @relation(fields: [message_id], references: [id])
   links_from MemoLink[] @relation("MemoLinkFrom")
