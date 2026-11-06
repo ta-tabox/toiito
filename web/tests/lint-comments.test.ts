@@ -11,12 +11,21 @@ import {
 } from "@scripts/lint-comments.ts";
 import { describe, expect, it } from "vitest";
 
+const repositoryVocabulary = loadRepositoryVocabulary();
+
 const repositoryRoot = spawnSync("git", ["rev-parse", "--show-toplevel"], {
   cwd: import.meta.dirname,
   encoding: "utf8",
 }).stdout.trim();
 
-const repositoryVocabulary = loadRepositoryVocabulary();
+/**
+ * リポジトリのルートの `.vocabulary/` に、名前が `name` の語のファイルがあるかを返す。
+ *
+ * 語のファイルは足す語のあるリポジトリだけが置くので、無いリポジトリでは実物を読むテストを飛ばす。
+ */
+function hasRepositoryWordFile(name: "allow" | "deny"): boolean {
+  return existsSync(path.join(repositoryRoot, ".vocabulary", name));
+}
 
 /** `source` をリポジトリの語で検査し、違反した規則の ID だけを並べて返す。 */
 function rulesOf(source: string, fileName = "sample.ts"): string[] {
@@ -686,7 +695,7 @@ export function f() {}
     expect(toWordList("検査器\n口調")).toEqual(["検査器", "口調"]);
   });
 
-  it.skipIf(!existsSync(path.join(repositoryRoot, ".vocabulary/allow")))(
+  it.skipIf(!hasRepositoryWordFile("allow"))(
     ".vocabulary/allow の語はどれも、コメントに書いても報告しない",
     () => {
       const vocabulary = loadRepositoryVocabulary();
@@ -699,7 +708,7 @@ export function f() {}
     },
   );
 
-  it.skipIf(!existsSync(path.join(repositoryRoot, ".vocabulary/deny")))(
+  it.skipIf(!hasRepositoryWordFile("deny"))(
     ".vocabulary/deny の語はどれも、コメントに書けば報告する",
     () => {
       const vocabulary = loadRepositoryVocabulary();
@@ -747,23 +756,18 @@ describe("禁止語の一覧", () => {
 });
 
 /**
- * リポジトリの中の `writing.md` のパスを返す。
+ * リポジトリの中の `writing.md`（`.claude/rules/` の直下）のパスを返す。
  *
  * 見つからなければ throw する。
- * 配布先では `.claude/rules/` の直下、雛形そのものを持つリポジトリでは `tools/coding-standards/rules/` に置かれる。
  */
 function findWritingRules(): string {
-  const candidates = [
-    path.join(repositoryRoot, ".claude/rules/writing.md"),
-    path.join(repositoryRoot, "tools/coding-standards/rules/writing.md"),
-  ];
-  const found = candidates.find((candidate) => existsSync(candidate));
+  const writingRules = path.join(repositoryRoot, ".claude/rules/writing.md");
 
-  if (found === undefined) {
-    throw new Error(`writing.md が見つからない: ${candidates.join(", ")}`);
+  if (!existsSync(writingRules)) {
+    throw new Error(`writing.md が見つからない: ${writingRules}`);
   }
 
-  return found;
+  return writingRules;
 }
 
 /**
