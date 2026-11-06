@@ -16,15 +16,10 @@ set -uo pipefail
 
 ROOT=$(git rev-parse --show-toplevel)
 
-# 配布先では scripts/ の直下、雛形そのものを持つリポジトリでは tools/coding-standards/scripts/ に在る。
-LINT=""
-for candidate in "$ROOT/scripts/lint-vocabulary.sh" "$ROOT/tools/coding-standards/scripts/lint-vocabulary.sh"; do
-  if [ -f "$candidate" ]; then LINT="$candidate"; break; fi
-done
+LINT="$ROOT/scripts/lint-vocabulary.sh"
 
-if [ -z "$LINT" ]; then
-  echo "pre-commit: lint-vocabulary.sh が見つからないので語彙の検査を飛ばした。" >&2
-  echo "  探した先: $ROOT/scripts/ と $ROOT/tools/coding-standards/scripts/" >&2
+if [ ! -f "$LINT" ]; then
+  echo "pre-commit: $LINT が見つからないので語彙の検査を飛ばした。" >&2
   exit 0
 fi
 
