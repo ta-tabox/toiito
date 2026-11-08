@@ -15,7 +15,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { listQuestions, questionText } from "@/lib/db";
 import { formatTimestamp } from "@/lib/format";
-import { questionPathOf } from "@/lib/routes";
+import { questionPathOf, ROUTES } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 
@@ -38,14 +38,22 @@ export default async function Home() {
         <Link href="/memos" className="text-aux text-ink-weak hover:underline">
           メモ一覧 →
         </Link>
-        <form action={signOutAction}>
-          <button
-            type="submit"
+        <div className="flex items-baseline gap-4">
+          <Link
+            href={ROUTES.settings}
             className="text-aux text-ink-weak hover:underline"
           >
-            ログアウト
-          </button>
-        </form>
+            設定
+          </Link>
+          <form action={signOutAction}>
+            <button
+              type="submit"
+              className="text-aux text-ink-weak hover:underline"
+            >
+              ログアウト
+            </button>
+          </form>
+        </div>
       </div>
 
       <form action={createQuestionAction} className="mt-8 flex gap-2">
