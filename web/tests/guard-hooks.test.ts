@@ -66,6 +66,14 @@ describe("guard-force-push.sh", () => {
     ["+src:dst の refspec", "git push origin +main:main"],
     [":branch の削除 refspec", "git push origin :old-branch"],
     ["コマンド置換の中の -f", "echo $(git push -f)"],
+    [
+      "複数行のコマンドの 2 行目にある -f",
+      "git push origin stack/a\ngit push -f origin main",
+    ],
+    [
+      "複数行のコマンドの 2 行目にある main への --force-with-lease",
+      "git push origin stack/a\ngit push --force-with-lease origin main",
+    ],
     ["main への --force-with-lease", "git push --force-with-lease origin main"],
     [
       "HEAD:main への --force-with-lease",
