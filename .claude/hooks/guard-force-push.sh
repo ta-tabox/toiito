@@ -13,11 +13,11 @@
 # 経緯は docs/adr/20261102-stacked-pull-requests.md が持つ。
 #
 # 判定は「戻せない形か」だけで、それ以外は何も言わず settings.json の判定へ委ねる。
-# 迷ったら ask へ倒す。
-# 余計に訊かれるのは摩擦で済むが、素通りは事故になる。
+# 迷ったら ask を返す。
+# 余計に訊かれるのは摩擦で済むが、確認なしで通すと事故になる。
 #
 # settings.json の `if` は起動を絞るだけで、判定の責任は持たない。
-# あれは best-effort で、`$( )` やバッククォートを含む行——sleep を待つ until ループのような、git と無縁のもの——では開いて倒れて起動してくるので、git push かどうかはこのスクリプトの側でも確かめる。
+# `settings.json` の `if` は best-effort で、`$( )` やバッククォートを含む行——sleep を待つ until ループのような、git と無縁のもの——では絞り込みが効かずに起動してくるので、git push かどうかはこのスクリプトの側でも確かめる。
 
 set -euo pipefail
 
@@ -74,17 +74,19 @@ destructive+='|(^|[[:space:]]):[^[:space:]]+'
 
 # lease 付きのフラグを語の列から抜き出し、残りの語だけで破壊的な形を検査する。
 # 抜かずに検査すると `--force-with-lease` が `--force` の形に当たる。
-read -ra words <<< "$arguments"
+# macOS の既定の bash 3.2 は、set -u の下で空の配列を `"${arr[@]}"` や `"${arr[*]}"` で展開すると unbound variable で落ちる。
+# read は最初の 1 行しか読まないので、改行を空白へ替えて、複数行のコマンドの 2 行目以降も検査に入れる。
+read -ra words <<< "${arguments//$'\n'/ }"
 has_lease=false
 words_without_lease=()
-for word in "${words[@]}"; do
+for word in ${words[@]+"${words[@]}"}; do
   case "$word" in
     --force-with-lease | --force-with-lease=* | --force-if-includes) has_lease=true ;;
     *) words_without_lease+=("$word") ;;
   esac
 done
 
-if grep -qE "$destructive" <<< "${words_without_lease[*]}"; then
+if grep -qE "$destructive" <<< "${words_without_lease[*]:-}"; then
   ask "戻せない push の可能性がある（force / delete / mirror）。人間の諾否が要る"
   exit 0
 fi
@@ -96,7 +98,7 @@ fi
 # 送り先は、remote 名の後に並ぶ refspec の `:` より後ろ（`:` が無ければ refspec 全体）である。
 # 送り先を書かない push は現在のブランチへ送るので、main に居るかを見ずに人間へ回す。
 positionals=()
-for word in "${words_without_lease[@]}"; do
+for word in ${words_without_lease[@]+"${words_without_lease[@]}"}; do
   if [[ $word != -* ]]; then
     positionals+=("$word")
   fi
@@ -107,7 +109,7 @@ if ((${#positionals[@]} < 2)); then
   exit 0
 fi
 
-for refspec in "${positionals[@]:1}"; do
+for refspec in ${positionals[@]+"${positionals[@]:1}"}; do
   destination=${refspec#*:}
   destination=${destination//[\"\']/}
   destination=${destination#+}

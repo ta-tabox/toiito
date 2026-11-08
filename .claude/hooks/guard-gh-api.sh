@@ -7,18 +7,18 @@
 # 全部を ask にすると、レビューの読み取りや返信——`gh issue comment` が allow なのと同じ「戻せるコメント」——まで毎回訊かれる。
 # ここがコマンド全文を見て、戻せない側だけを ask へ回す。
 #
-# 素通しするのは次の三つだけである。
+# 確認を挟まずに通すのは次の三つだけである。
 #
 # - 読み取り（メソッドを書かず、フィールドも渡さない呼び出し）
 # - コメントと返信の投稿（`/comments`・`/replies` への POST。編集も削除もできる）
 # - レビュースレッドの resolve / unresolve（GraphQL。互いに戻せる）
 #
 # 判定は「戻せない形か」だけで、それ以外は何も言わず settings.json の判定へ委ねる。
-# 迷ったら ask へ倒す。
-# 余計に訊かれるのは摩擦で済むが、素通りは事故になる。
+# 迷ったら ask を返す。
+# 余計に訊かれるのは摩擦で済むが、確認なしで通すと事故になる。
 #
 # settings.json の `if` は起動を絞るだけで、判定の責任は持たない。
-# あれは best-effort で `$( )` を含む行では開いて倒れるので、`gh api` かどうかはこのスクリプトの側でも確かめる。
+# `settings.json` の `if` は best-effort で `$( )` を含む行では絞り込みが効かないので、`gh api` かどうかはこのスクリプトの側でも確かめる。
 
 set -euo pipefail
 
@@ -43,7 +43,7 @@ command_line=$(jq -r '.tool_input.command // ""') || {
   exit 0
 }
 
-# 起動条件が素通しさせた無関係なコマンドは、ここで `gh api` でないことを見て外す。
+# 起動条件の絞り込みを通ってきた無関係なコマンドは、ここで `gh api` でないことを見て外す。
 if ! grep -qE '(^|[[:space:]])gh[[:space:]]+api([[:space:]]|$)' <<< "$command_line"; then
   exit 0
 fi
@@ -80,7 +80,7 @@ writes+='|(^|[[:space:]])(-f|-F|--field|--raw-field|--input)([[:space:]]|=)'
 # コメントと返信だけは戻せる側に置く（`gh issue comment` が allow なのと同じ層）。
 #
 # 見るのはエンドポイントの位置だけで、コマンド全体を探さない。
-# 全体を探すと、フィールドの値がたまたま `/comments` を含むだけで別の書き込みが素通りする（`gh api repos/o/r/issues -f title="see /comments"` は issue の作成である）。
+# 全体を探すと、フィールドの値がたまたま `/comments` を含むだけで別の書き込みが確認なしで通る（`gh api repos/o/r/issues -f title="see /comments"` は issue の作成である）。
 # エンドポイントは `gh api` の直後か、メソッド指定を挟んだ直後にしか来ない。
 comment_endpoint='(^|[[:space:]])gh[[:space:]]+api[[:space:]]+'
 comment_endpoint+='((-X|--method)[[:space:]]+[A-Za-z]+[[:space:]]+)?'
