@@ -11,15 +11,14 @@
 #
 # 出力は報告だけで、置換も合否判定もしない(判定は人間)。
 #
-# `.vocabulary/banned.tsv` がリポジトリのルートに無ければ、雛形を持つリポジトリの置き場 `tools/coding-standards/` から読む。
+# 禁止語の一覧はリポジトリのルートの `.vocabulary/banned.tsv` から読み、ファイルが無ければ禁止語を検査しない。
 # リポジトリごとの設定は3つのファイルで行い、この検査そのものは書き換えない。
 #   .vocabulary/deny    そのリポジトリだけの禁止語を1行1語で足す
 #   .vocabulary/allow   その領域で比喩でない語を1行1語で足す(判定から外れる)
 #   .vocabulary/ignore  走査しないパスを1行1つの pathspec で足す(生ログ・原文保持の退避先など)
 # 単漢字の語(器・口・印)は無関係な複合語に埋もれて誤検出になるので、`.vocabulary/banned.tsv` の3列目に挙げた代表例を判定用のコピーからだけ取り除く。
 # 報告する本文は取り除く前の原文のまま。
-# 一覧をそのまま別のリポジトリへ配ると、その領域で普通の語を機械が潰す。
-# 配る前に、配布先の実コードでその語が比喩でなく技術用語として使われていないかを確かめる。
+# 一覧の語がこのリポジトリの領域で比喩でなく技術用語として使われていると、機械が普通の語を潰すので、その語は `.vocabulary/allow` へ足す。
 #
 # 使い方:
 #   lint-vocabulary.sh [<git diff への引数...>]   追加行だけを見る(引数を省略すると --cached)
@@ -58,7 +57,6 @@ banned_words=()
 strip_compounds=()
 
 BANNED_FILE="$REPO_ROOT/.vocabulary/banned.tsv"
-[ -f "$BANNED_FILE" ] || BANNED_FILE="$REPO_ROOT/tools/coding-standards/.vocabulary/banned.tsv"
 if [ -f "$BANNED_FILE" ]; then
   # 列の区切りはタブで、2列目(言い換え先)はこの検査では使わない。
   while IFS=$'\t' read -r word _instead compounds || [ -n "$word" ]; do
