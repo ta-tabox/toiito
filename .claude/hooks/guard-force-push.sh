@@ -75,7 +75,6 @@ destructive+='|(^|[[:space:]]):[^[:space:]]+'
 # lease 付きのフラグを語の列から抜き出し、残りの語だけで破壊的な形を検査する。
 # 抜かずに検査すると `--force-with-lease` が `--force` の形に当たる。
 # macOS の既定の bash 3.2 は、set -u の下で空の配列を `"${arr[@]}"` や `"${arr[*]}"` で展開すると unbound variable で落ちる。
-# 配列は空になりうるので、展開は `${arr[@]+"${arr[@]}"}`（空なら何も展開しない）と `${arr[*]:-}` で書く。
 read -ra words <<< "$arguments"
 has_lease=false
 words_without_lease=()
