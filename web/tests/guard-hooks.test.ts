@@ -10,23 +10,18 @@ const repositoryRoot = spawnSync("git", ["rev-parse", "--show-toplevel"], {
 }).stdout.trim();
 
 /**
- * フックのファイル名 `name` から、リポジトリの中の実体のパスを返す。
+ * フックのファイル名 `name` から、`.claude/hooks/` の直下にある実体のパスを返す。
  *
  * 見つからなければ throw する。
- * 配布先では `.claude/hooks/` の直下、雛形そのものを持つリポジトリでは `tools/gh-review/hooks/` に置かれる。
  */
 function findHook(name: string): string {
-  const candidates = [
-    path.join(repositoryRoot, ".claude/hooks", name),
-    path.join(repositoryRoot, "tools/gh-review/hooks", name),
-  ];
-  const found = candidates.find((candidate) => existsSync(candidate));
+  const hookPath = path.join(repositoryRoot, ".claude/hooks", name);
 
-  if (found === undefined) {
-    throw new Error(`${name} が見つからない: ${candidates.join(", ")}`);
+  if (!existsSync(hookPath)) {
+    throw new Error(`${name} が見つからない: ${hookPath}`);
   }
 
-  return found;
+  return hookPath;
 }
 
 const hooks = {
@@ -76,7 +71,16 @@ describe("guard-force-push.sh", () => {
       "HEAD:main への --force-with-lease",
       "git push --force-with-lease origin HEAD:main",
     ],
+    [
+      "refs/heads/main への --force-with-lease",
+      "git push --force-with-lease origin HEAD:refs/heads/main",
+    ],
+    ["送り先を書かない --force-with-lease", "git push --force-with-lease"],
     ["送り先の無い --force-with-lease", "git push --force-with-lease origin"],
+    [
+      "送り先が HEAD の --force-with-lease",
+      "git push --force-with-lease origin HEAD",
+    ],
     [
       "--force と並べた --force-with-lease",
       "git push --force-with-lease --force origin stack/a",
@@ -102,6 +106,10 @@ describe("guard-force-push.sh", () => {
     [
       "main 以外への --force-with-lease",
       "git push --force-with-lease origin stack/263-persona-tables",
+    ],
+    [
+      "refspec の後ろに置いた --force-with-lease",
+      "git push origin HEAD:feature --force-with-lease",
     ],
     [
       "値を持つ --force-with-lease と --force-if-includes",
