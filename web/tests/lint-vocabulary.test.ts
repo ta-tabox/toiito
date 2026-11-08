@@ -23,28 +23,18 @@ const repositoryRoot = spawnSync("git", ["rev-parse", "--show-toplevel"], {
 }).stdout.trim();
 
 /**
- * リポジトリの中の `lint-vocabulary.sh` のパスを返す。
+ * リポジトリの中の `lint-vocabulary.sh`（`scripts/` の直下）のパスを返す。
  *
  * 見つからなければ throw する。
- * 配布先では `scripts/` の直下、雛形そのものを持つリポジトリでは `tools/coding-standards/scripts/` に置かれる。
  */
 function findLintVocabulary(): string {
-  const candidates = [
-    path.join(repositoryRoot, "scripts/lint-vocabulary.sh"),
-    path.join(
-      repositoryRoot,
-      "tools/coding-standards/scripts/lint-vocabulary.sh",
-    ),
-  ];
-  const found = candidates.find((candidate) => existsSync(candidate));
+  const scriptPath = path.join(repositoryRoot, "scripts/lint-vocabulary.sh");
 
-  if (found === undefined) {
-    throw new Error(
-      `lint-vocabulary.sh が見つからない: ${candidates.join(", ")}`,
-    );
+  if (!existsSync(scriptPath)) {
+    throw new Error(`lint-vocabulary.sh が見つからない: ${scriptPath}`);
   }
 
-  return found;
+  return scriptPath;
 }
 
 const lintVocabulary = findLintVocabulary();

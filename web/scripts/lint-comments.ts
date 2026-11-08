@@ -227,12 +227,9 @@ const TRAILING_DECORATION = /^[*_`）)」】\s]*$/;
  * 語・言い換え先・除外する複合語の 3 列をタブで区切り、3 列目は空白で区切った語の並びにする。
  *
  * 語の正は `.claude/rules/writing.md`「語彙と読み手」節の表で、このファイルはそれを機械が読める形へ写したもの。
- * リポジトリのルートに無ければ `VOCAB_TEMPLATE_DIRECTORY` の下から読み、`lint-vocabulary.sh` も同じ順で探す。
+ * リポジトリのルートからの相対で、`scripts/lint-vocabulary.sh` も同じファイルを読む。
  */
 const VOCAB_BANNED_FILE = ".vocabulary/banned.tsv";
-
-/** 雛形そのものを持つリポジトリで、配布物を置くディレクトリ。 */
-const VOCAB_TEMPLATE_DIRECTORY = "tools/coding-standards";
 
 /**
  * リポジトリだけの禁止語を 1 行 1 語で持つファイルのパス。
@@ -1256,7 +1253,6 @@ function resolveTargets(argv: string[]): string[] {
 /**
  * リポジトリのルートにある `VOCAB_BANNED_FILE`・`VOCAB_DENY_FILE`・`VOCAB_ALLOW_FILE` を読み、語の配列にして返す。
  * ファイルが無い側は空の配列にする。
- * `VOCAB_BANNED_FILE` はルートに無ければ `VOCAB_TEMPLATE_DIRECTORY` の下から読む。
  *
  * ルートは `git rev-parse --show-toplevel` で求め、git を実行できない環境ではカレントディレクトリをルートと見なす。
  * `pnpm lint` はルートでなくパッケージのディレクトリ（toiito では `web/`）で走ることがあるので、カレントディレクトリから語のファイルを探すと見つからない。
@@ -1267,16 +1263,12 @@ export function loadRepositoryVocabulary(): RepositoryVocabulary {
   });
   const root = topLevel.status === 0 ? topLevel.stdout.trim() : ".";
 
-  const bannedFile = [
-    path.join(root, VOCAB_BANNED_FILE),
-    path.join(root, VOCAB_TEMPLATE_DIRECTORY, VOCAB_BANNED_FILE),
-  ].find((file) => fs.existsSync(file));
+  const bannedFile = path.join(root, VOCAB_BANNED_FILE);
 
   return {
-    banned:
-      bannedFile === undefined
-        ? []
-        : toBannedWordList(fs.readFileSync(bannedFile, "utf8")),
+    banned: fs.existsSync(bannedFile)
+      ? toBannedWordList(fs.readFileSync(bannedFile, "utf8"))
+      : [],
     deny: loadWordFile(path.join(root, VOCAB_DENY_FILE)),
     allow: loadWordFile(path.join(root, VOCAB_ALLOW_FILE)),
   };

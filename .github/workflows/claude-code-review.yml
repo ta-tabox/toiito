@@ -4,8 +4,9 @@ on:
   pull_request:
     # 毎 push で走ると増分のたびに同じ指摘が積むので、synchronize は入れない。
     # 自動で走らせるのは開いた一度だけ（draft から上げた ready_for_review と、閉じて開き直した reopened も同じ一度に当たる）。
-    # 以後の再レビューは PR コメントの @claude で明示的に呼ぶ。
-    types: [opened, ready_for_review, reopened]
+    # PR コメントの @claude が起動するのは claude.yml で、この 2 job ではない。
+    # 以後にこの 2 job を走らせ直すときと、ワークフローを配る前に開いていた PR を見せるときは、PR にラベル claude-review を付ける（付いていれば外して付け直す）。
+    types: [opened, ready_for_review, reopened, labeled]
 
 jobs:
   claude-review:
@@ -16,7 +17,10 @@ jobs:
     # シークレットと id-token が渡るかどうかを決めているのは fork かどうかであって、PR を出した人の権限ではない。
     # step でなく job に置く。
     # step だけを止めると job は成功で終わり、中身が空の成功と実際にレビューが走った成功を check 一覧で区別できなくなる。
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # 他のラベルを付けるたびにレビューが走ると同じ指摘が積むので、labeled はラベル claude-review のときだけ通す。
+    if: |
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'labeled' || github.event.label.name == 'claude-review')
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -97,8 +101,10 @@ jobs:
   # この job はリポジトリの規約（.claude/rules/ と skill review-checklist の表）を差分へ当て、当たった行にだけインラインコメントを付ける。
   # プラグインのコマンドは手順が固定で、system prompt の追記が規約の側まで届く保証が無いので、job を分ける。
   claude-style-review:
-    # 絞りは上の job と同じ（同一リポジトリ由来の PR に限る。理由は上の job のコメント）。
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # 絞りは上の job と同じ（同一リポジトリ由来の PR と、ラベル claude-review の labeled に限る。理由は上の job のコメント）。
+    if: |
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'labeled' || github.event.label.name == 'claude-review')
 
     runs-on: ubuntu-latest
     timeout-minutes: 20
