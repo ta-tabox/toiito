@@ -4,73 +4,21 @@
  * enum・外部キー・check 制約は本物に当てないと表明した意味を持たないので、ユニットテストも本物の Postgres へ繋ぐ。
  * 走り間の隔離を `database.ts` が持ち、ケース間の隔離は `truncate.ts` が持つ。
  * 積むだけの形にすると別のブランチで積んだ migration が剥がれずに残り、古い側のコードが新しい enum や列に当たって落ちる。
- *
- * `prisma migrate reset` は使わない。
- * Prisma 7 は `migrate reset` を破壊的操作として検知し、AI エージェントからの実行に人間の同意を毎回要求する。
- * テストは無人でも回る必要があるので、drop / create を直に実行する（`e2e/setup/reset-database.ts` と同じ経路）。
  */
 
-import { execFileSync } from "node:child_process";
-import { createRequire } from "node:module";
 import path from "node:path";
-import {
-  adminUrl,
-  assertIsTestDatabase,
-  TEST_DATABASE_URL,
-} from "./test-database-url";
-
-const webRoot = path.resolve(import.meta.dirname, "../..");
-
-const prismaCli = createRequire(import.meta.url).resolve(
-  "prisma/build/index.js",
-);
+import { recreateDatabase, runPrisma } from "./prisma-cli";
+import { TEST_DATABASE_URL } from "./test-database-url";
 
 const databaseName = path.basename(new URL(TEST_DATABASE_URL).pathname);
-
-/**
- * Prisma CLI を接続先を明示して叩く。
- *
- * `.env.local` の開発用接続先を掴ませないため、DATABASE_URL と DIRECT_URL の両方を渡す。
- */
-function runPrisma(args: string[], url: string, input?: string): void {
-  execFileSync(process.execPath, [prismaCli, ...args], {
-    cwd: webRoot,
-    input,
-    stdio: ["pipe", "ignore", "pipe"],
-    env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url },
-  });
-}
-
-/**
- * データベースを削除して空のものを作り直す。
- *
- * force を付けるのは、前の走りが落ちた接続を残していても止まらないようにするため。
- * drop / create はトランザクションの内側で走れないので、二文をまとめて渡さない。
- */
-function recreateDatabase(): void {
-  const admin = adminUrl(TEST_DATABASE_URL);
-
-  runPrisma(
-    ["db", "execute", "--stdin"],
-    admin,
-    `drop database if exists "${databaseName}" with (force)`,
-  );
-  runPrisma(
-    ["db", "execute", "--stdin"],
-    admin,
-    `create database "${databaseName}"`,
-  );
-}
 
 /**
  * vitest の globalSetup。
  * テスト一走ごとに一度だけ走る。
  */
 export default function setup(): void {
-  assertIsTestDatabase(TEST_DATABASE_URL);
-
   try {
-    recreateDatabase();
+    recreateDatabase(TEST_DATABASE_URL);
     runPrisma(["migrate", "deploy"], TEST_DATABASE_URL);
   } catch (cause) {
     const detail =
