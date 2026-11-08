@@ -72,7 +72,7 @@ paths:
 
 `pnpm check` が見る規則は記憶で守らず、報告が出てから直す。
 error は終了コードを赤にし、warn は報告だけを出すので、warn も報告が出たら直す。
-severity はリポジトリで決める（下は雛形の既定）。
+severity はリポジトリで決める（下は既定値）。
 「何のために」の列は、各規則が防ぐものを一句で持つ。
 `scripts/lint-comments.ts` の規則は、各検査の JSDoc が理由を持つ。
 
