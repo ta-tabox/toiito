@@ -1,9 +1,15 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
+import { deleteUser } from "@tests/setup/delete-user";
 import { createOwner } from "@tests/setup/owner";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { parseAnchor } from "@/lib/anchors";
 import * as db from "@/lib/db";
 import { QUESTION_STATUSES } from "@/lib/question";
+import {
+  decryptApiKey,
+  encryptApiKey,
+  readEncryptionKeyRing,
+} from "@/lib/secrets";
 import type { Anchor, MaterialDraft, OwnerId } from "@/lib/types";
 
 afterAll(async () => {
@@ -723,5 +729,164 @@ describe("usage_logs", () => {
         { call_count: 1, input_tokens: 0, output_tokens: 0 },
       ]);
     });
+  });
+});
+
+describe("user_model_settings", () => {
+  /** 保存する平文で、API キーの形をした値。 */
+  const PLAIN_API_KEY = "sk-ant-api03-plain-text-for-db-test";
+
+  /** テストの中だけで使う暗号化の鍵の一覧。 */
+  const keys = readEncryptionKeyRing({
+    TOIITO_API_KEY_ENCRYPTION_KEYS: `test:${randomBytes(32).toString("base64")}`,
+  });
+
+  let other: OwnerId;
+
+  beforeEach(async () => {
+    other = await createOwner("other@example.com");
+  });
+
+  it("設定の行が無い利用者は、モデルが未設定で API キーが未登録と出る", async () => {
+    const summary = await db.getModelSettingSummary(owner);
+
+    expect(summary).toEqual({ model: undefined, has_api_key: false });
+    expect(await db.getModelCredentials(owner)).toBeUndefined();
+  });
+
+  it("保存したモデルと API キーは、読み直すと登録済みと出て、復号すると平文に戻る", async () => {
+    await db.saveModelSetting(owner, {
+      model: "claude-opus-5",
+      encrypted_api_key: encryptApiKey(PLAIN_API_KEY, keys),
+    });
+
+    const summary = await db.getModelSettingSummary(owner);
+    const credentials = await db.getModelCredentials(owner);
+
+    expect(summary).toEqual({ model: "claude-opus-5", has_api_key: true });
+    expect(credentials?.model).toBe("claude-opus-5");
+    expect(decryptApiKey(credentials?.encrypted_api_key ?? "", keys)).toBe(
+      PLAIN_API_KEY,
+    );
+  });
+
+  it("画面に出す形は暗号文を持たない", async () => {
+    const encrypted = encryptApiKey(PLAIN_API_KEY, keys);
+    await db.saveModelSetting(owner, {
+      model: null,
+      encrypted_api_key: encrypted,
+    });
+
+    const summary = await db.getModelSettingSummary(owner);
+
+    expect(Object.keys(summary).sort()).toEqual(["has_api_key", "model"]);
+    expect(JSON.stringify(summary)).not.toContain(encrypted);
+  });
+
+  it("encryptApiKey を通して保存した列は平文を含まない", async () => {
+    await db.saveModelSetting(owner, {
+      model: null,
+      encrypted_api_key: encryptApiKey(PLAIN_API_KEY, keys),
+    });
+
+    const [row] = await db.listEncryptedApiKeys();
+
+    expect(row.encrypted_api_key).not.toContain(PLAIN_API_KEY);
+  });
+
+  it("API キーを省いて保存すると、モデルだけが変わり API キーは残る", async () => {
+    const encrypted = encryptApiKey(PLAIN_API_KEY, keys);
+    await db.saveModelSetting(owner, {
+      model: "claude-opus-5",
+      encrypted_api_key: encrypted,
+    });
+
+    await db.saveModelSetting(owner, { model: null });
+    const credentials = await db.getModelCredentials(owner);
+
+    expect(credentials).toEqual({
+      model: undefined,
+      encrypted_api_key: encrypted,
+    });
+  });
+
+  it("API キーを削除すると未登録に戻り、選んだモデルは残る", async () => {
+    await db.saveModelSetting(owner, {
+      model: "claude-opus-5",
+      encrypted_api_key: encryptApiKey(PLAIN_API_KEY, keys),
+    });
+
+    await db.deleteApiKey(owner);
+
+    expect(await db.getModelSettingSummary(owner)).toEqual({
+      model: "claude-opus-5",
+      has_api_key: false,
+    });
+    expect(await db.getModelCredentials(owner)).toBeUndefined();
+  });
+
+  it("他の利用者の設定は読めない", async () => {
+    await db.saveModelSetting(other, {
+      model: "claude-opus-5",
+      encrypted_api_key: encryptApiKey(PLAIN_API_KEY, keys),
+    });
+
+    expect(await db.getModelSettingSummary(owner)).toEqual({
+      model: undefined,
+      has_api_key: false,
+    });
+    expect(await db.getModelCredentials(owner)).toBeUndefined();
+  });
+
+  it("自分の設定を書いても削除しても、他の利用者の設定は変わらない", async () => {
+    const encrypted = encryptApiKey(PLAIN_API_KEY, keys);
+    await db.saveModelSetting(other, {
+      model: "claude-opus-5",
+      encrypted_api_key: encrypted,
+    });
+
+    await db.saveModelSetting(owner, {
+      model: null,
+      encrypted_api_key: encryptApiKey("sk-ant-owner", keys),
+    });
+    await db.deleteApiKey(owner);
+
+    expect(await db.getModelCredentials(other)).toEqual({
+      model: "claude-opus-5",
+      encrypted_api_key: encrypted,
+    });
+  });
+
+  it("利用者を削除すると、その利用者の設定の行も消える", async () => {
+    await db.saveModelSetting(other, {
+      model: null,
+      encrypted_api_key: encryptApiKey(PLAIN_API_KEY, keys),
+    });
+
+    await deleteUser(other);
+
+    expect(await db.listEncryptedApiKeys()).toEqual([]);
+  });
+
+  it("読んだ後に利用者が API キーを差し替えていれば、暗号文の置き換えは何もしない", async () => {
+    await db.saveModelSetting(owner, {
+      model: null,
+      encrypted_api_key: encryptApiKey(PLAIN_API_KEY, keys),
+    });
+    const [row] = await db.listEncryptedApiKeys();
+    const replacedByUser = encryptApiKey("sk-ant-replaced", keys);
+    await db.saveModelSetting(owner, {
+      model: null,
+      encrypted_api_key: replacedByUser,
+    });
+
+    const replaced = await db.replaceEncryptedApiKey(
+      row,
+      encryptApiKey(PLAIN_API_KEY, keys),
+    );
+    const credentials = await db.getModelCredentials(owner);
+
+    expect(replaced).toBe(false);
+    expect(credentials?.encrypted_api_key).toBe(replacedByUser);
   });
 });

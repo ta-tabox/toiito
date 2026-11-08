@@ -18,6 +18,7 @@
     "db:prune": "node scripts/prune-test-databases.ts",
     "migrate:prod": "node --env-file-if-exists=.env.local scripts/migrate.ts prod",
     "migrate:preview": "node --env-file-if-exists=.env.local scripts/migrate.ts preview",
+    "keys:reencrypt": "node --env-file-if-exists=.env.local scripts/reencrypt-api-keys.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
