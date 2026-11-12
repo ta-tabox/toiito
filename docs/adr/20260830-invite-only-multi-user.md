@@ -1,6 +1,6 @@
 # 自分専用という運用前提を改め、招待制で他人へ開く
 
-- **状態**: 採用
+- **状態**: supersede 済み（→ 20261112-invite-only-multi-user）
 - **決定日**: 2026-08-30
 - **関係する ADR**: 20260828-production-runtime, 20260829-production-basic-auth
 

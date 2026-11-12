@@ -115,7 +115,7 @@ ADR の外（コード・現況の文書・issue・PR）から指すときは、
 | [20260829-typescript-7-parser](20260829-typescript-7-parser.md) | 0011 | TypeScript は 7 へ上げ、コメント検査器のパーサだけ 6 系を別名で持つ | 2026-08-29 | 採用 |
 | [20260830-auth-better-auth](20260830-auth-better-auth.md) | 0019 | 認証基盤を Better Auth の自前ホストにし、Google OAuth 一本で始める | 2026-08-30 | supersede 済み（→ 20260906-auth-better-auth） |
 | [20260830-central-metaphor-brewing](20260830-central-metaphor-brewing.md) | 0016 | 中心メタファーをコンポスターから醸造（発酵槽）へ移す | 2026-08-30 | 採用 |
-| [20260830-invite-only-multi-user](20260830-invite-only-multi-user.md) | 0018 | 自分専用という運用前提を改め、招待制で他人へ開く | 2026-08-30 | 採用 |
+| [20260830-invite-only-multi-user](20260830-invite-only-multi-user.md) | 0018 | 自分専用という運用前提を改め、招待制で他人へ開く | 2026-08-30 | supersede 済み（→ 20261112-invite-only-multi-user） |
 | [20260830-ownership-granularity](20260830-ownership-granularity.md) | 0020 | 所有権を、所有のルートにだけ持たせる | 2026-08-30 | supersede 済み（→ 20260906-ownership-granularity） |
 | [20260830-status-value-set](20260830-status-value-set.md) | 0017 | `status` の値域を、比喩を外して組み直す | 2026-08-30 | 採用 |
 | [20260831-ai-provider-scope](20260831-ai-provider-scope.md) | 0021 | AI を呼び出すコードをプロバイダ単位で切り、深さをプロバイダの設定にまとめる | 2026-08-31 | supersede 済み（→ 20260915-ai-provider-per-user） |
@@ -149,6 +149,8 @@ ADR の外（コード・現況の文書・issue・PR）から指すときは、
 | [20260915-user-api-key-encryption](20260915-user-api-key-encryption.md) | 0044 | 利用者の API キーを暗号化して DB に置き、鍵を環境変数に置いて鍵 ID で回転する | 2026-09-15 | 採用 |
 | [20260917-adr-date-slug-identifier](20260917-adr-date-slug-identifier.md) | — | ADR の識別子を、連番から決定日と slug の組にする | 2026-09-17 | 採用 |
 | [20261102-stacked-pull-requests](20261102-stacked-pull-requests.md) | — | スタック型 PR を GitHub のスタック機能で積み、マージの後の積み直しを GitHub に任せ、マージは最下段の PR でだけ押す | 2026-11-02 | 採用 |
+| [20261112-guest-sign-in-with-quota](20261112-guest-sign-in-with-quota.md) | — | サインインしない読み手には、期限付きのゲストとして見本の問いと上限付きの対話を渡す | 2026-11-12 | 採用 |
+| [20261112-invite-only-multi-user](20261112-invite-only-multi-user.md) | — | 自分専用という運用前提を改め、招待制で他人へ開き、ゲストだけを許可リストの例外にする（20260830-invite-only-multi-user の改訂） | 2026-11-12 | 採用 |
 
 並びは識別子の辞書順で、`docs/adr/` のファイルの並びと一致する。
 `旧番号` は、識別子を決定日と slug の組へ改める前の 4 桁の連番で、書いた順を表す。
