@@ -151,6 +151,7 @@ ADR の外（コード・現況の文書・issue・PR）から指すときは、
 | [20261102-stacked-pull-requests](20261102-stacked-pull-requests.md) | — | スタック型 PR を GitHub のスタック機能で積み、マージの後の積み直しを GitHub に任せ、マージは最下段の PR でだけ押す | 2026-11-02 | 採用 |
 | [20261112-guest-sign-in-with-quota](20261112-guest-sign-in-with-quota.md) | — | サインインしない読み手には、期限付きのゲストとして見本の問いと上限付きの対話を渡す | 2026-11-12 | 採用 |
 | [20261112-invite-only-multi-user](20261112-invite-only-multi-user.md) | — | 自分専用という運用前提を改め、招待制で他人へ開き、ゲストだけを許可リストの例外にする（20260830-invite-only-multi-user の改訂） | 2026-11-12 | 採用 |
+| [20261114-persona-judge-fixed-inputs](20261114-persona-judge-fixed-inputs.md) | — | ペルソナの逸脱検査は、固定の入力集を実 API の二体に通し、二体と別の上位モデルで判定し、結果をリポジトリに置く | 2026-11-14 | 採用 |
 
 並びは識別子の辞書順で、`docs/adr/` のファイルの並びと一致する。
 `旧番号` は、識別子を決定日と slug の組へ改める前の 4 桁の連番で、書いた順を表す。
