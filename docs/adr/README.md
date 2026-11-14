@@ -151,6 +151,7 @@ ADR の外（コード・現況の文書・issue・PR）から指すときは、
 | [20261102-stacked-pull-requests](20261102-stacked-pull-requests.md) | — | スタック型 PR を GitHub のスタック機能で積み、マージの後の積み直しを GitHub に任せ、マージは最下段の PR でだけ押す | 2026-11-02 | 採用 |
 | [20261112-guest-sign-in-with-quota](20261112-guest-sign-in-with-quota.md) | — | サインインしない読み手には、期限付きのゲストとして見本の問いと上限付きの対話を渡す | 2026-11-12 | 採用 |
 | [20261112-invite-only-multi-user](20261112-invite-only-multi-user.md) | — | 自分専用という運用前提を改め、招待制で他人へ開き、ゲストだけを許可リストの例外にする（20260830-invite-only-multi-user の改訂） | 2026-11-12 | 採用 |
+| [20261113-crisis-utterance-response](20261113-crisis-utterance-response.md) | — | 自傷・希死念慮・進行中の危害を含む発話には、二体が深掘りを止めて窓口を示し、対話画面が窓口を常に示す | 2026-11-13 | 採用 |
 | [20261114-user-data-erasure-and-export](20261114-user-data-erasure-and-export.md) | — | 利用者は問い一件と全データを物理削除でき、全データを JSON と Markdown で書き出せる | 2026-11-14 | 採用 |
 
 並びは識別子の辞書順で、`docs/adr/` のファイルの並びと一致する。
