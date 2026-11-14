@@ -154,6 +154,7 @@ ADR の外（コード・現況の文書・issue・PR）から指すときは、
 | [20261113-crisis-utterance-response](20261113-crisis-utterance-response.md) | — | 自傷・希死念慮・進行中の危害を含む発話には、二体が深掘りを止めて窓口を示し、対話画面が窓口を常に示す | 2026-11-13 | 採用 |
 | [20261114-a11y-violations-fail-ci](20261114-a11y-violations-fail-ci.md) | — | アクセシビリティの自動検査の違反を、除外の一覧に無いかぎり E2E の失敗にする | 2026-11-14 | 採用 |
 | [20261114-dependabot-alerts-notify-only](20261114-dependabot-alerts-notify-only.md) | — | 依存の脆弱性は Dependabot の通知と修正の PR で監視し、CI のブロックにしない | 2026-11-14 | 採用 |
+| [20261114-guest-sign-in-creation-cap](20261114-guest-sign-in-creation-cap.md) | — | ゲストのサインインに、全ゲスト合計の作成数の上限を課す | 2026-11-14 | 採用 |
 | [20261114-persona-judge-fixed-inputs](20261114-persona-judge-fixed-inputs.md) | — | ペルソナの逸脱検査は、固定の入力集を実 API の二体に通し、二体と別の上位モデルで判定し、結果をリポジトリに置く | 2026-11-14 | 採用 |
 | [20261114-user-data-erasure-and-export](20261114-user-data-erasure-and-export.md) | — | 利用者は問い一件と全データを物理削除でき、全データを JSON と Markdown で書き出せる | 2026-11-14 | 採用 |
 
