@@ -20,7 +20,7 @@ CI（`.github/workflows/check.yml`）は依存の監査を走らせず、Dependa
 2. **脆弱性を、CI の赤にもマージのブロックにもしない。**
    `check.yml` に依存の監査を足さない。
 3. **定期的に版を上げる Dependabot version updates は入れない。**
-4. **有効にした設定は GitHub 側の状態で差分に残らないので、設定の値と確かめた日を `docs/HARNESS.md` に書く。**
+4. **有効にした設定は GitHub のリポジトリ設定の値で差分に残らないので、設定の値と確かめた日を `docs/HARNESS.md` に書く。**
 
 ## 理由
 
@@ -30,7 +30,7 @@ CI（`.github/workflows/check.yml`）は依存の監査を走らせず、Dependa
   修正の PR を GitHub が立てるので、通知を受けた後の手順が一つ減る
 - **CI に通知だけの監査を併せて足す案を採らなかった条件**: alerts と同じ情報が二経路で出て、CI のログは誰も読まない
 - **version updates を入れない理由**: 20260829-prisma-major-hold と 20260829-typescript-7-parser は版を名指しで止めており、定期の PR はその版を毎回上げようとする
-- **設定の値を文書に書く理由**: main の ruleset が無効のまま気付かれなかった経験（#152（main の ruleset が誰にも効いていない））から、GitHub 側の状態は実際の値と確かめた日を文書に置く
+- **設定の値を文書に書く理由**: main の ruleset が無効のまま気付かれなかった経験（#152（main の ruleset が誰にも効いていない））から、GitHub のリポジトリ設定の値は、実際の値と確かめた日を文書に置く
 
 ## 帰結
 
