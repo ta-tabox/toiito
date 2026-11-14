@@ -157,6 +157,7 @@ ADR の外（コード・現況の文書・issue・PR）から指すときは、
 | [20261114-guest-sign-in-creation-cap](20261114-guest-sign-in-creation-cap.md) | — | ゲストのサインインに、全ゲスト合計の作成数の上限を課す | 2026-11-14 | 採用 |
 | [20261114-operator-key-call-limit](20261114-operator-key-call-limit.md) | — | 招待した利用者には、運営のキーで呼ぶ AI の回数に上限を課し、超えたら断る | 2026-11-14 | 採用 |
 | [20261114-persona-judge-fixed-inputs](20261114-persona-judge-fixed-inputs.md) | — | ペルソナの逸脱検査は、固定の入力集を実 API の二体に通し、二体と別の上位モデルで判定し、結果をリポジトリに置く | 2026-11-14 | 採用 |
+| [20261114-static-security-headers](20261114-static-security-headers.md) | — | セキュリティヘッダは全経路に静的に付ける三つにし、スクリプトを絞る CSP は入れない | 2026-11-14 | 採用 |
 | [20261114-user-data-erasure-and-export](20261114-user-data-erasure-and-export.md) | — | 利用者は問い一件と全データを物理削除でき、全データを JSON と Markdown で書き出せる | 2026-11-14 | 採用 |
 
 並びは識別子の辞書順で、`docs/adr/` のファイルの並びと一致する。
