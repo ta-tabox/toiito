@@ -191,6 +191,11 @@ DB 側の正は `prisma/schema.prisma` の enum `QuestionStatus`、アプリ側�
   重複させない（分業が崩れると二体である意味が消える）
 - 一回の人間発話につき AI 呼び出しは二回（ai_a → その出力込みで ai_b）
   ai_b は ai_a への応答であることに意味がある（衝突と転位）ので、並列にしない
+- **培地の付与は二体と別の AI 呼び出し**
+  利用者が対話画面で「培地を付ける」を押したときだけ、web 検索つきの呼び出しを一回行い、検査に通った材料を `materials` へ保存する
+  システムプロンプトは `web/src/prompts/material.md` に置き、順序は `web/src/lib/material-from-ai.ts` が持つ
+- **材料は二体へ渡さない**
+  二体の呼び出しの本文（`buildUserContent`）は問いと対話だけを持ち、材料は利用者が画面で読むだけにする
 
 ## ディレクトリ構造
 
@@ -205,6 +210,7 @@ toiito/
     │   ├── components/    UI 部品（共通部品は ui/）
     │   ├── lib/           境界・純粋な計算・一往復の手順（置き場は .claude/rules/layers.md が正）
     │   ├── personas/      二体のシステムプロンプト（.md で管理）
+    │   ├── prompts/       二体以外の AI 呼び出しのシステムプロンプト（.md で管理）
     │   ├── proxy.ts       全リクエストの入口。cookie が無ければ /login へ送る
     │   └── generated/     Prisma クライアント（生成物・gitignore）
     ├── scripts/           node が直接読む開発用スクリプト（pnpm seed・コメント検査・migration）
