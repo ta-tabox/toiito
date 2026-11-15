@@ -88,6 +88,7 @@ severity はリポジトリで決める（下は既定値）。
 | 言い切った文への `——` の後置き | 同上 | warn | 閉じた文へ読み手を戻さない |
 | 関数の JSDoc の理由が 2 文以内か | 同上 | warn | 全関数に理由の段落が付くのを止める |
 | バッククォートで名指した識別子・ファイルの実在 | 同上 | warn | 改名した相手を古い名前で指さない |
+| 禁止語の表と `banned.tsv` の語の一致 | `tests/lint-comments.test.ts` | error | 写しの直し忘れを止める |
 | import は `@` 起点 | biome `style/noRestrictedImports` | error | 相対パスの登り（`../`）は位置を語らない |
 | 1 行 if・三項の多重ネスト・複数代入・多重宣言 | biome | error | 書き手には短く、読み手には遅い形を止める |
 | floating promise | biome `nursery/noFloatingPromises` | error | 待たない意図を `void` で明示させる |

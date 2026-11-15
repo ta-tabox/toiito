@@ -121,7 +121,7 @@
   / Before writing, scan for demonstratives, metaphors, and references to the conversation
 - 製品の比喩語は UI の文言と設計文書に閉じ、コードのコメントと名前は技術の語で言う
   検証の層の記号（L0〜L5 など）も、コメントでは `tsc`・lint・単体テストと道具の名で言う
-- 主語・目的語・失敗の形（throw・undefined・空配列）を毎回書く
+- 主語・目的語・失敗の形（throw・undefined・None・空配列）を毎回書く
   日本語は主語と目的語を省いても文になるので、書き手の前提がそのまま抜ける
 
 読者は、このリポジトリの md を読んでいないエンジニアと決める。
@@ -152,14 +152,16 @@
 | `.vocabulary/allow` | この領域で比喩でない語（判定から外れる） | 1行1語 |
 | `.vocabulary/ignore` | 走査しないパス | 1行1つの pathspec |
 
-`banned.tsv` は表の写しなので表を直したコミットで一緒に直し、一致はテストが見る。
+`banned.tsv` は表の写しなので表を直したコミットで一緒に直す。
+表と `banned.tsv` の語の一致はリポジトリのテスト（例: `tests/lint-comments.test.ts`）が見て、どのテストが見るかは `languages/<lang>.md`「機械が見ている分」の表が持つ。
 残る3ファイルはこのリポジトリが足す側で、足すときに表と `banned.tsv` は変えない。
 
 2本の検査が4ファイルの語で判定し、見る面だけが違う。
+コメントの禁止語は、コメントのリンタ（例: `scripts/lint-comments.ts`）が禁止語を見る言語ではリンタが見て、見ない言語では git の追加行として `lint-vocabulary.sh` が見る。
 
 | 検査 | 見る面 | 呼ぶ側 |
 |---|---|---|
-| `lint-comments.ts` | TypeScript のコメント | `pnpm lint` |
+| コメントのリンタ（例: `lint-comments.ts`） | コメント | 検査の入口 |
 | `lint-vocabulary.sh` | git の追加行 | `.githooks/pre-commit` |
 | `lint-vocabulary.sh` | コミット本文 | `.githooks/commit-msg` |
 | `lint-vocabulary.sh` | PR 本文 | `.github/workflows/lint-pr-body.yml` |
