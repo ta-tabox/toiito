@@ -13,6 +13,7 @@
  * next dev も next start も Node で走るので、Edge でだけ環境変数が読めない類の失敗は Playwright では出ない（本番そのものを叩く確認は `docs/DEPLOY.md`「ログイン」）。
  */
 
+import { randomBytes } from "node:crypto";
 import { E2E_BASE_URL, E2E_PORT } from "@e2e/setup/base-url";
 import { E2E_DATABASE_URL } from "@e2e/setup/e2e-database-url";
 import { defineConfig, devices } from "@playwright/test";
@@ -78,6 +79,8 @@ export default defineConfig({
         // シードの二人ともサインインできるようにする。
         // 二人目が入れないと、他人の問いが見えないことを二人分のセッションで確かめられない。
         TOIITO_ALLOWED_EMAILS: SEED_USERS.map((user) => user.email).join(","),
+        // 設定の画面が API キーを暗号化し、一往復が復号するための鍵で、走るたびに作り直すのでリポジトリに鍵の値を置かない。
+        TOIITO_API_KEY_ENCRYPTION_KEYS: `e2e:${randomBytes(32).toString("base64")}`,
       },
     },
   ],

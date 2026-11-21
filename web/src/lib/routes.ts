@@ -6,10 +6,11 @@
 
 /**
  * 画面のルートの型。
- * `questionPathOf` が URL を組み立てる元になり、`revalidatePath` へ型のまま渡すときにも使う。
+ * `questionPathOf` が URL を組み立てる元になり、`revalidatePath` とリンクへ型のまま渡すときにも使う。
  */
 export const ROUTES = {
   question: "/q/[id]",
+  settings: "/settings",
 } as const;
 
 /**

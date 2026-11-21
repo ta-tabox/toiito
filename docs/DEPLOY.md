@@ -200,6 +200,7 @@ Preview では次を守る。
 - Vercel の共有リンクは自分が開くためだけに発行し、他人へ渡さない
 - `ANTHROPIC_API_KEY` を Preview へ入れず、`TOIITO_FAKE_AI=1` を外さない
 - `TOIITO_ALLOWED_EMAILS` に実在の email を入れない（ログインの画面が、未サインインの相手へ許可リストの email をボタンとして並べる）
+- 設定の画面（`/settings`）へ実際の API キーを入力しない（フェイクモードでは API キーを使わないが、暗号文は Preview の DB に保存される）
 
 決定の経緯と採らなかった案は `adr/20260829-preview-neon-branch.md`。
 
