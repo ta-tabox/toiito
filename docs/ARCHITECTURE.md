@@ -16,6 +16,9 @@ VISION の設計原理が上位。
 - **Claude API（Anthropic）** — 二体 AI の対話生成
   Server Actions（サーバー側）からのみ叩く
   呼び出し規約は `lib/ai/` がプロバイダ非依存の形で持ち、固有の値域と API の作法は `lib/ai/anthropic.ts` に閉じる（経緯は `adr/20260831-ai-provider-scope.md`）
+  対応するプロバイダは Anthropic だけで、モデルと API キーは一往復ごとに利用者の設定（`user_model_settings`）から解決する
+  API キーを登録した利用者は自分の API キーと選んだモデルで呼び、登録していない利用者は運営の API キーと既定のモデルで呼ぶ（理由は `adr/20260915-ai-provider-per-user.md`・`adr/20260915-operator-key-for-keyless-users.md`）
+  env が決めるのは既定のモデル・思考の深さ・上限・運営の API キーで、利用者の設定はモデルと API キーだけを上書きする
 - **Better Auth（自前ホスト）** — 認証
   Google OAuth 一本で、パスワードも OAuth のトークンも持たない
   入れるのは `TOIITO_ALLOWED_EMAILS` に載ったメールアドレスだけ（経緯は `adr/20260909-auth-better-auth.md`）

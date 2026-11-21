@@ -6,11 +6,18 @@
  * 一往復は、人間の発話と二体の応答が揃ったときだけ `messages` へ書き込み、揃わなければ人間の発話を `pending_messages` に残す（理由は `docs/adr/20260902-turn-atomicity-and-pending-utterance.md`）。
  */
 
+import {
+  ANTHROPIC_DEFAULTS,
+  type AnthropicCredentials,
+  isAnthropicModel,
+} from "@/lib/ai/anthropic";
 import { callPersona, type PersonaCall } from "@/lib/ai/persona-call";
 import type { QuestionRef, Transcript } from "@/lib/ai/prompt";
-import { AI_PROVIDER } from "@/lib/ai/providers";
+import type { AiProvider } from "@/lib/ai/provider";
+import { aiProviderFor } from "@/lib/ai/providers";
 import {
   commitTurn,
+  getModelCredentials,
   getPendingBody,
   getQuestionOfSession,
   listMessages,
@@ -18,7 +25,10 @@ import {
   savePendingBody,
 } from "@/lib/db";
 import { loadPersona, type PersonaId } from "@/lib/personas";
+import { decryptApiKey } from "@/lib/secrets";
+import { encryptionKeyRing } from "@/lib/secrets-config";
 import type { OwnerId, UsageInput } from "@/lib/types";
+import type { ApiKeySource } from "@/lib/usage";
 
 /** 一往復で呼ぶ二体。 */
 export type PersonaCalls = Record<PersonaId, PersonaCall>;
@@ -37,25 +47,65 @@ type TurnTarget = {
 };
 
 /**
- * 二体の呼び出しの指定を、env から解決済みのプロバイダと、`owner` の利用量を書く関数で組み立てて返す。
- *
- * `runTurn` が `AI_PROVIDER` を直接参照するとテストが失敗するプロバイダを差し込めなくなるので、`AI_PROVIDER` を参照するのは `personaCalls` だけにする。
- * 利用者を `runTurn` から受け取るのは、一往復の所有者と、利用量が乗る利用者を食い違わせないため。
+ * 利用者の API キーとモデル（`credentials`）からプロバイダを作る関数。
+ * `credentials` が無ければ、運営の API キーと既定のモデルで呼ぶプロバイダを返す。
  */
-export async function personaCalls(owner: OwnerId): Promise<PersonaCalls> {
-  const record = (usage: UsageInput) => recordUsage(owner, usage);
+export type ProviderFor = (credentials?: AnthropicCredentials) => AiProvider;
+
+/**
+ * `owner` が登録した API キーを復号し、選んだモデルと組にして返す。
+ * API キーを登録していなければ、モデルを選んでいても undefined を返す。
+ *
+ * 保存されたモデルが `ANTHROPIC_MODELS` の値域の外なら throw し、利用者の API キーで利用者が選んでいないモデルを呼ばない。
+ * 復号に失敗したときも throw する。
+ */
+async function getUserCredentials(
+  owner: OwnerId,
+): Promise<AnthropicCredentials | undefined> {
+  const stored = await getModelCredentials(owner);
+  if (!stored) {
+    return undefined;
+  }
+
+  const model = stored.model ?? ANTHROPIC_DEFAULTS.model;
+  if (!isAnthropicModel(model)) {
+    throw new Error(`保存されたモデルが選べるモデルの外にある: ${model}`);
+  }
+
+  const apiKey = decryptApiKey(stored.encrypted_api_key, encryptionKeyRing());
+
+  return { apiKey, model };
+}
+
+/**
+ * `owner` の設定から決めたプロバイダと、`owner` の利用量を書く関数で、二体の呼び出しの指定を組み立てて返す。
+ * `owner` が API キーを登録していればその API キーと選んだモデルで呼び、登録していなければ運営の API キーと既定のモデルで呼ぶ。
+ * 復号の失敗と値域の外のモデルは throw する。
+ *
+ * 利用量の行には、どちらの API キーで呼んだか（`key_source`）を書く。
+ * 利用者を `runTurn` から受け取るのは、一往復の所有者と、API キーと利用量が乗る利用者を食い違わせないため。
+ */
+export async function personaCalls(
+  owner: OwnerId,
+  providerFor: ProviderFor = aiProviderFor,
+): Promise<PersonaCalls> {
+  const credentials = await getUserCredentials(owner);
+  const provider = providerFor(credentials);
+  const keySource: ApiKeySource = credentials ? "user" : "system";
+  const record = (usage: UsageInput) =>
+    recordUsage(owner, { ...usage, key_source: keySource });
 
   return {
     ai_a: {
       id: "ai_a",
       prompt: loadPersona("ai_a"),
-      provider: AI_PROVIDER,
+      provider,
       recordUsage: record,
     },
     ai_b: {
       id: "ai_b",
       prompt: loadPersona("ai_b"),
-      provider: AI_PROVIDER,
+      provider,
       recordUsage: record,
     },
   };

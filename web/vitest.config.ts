@@ -4,6 +4,7 @@
  * E2E（`e2e/`）はここでは走らせず、`playwright.config.ts` が持つ。
  */
 
+import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 import { TEST_DATABASE_URL } from "./tests/setup/test-database-url";
@@ -31,6 +32,9 @@ export default defineConfig({
     env: {
       DATABASE_URL: TEST_DATABASE_URL,
       DIRECT_URL: TEST_DATABASE_URL,
+
+      // 一往復が利用者の API キーを復号する経路を通すための鍵で、走るたびに作り直すのでリポジトリに鍵の値を置かない。
+      TOIITO_API_KEY_ENCRYPTION_KEYS: `test:${randomBytes(32).toString("base64")}`,
     },
   },
 });
