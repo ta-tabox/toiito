@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   decryptApiKey,
   encryptApiKey,
+  keyIdOf,
   readEncryptionKeyRing,
 } from "@/lib/secrets";
 
@@ -161,5 +162,17 @@ describe("readEncryptionKeyRing", () => {
     for (const { value, entry } of cases) {
       expect(errorMessageOf(() => ringOf(entry))).not.toContain(value);
     }
+  });
+});
+
+describe("keyIdOf", () => {
+  it("暗号文から、暗号化に使った鍵の鍵 ID を返す", () => {
+    const stored = encryptApiKey(PLAIN, ringOf(NEW_ENTRY, OLD_ENTRY));
+
+    expect(keyIdOf(stored)).toBe("new");
+  });
+
+  it("encryptApiKey が返した形でない値なら throw する", () => {
+    expect(() => keyIdOf("new:not-a-ciphertext")).toThrow();
   });
 });

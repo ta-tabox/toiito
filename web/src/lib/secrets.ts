@@ -172,6 +172,16 @@ export function decryptApiKey(stored: string, keys: EncryptionKeyRing): string {
 }
 
 /**
+ * `encryptApiKey` が返した `stored` から、暗号化に使った鍵の鍵 ID を返す。
+ * 形式が不正なら throw する。
+ *
+ * 復号せずに読めるので、鍵の回転で旧い鍵の暗号文が残っていないかを数えるときに使う。
+ */
+export function keyIdOf(stored: string): string {
+  return parseStoredApiKey(stored).keyId;
+}
+
+/**
  * `TOIITO_API_KEY_ENCRYPTION_KEYS` の `index` 番目（0 起点）の組 `entry` を読み、鍵 ID を付けた鍵を返す。
  * 鍵 ID が `KEY_ID_PATTERN` に合わないか、鍵の値が 32 バイトの正規の base64 でなければ throw する。
  */

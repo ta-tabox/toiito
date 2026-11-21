@@ -82,14 +82,18 @@ memo_links     （将来）メモ間・問い間のリンキング辺
 materials      問いに付随する材料で、誰の発話でもない。二体 AI へは渡さず、人間だけが読む（画面の語では培地）
   id, question_id, kind(internal/external/isomorph), topic(論点。同じ値の行が立場の違う材料の組), body, source_url, created_by(auto/human), created_at
 
+user_model_settings  利用者一人につき一行の、AI を呼ぶときのモデルと API キーの設定。API キーは暗号文だけを持つ
+  user_id(主キー), model(未設定なら既定のモデル), encrypted_api_key(暗号化に使った鍵の ID を含む), created_at, updated_at
+
 usage_logs     AI の呼び出し 1 回ごとの利用量。管理者だけが読む運用の記録で、本文も問い・セッション・発話への参照も持たない
   id, user_id, provider, model, kind(persona/material), input_tokens, output_tokens, web_search_count, key_source(system/user), created_at
 ```
 
 ### 所有権
 
-**所有のルート**は、いまは `questions` 一つである。
+**所有のルート**は `questions` と `user_model_settings` である。
 `sessions` / `messages` / `memos` は `user_id` を持たず、所有者は親から辿る。
+`user_model_settings` は子の表を持たず、`user_id` が主キーを兼ねる。
 下位にも持たせない理由と、却下した案は `adr/20260906-ownership-granularity.md`。
 
 `usage_logs` は `user_id` を持つが、所有のルートではない。

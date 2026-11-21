@@ -8,7 +8,7 @@
  *
  * **アクセス権のないリソースを拒否するのは `db.ts` で、DB の制約（RLS）ではない**（理由は `docs/adr/20260906-ownership-granularity.md`）。
  * 所有者を受け取る repo 関数は、読みも書きも所有者の条件を必ず where に置く（取得してから user_id を比べる形は、比べ忘れても `tsc` が通ってしまう）。
- * 所有者の列を持つのは `questions` だけで、下位のテーブルは親を辿って判定する。
+ * 所有者の列を持つのは `questions` と `user_model_settings` だけで、下位のテーブルは親を辿って判定する。
  */
 
 import { randomUUID } from "node:crypto";
@@ -20,11 +20,15 @@ import { isQuestionStatus, type QuestionStatus } from "@/lib/question";
 import type {
   AdminUserRow,
   Anchor,
+  EncryptedApiKeyRow,
   Material,
   MaterialDraft,
   Memo,
   MemoWithContext,
   Message,
+  ModelCredentials,
+  ModelSettingInput,
+  ModelSettingSummary,
   OwnerId,
   Question,
   Session,
@@ -866,6 +870,114 @@ export async function createQuestionWithTranscript(
   }
 
   return { question, session, messages, memos };
+}
+
+/**
+ * 所有者のモデルと API キーの設定を、画面に出す形で返す。
+ * 設定の行が無ければ、モデルが undefined で API キーが未登録の値を返す。
+ *
+ * 戻り値は API キーの有無だけを持ち、設定の画面へ暗号文を渡さない。
+ */
+export async function getModelSettingSummary(
+  owner: OwnerId,
+): Promise<ModelSettingSummary> {
+  const row = await db().userModelSetting.findUnique({
+    where: { user_id: owner },
+    select: { model: true, encrypted_api_key: true },
+  });
+
+  return {
+    model: row?.model ?? undefined,
+    has_api_key: row?.encrypted_api_key != null,
+  };
+}
+
+/**
+ * 所有者が選んだモデル名と、暗号化した API キーを返す。
+ * API キーを登録していなければ、モデルを選んでいても undefined を返す。
+ */
+export async function getModelCredentials(
+  owner: OwnerId,
+): Promise<ModelCredentials | undefined> {
+  const row = await db().userModelSetting.findUnique({
+    where: { user_id: owner },
+    select: { model: true, encrypted_api_key: true },
+  });
+
+  if (!row?.encrypted_api_key) {
+    return undefined;
+  }
+
+  return {
+    model: row.model ?? undefined,
+    encrypted_api_key: row.encrypted_api_key,
+  };
+}
+
+/**
+ * 所有者のモデルと API キーの設定を書く。
+ * 設定の行が無ければ作り、在れば書き換える。
+ *
+ * `input.encrypted_api_key` は `encryptApiKey` の戻り値だけを受け取り、平文を渡さない。
+ * 省いたときは保存済みの API キーを変えないので、モデルだけを変える呼び出しで API キーが消えない。
+ */
+export async function saveModelSetting(
+  owner: OwnerId,
+  input: ModelSettingInput,
+): Promise<void> {
+  await db().userModelSetting.upsert({
+    where: { user_id: owner },
+    create: { user_id: owner, ...input },
+    update: input,
+  });
+}
+
+/**
+ * 所有者の API キーを削除する。
+ * 選んだモデルは残し、設定の行が無ければ何もしない。
+ */
+export async function deleteApiKey(owner: OwnerId): Promise<void> {
+  await db().userModelSetting.updateMany({
+    where: { user_id: owner },
+    data: { encrypted_api_key: null },
+  });
+}
+
+/**
+ * 暗号化した API キーを持つ全利用者の行を返す。
+ *
+ * 所有者を受け取らず全員分を返すので、呼んでよいのは暗号化の鍵を回転するスクリプト（`scripts/reencrypt-api-keys.ts`）だけである。
+ */
+export async function listEncryptedApiKeys(): Promise<EncryptedApiKeyRow[]> {
+  const rows = await db().userModelSetting.findMany({
+    where: { encrypted_api_key: { not: null } },
+    select: { user_id: true, encrypted_api_key: true },
+    orderBy: { user_id: "asc" },
+  });
+
+  return rows.flatMap((row) =>
+    row.encrypted_api_key
+      ? [{ user_id: row.user_id, encrypted_api_key: row.encrypted_api_key }]
+      : [],
+  );
+}
+
+/**
+ * 利用者（`row.user_id`）の暗号化した API キーが `row.encrypted_api_key` のままなら、`replacement` へ書き換える。
+ * 書き換えたら true、読んだ後に利用者が API キーを差し替えたか削除していたら何もせず false を返す。
+ *
+ * 所有者を受け取らないので、呼んでよいのは暗号化の鍵を回転するスクリプト（`scripts/reencrypt-api-keys.ts`）だけである。
+ */
+export async function replaceEncryptedApiKey(
+  row: EncryptedApiKeyRow,
+  replacement: string,
+): Promise<boolean> {
+  const { count } = await db().userModelSetting.updateMany({
+    where: { user_id: row.user_id, encrypted_api_key: row.encrypted_api_key },
+    data: { encrypted_api_key: replacement },
+  });
+
+  return count === 1;
 }
 
 /**

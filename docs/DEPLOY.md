@@ -59,14 +59,36 @@ ADR を立てていない理由は `adr/README.md`「ADR にしないもの」�
 新しい鍵の値は `openssl rand -base64 32` で作る。
 段 1 と段 3 では、値を書き換えた後に Redeploy する。
 
+段 2 は手元から本番の DB（`DIRECT_URL_PROD`）へ直結で繋いで走る。
+旧い鍵と新しい鍵の値が要るのは手元だけで、CI と Vercel の外へ鍵を出さない。
+鍵の一覧は段 1 で Vercel に入れた値と同じものを、`.env.local` に書かずに実行する間だけ渡す（変数の名前は `web/README.md`「環境変数」）。
+fish は空白で始めたコマンドを履歴に残さないので、行頭に空白を置いて打つ。
+
+```fish
+ env TOIITO_API_KEY_ENCRYPTION_KEYS_PROD='<段 1 の値>' pnpm keys:reencrypt prod
+```
+
+Preview は `prod` を `preview` に、変数を `TOIITO_API_KEY_ENCRYPTION_KEYS_PREVIEW` に替えて同じ順に行う。
+
 **段 3 は、旧い鍵の暗号文が残っていないことを確かめてから行う**。
 外した後に残った旧い鍵の暗号文は、どの鍵でも復号できなくなる。
+確かめるのは、同じ値を渡して `--report` を付けたコマンドで、鍵 ID ごとの暗号文の件数を出す。
+最後の行の「暗号化に使う鍵以外の鍵 ID の暗号文」が 0 件なら終了コードが 0 になり、段 3 へ進んでよい。
+
+```fish
+ env TOIITO_API_KEY_ENCRYPTION_KEYS_PROD='<段 1 の値>' pnpm keys:reencrypt prod --report
+```
 
 **新しい鍵 ID には、過去に使った鍵 ID を使わない**。
 同じ鍵 ID の暗号文が残っていると、鍵が無いというエラーでなく、復号できないというエラーになり、原因が読み取れない。
 
+**Vercel の `TOIITO_API_KEY_ENCRYPTION_KEYS` は Sensitive のままにし、読める設定へ変えない**。
+読める設定にするとプロジェクトを見られる人と Vercel の API トークンが鍵を読めるようになり、DB だけが漏れても API キーを復号できないという置き場の前提が崩れる。
+
 **鍵の値は Vercel の外（パスワードマネージャー）にも控える**。
 鍵を失うと全員の API キーが復号できなくなり、利用者に登録し直してもらうことになる。
+Sensitive な変数は作った後に Vercel から値を読めないので、控えが無いと段 1 で旧い鍵を並べた値を書けない。
+控えは段 2 で手元へ渡す値の出所も兼ねる。
 
 ## 初回のセットアップ
 

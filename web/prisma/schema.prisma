@@ -120,7 +120,7 @@ enum ApiKeySource {
 /// body は原型（投入された生の問い。転記誤りの訂正以外では書き換えない）、
 /// current_form は対話の中で言い直された焦点。
 ///
-/// `user_id` を持つのは所有のルートだけで、いまはこのモデル一つ（理由は `docs/adr/20260906-ownership-granularity.md`）。
+/// `user_id` を持つのは所有のルートだけで、このモデルと `UserModelSetting` が持つ（理由は `docs/adr/20260906-ownership-granularity.md`）。
 /// 型が UUID でなく String なのは、Better Auth の `user.id` に合わせるため。
 model Question {
   id           String         @id @default(uuid(4)) @db.Uuid
@@ -303,6 +303,27 @@ model UsageLog {
   @@map("usage_logs")
 }
 
+/// 利用者一人につき一行の、AI を呼ぶときのモデルと API キーの設定。
+///
+/// 所有のルートで、`user_id` が所有者を指す。
+/// 1 利用者に 1 行なので `user_id` が主キー。
+/// `model` の値域は `src/lib/ai/anthropic.ts` の `ANTHROPIC_MODELS` が持ち、DB の enum にしない。
+/// 値域を増減するたびに migration を要らなくするためで、値域の外の値を読んだときの扱いは読む側が決める。
+model UserModelSetting {
+  user_id           String   @id
+  /// 利用者が選んだモデル名。NULL なら既定のモデルを使う。
+  model             String?
+  /// 利用者の API キーを `src/lib/secrets.ts` の `encryptApiKey` で暗号化した値で、暗号化に使った鍵の ID を含む。
+  /// 平文をこの列にも他の列にも置かない。
+  encrypted_api_key String?
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_model_settings")
+}
+
 /// ユーザー。Better Auth が使う四表の一つ。
 ///
 /// モデル名と列名は Better Auth 1.7.2 が要求するまま（camelCase・型は既定）で、snake_case へ揃えない（理由はファイル冒頭のコメント）。
@@ -319,10 +340,11 @@ model User {
   /// サインインの可否には使わない。
   is_admin      Boolean  @default(false)
 
-  sessions   Session[]
-  accounts   Account[]
-  questions  Question[]
-  usage_logs UsageLog[]
+  sessions      Session[]
+  accounts      Account[]
+  questions     Question[]
+  usage_logs    UsageLog[]
+  model_setting UserModelSetting?
 
   @@map("user")
 }
