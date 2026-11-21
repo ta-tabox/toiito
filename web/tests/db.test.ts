@@ -600,6 +600,14 @@ describe("users", () => {
     ]);
   });
 
+  it("listUsersForAdmin は、既定のペルソナを持つシステムのユーザーを返さない", async () => {
+    await db.createUser({ email: "system@toiito.invalid", name: "システム" });
+
+    const rows = await db.listUsersForAdmin();
+
+    expect(rows.map(({ id }) => id)).toEqual([owner]);
+  });
+
   it("listUsersForAdmin の戻り値に、問いの本文も現在の形も含まれない", async () => {
     const { question } = await db.createQuestion(owner, "管理者に見せない原型");
     await db.setCurrentForm(owner, question.id, "管理者に見せない現在の形");
